@@ -1,0 +1,6 @@
+{
+  "name": "PB CivilLab",
+  "description": "Professional Civil Engineering Structural Analysis, Geotechnical Bearing Capacity, Concrete Mix Design, and Open-Channel Hydraulics Workbench.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

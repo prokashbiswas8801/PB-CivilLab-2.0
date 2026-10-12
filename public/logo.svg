@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 300" width="100%" height="100%" fill="none">
+  <!-- PB CivilLab Official Vector Identity -->
+  <defs>
+    <linearGradient id="pbCivilGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9CA3AF" />
+      <stop offset="100%" stop-color="#6B7280" />
+    </linearGradient>
+  </defs>
+
+  <g id="pb-emblem" fill="currentColor">
+    <!-- Left P Letterform & Architectural Columns -->
+    <!-- Top Bar of P -->
+    <path d="M 125 45 L 235 45 C 265 45 285 62 285 92 C 285 120 262 135 230 135 L 202 135 L 202 112 L 228 112 C 246 112 258 104 258 90 C 258 75 246 67 228 67 L 152 67 L 152 165 L 125 165 Z" />
+    
+    <!-- Architectural Fluted Column Piers on Left Stem -->
+    <!-- Outer Pier with 45-degree Angled Top Chamfer -->
+    <polygon points="125,108 143,90 143,165 125,165" />
+    <!-- Middle Pier with 45-degree Angled Top Chamfer -->
+    <polygon points="148,82 166,64 166,165 148,165" />
+
+    <!-- Right B Letterform & Aerodynamic Structural Curves -->
+    <path d="M 242 45 L 340 45 C 362 45 378 58 378 78 C 378 94 366 106 350 110 C 372 116 385 132 385 152 C 385 174 368 185 342 185 L 255 185 L 255 162 L 336 162 C 352 162 360 155 360 144 C 360 132 350 124 332 124 L 285 124 L 285 102 L 330 102 C 346 102 354 94 354 84 C 354 73 346 67 332 67 L 242 67 Z" />
+
+    <!-- Structural Building Skeleton in Axonometric Perspective (Center/Lower Vignette) -->
+    <!-- Foundation Horizon Curve -->
+    <path d="M 215 167 Q 295 160 395 168 Q 295 164 215 167 Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="currentColor" />
+
+    <!-- Building Perspective Roof Slab -->
+    <polygon points="305,105 330,95 358,110 332,120" />
+    <polygon points="305,105 332,120 332,123 305,108" />
+    <polygon points="332,120 358,110 358,113 332,123" />
+
+    <!-- Building Vertical Columns & Frame Bays -->
+    <!-- Front Corner Column -->
+    <rect x="330" y="122" width="4" height="42" />
+    <!-- Left Corner Column -->
+    <rect x="306" y="107" width="3.5" height="57" />
+    <!-- Right Corner Column -->
+    <rect x="355" y="112" width="3.5" height="52" />
+    <!-- Mid Mullion Left Facade -->
+    <rect x="318" y="114" width="2.5" height="50" />
+    <!-- Mid Mullion Right Facade -->
+    <rect x="343" y="117" width="2.5" height="47" />
+
+    <!-- Mid Floor Beam Band -->
+    <polygon points="306,132 332,143 332,146 306,135" />
+    <polygon points="332,143 356,133 356,136 332,146" />
+  </g>
+
+  <!-- PB CivilLab Logotype -->
+  <text x="250" y="248" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="800" font-size="52" letter-spacing="-1" fill="currentColor">
+    PB <tspan font-weight="700">CivilLab</tspan>
+  </text>
+</svg>
