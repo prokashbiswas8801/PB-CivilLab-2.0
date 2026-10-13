@@ -149,22 +149,95 @@
   animation: indeterminate 1.4s infinite cubic-bezier(0.65, 0.815, 0.735, 0.395);
 }
 
-@media print {
-  header, aside, .no-print {
-    display: none !important;
-  }
-  .print-only {
-    display: block !important;
-  }
-  body, main {
-    overflow: visible !important;
-    height: auto !important;
-    background: white !important;
-    color: black !important;
-  }
-}
-
+/* Flawless Vector Print Engine & Box-Constraint Architecture */
 .print-only {
   display: none;
 }
+
+.print-avoid-break {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+.print-force-break {
+  break-before: page !important;
+  page-break-before: always !important;
+}
+
+@media print {
+  @page {
+    margin: 12mm 15mm 15mm 15mm;
+    size: auto;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app shell, interactive menus, drawers and non-print UI */
+  #root > div > div,
+  header,
+  aside,
+  nav,
+  .no-print,
+  #modal-root,
+  .modal-backdrop,
+  [role="dialog"],
+  #pb-print-dialog {
+    display: none !important;
+  }
+
+  /* Target the isolated printable report */
+  #pb-printable-report {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  /* Prevent text overlapping and overflow clipping */
+  #pb-printable-report * {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  /* Table rules for certified publication sheets */
+  #pb-printable-report table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
+
+  #pb-printable-report tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  #pb-printable-report thead {
+    display: table-header-group !important;
+  }
+
+  #pb-printable-report tfoot {
+    display: table-footer-group !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+
 

@@ -42,6 +42,8 @@ import {
   ShieldCheck,
   HardDrive,
   Printer,
+  User,
+  Award,
 } from 'lucide-react';
 import { Logo, LogoMark } from './components/Logo';
 import { Footer } from './components/Footer';
@@ -64,6 +66,9 @@ import {
   RateAnalysisWorkType,
   UnitSystemPreset,
   WorkspaceUnitPreferences,
+  UserProfile,
+  UserCustomPreferences,
+  EngineeringPreset,
 } from './types/civil';
 import {
   loadPersistedState,
@@ -81,6 +86,9 @@ import {
   CURRENT_SCHEMA_VERSION,
   exportProjectWorkspacePackage,
   parseAndValidateProjectWorkspacePackage,
+  createDefaultUserProfile,
+  createDefaultUserPreferences,
+  createDefaultEngineeringPresets,
 } from './utils/storage';
 import { getIndexedDBStats, isIndexedDBSupported, persistToIndexedDB } from './utils/indexedStorage';
 import {
@@ -120,6 +128,9 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { UnitInput } from './components/UnitInput';
 import { UnitValueDisplay } from './components/UnitValueDisplay';
 import { UnitPresetSelector } from './components/UnitPresetSelector';
+import { ProfilePreferencesModal } from './components/ProfilePreferencesModal';
+import { PresetQuickBar } from './components/PresetQuickBar';
+import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { SYSTEM_PRESET_UNITS } from './utils/unitEngine';
 
 const MODULE_META: Record<
@@ -252,6 +263,9 @@ export default function App() {
   const [triggerErrorTest, setTriggerErrorTest] = useState(false);
   const [toastBanner, setToastBanner] = useState<string | null>(null);
   const [showSplash, setShowSplash] = useState(true);
+  const [profilePreferencesModalOpen, setProfilePreferencesModalOpen] = useState(false);
+  const [profileModalInitialTab, setProfileModalInitialTab] = useState<'profile' | 'preferences' | 'presets'>('profile');
+  const [printPreviewModalOpen, setPrintPreviewModalOpen] = useState(false);
 
   // File Inputs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -369,6 +383,21 @@ export default function App() {
       appState.workspaces[0]
     );
   }, [appState.workspaces, appState.activeWorkspaceId]);
+
+  const userProfile: UserProfile = useMemo(
+    () => appState.userProfile || createDefaultUserProfile(),
+    [appState.userProfile]
+  );
+
+  const userPreferences: UserCustomPreferences = useMemo(
+    () => appState.userPreferences || createDefaultUserPreferences(),
+    [appState.userPreferences]
+  );
+
+  const presets: EngineeringPreset[] = useMemo(
+    () => appState.presets || createDefaultEngineeringPresets(),
+    [appState.presets]
+  );
 
   const activeModule = activeWorkspace.activeModule;
 
@@ -559,6 +588,145 @@ export default function App() {
       ...prev,
       commandRecentQueries: [query, ...prev.commandRecentQueries.filter((q) => q !== query)].slice(0, 10),
     }));
+  };
+
+  const handleOpenProfileModal = (tab: 'profile' | 'preferences' | 'presets' = 'profile') => {
+    setProfileModalInitialTab(tab);
+    setProfilePreferencesModalOpen(true);
+  };
+
+  const handleSaveProfile = (updatedProfile: UserProfile) => {
+    setAppState((prev) => ({
+      ...prev,
+      userProfile: updatedProfile,
+      workspaces: prev.workspaces.map((ws) =>
+        ws.id === prev.activeWorkspaceId
+          ? { ...ws, engineerOfRecord: updatedProfile.fullName, updatedAt: new Date().toISOString() }
+          : ws
+      ),
+    }));
+    setToastBanner(`Saved credentials for ${updatedProfile.fullName}. Reports updated.`);
+  };
+
+  const handleSavePreferences = (updatedPrefs: UserCustomPreferences) => {
+    setAppState((prev) => ({
+      ...prev,
+      userPreferences: updatedPrefs,
+    }));
+    setToastBanner('Custom calculation preferences saved.');
+  };
+
+  const handleApplyPreferencesToWorkspace = () => {
+    const prefs = userPreferences;
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      currency: prefs.defaultCurrency,
+      governingCode: prefs.defaultBuildingCode,
+      concreteMaterials: {
+        ...ws.concreteMaterials,
+        cementBagWeightKg: prefs.defaultCementBagWeightKg,
+        wastagePercent: prefs.wastage.concretePercent,
+      },
+      rebarBbs: {
+        ...ws.rebarBbs,
+        wastagePercent: prefs.wastage.rebarPercent,
+      },
+      masonry: {
+        ...ws.masonry,
+        mortarWastagePercent: prefs.wastage.brickMortarPercent,
+      },
+      earthwork: {
+        ...ws.earthwork,
+        customShrinkagePercent: prefs.wastage.earthworkShrinkagePercent,
+      },
+      unitPreferences: {
+        systemPreset: prefs.preferredUnitSystem,
+        fieldUnits: ws.unitPreferences?.fieldUnits || {},
+        outputUnits: ws.unitPreferences?.outputUnits || {},
+      },
+    }));
+    setToastBanner('Applied global engineering defaults & wastage rules to active workspace.');
+  };
+
+  const handleSavePreset = (newPreset: EngineeringPreset) => {
+    setAppState((prev) => {
+      const existingIdx = (prev.presets || []).findIndex((p) => p.id === newPreset.id);
+      let updatedPresets: EngineeringPreset[];
+      if (existingIdx >= 0) {
+        updatedPresets = (prev.presets || []).map((p, idx) => (idx === existingIdx ? newPreset : p));
+      } else {
+        updatedPresets = [newPreset, ...(prev.presets || [])];
+      }
+      return { ...prev, presets: updatedPresets };
+    });
+    setToastBanner(`Saved engineering preset "${newPreset.name}".`);
+  };
+
+  const handleDeletePreset = (presetId: string) => {
+    setAppState((prev) => ({
+      ...prev,
+      presets: (prev.presets || []).filter((p) => p.id !== presetId),
+    }));
+    setToastBanner('Deleted custom preset.');
+  };
+
+  const handleApplyPreset = (preset: EngineeringPreset) => {
+    const { payload } = preset;
+    updateActiveWorkspace((ws) => {
+      const nextWs: CivilWorkspace = { ...ws };
+      if (payload.targetModule) {
+        nextWs.activeModule = payload.targetModule;
+      }
+      if (payload.concreteMaterials) {
+        nextWs.concreteMaterials = { ...nextWs.concreteMaterials, ...payload.concreteMaterials };
+      }
+      if (payload.concreteMix) {
+        nextWs.concrete = { ...nextWs.concrete, ...payload.concreteMix };
+      }
+      if (payload.rateAnalysis) {
+        nextWs.rateAnalysis = { ...nextWs.rateAnalysis, ...payload.rateAnalysis };
+      }
+      if (payload.beam) {
+        nextWs.beam = { ...nextWs.beam, ...payload.beam };
+      }
+      if (payload.bearing) {
+        nextWs.bearing = { ...nextWs.bearing, ...payload.bearing };
+      }
+      if (payload.channel) {
+        nextWs.channel = { ...nextWs.channel, ...payload.channel };
+      }
+      if (payload.earthwork) {
+        nextWs.earthwork = { ...nextWs.earthwork, ...payload.earthwork };
+      }
+      if (payload.masonry) {
+        nextWs.masonry = { ...nextWs.masonry, ...payload.masonry };
+      }
+      if (payload.rebarBbs) {
+        nextWs.rebarBbs = { ...nextWs.rebarBbs, ...payload.rebarBbs };
+      }
+      if (payload.boq) {
+        nextWs.boq = { ...nextWs.boq, ...payload.boq };
+      }
+      return nextWs;
+    });
+    setToastBanner(`Applied preset "${preset.name}" to current workspace.`);
+  };
+
+  const handleImportPresets = (imported: EngineeringPreset[]) => {
+    setAppState((prev) => {
+      const existing = prev.presets || [];
+      const merged = [...imported, ...existing.filter((e) => !imported.some((i) => i.id === e.id))];
+      return { ...prev, presets: merged };
+    });
+    setToastBanner(`Imported ${imported.length} engineering presets.`);
+  };
+
+  const handleResetFactoryPresets = () => {
+    setAppState((prev) => ({
+      ...prev,
+      presets: createDefaultEngineeringPresets(),
+    }));
+    setToastBanner('Reset to factory engineering presets.');
   };
 
   // Custom Unit Handlers
@@ -1059,6 +1227,12 @@ export default function App() {
   };
 
   // Project Workspaces Management
+  const handleOpenNewWorkspace = () => {
+    setNewWsEngineer(userProfile.fullName);
+    setNewWsCurrency(userPreferences.defaultCurrency);
+    setNewWorkspaceOpen(true);
+  };
+
   const handleCreateWorkspace = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWsName.trim()) return;
@@ -1077,18 +1251,18 @@ export default function App() {
       name: newWsName.trim(),
       projectCode: newWsCode.trim() || `CIV-${Math.floor(100 + Math.random() * 900)}`,
       siteLocation: newWsSite.trim() || 'Primary Field Sector',
-      engineerOfRecord: newWsEngineer.trim() || 'Project Engineer, PE',
-      currency: newWsCurrency,
+      engineerOfRecord: newWsEngineer.trim() || userProfile.fullName || 'Project Engineer, PE',
+      currency: newWsCurrency || userPreferences.defaultCurrency,
       createdAt: now,
       updatedAt: now,
       boq: {
         ...activeWorkspace.boq,
-        currency: newWsCurrency,
+        currency: newWsCurrency || userPreferences.defaultCurrency,
         items: initialItems,
       },
       rateAnalysis: {
         ...activeWorkspace.rateAnalysis,
-        currency: newWsCurrency,
+        currency: newWsCurrency || userPreferences.defaultCurrency,
       },
     };
     setAppState((prev) => ({
@@ -1437,6 +1611,10 @@ export default function App() {
         onSelectModule={handleSetModule}
         recentQueries={appState.commandRecentQueries}
         onAddRecentQuery={handleAddRecentQuery}
+        onOpenProfile={() => handleOpenProfileModal('profile')}
+        onOpenPreferences={() => handleOpenProfileModal('preferences')}
+        onOpenPresets={() => handleOpenProfileModal('presets')}
+        onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
       />
 
       {showSplash && <AppSplash onComplete={() => setShowSplash(false)} />}
@@ -1531,12 +1709,52 @@ export default function App() {
 
             <button
               type="button"
+              onClick={() => handleOpenProfileModal('presets')}
+              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] items-center gap-1.5 cursor-pointer"
+              title="Engineering Presets & Standard Mixes"
+            >
+              <BookmarkCheck className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+              <span className="hidden lg:inline">Presets</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPrintPreviewModalOpen(true)}
+              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] items-center gap-1.5 cursor-pointer"
+              title="Print Preview & Vector PDF Submittal Engine"
+            >
+              <Printer className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+              <span className="hidden xl:inline">Print / PDF</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setWorkspaceManagerOpen(true)}
               className="touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-1.5 cursor-pointer"
               title="Manage Projects & Takeoffs"
             >
               <FolderArchive className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
               <span className="hidden md:inline">Projects</span>
+            </button>
+
+            {/* Engineer Profile & Credentials Badge Button */}
+            <button
+              type="button"
+              onClick={() => handleOpenProfileModal('profile')}
+              className="touch-target-48 px-2 md:px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-2 cursor-pointer transition-colors"
+              title={`Engineer Profile: ${userProfile.fullName} (${userProfile.designation})`}
+            >
+              <div className="w-6 h-6 rounded bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] flex items-center justify-center text-xs font-bold font-mono shrink-0 shadow-xs">
+                {userProfile.initials || userProfile.fullName.slice(0, 2).toUpperCase() || 'PB'}
+              </div>
+              <div className="hidden lg:flex flex-col text-left">
+                <span className="text-xs font-bold leading-tight truncate max-w-[130px]">
+                  {userProfile.fullName.split(',')[0]}
+                </span>
+                <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] leading-tight truncate max-w-[130px]">
+                  {userProfile.licenseNumber || userProfile.role.replace('-', ' ')}
+                </span>
+              </div>
             </button>
 
             <button
@@ -1628,6 +1846,18 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setMobileDrawerOpen(false);
+                    handleOpenProfileModal('profile');
+                  }}
+                  className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <User className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                  <span>Engineer Profile &amp; Preferences</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileDrawerOpen(false);
                     setWorkspaceManagerOpen(true);
                   }}
                   className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
@@ -1689,7 +1919,7 @@ export default function App() {
               {!appState.sidebarCollapsed && (
                 <button
                   type="button"
-                  onClick={() => setNewWorkspaceOpen(true)}
+                  onClick={handleOpenNewWorkspace}
                   className="w-full touch-target-48 px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer border border-[var(--md-sys-color-outline-variant)]"
                 >
                   <Plus className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
@@ -1752,6 +1982,23 @@ export default function App() {
                     <div className="font-semibold truncate">Projects Manager</div>
                     <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
                       {appState.workspaces.length} Projects · {activeWorkspace.currency}
+                    </div>
+                  </div>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenProfileModal('profile')}
+                className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2.5 text-xs font-medium cursor-pointer"
+                title="Engineer Profile, Preferences & Presets"
+              >
+                <User className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+                {!appState.sidebarCollapsed && (
+                  <div className="text-left min-w-0 flex-1">
+                    <div className="font-semibold truncate">{userProfile.fullName}</div>
+                    <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
+                      {userProfile.designation} · Settings
                     </div>
                   </div>
                 )}
@@ -1822,6 +2069,33 @@ export default function App() {
                   <div>Timestamp: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</div>
                 </div>
               </div>
+
+              {/* AUTOMATICALLY LINKED CERTIFIED ENGINEER CREDENTIALS & SIGNATURE BLOCK */}
+              <div className="mt-4 pt-3 border-t border-gray-400 grid grid-cols-2 gap-4 text-xs font-mono">
+                <div>
+                  <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">PREPARED &amp; CERTIFIED BY</div>
+                  <div className="font-bold text-sm text-black font-sans">{userProfile.fullName}</div>
+                  <div className="text-gray-700">{userProfile.designation} · {userProfile.organization}</div>
+                  <div className="text-gray-600 text-[11px] mt-0.5">
+                    License ID: <strong>{userProfile.licenseNumber || 'IEB PE-41892'}</strong>
+                    {userProfile.email && ` · Email: ${userProfile.email}`}
+                    {userProfile.phone && ` · Tel: ${userProfile.phone}`}
+                  </div>
+                </div>
+                <div className="text-right flex flex-col justify-between items-end">
+                  <div className="text-[11px] text-gray-600 italic max-w-sm">
+                    {userPreferences.reportHeaderNote || 'Verified for preliminary structural & estimation design under BNBC-2020 / ACI-318 standards.'}
+                  </div>
+                  {userPreferences.showEngineeringSignatureLine && (
+                    <div className="mt-2 text-center w-56 border-t border-black pt-1">
+                      <div className="text-[10px] font-bold text-black uppercase">
+                        {userProfile.initials || 'PB'} OFFICIAL CERTIFICATION STAMP
+                      </div>
+                      <div className="text-[9px] text-gray-500">Engineer of Record Signature &amp; Date</div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Context Sub-Bar (Sticky at top of Main Page) */}
@@ -1862,6 +2136,17 @@ export default function App() {
                   Diagnostics
                 </button>
               </div>
+            </div>
+
+            {/* Rapid Preset Switcher & Preset Creator Toolbar */}
+            <div className="px-4 md:px-6 pt-3 shrink-0">
+              <PresetQuickBar
+                activeModule={activeModule}
+                presets={presets}
+                onApplyPreset={handleApplyPreset}
+                onOpenPresetsManager={() => handleOpenProfileModal('presets')}
+                onSaveCurrentAsPreset={() => handleOpenProfileModal('presets')}
+              />
             </div>
 
             {toastBanner && (
@@ -3289,9 +3574,9 @@ export default function App() {
                     <div className="flex items-center gap-2 no-print">
                       <button
                         type="button"
-                        onClick={() => window.print()}
+                        onClick={() => setPrintPreviewModalOpen(true)}
                         className="touch-target-48 px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors"
-                        title="Print or Export PDF Calculation Sheet"
+                        title="Print Preview & Vector PDF Submittal Engine"
                       >
                         <Printer className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
                         <span>Print / Export PDF</span>
@@ -4106,7 +4391,7 @@ export default function App() {
                     type="button"
                     onClick={() => {
                       setWorkspaceManagerOpen(false);
-                      setNewWorkspaceOpen(true);
+                      handleOpenNewWorkspace();
                     }}
                     className="touch-target-48 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
@@ -4765,6 +5050,43 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* User Profile, Custom Preferences & Presets Modal */}
+        <ProfilePreferencesModal
+          isOpen={profilePreferencesModalOpen}
+          onClose={() => setProfilePreferencesModalOpen(false)}
+          userProfile={userProfile}
+          userPreferences={userPreferences}
+          presets={presets}
+          activeWorkspace={activeWorkspace}
+          onSaveProfile={handleSaveProfile}
+          onSavePreferences={handleSavePreferences}
+          onSavePreset={handleSavePreset}
+          onDeletePreset={handleDeletePreset}
+          onApplyPreset={handleApplyPreset}
+          onImportPresets={handleImportPresets}
+          onResetFactoryPresets={handleResetFactoryPresets}
+          onApplyPreferencesToWorkspace={handleApplyPreferencesToWorkspace}
+          initialTab={profileModalInitialTab}
+        />
+
+        {/* Professional Print Preview & Flawless Vector PDF Engine Modal */}
+        <PrintPreviewModal
+          isOpen={printPreviewModalOpen}
+          onClose={() => setPrintPreviewModalOpen(false)}
+          activeWorkspace={activeWorkspace}
+          activeModule={activeModule}
+          userProfile={userProfile}
+          userPreferences={userPreferences}
+          moduleMeta={{
+            label: MODULE_META[activeModule].label,
+            codeStandard: MODULE_META[activeModule].codeStandard,
+          }}
+          currentEnvelope={currentEnvelope}
+        />
+
+        {/* Isolated container for pristine vector print / PDF execution */}
+        <div id="pb-printable-report" className="hidden"></div>
       </div>
     </ErrorBoundary>
   );

@@ -83,7 +83,7 @@ export type UnitCategoryKey =
   | 'velocity'
   | 'flow_rate';
 
-export type UnitSystemPreset = 'metric' | 'imperial' | 'regional' | 'custom';
+export type UnitSystemPreset = 'metric' | 'imperial' | 'regional' | 'custom' | 'mixed';
 
 export interface WorkspaceUnitPreferences {
   systemPreset: UnitSystemPreset;
@@ -407,6 +407,93 @@ export interface CivilWorkspace {
   unitPreferences?: WorkspaceUnitPreferences;
 }
 
+/* -------------------------------------------------------------
+   USER PROFILE, CUSTOM PREFERENCES & PRESET SYSTEM
+------------------------------------------------------------- */
+export type UserRole =
+  | 'structural-engineer'
+  | 'civil-site-engineer'
+  | 'geotechnical-engineer'
+  | 'estimator-qs'
+  | 'project-manager'
+  | 'consultant'
+  | 'engineering-student'
+  | 'researcher-academic'
+  | 'contractor';
+
+export interface UserProfile {
+  fullName: string;
+  designation: string;
+  organization: string;
+  role: UserRole;
+  licenseNumber?: string;
+  email?: string;
+  phone?: string;
+  initials?: string;
+  bio?: string;
+}
+
+export interface RegionalLandRules {
+  kathaSquareFeet: number; // default 720 (Standard Bangladesh/Bengal), 1361.25 (Bihar)
+  decimalSquareFeet: number; // default 435.6
+  bighaDecimals: number; // default 33 (or 20 kathas)
+  defaultLandUnit: 'decimal' | 'katha' | 'bigha' | 'acre' | 'sqft' | 'sqm';
+}
+
+export interface WastageDefaults {
+  concretePercent: number; // default 3.0
+  rebarPercent: number; // default 5.0
+  brickMortarPercent: number; // default 5.0
+  earthworkShrinkagePercent: number; // default 10.0
+}
+
+export interface UserCustomPreferences {
+  preferredUnitSystem: 'metric' | 'imperial' | 'mixed' | 'regional';
+  decimalPrecision: number; // 0, 1, 2, 3, 4 (default 2)
+  defaultCementBagWeightKg: number; // 50, 40, 42.6 (94lb)
+  defaultCurrency: CurrencyCode; // default BDT
+  defaultBuildingCode: BuildingCode; // default BNBC-2020
+  wastage: WastageDefaults;
+  regionalLand: RegionalLandRules;
+  reportHeaderNote?: string;
+  showEngineeringSignatureLine: boolean;
+  autoLogSnapshotsOnPrint: boolean;
+  compactNumberFormatting: boolean;
+}
+
+export type PresetCategory =
+  | 'concrete-mix'
+  | 'material-rates'
+  | 'structural-beam'
+  | 'bearing-soil'
+  | 'earthwork-hydraulics'
+  | 'complete-workspace';
+
+export interface EngineeringPreset {
+  id: string;
+  name: string;
+  description: string;
+  category: PresetCategory;
+  tags: string[];
+  isBuiltIn?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author?: string;
+  payload: {
+    targetModule?: EngineeringModuleId;
+    concreteMix?: Partial<ConcreteMixParameters>;
+    concreteMaterials?: Partial<ConcreteMaterialParameters>;
+    rateAnalysis?: Partial<RateAnalysisParameters>;
+    beam?: Partial<BeamParameters>;
+    bearing?: Partial<BearingParameters>;
+    earthwork?: Partial<EarthworkParameters>;
+    channel?: Partial<ChannelParameters>;
+    masonry?: Partial<MasonryParameters>;
+    rebarBbs?: Partial<RebarBBSParameters>;
+    boq?: Partial<BOQParameters>;
+  };
+}
+
 export interface CivilLabSchemaV2 {
   schemaVersion: 2;
   lastMigratedAt: string;
@@ -419,6 +506,9 @@ export interface CivilLabSchemaV2 {
   commandRecentQueries: string[];
   workspaces: CivilWorkspace[];
   calculationHistory: CalculationRecord[];
+  userProfile?: UserProfile;
+  userPreferences?: UserCustomPreferences;
+  presets?: EngineeringPreset[];
 }
 
 export interface LegacySchemaV1 {
@@ -437,3 +527,4 @@ export interface LegacySchemaV1 {
     result?: string;
   }>;
 }
+

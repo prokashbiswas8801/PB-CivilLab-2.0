@@ -7,6 +7,9 @@ import {
   CustomUnitDefinition,
   UnitSystemPreset,
   WorkspaceUnitPreferences,
+  UserProfile,
+  UserCustomPreferences,
+  EngineeringPreset,
 } from '../types/civil';
 import { persistToIndexedDB, clearIndexedDB, loadFromIndexedDB } from './indexedStorage';
 
@@ -419,6 +422,343 @@ export function createDemoWorkspaces(): CivilWorkspace[] {
   ];
 }
 
+export function createDefaultUserProfile(): UserProfile {
+  return {
+    fullName: 'Engr. Prokash Biswas, PE',
+    designation: 'Senior Structural Engineer',
+    organization: 'PB CivilLab Consultancy',
+    role: 'structural-engineer',
+    licenseNumber: 'IEB PE-41892',
+    email: 'prokashbiswas8801@gmail.com',
+    phone: '+880 1712-345678',
+    initials: 'PB',
+    bio: 'Civil & Structural Design Engineer specializing in reinforced concrete, geotechnical foundations, and infrastructure project cost engineering.',
+  };
+}
+
+export function createDefaultUserPreferences(): UserCustomPreferences {
+  return {
+    preferredUnitSystem: 'metric',
+    decimalPrecision: 2,
+    defaultCementBagWeightKg: 50,
+    defaultCurrency: 'BDT',
+    defaultBuildingCode: 'BNBC-2020',
+    wastage: {
+      concretePercent: 3.0,
+      rebarPercent: 5.0,
+      brickMortarPercent: 5.0,
+      earthworkShrinkagePercent: 10.0,
+    },
+    regionalLand: {
+      kathaSquareFeet: 720,
+      decimalSquareFeet: 435.6,
+      bighaDecimals: 33,
+      defaultLandUnit: 'decimal',
+    },
+    reportHeaderNote: 'Verified for preliminary structural & estimation design under BNBC-2020 / ACI-318 standards.',
+    showEngineeringSignatureLine: true,
+    autoLogSnapshotsOnPrint: true,
+    compactNumberFormatting: false,
+  };
+}
+
+export function createDefaultEngineeringPresets(): EngineeringPreset[] {
+  const now = '2026-01-01T00:00:00.000Z';
+  return [
+    {
+      id: 'preset-concrete-m25-structural',
+      name: 'M25 Structural RCC Mix (1:1:2)',
+      description: 'High-strength structural concrete for heavy columns, transfer slabs, and pile caps. Target strength 25-32 MPa, w/c 0.42.',
+      category: 'concrete-mix',
+      tags: ['BNBC-2020', 'RCC', 'Columns', 'M25'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'PB CivilLab Standards',
+      payload: {
+        targetModule: 'concrete-materials',
+        concreteMaterials: {
+          code: 'BNBC-2020',
+          wetVolumeM3: 20.0,
+          ratioCement: 1,
+          ratioSand: 1.0,
+          ratioAggregate: 2.0,
+          waterCementRatio: 0.42,
+          cementBagWeightKg: 50,
+          cementBulkDensityKgPerM3: 1440,
+          sandBulkDensityKgPerM3: 1600,
+          aggregateBulkDensityKgPerM3: 1520,
+          customDryFactor: 1.54,
+          wastagePercent: 3.0,
+        },
+        concreteMix: {
+          targetStrengthMpa: 30,
+          waterCementRatio: 0.42,
+          slumpMm: 100,
+          maxAggregateSizeMm: 20,
+          cementSpecificGravity: 3.15,
+          fineAggSpecificGravity: 2.65,
+          coarseAggSpecificGravity: 2.7,
+          airEntrainmentPercent: 2.0,
+          batchVolumeM3: 1.0,
+        },
+      },
+    },
+    {
+      id: 'preset-concrete-m20-nominal',
+      name: 'M20 Standard RCC Mix (1:1.5:3)',
+      description: 'Standard residential/commercial floor slabs, grade beams, and lintels. Nominal target strength 20 MPa, w/c 0.45.',
+      category: 'concrete-mix',
+      tags: ['BNBC-2020', 'Slabs', 'Beams', 'M20', 'Residential'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'PB CivilLab Standards',
+      payload: {
+        targetModule: 'concrete-materials',
+        concreteMaterials: {
+          code: 'BNBC-2020',
+          wetVolumeM3: 25.0,
+          ratioCement: 1,
+          ratioSand: 1.5,
+          ratioAggregate: 3.0,
+          waterCementRatio: 0.45,
+          cementBagWeightKg: 50,
+          cementBulkDensityKgPerM3: 1440,
+          sandBulkDensityKgPerM3: 1600,
+          aggregateBulkDensityKgPerM3: 1520,
+          customDryFactor: 1.54,
+          wastagePercent: 3.0,
+        },
+      },
+    },
+    {
+      id: 'preset-concrete-m15-lean',
+      name: 'M15 Mass Blinding Bed (1:2:4)',
+      description: 'Lean concrete sub-base, footing blinding bed, and floor soling PCC. w/c 0.50, low cement requirement.',
+      category: 'concrete-mix',
+      tags: ['PCC', 'Blinding', 'Footing Bed', 'M15'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'PB CivilLab Standards',
+      payload: {
+        targetModule: 'concrete-materials',
+        concreteMaterials: {
+          code: 'BNBC-2020',
+          wetVolumeM3: 15.0,
+          ratioCement: 1,
+          ratioSand: 2.0,
+          ratioAggregate: 4.0,
+          waterCementRatio: 0.50,
+          cementBagWeightKg: 50,
+          cementBulkDensityKgPerM3: 1440,
+          sandBulkDensityKgPerM3: 1550,
+          aggregateBulkDensityKgPerM3: 1480,
+          customDryFactor: 1.54,
+          wastagePercent: 4.0,
+        },
+      },
+    },
+    {
+      id: 'preset-rates-pwd-2024',
+      name: 'PWD Standard Rate Schedule 2024 (BDT)',
+      description: 'Official Public Works Department baseline rates for government and public infrastructure works.',
+      category: 'material-rates',
+      tags: ['PWD', 'Bangladesh', 'Official', 'BDT', 'Rates'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'PWD Baseline',
+      payload: {
+        targetModule: 'rate-analysis',
+        rateAnalysis: {
+          currency: 'BDT',
+          workType: 'rcc-1-1.5-3',
+          cementPricePerBag: 580,
+          sandPricePerM3: 1590,
+          stoneChipsPricePerM3: 8480,
+          rebarPricePerKg: 108,
+          rebarAllowanceKgPerM3: 100,
+          admixturePricePerKg: 220,
+          admixtureDoseKgPerM3: 2.5,
+          brickPricePer1000: 12500,
+          masonDailyWage: 1100,
+          masonDaysRequired: 0.35,
+          laborerDailyWage: 650,
+          laborerDaysRequired: 1.8,
+          barBenderDailyWage: 950,
+          barBenderDaysRequired: 0.45,
+          mixerHirePerM3: 350,
+          vibratorHirePerM3: 180,
+          shutteringScaffoldingPerM3: 1400,
+          waterElectricityPercent: 1.5,
+          contractorProfitPercent: 10.0,
+        },
+      },
+    },
+    {
+      id: 'preset-rates-metro-private',
+      name: 'Urban Commercial High-Grade Rates (Metro BDT)',
+      description: 'Current urban private commercial market rates with Sylhet coarse sand and 500W deformed rebar.',
+      category: 'material-rates',
+      tags: ['Commercial', 'Metro', 'Sylhet Sand', 'High-Grade'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Market Survey 2026',
+      payload: {
+        targetModule: 'rate-analysis',
+        rateAnalysis: {
+          currency: 'BDT',
+          workType: 'rcc-1-1.5-3',
+          cementPricePerBag: 640,
+          sandPricePerM3: 2295,
+          stoneChipsPricePerM3: 9710,
+          rebarPricePerKg: 116,
+          rebarAllowanceKgPerM3: 120,
+          admixturePricePerKg: 260,
+          admixtureDoseKgPerM3: 3.0,
+          brickPricePer1000: 14500,
+          masonDailyWage: 1300,
+          masonDaysRequired: 0.38,
+          laborerDailyWage: 750,
+          laborerDaysRequired: 2.0,
+          barBenderDailyWage: 1100,
+          barBenderDaysRequired: 0.5,
+          mixerHirePerM3: 420,
+          vibratorHirePerM3: 220,
+          shutteringScaffoldingPerM3: 1650,
+          waterElectricityPercent: 2.0,
+          contractorProfitPercent: 12.0,
+        },
+      },
+    },
+    {
+      id: 'preset-beam-secondary-6m',
+      name: 'Secondary Floor Beam 6.0m (Simply-Supported)',
+      description: 'Standard 250x450mm floor beam under residential dead & live load (UDL 18 kN/m, Point Load 25 kN).',
+      category: 'structural-beam',
+      tags: ['Beam', 'Floor', '6m', 'Residential'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'PB CivilLab Structural',
+      payload: {
+        targetModule: 'beam-analysis',
+        beam: {
+          spanLengthM: 6.0,
+          uniformLoadKnPerM: 18.0,
+          pointLoadKn: 25.0,
+          pointLoadPositionM: 3.0,
+          elasticModulusGpa: 25,
+          momentOfInertiaCm4: 190000,
+          supportCondition: 'simply-supported',
+          allowableStressMpa: 200,
+          sectionDepthMm: 450,
+        },
+      },
+    },
+    {
+      id: 'preset-beam-transfer-12m',
+      name: 'Heavy Transfer Girder 12.5m (Fixed-Ends)',
+      description: 'Deep 400x750mm commercial transfer girder supporting column loads over open atrium.',
+      category: 'structural-beam',
+      tags: ['Girder', 'Transfer', 'Commercial', 'Heavy'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'PB CivilLab Structural',
+      payload: {
+        targetModule: 'beam-analysis',
+        beam: {
+          spanLengthM: 12.5,
+          uniformLoadKnPerM: 32.0,
+          pointLoadKn: 120.0,
+          pointLoadPositionM: 6.25,
+          elasticModulusGpa: 28,
+          momentOfInertiaCm4: 1400000,
+          supportCondition: 'fixed-ends',
+          allowableStressMpa: 250,
+          sectionDepthMm: 750,
+        },
+      },
+    },
+    {
+      id: 'preset-soil-dense-sand',
+      name: 'Dense Sand & Gravel High Bearing Capacity',
+      description: 'Dense granular subsoil with friction angle 36°, 1.8m embedment, applied column load 2800 kN.',
+      category: 'bearing-soil',
+      tags: ['Geotechnical', 'Sand', 'Footing', 'High Capacity'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Geotech Baseline',
+      payload: {
+        targetModule: 'bearing-capacity',
+        bearing: {
+          footingShape: 'square',
+          footingWidthM: 2.8,
+          embedmentDepthM: 1.8,
+          soilCohesionKpa: 8,
+          frictionAngleDeg: 36,
+          unitWeightKnPerM3: 19.5,
+          waterTableDepthM: 4.0,
+          factorOfSafety: 3.0,
+          appliedColumnLoadKn: 2800,
+        },
+      },
+    },
+    {
+      id: 'preset-soil-deltaic-clay',
+      name: 'Soft-Medium Deltaic Clay (Cohesive)',
+      description: 'Deltaic alluvial clay with high cohesion (35 kPa), low friction (18°), shallow water table.',
+      category: 'bearing-soil',
+      tags: ['Geotechnical', 'Alluvial Clay', 'Deltaic', 'BNBC'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Geotech Baseline',
+      payload: {
+        targetModule: 'bearing-capacity',
+        bearing: {
+          footingShape: 'square',
+          footingWidthM: 3.5,
+          embedmentDepthM: 2.0,
+          soilCohesionKpa: 35,
+          frictionAngleDeg: 18,
+          unitWeightKnPerM3: 17.5,
+          waterTableDepthM: 1.5,
+          factorOfSafety: 3.0,
+          appliedColumnLoadKn: 1850,
+        },
+      },
+    },
+    {
+      id: 'preset-channel-lined-drain',
+      name: 'Concrete-Lined Storm Drain (Manning n=0.013)',
+      description: 'Smooth troweled concrete trapezoidal storm channel with 1:1 side slopes, bed slope 0.002.',
+      category: 'earthwork-hydraulics',
+      tags: ['Hydraulics', 'Storm Drain', 'Concrete', 'Urban Drainage'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Hydraulics Standards',
+      payload: {
+        targetModule: 'open-channel',
+        channel: {
+          bottomWidthM: 1.8,
+          sideSlopeZ: 1.0,
+          flowDepthM: 1.2,
+          bedSlope: 0.002,
+          manningN: 0.013,
+          freeboardRequirementM: 0.4,
+        },
+      },
+    },
+  ];
+}
+
 export function createCleanSchemaV2(): CivilLabSchemaV2 {
   const workspaces = createDefaultWorkspaces();
   return {
@@ -433,6 +773,9 @@ export function createCleanSchemaV2(): CivilLabSchemaV2 {
     commandRecentQueries: ['cft', 'katha', 'rebar', '12-4 1/2'],
     workspaces,
     calculationHistory: [],
+    userProfile: createDefaultUserProfile(),
+    userPreferences: createDefaultUserPreferences(),
+    presets: createDefaultEngineeringPresets(),
   };
 }
 
@@ -450,6 +793,9 @@ export function createDemoSchemaV2(): CivilLabSchemaV2 {
     commandRecentQueries: ['cft', 'katha', 'rebar', '12-4 1/2'],
     workspaces,
     calculationHistory: createInitialHistory(workspaces),
+    userProfile: createDefaultUserProfile(),
+    userPreferences: createDefaultUserPreferences(),
+    presets: createDefaultEngineeringPresets(),
   };
 }
 
@@ -551,6 +897,101 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
       }))
     : [];
 
+  const validUserProfile: UserProfile = candidate.userProfile
+    ? {
+        fullName:
+          typeof candidate.userProfile.fullName === 'string' &&
+          candidate.userProfile.fullName.trim().length > 0
+            ? candidate.userProfile.fullName.trim()
+            : fallback.userProfile?.fullName || 'Engr. Prokash Biswas, PE',
+        designation:
+          typeof candidate.userProfile.designation === 'string' &&
+          candidate.userProfile.designation.trim().length > 0
+            ? candidate.userProfile.designation.trim()
+            : fallback.userProfile?.designation || 'Senior Structural Engineer',
+        organization:
+          typeof candidate.userProfile.organization === 'string' &&
+          candidate.userProfile.organization.trim().length > 0
+            ? candidate.userProfile.organization.trim()
+            : fallback.userProfile?.organization || 'PB CivilLab Consultancy',
+        role: candidate.userProfile.role || fallback.userProfile?.role || 'structural-engineer',
+        licenseNumber: candidate.userProfile.licenseNumber ?? fallback.userProfile?.licenseNumber,
+        email: candidate.userProfile.email ?? fallback.userProfile?.email,
+        phone: candidate.userProfile.phone ?? fallback.userProfile?.phone,
+        initials: candidate.userProfile.initials ?? fallback.userProfile?.initials,
+        bio: candidate.userProfile.bio ?? fallback.userProfile?.bio,
+      }
+    : (fallback.userProfile || createDefaultUserProfile());
+
+  const validUserPreferences: UserCustomPreferences = candidate.userPreferences
+    ? {
+        preferredUnitSystem: candidate.userPreferences.preferredUnitSystem || 'metric',
+        decimalPrecision:
+          typeof candidate.userPreferences.decimalPrecision === 'number'
+            ? Math.min(4, Math.max(0, Math.floor(candidate.userPreferences.decimalPrecision)))
+            : 2,
+        defaultCementBagWeightKg:
+          typeof candidate.userPreferences.defaultCementBagWeightKg === 'number' &&
+          candidate.userPreferences.defaultCementBagWeightKg > 0
+            ? candidate.userPreferences.defaultCementBagWeightKg
+            : 50,
+        defaultCurrency: candidate.userPreferences.defaultCurrency || 'BDT',
+        defaultBuildingCode: candidate.userPreferences.defaultBuildingCode || 'BNBC-2020',
+        wastage: {
+          concretePercent:
+            typeof candidate.userPreferences.wastage?.concretePercent === 'number'
+              ? Math.max(0, candidate.userPreferences.wastage.concretePercent)
+              : 3.0,
+          rebarPercent:
+            typeof candidate.userPreferences.wastage?.rebarPercent === 'number'
+              ? Math.max(0, candidate.userPreferences.wastage.rebarPercent)
+              : 5.0,
+          brickMortarPercent:
+            typeof candidate.userPreferences.wastage?.brickMortarPercent === 'number'
+              ? Math.max(0, candidate.userPreferences.wastage.brickMortarPercent)
+              : 5.0,
+          earthworkShrinkagePercent:
+            typeof candidate.userPreferences.wastage?.earthworkShrinkagePercent === 'number'
+              ? Math.max(0, candidate.userPreferences.wastage.earthworkShrinkagePercent)
+              : 10.0,
+        },
+        regionalLand: {
+          kathaSquareFeet:
+            typeof candidate.userPreferences.regionalLand?.kathaSquareFeet === 'number'
+              ? candidate.userPreferences.regionalLand.kathaSquareFeet
+              : 720,
+          decimalSquareFeet:
+            typeof candidate.userPreferences.regionalLand?.decimalSquareFeet === 'number'
+              ? candidate.userPreferences.regionalLand.decimalSquareFeet
+              : 435.6,
+          bighaDecimals:
+            typeof candidate.userPreferences.regionalLand?.bighaDecimals === 'number'
+              ? candidate.userPreferences.regionalLand.bighaDecimals
+              : 33,
+          defaultLandUnit: candidate.userPreferences.regionalLand?.defaultLandUnit || 'decimal',
+        },
+        reportHeaderNote: candidate.userPreferences.reportHeaderNote ?? fallback.userPreferences?.reportHeaderNote,
+        showEngineeringSignatureLine: candidate.userPreferences.showEngineeringSignatureLine ?? true,
+        autoLogSnapshotsOnPrint: candidate.userPreferences.autoLogSnapshotsOnPrint ?? true,
+        compactNumberFormatting: candidate.userPreferences.compactNumberFormatting ?? false,
+      }
+    : (fallback.userPreferences || createDefaultUserPreferences());
+
+  const validPresets: EngineeringPreset[] =
+    Array.isArray(candidate.presets) && candidate.presets.length > 0
+      ? candidate.presets.map((p) => ({
+          ...p,
+          id: typeof p.id === 'string' && p.id.length >= 4 ? p.id : generateUUID(),
+          name: typeof p.name === 'string' && p.name.trim().length > 0 ? p.name.trim() : 'Custom Preset',
+          description: typeof p.description === 'string' ? p.description : '',
+          category: p.category || 'concrete-mix',
+          tags: Array.isArray(p.tags) ? p.tags : [],
+          createdAt: p.createdAt || new Date().toISOString(),
+          updatedAt: p.updatedAt || new Date().toISOString(),
+          payload: p.payload || {},
+        }))
+      : (fallback.presets || createDefaultEngineeringPresets());
+
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     lastMigratedAt: candidate.lastMigratedAt || fallback.lastMigratedAt,
@@ -574,6 +1015,9 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
       : fallback.commandRecentQueries,
     workspaces: validWorkspaces,
     calculationHistory: validHistory,
+    userProfile: validUserProfile,
+    userPreferences: validUserPreferences,
+    presets: validPresets,
   };
 }
 
@@ -789,4 +1233,55 @@ export function parseAndValidateProjectWorkspacePackage(
     return null;
   }
 }
+
+export interface PresetsExportEnvelope {
+  schemaVersion: 2;
+  exportType: 'civil-presets-package';
+  brand: string;
+  tagline: string;
+  exportedAt: string;
+  presets: EngineeringPreset[];
+}
+
+export function exportPresetsPackage(presets: EngineeringPreset[]): string {
+  const envelope: PresetsExportEnvelope = {
+    schemaVersion: 2,
+    exportType: 'civil-presets-package',
+    brand: 'PB CivilLab',
+    tagline: 'CALCULATE SMARTER. BUILD BETTER.',
+    exportedAt: new Date().toISOString(),
+    presets,
+  };
+  return JSON.stringify(envelope, null, 2);
+}
+
+export function parseAndValidatePresetsPackage(jsonString: string): EngineeringPreset[] | null {
+  try {
+    const raw = JSON.parse(jsonString);
+    let candidateList: unknown[] = [];
+    if (raw && typeof raw === 'object') {
+      if (Array.isArray(raw.presets)) {
+        candidateList = raw.presets;
+      } else if (Array.isArray(raw)) {
+        candidateList = raw;
+      }
+    }
+    if (candidateList.length === 0) return null;
+    return candidateList.map((p: any) => ({
+      id: typeof p.id === 'string' && p.id.length >= 4 ? p.id : generateUUID(),
+      name: typeof p.name === 'string' && p.name.trim().length > 0 ? p.name.trim() : 'Imported Preset',
+      description: typeof p.description === 'string' ? p.description : '',
+      category: p.category || 'concrete-mix',
+      tags: Array.isArray(p.tags) ? p.tags : ['imported'],
+      isBuiltIn: false,
+      createdAt: p.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      author: typeof p.author === 'string' ? p.author : 'User Import',
+      payload: p.payload || {},
+    }));
+  } catch {
+    return null;
+  }
+}
+
 

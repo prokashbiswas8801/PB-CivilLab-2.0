@@ -33,6 +33,10 @@ interface CommandPaletteProps {
   onSelectModule: (moduleId: EngineeringModuleId) => void;
   recentQueries: string[];
   onAddRecentQuery: (query: string) => void;
+  onOpenProfile?: () => void;
+  onOpenPreferences?: () => void;
+  onOpenPresets?: () => void;
+  onOpenPrintPreview?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -41,6 +45,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onSelectModule,
   recentQueries,
   onAddRecentQuery,
+  onOpenProfile,
+  onOpenPreferences,
+  onOpenPresets,
+  onOpenPrintPreview,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -239,7 +247,41 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       keywords: ['prismoidal', 'volume', 'earthwork', 'road', 'formula'],
       moduleId: 'earthwork-alignment',
     },
-  ], []);
+
+    // Actions & User Settings
+    {
+      id: 'action-user-profile',
+      title: 'Engineer Profile & Professional Credentials',
+      category: 'Actions',
+      description: 'Edit personal credentials, designation, organization, and registration ID for calculation reports',
+      keywords: ['profile', 'engineer', 'credentials', 'designation', 'organization', 'license', 'signature', 'eor'],
+      action: onOpenProfile,
+    },
+    {
+      id: 'action-user-preferences',
+      title: 'Custom Preferences & Calculation Defaults',
+      category: 'Actions',
+      description: 'Configure decimal precision (0-4), cement bag weights (50kg), wastage percentages, and regional land rules',
+      keywords: ['preferences', 'settings', 'precision', 'decimals', 'wastage', 'cement', 'katha', 'bigha', 'land'],
+      action: onOpenPreferences,
+    },
+    {
+      id: 'action-user-presets',
+      title: 'Engineering Presets Library & Manager',
+      category: 'Actions',
+      description: 'Create, save, load, and transfer custom mix ratios, PWD material rates, and beam structural parameters',
+      keywords: ['presets', 'preset', 'save preset', 'load preset', 'mix', 'rates', 'm25', 'pwd'],
+      action: onOpenPresets,
+    },
+    {
+      id: 'action-print-preview',
+      title: 'Print Preview & Vector PDF Engine',
+      category: 'Actions',
+      description: 'Open professional certified submittal preview with QR code verification, layout presets, and vector PDF export',
+      keywords: ['print', 'pdf', 'preview', 'export', 'submittal', 'qr', 'stamp', 'vector', 'report', 'sheet'],
+      action: onOpenPrintPreview,
+    },
+  ], [onOpenProfile, onOpenPreferences, onOpenPresets, onOpenPrintPreview]);
 
   // Filter items based on query
   const filteredItems = useMemo(() => {
