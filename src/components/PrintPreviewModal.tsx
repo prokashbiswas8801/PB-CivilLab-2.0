@@ -222,12 +222,21 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
   // Trigger Print / Export PDF
   const handleTriggerPrint = () => {
-    // Populate the hidden #pb-printable-report DOM node before calling window.print()
+    // Populate the printable report DOM node before calling window.print()
     const printEl = document.getElementById('pb-printable-report');
     const previewEl = document.getElementById('pb-report-preview-sheet');
     if (printEl && previewEl) {
       printEl.innerHTML = previewEl.innerHTML;
+      printEl.className = 'print:block bg-white text-slate-900 p-0 m-0';
     }
+    const cleanUp = () => {
+      if (printEl) {
+        printEl.innerHTML = '';
+        printEl.className = 'hidden print:block bg-white text-slate-900';
+      }
+      window.removeEventListener('afterprint', cleanUp);
+    };
+    window.addEventListener('afterprint', cleanUp);
     window.print();
   };
 
@@ -312,7 +321,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
     >
       <div className="relative w-full max-w-7xl h-[94vh] flex flex-col rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-2xl overflow-hidden">
         {/* Top Control Bar */}
-        <div className="shrink-0 px-6 py-3.5 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] flex flex-wrap items-center justify-between gap-4">
+        <div className="shrink-0 px-6 py-3.5 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] flex flex-wrap items-center justify-between gap-4 no-print">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] flex items-center justify-center shadow-xs">
               <Printer className="w-5 h-5" />
@@ -397,7 +406,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         {/* Modal Split View: Settings Configuration Panel (Left) & Sheet Preview (Right) */}
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden bg-[var(--md-sys-color-surface-container-lowest)]">
           {/* LEFT: Configuration & Toggle Controls (Scrollable) */}
-          <div className="w-full lg:w-88 shrink-0 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] flex flex-col overflow-y-auto custom-scrollbar p-5 space-y-6">
+          <div className="w-full lg:w-88 shrink-0 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] flex flex-col overflow-y-auto custom-scrollbar p-5 space-y-6 no-print">
             {/* Presets Selector */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -753,13 +762,13 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           Certified Prepared By / Engineer of Record
                         </div>
                         <div className="font-bold text-sm text-slate-900 font-sans mt-0.5">
-                          {userProfile.fullName}
+                          {userProfile.fullName || 'Project Engineer, PE'}
                         </div>
                         <div className="text-slate-700">
                           {userProfile.designation} · {userProfile.organization}
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          License ID: <strong>{userProfile.licenseNumber || 'IEB PE-41892'}</strong>
+                          License ID: <strong>{userProfile.licenseNumber || 'PE-00000'}</strong>
                           {userProfile.email && ` · Email: ${userProfile.email}`}
                           {userProfile.phone && ` · Tel: ${userProfile.phone}`}
                         </div>
@@ -771,7 +780,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                             CERTIFICATION SEAL
                           </div>
                           <div className="text-xs font-black text-blue-700">
-                            {userProfile.initials || 'PB'} STAMP
+                            {userProfile.initials || (userProfile.fullName ? userProfile.fullName.slice(0, 2).toUpperCase() : 'PE')} STAMP
                           </div>
                         </div>
                       </div>

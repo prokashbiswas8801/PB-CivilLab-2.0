@@ -219,6 +219,19 @@ export interface BearingParameters {
   appliedColumnLoadKn: number;
 }
 
+export type EnvironmentalExposureClass =
+  | 'F0-normal'
+  | 'F1-moderate-freeze'
+  | 'S0-negligible-sulfate'
+  | 'S1-moderate-sulfate'
+  | 'S2-severe-sulfate'
+  | 'S3-very-severe-sulfate'
+  | 'W0-dry'
+  | 'W1-water-contact'
+  | 'C0-dry-interior'
+  | 'C1-humid-external'
+  | 'C2-marine-coastal-deicer';
+
 /* Module 3: Concrete Mix Design */
 export interface ConcreteMixParameters {
   targetStrengthMpa: number;
@@ -230,6 +243,7 @@ export interface ConcreteMixParameters {
   coarseAggSpecificGravity: number;
   airEntrainmentPercent: number;
   batchVolumeM3: number;
+  exposureClass?: EnvironmentalExposureClass;
 }
 
 /* Module 4: Open Channel Hydraulics */
@@ -240,6 +254,20 @@ export interface ChannelParameters {
   bedSlope: number;
   manningN: number;
   freeboardRequirementM: number;
+}
+
+export interface ConcreteMemberItem {
+  id: string;
+  name: string;
+  shape: 'rectangular' | 'circular-column' | 'trapezoidal-footing' | 'retaining-wall-stem';
+  count: number;
+  lengthM: number;
+  widthM: number;
+  heightM: number;
+  topWidthM?: number;
+  topLengthM?: number;
+  diameterM?: number;
+  computedVolumeM3: number;
 }
 
 /* Module 5: Concrete Material Estimator */
@@ -256,6 +284,8 @@ export interface ConcreteMaterialParameters {
   aggregateBulkDensityKgPerM3: number;
   customDryFactor: number;
   wastagePercent: number;
+  members?: ConcreteMemberItem[];
+  coarseAggregateType?: 'crushed-stone' | 'brick-shingles' | 'gravel';
 }
 
 /* Module 6: Bar Bending Schedule (BBS) */
@@ -342,6 +372,13 @@ export interface MasonryParameters {
   tileWidthMm: number;
   tilesPerBox: number;
   tileWastagePercent: number;
+  includeFrogVoidAllowance?: boolean;
+  frogVoidPercent?: number;
+  ceilingPlasterAreaM2?: number;
+  ceilingPlasterThicknessMm?: number;
+  skirtingHeightMm?: number;
+  groutJointWidthMm?: number;
+  groutDensityKgPerM3?: number;
 }
 
 /* Module 8: Earthwork & Road Alignment */
@@ -364,6 +401,41 @@ export interface EarthworkParameters {
   depthStation3M: number;
   customSwellPercent?: number;
   customShrinkagePercent?: number;
+  haulTruckCapacityM3?: number;
+  looseSoilDensityKgPerM3?: number;
+}
+
+/* Module 9: Field Surveying, Leveling & Road Chainage */
+export interface LevelingStation {
+  id: string;
+  stationName: string;
+  backsight?: number;
+  intermediateSight?: number;
+  foresight?: number;
+  heightOfInstrument?: number;
+  rise?: number;
+  fall?: number;
+  reducedLevel: number;
+  remarks: string;
+}
+
+export interface SurveyingParameters {
+  method: 'height-of-instrument' | 'rise-and-fall';
+  benchmarkRL: number;
+  stations: LevelingStation[];
+  // DMS to Decimal tool
+  degrees: number;
+  minutes: number;
+  seconds: number;
+  decimalDegreeOutput: number;
+  inputDecimalDegrees: number;
+  // Coordinate Azimuth / Bearing tool
+  station1Name: string;
+  easting1M: number;
+  northing1M: number;
+  station2Name: string;
+  easting2M: number;
+  northing2M: number;
 }
 
 export interface CalculationRecord {
@@ -404,6 +476,7 @@ export interface CivilWorkspace {
   rebarBbs: RebarBBSParameters;
   masonry: MasonryParameters;
   earthwork: EarthworkParameters;
+  surveying?: SurveyingParameters;
   unitPreferences?: WorkspaceUnitPreferences;
 }
 

@@ -44,6 +44,10 @@ import {
   Printer,
   User,
   Award,
+  Table,
+  Activity,
+  Columns,
+  Check,
 } from 'lucide-react';
 import { Logo, LogoMark } from './components/Logo';
 import { Footer } from './components/Footer';
@@ -103,6 +107,9 @@ import {
   computeBOQEstimator,
   computeRateAnalysis,
   getCurrencySymbol,
+  BeamAnalysisResult,
+  BearingAnalysisResult,
+  ChannelHydraulicsResult,
 } from './utils/calculations';
 import {
   convertUnitValue,
@@ -131,6 +138,39 @@ import { UnitPresetSelector } from './components/UnitPresetSelector';
 import { ProfilePreferencesModal } from './components/ProfilePreferencesModal';
 import { PresetQuickBar } from './components/PresetQuickBar';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
+import { AnalyticalDenseTable } from './components/AnalyticalDenseTable';
+import {
+  WorkspaceManagerModal,
+  EditWorkspaceModal,
+  NewWorkspaceModal,
+  CustomUnitModal,
+  PersistenceInspectorModal,
+} from './components/modals';
+import {
+  BoqEstimatorInputs,
+  BoqEstimatorTable,
+  RateAnalysisInputs,
+  RateAnalysisTables,
+  UnitConverterInputs,
+  UnitConverterMetrics,
+  ConcreteMaterialsInputs,
+  ConcreteMaterialsMetrics,
+  RebarBbsInputs,
+  RebarBbsMetrics,
+  MasonryFinishesInputs,
+  MasonryFinishesMetrics,
+  EarthworkAlignmentInputs,
+  EarthworkAlignmentMetrics,
+  BeamAnalysisInputs,
+  BeamAnalysisMetrics,
+  BearingCapacityInputs,
+  BearingCapacityMetrics,
+  ConcreteMixInputs,
+  ConcreteMixMetrics,
+  OpenChannelInputs,
+  OpenChannelMetrics,
+  CalculationHistoryLedger,
+} from './components/modules';
 import { SYSTEM_PRESET_UNITS } from './utils/unitEngine';
 
 const MODULE_META: Record<
@@ -266,6 +306,9 @@ export default function App() {
   const [profilePreferencesModalOpen, setProfilePreferencesModalOpen] = useState(false);
   const [profileModalInitialTab, setProfileModalInitialTab] = useState<'profile' | 'preferences' | 'presets'>('profile');
   const [printPreviewModalOpen, setPrintPreviewModalOpen] = useState(false);
+  const [analyticalViewMode, setAnalyticalViewMode] = useState<'graphical' | 'tabular' | 'both'>('graphical');
+  const [isTableCompact, setIsTableCompact] = useState(false);
+  const [copiedSummary, setCopiedSummary] = useState(false);
 
   // File Inputs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -299,6 +342,9 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setCommandPaletteOpen(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        handleToggleSidebar();
       } else if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
         e.preventDefault();
         setCommandPaletteOpen(true);
@@ -486,6 +532,7 @@ export default function App() {
       case 'bearing-capacity': return bearingEnvelope;
       case 'concrete-mix': return concreteEnvelope;
       case 'open-channel': return channelEnvelope;
+      default: return boqEnvelope;
     }
   }, [
     activeModule,
@@ -907,13 +954,15 @@ export default function App() {
   const handleApplyRateToBOQ = () => {
     if (!rateAnalysisEnvelope.result) return;
     const rateRes = rateAnalysisEnvelope.result;
-    const calculatedRate = rateRes.unitRatePerM3;
-
     // Check if an existing line matches workType
     const existingIndex = activeWorkspace.boq.items.findIndex((it) =>
       it.description.toLowerCase().includes(rateRes.workType.toLowerCase()) ||
       it.description.toLowerCase().includes('rcc')
     );
+
+    const existingItem = existingIndex >= 0 ? activeWorkspace.boq.items[existingIndex] : null;
+    const calculatedRate = existingItem?.unit === 'cft' ? rateRes.unitRatePerCft : rateRes.unitRatePerM3;
+    const unitLabel = existingItem?.unit === 'cft' ? 'cft' : 'm³';
 
     if (existingIndex >= 0) {
       updateActiveWorkspace((ws) => ({
@@ -927,7 +976,7 @@ export default function App() {
           ),
         },
       }));
-      setToastBanner(`Updated existing item rate with ${rateRes.currencySymbol} ${calculatedRate.toFixed(2)}/m³`);
+      setToastBanner(`Updated existing item rate with ${rateRes.currencySymbol} ${calculatedRate.toFixed(2)}/${unitLabel}`);
     } else {
       const newItem: TakeoffLineItem = {
         id: `takeoff-${generateUUID().slice(0, 8)}`,
@@ -1023,6 +1072,46 @@ export default function App() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     setToastBanner('Exported Takeoff & BOQ CSV spreadsheet');
+  };
+
+  // Copy analytical calculation summary
+  const handleCopyAnalyticalSummary = () => {
+    if (!currentEnvelope.result) return;
+    const modLabel = MODULE_META[activeModule].label;
+    const code = MODULE_META[activeModule].codeStandard;
+    let text = `========================================================\nPB CivilLab — Analytical Calculation Summary\nProject: ${activeWorkspace.name} [${activeWorkspace.projectCode}]\nModule: ${modLabel}\nGoverning Standard: ${code}\nStatus: ${currentEnvelope.status.toUpperCase()}\nTimestamp: ${new Date().toLocaleString()}\n========================================================\n`;
+
+    if (activeModule === 'beam-analysis') {
+      const r = currentEnvelope.result as BeamAnalysisResult;
+      text += `Span: ${activeWorkspace.beam.spanLengthM} m | UDL: ${activeWorkspace.beam.uniformLoadKnPerM} kN/m | Point Load: ${activeWorkspace.beam.pointLoadKn} kN\n`;
+      text += `Max Moment M_max: ${r.maxMomentKnm.toFixed(2)} kN·m (${(r.maxMomentKnm * 1000).toFixed(0)} N·m)\n`;
+      text += `Max Shear V_max: ${r.maxShearKn.toFixed(2)} kN (${(r.maxShearKn * 1000).toFixed(0)} N)\n`;
+      text += `Max Deflection: ${r.maxDeflectionMm.toFixed(3)} mm (Allowable: ${r.allowableDeflectionMm.toFixed(2)} mm)\n`;
+      text += `Bending Stress: ${r.bendingStressMpa.toFixed(2)} MPa (Limit: ${activeWorkspace.beam.allowableStressMpa} MPa)\n`;
+      text += `Demand/Capacity Ratio: ${(r.utilizationRatio * 100).toFixed(1)}%\n`;
+    } else if (activeModule === 'bearing-capacity') {
+      const r = currentEnvelope.result as BearingAnalysisResult;
+      text += `Footing B: ${activeWorkspace.bearing.footingWidthM} m | Df: ${activeWorkspace.bearing.embedmentDepthM} m | Column P: ${activeWorkspace.bearing.appliedColumnLoadKn} kN\n`;
+      text += `Ultimate Capacity q_ult: ${r.ultimateBearingKpa.toFixed(1)} kPa\n`;
+      text += `Allowable Capacity q_all: ${r.allowableBearingKpa.toFixed(1)} kPa\n`;
+      text += `Applied Pressure q_app: ${r.appliedPressureKpa.toFixed(1)} kPa\n`;
+      text += `Effective Safety Factor: ${r.effectiveSafetyFactor.toFixed(2)} (Target FS = ${activeWorkspace.bearing.factorOfSafety})\n`;
+    } else if (activeModule === 'open-channel') {
+      const r = currentEnvelope.result as ChannelHydraulicsResult;
+      text += `Width b: ${activeWorkspace.channel.bottomWidthM} m | Depth y: ${activeWorkspace.channel.flowDepthM} m | Bed Slope: ${activeWorkspace.channel.bedSlope}\n`;
+      text += `Discharge Q: ${r.dischargeM3ps.toFixed(3)} m³/s (cumecs)\n`;
+      text += `Mean Velocity V: ${r.velocityMps.toFixed(3)} m/s (${(r.velocityMps * 3.6).toFixed(2)} km/h)\n`;
+      text += `Flow Area: ${r.flowAreaM2.toFixed(3)} m² | Wetted Perimeter: ${r.wettedPerimeterM.toFixed(3)} m\n`;
+      text += `Froude Number Fr: ${r.froudeNumber.toFixed(3)} (${r.flowRegime})\n`;
+    } else {
+      text += `Analytical Envelope converges nominal design requirements.\n`;
+    }
+    text += `========================================================\n`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedSummary(true);
+    setToastBanner('Copied analytical calculation summary to clipboard');
+    setTimeout(() => setCopiedSummary(false), 2500);
   };
 
   // Log calculation record
@@ -1742,17 +1831,17 @@ export default function App() {
               type="button"
               onClick={() => handleOpenProfileModal('profile')}
               className="touch-target-48 px-2 md:px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-2 cursor-pointer transition-colors"
-              title={`Engineer Profile: ${userProfile.fullName} (${userProfile.designation})`}
+              title={userProfile.fullName ? `Engineer Profile: ${userProfile.fullName} (${userProfile.designation})` : `Set Engineer Profile (${userProfile.designation})`}
             >
               <div className="w-6 h-6 rounded bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] flex items-center justify-center text-xs font-bold font-mono shrink-0 shadow-xs">
-                {userProfile.initials || userProfile.fullName.slice(0, 2).toUpperCase() || 'PB'}
+                {userProfile.initials || (userProfile.fullName ? userProfile.fullName.slice(0, 2).toUpperCase() : 'PE')}
               </div>
               <div className="hidden lg:flex flex-col text-left">
                 <span className="text-xs font-bold leading-tight truncate max-w-[130px]">
-                  {userProfile.fullName.split(',')[0]}
+                  {userProfile.fullName ? userProfile.fullName.split(',')[0] : 'Set Engineer Name'}
                 </span>
                 <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] leading-tight truncate max-w-[130px]">
-                  {userProfile.licenseNumber || userProfile.role.replace('-', ' ')}
+                  {userProfile.licenseNumber || userProfile.designation || userProfile.role.replace('-', ' ')}
                 </span>
               </div>
             </button>
@@ -1875,39 +1964,57 @@ export default function App() {
           {/* Desktop Left Rail Sidebar */}
           <aside
             aria-label="Engineering Sidebar"
-            className={`hidden lg:flex flex-col h-full border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] transition-all duration-200 shrink-0 select-none overflow-hidden ${
+            className={`hidden lg:flex flex-col h-full border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] transition-all duration-300 ease-in-out shrink-0 select-none overflow-hidden ${
               appState.sidebarCollapsed ? 'w-16' : 'w-72'
             }`}
           >
             {/* Sidebar Top: Logo, Tagline & Collapse/Expand Rail Controls */}
-            <div className="shrink-0 p-3 flex flex-col gap-2.5 border-b border-[var(--md-sys-color-outline-variant)]/50">
-              <div className="flex items-center justify-between">
-                {!appState.sidebarCollapsed ? (
+            <div
+              className={`shrink-0 border-b border-[var(--md-sys-color-outline-variant)]/50 transition-all duration-300 ${
+                appState.sidebarCollapsed
+                  ? 'p-2 flex flex-col items-center gap-2'
+                  : 'p-3 flex flex-col gap-2.5'
+              }`}
+            >
+              <div
+                className={`flex items-center w-full transition-all duration-300 ${
+                  appState.sidebarCollapsed
+                    ? 'flex-col gap-2 justify-center'
+                    : 'justify-between min-w-0'
+                }`}
+              >
+                <div
+                  className={`flex items-center min-w-0 transition-all duration-300 ${
+                    appState.sidebarCollapsed ? 'justify-center w-full' : 'flex-1 mr-2 overflow-hidden'
+                  }`}
+                >
                   <Logo
                     variant="full"
                     size="sm"
                     showTagline={true}
+                    collapsed={appState.sidebarCollapsed}
                     onClick={() => {
-                      handleSetModule('boq-estimator');
-                      const mainEl = document.getElementById('top');
-                      if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+                      if (appState.sidebarCollapsed) {
+                        handleToggleSidebar();
+                      } else {
+                        handleSetModule('boq-estimator');
+                        const mainEl = document.getElementById('top');
+                        if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
                     }}
                   />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleToggleSidebar}
-                    title="PB CivilLab — Expand Sidebar"
-                    className="mx-auto p-1 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] cursor-pointer"
-                  >
-                    <LogoMark size={28} animated={true} />
-                  </button>
-                )}
+                </div>
+
                 <button
                   type="button"
                   onClick={handleToggleSidebar}
-                  aria-label={appState.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                  className="touch-target-48 px-2 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] inline-flex items-center gap-1.5 text-xs font-mono cursor-pointer shrink-0"
+                  aria-label={appState.sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+                  title={appState.sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+                  className={`rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)] flex items-center justify-center cursor-pointer shrink-0 transition-all duration-200 ${
+                    appState.sidebarCollapsed
+                      ? 'w-10 h-8 mt-0.5'
+                      : 'w-8 h-8'
+                  }`}
                 >
                   {appState.sidebarCollapsed ? (
                     <PanelLeftOpen className="w-4 h-4 shrink-0" />
@@ -1916,23 +2023,39 @@ export default function App() {
                   )}
                 </button>
               </div>
-              {!appState.sidebarCollapsed && (
+
+              {/* New Project Workspace Button */}
+              {appState.sidebarCollapsed ? (
                 <button
                   type="button"
                   onClick={handleOpenNewWorkspace}
-                  className="w-full touch-target-48 px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer border border-[var(--md-sys-color-outline-variant)]"
+                  title="New Project Workspace"
+                  aria-label="New Project Workspace"
+                  className="w-10 h-8 rounded-lg bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] flex items-center justify-center cursor-pointer border border-[var(--md-sys-color-outline-variant)] transition-colors"
                 >
-                  <Plus className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                  <span>New Project Workspace</span>
+                  <Plus className="w-4 h-4 shrink-0" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleOpenNewWorkspace}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer border border-[var(--md-sys-color-outline-variant)] transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+                  <span className="truncate">New Project Workspace</span>
                 </button>
               )}
             </div>
 
             {/* Sidebar Middle: Scrollable Engineering Modules Directory */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4 custom-scrollbar">
+            <div
+              className={`flex-1 min-h-0 overflow-y-auto space-y-4 custom-scrollbar transition-all duration-300 ${
+                appState.sidebarCollapsed ? 'p-2' : 'p-3'
+              }`}
+            >
               <div>
                 {!appState.sidebarCollapsed && (
-                  <div className="px-1 mb-2 text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">
+                  <div className="px-1 mb-2 text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider truncate">
                     Engineering Modules
                   </div>
                 )}
@@ -1945,17 +2068,22 @@ export default function App() {
                         key={modId}
                         type="button"
                         onClick={() => handleSetModule(modId)}
-                        title={MODULE_META[modId].label}
-                        className={`w-full touch-target-48 px-3 rounded-lg flex items-center gap-3 text-left transition-colors cursor-pointer ${
+                        title={`${MODULE_META[modId].label} (${MODULE_META[modId].codeStandard})`}
+                        aria-label={MODULE_META[modId].label}
+                        className={`w-full rounded-lg flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
+                          appState.sidebarCollapsed
+                            ? 'h-10 justify-center px-0'
+                            : 'h-11 px-3 gap-3 text-left'
+                        } ${
                           active
-                            ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
+                            ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-xs'
                             : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
                         }`}
                       >
                         <Icon className="w-4 h-4 shrink-0" />
                         {!appState.sidebarCollapsed && (
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs truncate">{MODULE_META[modId].label}</div>
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <div className="text-xs truncate font-medium">{MODULE_META[modId].label}</div>
                             <div className="text-[11px] font-mono opacity-75 truncate">
                               {MODULE_META[modId].codeStandard}
                             </div>
@@ -1969,17 +2097,27 @@ export default function App() {
             </div>
 
             {/* Sidebar Bottom: Pinned Action Controls & Theme Toggle */}
-            <div className="shrink-0 p-3 border-t border-[var(--md-sys-color-outline-variant)] space-y-2 bg-[var(--md-sys-color-surface)]">
+            <div
+              className={`shrink-0 border-t border-[var(--md-sys-color-outline-variant)] space-y-1.5 bg-[var(--md-sys-color-surface)] transition-all duration-300 ${
+                appState.sidebarCollapsed ? 'p-2' : 'p-3'
+              }`}
+            >
+              {/* Project Workspaces Manager Button */}
               <button
                 type="button"
                 onClick={() => setWorkspaceManagerOpen(true)}
-                className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2.5 text-xs font-medium cursor-pointer"
-                title="Project Workspaces Manager"
+                className={`w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
+                  appState.sidebarCollapsed
+                    ? 'h-10 justify-center px-0'
+                    : 'h-11 px-3 gap-2.5 text-xs font-medium'
+                }`}
+                title={`Projects Manager: ${appState.workspaces.length} Projects (${activeWorkspace.currency})`}
+                aria-label="Project Workspaces Manager"
               >
                 <FolderArchive className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
                 {!appState.sidebarCollapsed && (
-                  <div className="text-left min-w-0">
-                    <div className="font-semibold truncate">Projects Manager</div>
+                  <div className="text-left min-w-0 flex-1 overflow-hidden">
+                    <div className="font-semibold text-xs truncate">Projects Manager</div>
                     <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
                       {appState.workspaces.length} Projects · {activeWorkspace.currency}
                     </div>
@@ -1987,16 +2125,24 @@ export default function App() {
                 )}
               </button>
 
+              {/* Engineer Profile, Preferences & Presets Button */}
               <button
                 type="button"
                 onClick={() => handleOpenProfileModal('profile')}
-                className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2.5 text-xs font-medium cursor-pointer"
-                title="Engineer Profile, Preferences & Presets"
+                className={`w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
+                  appState.sidebarCollapsed
+                    ? 'h-10 justify-center px-0'
+                    : 'h-11 px-3 gap-2.5 text-xs font-medium'
+                }`}
+                title={`Engineer Profile & Settings: ${userProfile.fullName || 'Project Engineer, PE'} (${userProfile.designation})`}
+                aria-label="Engineer Profile and Preferences"
               >
                 <User className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
                 {!appState.sidebarCollapsed && (
-                  <div className="text-left min-w-0 flex-1">
-                    <div className="font-semibold truncate">{userProfile.fullName}</div>
+                  <div className="text-left min-w-0 flex-1 overflow-hidden">
+                    <div className="font-semibold text-xs truncate">
+                      {userProfile.fullName || 'Engineer Profile'}
+                    </div>
                     <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
                       {userProfile.designation} · Settings
                     </div>
@@ -2004,39 +2150,67 @@ export default function App() {
                 )}
               </button>
 
+              {/* Schema Persistence Inspector Button */}
               <button
                 type="button"
                 onClick={() => setInspectorModalOpen(true)}
-                className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2.5 text-xs font-medium cursor-pointer"
+                className={`w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
+                  appState.sidebarCollapsed
+                    ? 'h-10 justify-center px-0'
+                    : 'h-11 px-3 gap-2.5 text-xs font-medium'
+                }`}
+                title={`Schema v2 Persistence (${appState.calculationHistory.length} logs · Client-Side)`}
+                aria-label="Schema v2 Persistence Inspector"
               >
                 <Database className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
                 {!appState.sidebarCollapsed && (
-                  <div className="text-left min-w-0">
-                    <div className="font-semibold truncate">Schema v2 Persistence</div>
+                  <div className="text-left min-w-0 flex-1 overflow-hidden">
+                    <div className="font-semibold text-xs truncate">Schema v2 Persistence</div>
                     <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
-                      {appState.calculationHistory.length} logs · 100% Client-Side
+                      {appState.calculationHistory.length} logs · Client-Side
                     </div>
                   </div>
                 )}
               </button>
 
-              {!appState.sidebarCollapsed && (
+              {/* Theme Toggle (Compact Icon when collapsed, Segmented control when expanded) */}
+              {appState.sidebarCollapsed ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next: ThemePreference =
+                      appState.themePreference === 'light'
+                        ? 'dark'
+                        : appState.themePreference === 'dark'
+                        ? 'system'
+                        : 'light';
+                    handleThemeChange(next);
+                  }}
+                  title={`Theme: ${appState.themePreference} (Click to toggle)`}
+                  aria-label={`Theme: ${appState.themePreference} (Click to toggle)`}
+                  className="w-full h-10 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  {appState.themePreference === 'light' && <Sun className="w-4 h-4 text-amber-500 shrink-0" />}
+                  {appState.themePreference === 'dark' && <Moon className="w-4 h-4 text-indigo-400 shrink-0" />}
+                  {appState.themePreference === 'system' && <Monitor className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />}
+                </button>
+              ) : (
                 <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-[var(--md-sys-color-surface-container)]">
                   {(['light', 'dark', 'system'] as ThemePreference[]).map((mode) => (
                     <button
                       key={mode}
                       type="button"
                       onClick={() => handleThemeChange(mode)}
-                      className={`touch-target-48 rounded-md text-xs font-semibold capitalize flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`h-7 rounded-md text-xs font-semibold capitalize flex items-center justify-center gap-1 cursor-pointer transition-colors ${
                         appState.themePreference === mode
                           ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] shadow-xs'
-                          : 'text-[var(--md-sys-color-on-surface-variant)]'
+                          : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
                       }`}
                     >
                       {mode === 'light' && <Sun className="w-3.5 h-3.5" />}
                       {mode === 'dark' && <Moon className="w-3.5 h-3.5" />}
                       {mode === 'system' && <Monitor className="w-3.5 h-3.5" />}
-                      <span>{mode}</span>
+                      <span className="text-[11px]">{mode}</span>
                     </button>
                   ))}
                 </div>
@@ -2074,10 +2248,10 @@ export default function App() {
               <div className="mt-4 pt-3 border-t border-gray-400 grid grid-cols-2 gap-4 text-xs font-mono">
                 <div>
                   <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">PREPARED &amp; CERTIFIED BY</div>
-                  <div className="font-bold text-sm text-black font-sans">{userProfile.fullName}</div>
+                  <div className="font-bold text-sm text-black font-sans">{userProfile.fullName || 'Project Engineer, PE'}</div>
                   <div className="text-gray-700">{userProfile.designation} · {userProfile.organization}</div>
                   <div className="text-gray-600 text-[11px] mt-0.5">
-                    License ID: <strong>{userProfile.licenseNumber || 'IEB PE-41892'}</strong>
+                    License ID: <strong>{userProfile.licenseNumber || 'PE-00000'}</strong>
                     {userProfile.email && ` · Email: ${userProfile.email}`}
                     {userProfile.phone && ` · Tel: ${userProfile.phone}`}
                   </div>
@@ -2191,2161 +2365,442 @@ export default function App() {
 
                 {/* MODULE: QUANTITY TAKEOFF & BOQ ESTIMATOR */}
                 {activeModule === 'boq-estimator' && (
-                  <div className="space-y-4">
-                    {/* Project Currency & Markup Modifiers */}
-                    <div className="p-3.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-                          Project BOQ Financial Modifiers
-                        </span>
-                        <span className="text-xs font-mono font-bold text-[var(--md-sys-color-on-surface)]">
-                          Currency: {getCurrencySymbol(activeWorkspace.boq.currency)} ({activeWorkspace.boq.currency})
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Currency</label>
-                          <select
-                            value={activeWorkspace.boq.currency}
-                            onChange={(e) => {
-                              const curr = e.target.value as CurrencyCode;
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                currency: curr,
-                                boq: { ...ws.boq, currency: curr },
-                                rateAnalysis: { ...ws.rateAnalysis, currency: curr },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          >
-                            {SUPPORTED_CURRENCIES.map((c) => (
-                              <option key={c.code} value={c.code}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Contingency (%)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            max="50"
-                            value={activeWorkspace.boq.contingencyPercent}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                boq: { ...ws.boq, contingencyPercent: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">CP & OH (%)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            max="50"
-                            value={activeWorkspace.boq.contractorOverheadPercent}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                boq: { ...ws.boq, contractorOverheadPercent: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">VAT / Tax (%)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            max="50"
-                            value={activeWorkspace.boq.vatTaxPercent}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                boq: { ...ws.boq, vatTaxPercent: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Add/Edit Takeoff Line Item Form */}
-                    <form onSubmit={handleSaveTakeoffItem} className="p-3.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-                          {editingTakeoffItemId ? 'Edit Takeoff Line Item' : 'Add Item to Measurement Sheet (L×W×H)'}
-                        </span>
-                        {editingTakeoffItemId && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingTakeoffItemId(null);
-                              setItemDesc('');
-                              setItemNo('');
-                            }}
-                            className="text-xs text-[var(--md-sys-color-error)] underline cursor-pointer"
-                          >
-                            Cancel Edit
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Item #</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 1.01"
-                            value={itemNo}
-                            onChange={(e) => setItemNo(e.target.value)}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-[11px] font-semibold mb-1">Item Description</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="e.g. RCC (1:1.5:3) in Isolated Footings"
-                            value={itemDesc}
-                            onChange={(e) => setItemDesc(e.target.value)}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Trade Category</label>
-                          <select
-                            value={itemCategory}
-                            onChange={(e) => setItemCategory(e.target.value as TakeoffCategory)}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          >
-                            <option value="earthwork">Earthwork</option>
-                            <option value="substructure">Substructure</option>
-                            <option value="superstructure">Superstructure</option>
-                            <option value="rebar">Rebar Steel</option>
-                            <option value="masonry">Masonry</option>
-                            <option value="finishing">Finishing / Tiles</option>
-                            <option value="plumbing">Plumbing</option>
-                            <option value="electrical">Electrical</option>
-                            <option value="misc">Miscellaneous</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Unit</label>
-                          <select
-                            value={itemUnit}
-                            onChange={(e) => setItemUnit(e.target.value as TakeoffUnit)}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          >
-                            <option value="m3">m³ (Cubic Meter)</option>
-                            <option value="m2">m² (Square Meter)</option>
-                            <option value="m">m (Linear Meter)</option>
-                            <option value="cft">CFT (Cubic Feet)</option>
-                            <option value="sft">SFT (Square Feet)</option>
-                            <option value="rft">RFT (Running Feet)</option>
-                            <option value="kg">kg (Kilogram)</option>
-                            <option value="ton">Ton (Metric Tonne)</option>
-                            <option value="bags">Bags (50kg)</option>
-                            <option value="nos">Nos (Items / Count)</option>
-                            <option value="lump-sum">Lump-Sum</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Nos / Count</label>
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={itemMembers}
-                            onChange={(e) => setItemMembers(Number(e.target.value))}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      {/* L x W x H with Flexible Universal Unit Engine */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <UnitInput
-                          label="Length L"
-                          category="length"
-                          siValue={itemLength}
-                          onChangeSI={(val) => setItemLength(val)}
-                          currentUnitId={getFieldUnit('boq.itemL', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('boq.itemL', u)}
-                          customUnits={appState.customUnits}
-                          step={0.01}
-                        />
-                        <UnitInput
-                          label="Width W"
-                          category="length"
-                          siValue={itemWidth}
-                          onChangeSI={(val) => setItemWidth(val)}
-                          currentUnitId={getFieldUnit('boq.itemW', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('boq.itemW', u)}
-                          customUnits={appState.customUnits}
-                          step={0.01}
-                        />
-                        <UnitInput
-                          label="Height H"
-                          category="length"
-                          siValue={itemHeight}
-                          onChangeSI={(val) => setItemHeight(val)}
-                          currentUnitId={getFieldUnit('boq.itemH', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('boq.itemH', u)}
-                          customUnits={appState.customUnits}
-                          step={0.01}
-                        />
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Deduction</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={itemDeduction}
-                            onChange={(e) => setItemDeduction(Number(e.target.value))}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Wastage (%)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={itemWastage}
-                            onChange={(e) => setItemWastage(Number(e.target.value))}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="text-[11px] font-semibold">Unit Rate ({getCurrencySymbol(activeWorkspace.boq.currency)})</label>
-                            {rateAnalysisEnvelope.result && (
-                              <button
-                                type="button"
-                                onClick={() => setItemUnitRate(rateAnalysisEnvelope.result!.unitRatePerM3)}
-                                className="text-[10px] text-[var(--md-sys-color-primary)] font-bold underline cursor-pointer"
-                                title="Import calculated rate from Rate Analysis Workbench"
-                              >
-                                Use Rate ({rateAnalysisEnvelope.result.unitRatePerM3.toFixed(0)})
-                              </button>
-                            )}
-                          </div>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={itemUnitRate}
-                            onChange={(e) => setItemUnitRate(Number(e.target.value))}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full touch-target-48 py-2.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>{editingTakeoffItemId ? 'Save Changes' : 'Append to Takeoff Spreadsheet'}</span>
-                      </button>
-                    </form>
-
-                    {/* Quick Helper Actions */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <button
-                          type="button"
-                          onClick={handleApplyRateToBOQ}
-                          className="text-xs font-semibold text-[var(--md-sys-color-primary)] flex items-center gap-1.5 hover:underline cursor-pointer"
-                        >
-                          <Calculator className="w-3.5 h-3.5" />
-                          <span>Apply Rate Analysis to BOQ</span>
-                        </button>
-
-                        {activeWorkspace.boq.items.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={handleClearAllBOQItems}
-                            className="text-xs font-semibold text-[var(--md-sys-color-error)] flex items-center gap-1 hover:underline cursor-pointer"
-                            title="Clear all takeoff line items in this workspace"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Clear All Items</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleLoadSampleBOQItems}
-                            className="text-xs font-semibold text-[var(--md-sys-color-primary)] flex items-center gap-1 hover:underline cursor-pointer"
-                            title="Load 7 demo takeoff items"
-                          >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Load Demo Takeoffs</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleExportBOQCSV}
-                        className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 hover:underline cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5 text-[var(--md-sys-color-tertiary)]" />
-                        <span>Export CSV Sheet</span>
-                      </button>
-                    </div>
-                  </div>
+                  <BoqEstimatorInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    rateAnalysisResult={rateAnalysisEnvelope.result}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                    editingTakeoffItemId={editingTakeoffItemId}
+                    setEditingTakeoffItemId={setEditingTakeoffItemId}
+                    itemNo={itemNo}
+                    setItemNo={setItemNo}
+                    itemDesc={itemDesc}
+                    setItemDesc={setItemDesc}
+                    itemCategory={itemCategory}
+                    setItemCategory={setItemCategory}
+                    itemUnit={itemUnit}
+                    setItemUnit={setItemUnit}
+                    itemMembers={itemMembers}
+                    setItemMembers={setItemMembers}
+                    itemLength={itemLength}
+                    setItemLength={setItemLength}
+                    itemWidth={itemWidth}
+                    setItemWidth={setItemWidth}
+                    itemHeight={itemHeight}
+                    setItemHeight={setItemHeight}
+                    itemDeduction={itemDeduction}
+                    setItemDeduction={setItemDeduction}
+                    itemWastage={itemWastage}
+                    setItemWastage={setItemWastage}
+                    itemUnitRate={itemUnitRate}
+                    setItemUnitRate={setItemUnitRate}
+                    onSaveTakeoffItem={handleSaveTakeoffItem}
+                    onApplyRateToBOQ={handleApplyRateToBOQ}
+                    onClearAllBOQItems={handleClearAllBOQItems}
+                    onLoadSampleBOQItems={handleLoadSampleBOQItems}
+                    onExportBOQCSV={handleExportBOQCSV}
+                  />
                 )}
 
                 {/* MODULE: GRANULAR UNIT RATE ANALYSIS */}
                 {activeModule === 'rate-analysis' && (
-                  <div className="space-y-4">
-                    <div className="p-3 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-                          Engineering Trade Work Type
-                        </label>
-                        <span className="text-xs font-mono font-bold text-[var(--md-sys-color-on-surface)]">
-                          {getCurrencySymbol(activeWorkspace.rateAnalysis.currency)} ({activeWorkspace.rateAnalysis.currency})
-                        </span>
-                      </div>
-
-                      <select
-                        value={activeWorkspace.rateAnalysis.workType}
-                        onChange={(e) => {
-                          const wt = e.target.value as RateAnalysisWorkType;
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            rateAnalysis: { ...ws.rateAnalysis, workType: wt },
-                          }));
-                        }}
-                        className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono font-bold"
-                      >
-                        <option value="rcc-1-1.5-3">RCC Structural Concrete (1:1.5:3, ~M20)</option>
-                        <option value="rcc-1-2-4">RCC Structural Concrete (1:2:4, ~M15)</option>
-                        <option value="pcc-1-3-6">PCC Foundation Bed Lean Concrete (1:3:6)</option>
-                        <option value="brickwork-1-6">First Class Brickwork in 1:6 Mortar</option>
-                        <option value="plaster-1-4">12mm Wall Plaster in 1:4 Mortar</option>
-                        <option value="rebar-fabrication">Rebar Cutting, Bending & Placing (1 Ton)</option>
-                      </select>
-
-                      <div className="grid grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <UnitInput
-                            label="Basis Volume"
-                            category="volume"
-                            siValue={activeWorkspace.rateAnalysis.basisVolumeM3}
-                            onChangeSI={(val) => {
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, basisVolumeM3: val },
-                              }));
-                            }}
-                            currentUnitId={getFieldUnit('rate.vol', 'volume', 'm3')}
-                            onUnitChange={(u) => updateFieldUnit('rate.vol', u)}
-                            customUnits={appState.customUnits}
-                            step={0.5}
-                            min={0.1}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Currency Code</label>
-                          <select
-                            value={activeWorkspace.rateAnalysis.currency}
-                            onChange={(e) => {
-                              const curr = e.target.value as CurrencyCode;
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                currency: curr,
-                                boq: { ...ws.boq, currency: curr },
-                                rateAnalysis: { ...ws.rateAnalysis, currency: curr },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                          >
-                            {SUPPORTED_CURRENCIES.map((c) => (
-                              <option key={c.code} value={c.code}>{c.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Material Market Rates */}
-                    <div className="space-y-2">
-                      <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                        Material Market Procurement Rates
-                      </div>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Cement ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/50kg bag)</label>
-                          <input
-                            type="number"
-                            step="10"
-                            value={activeWorkspace.rateAnalysis.cementPricePerBag}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, cementPricePerBag: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Coarse Sand ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)</label>
-                          <input
-                            type="number"
-                            step="50"
-                            value={activeWorkspace.rateAnalysis.sandPricePerM3}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, sandPricePerM3: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Stone Chips ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)</label>
-                          <input
-                            type="number"
-                            step="50"
-                            value={activeWorkspace.rateAnalysis.stoneChipsPricePerM3}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, stoneChipsPricePerM3: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Rebar Steel ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/kg)</label>
-                          <input
-                            type="number"
-                            step="2"
-                            value={activeWorkspace.rateAnalysis.rebarPricePerKg}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, rebarPricePerKg: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      {activeWorkspace.rateAnalysis.workType.startsWith('rcc') && (
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Rebar Allowance (kg/m³ concrete)</label>
-                          <input
-                            type="number"
-                            step="10"
-                            value={activeWorkspace.rateAnalysis.rebarAllowanceKgPerM3}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, rebarAllowanceKgPerM3: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Labor Daily Wages & Man-days */}
-                    <div className="space-y-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                        Daily Labor Wages & Man-days
-                      </div>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Head Mason ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/day)</label>
-                          <input
-                            type="number"
-                            step="50"
-                            value={activeWorkspace.rateAnalysis.masonDailyWage}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, masonDailyWage: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Mason Days Required</label>
-                          <input
-                            type="number"
-                            step="0.05"
-                            value={activeWorkspace.rateAnalysis.masonDaysRequired}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, masonDaysRequired: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Helper / Jogali ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/day)</label>
-                          <input
-                            type="number"
-                            step="50"
-                            value={activeWorkspace.rateAnalysis.laborerDailyWage}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, laborerDailyWage: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Helper Days Required</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={activeWorkspace.rateAnalysis.laborerDaysRequired}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, laborerDaysRequired: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Plant Hire & Margins */}
-                    <div className="space-y-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                        Plant Hire & Contractor Margin
-                      </div>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Mixer Hire ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)</label>
-                          <input
-                            type="number"
-                            step="25"
-                            value={activeWorkspace.rateAnalysis.mixerHirePerM3}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, mixerHirePerM3: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Shuttering Hire ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)</label>
-                          <input
-                            type="number"
-                            step="50"
-                            value={activeWorkspace.rateAnalysis.shutteringScaffoldingPerM3}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, shutteringScaffoldingPerM3: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Water & Elect (%)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={activeWorkspace.rateAnalysis.waterElectricityPercent}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, waterElectricityPercent: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold mb-1">Contractor Profit (%)</label>
-                          <input
-                            type="number"
-                            step="1.0"
-                            value={activeWorkspace.rateAnalysis.contractorProfitPercent}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rateAnalysis: { ...ws.rateAnalysis, contractorProfitPercent: val },
-                              }));
-                            }}
-                            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleApplyRateToBOQ}
-                      className="w-full touch-target-48 py-2.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                      <span>Apply Unit Rate to BOQ Measurement Sheet</span>
-                    </button>
-                  </div>
+                  <RateAnalysisInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                    onApplyRateToBOQ={handleApplyRateToBOQ}
+                  />
                 )}
 
                 {/* MODULE 0: UNIVERSAL UNIT CONVERTER & FEET-INCH PARSER */}
                 {activeModule === 'unit-converter' && (
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-semibold">Measurement Discipline Category</label>
-                        <button
-                          type="button"
-                          onClick={() => setCustomUnitModalOpen(true)}
-                          className="text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center gap-1 cursor-pointer"
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                          <span>Custom Units ({appState.customUnits.length})</span>
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 rounded-lg bg-[var(--md-sys-color-surface-container)]">
-                        {(
-                          [
-                            { id: 'length', label: 'Length' },
-                            { id: 'area', label: 'Area / Land' },
-                            { id: 'volume', label: 'Volume / CFT' },
-                            { id: 'pressure', label: 'Stress / MPa' },
-                            { id: 'mass', label: 'Mass / Bags' },
-                            { id: 'force', label: 'Force / kN' },
-                            { id: 'slope', label: 'Slope / %' },
-                          ] as { id: UnitCategoryKey; label: string }[]
-                        ).map((cat) => (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              const units = STANDARD_UNITS[cat.id];
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                converter: {
-                                  ...ws.converter,
-                                  category: cat.id,
-                                  fromUnit: units[0].id,
-                                  toUnit: units[1] ? units[1].id : units[0].id,
-                                },
-                              }));
-                            }}
-                            className={`touch-target-48 px-2 rounded text-xs font-semibold cursor-pointer ${
-                              activeWorkspace.converter.category === cat.id
-                                ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] shadow-xs font-bold'
-                                : 'text-[var(--md-sys-color-on-surface-variant)]'
-                            }`}
-                          >
-                            {cat.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1">Source Unit (From)</label>
-                        <select
-                          value={activeWorkspace.converter.fromUnit}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              converter: { ...ws.converter, fromUnit: val },
-                            }));
-                          }}
-                          className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)]"
-                        >
-                          {availableCategoryUnits.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name} ({u.symbol}) {u.isRegional ? '★ Regional' : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold mb-1">Target Unit (To)</label>
-                        <select
-                          value={activeWorkspace.converter.toUnit}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              converter: { ...ws.converter, toUnit: val },
-                            }));
-                          }}
-                          className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)]"
-                        >
-                          {availableCategoryUnits.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name} ({u.symbol}) {u.isRegional ? '★ Regional' : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-semibold">Input Numeric Value</label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              converter: {
-                                ...ws.converter,
-                                fromUnit: ws.converter.toUnit,
-                                toUnit: ws.converter.fromUnit,
-                              },
-                            }));
-                          }}
-                          className="text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center gap-1 cursor-pointer"
-                        >
-                          <ArrowRightLeft className="w-3.5 h-3.5" />
-                          <span>Swap Units</span>
-                        </button>
-                      </div>
-                      <input
-                        type="number"
-                        step="any"
-                        value={activeWorkspace.converter.inputValue}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            converter: { ...ws.converter, inputValue: val },
-                          }));
-                        }}
-                        className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-base"
-                      />
-                    </div>
-
-                    {/* Architectural Feet-Inch String Parser Card */}
-                    <div className="p-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-                          Architectural Feet-Inch Parser
-                        </label>
-                        <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                          e.g. 12&apos;-4 1/2&quot;
-                        </span>
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="e.g. 14'-6 3/4&quot; or 25.5'"
-                        value={activeWorkspace.converter.feetInchRawString}
-                        onChange={(e) => {
-                          const str = e.target.value;
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            converter: { ...ws.converter, feetInchRawString: str },
-                          }));
-                        }}
-                        className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)]"
-                      />
-                      {activeFeetInchResult.isValid && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs font-mono">
-                          <div>
-                            <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Decimal Feet</span>
-                            <strong>{activeFeetInchResult.totalFeet.toFixed(3)} ft</strong>
-                          </div>
-                          <div>
-                            <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Decimal Inches</span>
-                            <strong>{activeFeetInchResult.totalInches.toFixed(2)} in</strong>
-                          </div>
-                          <div>
-                            <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Metric (m)</span>
-                            <strong>{activeFeetInchResult.totalMeters.toFixed(3)} m</strong>
-                          </div>
-                          <div>
-                            <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Millimeters</span>
-                            <strong>{activeFeetInchResult.totalMm.toFixed(1)} mm</strong>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <UnitConverterInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    availableCategoryUnits={availableCategoryUnits}
+                    activeFeetInchResult={activeFeetInchResult}
+                    onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
+                  />
                 )}
 
                 {/* MODULE 1: CONCRETE MATERIAL & MIX TECH */}
                 {activeModule === 'concrete-materials' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1">Building Code</label>
-                        <select
-                          value={activeWorkspace.concreteMaterials.code}
-                          onChange={(e) => {
-                            const val = e.target.value as BuildingCode;
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              governingCode: val,
-                              concreteMaterials: { ...ws.concreteMaterials, code: val },
-                            }));
-                          }}
-                          className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)]"
-                        >
-                          <option value="BNBC-2020">BNBC-2020</option>
-                          <option value="ACI-318">ACI-318</option>
-                          <option value="IS-456">IS-456</option>
-                        </select>
-                      </div>
-                      <div>
-                        <UnitInput
-                          label="Wet Concrete Volume"
-                          category="volume"
-                          siValue={activeWorkspace.concreteMaterials.wetVolumeM3}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              concreteMaterials: { ...ws.concreteMaterials, wetVolumeM3: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('mat.wetVolume', 'volume', 'm3')}
-                          onUnitChange={(u) => updateFieldUnit('mat.wetVolume', u)}
-                          customUnits={appState.customUnits}
-                          step={0.5}
-                          min={0.1}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold mb-1">Volumetric Mix Ratio (Cement : Sand : Agg)</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <input
-                          type="number"
-                          step="0.25"
-                          value={activeWorkspace.concreteMaterials.ratioCement}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              concreteMaterials: { ...ws.concreteMaterials, ratioCement: val },
-                            }));
-                          }}
-                          className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm"
-                        />
-                        <input
-                          type="number"
-                          step="0.25"
-                          value={activeWorkspace.concreteMaterials.ratioSand}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              concreteMaterials: { ...ws.concreteMaterials, ratioSand: val },
-                            }));
-                          }}
-                          className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm"
-                        />
-                        <input
-                          type="number"
-                          step="0.25"
-                          value={activeWorkspace.concreteMaterials.ratioAggregate}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              concreteMaterials: { ...ws.concreteMaterials, ratioAggregate: val },
-                            }));
-                          }}
-                          className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <ConcreteMaterialsInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
 
                 {/* MODULE 2: STRUCTURAL REBAR BBS */}
                 {activeModule === 'rebar-bbs' && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5">RCC Element Type</label>
-                      <div className="grid grid-cols-3 gap-1.5 p-1 rounded-lg bg-[var(--md-sys-color-surface-container)]">
-                        {(['slab', 'column', 'footing'] as StructuralElementType[]).map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() =>
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                rebarBbs: { ...ws.rebarBbs, elementType: type },
-                              }))
-                            }
-                            className={`touch-target-48 px-2 rounded-md text-xs font-semibold capitalize ${
-                              activeWorkspace.rebarBbs.elementType === type
-                                ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] shadow-xs font-bold'
-                                : 'text-[var(--md-sys-color-on-surface-variant)]'
-                            }`}
-                          >
-                            {type}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {activeWorkspace.rebarBbs.elementType === 'slab' && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <UnitInput
-                          label="Slab Length"
-                          category="length"
-                          siValue={activeWorkspace.rebarBbs.slabLengthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              rebarBbs: { ...ws.rebarBbs, slabLengthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('rebar.slabLength', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('rebar.slabLength', u)}
-                          customUnits={appState.customUnits}
-                          step={0.25}
-                        />
-                        <UnitInput
-                          label="Main Bar Dia"
-                          category="length"
-                          siValue={activeWorkspace.rebarBbs.mainBarDiaMm * 0.001}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              rebarBbs: { ...ws.rebarBbs, mainBarDiaMm: val * 1000 },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('rebar.mainDia', 'length', 'mm')}
-                          onUnitChange={(u) => updateFieldUnit('rebar.mainDia', u)}
-                          customUnits={appState.customUnits}
-                          step={2}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <RebarBbsInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
 
                 {/* MODULE 3: MASONRY & FINISHES */}
                 {activeModule === 'masonry-finishes' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      <UnitInput
-                        label="Wall Length"
-                        category="length"
-                        siValue={activeWorkspace.masonry.wallLengthM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            masonry: { ...ws.masonry, wallLengthM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('mas.wallL', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('mas.wallL', u)}
-                        customUnits={appState.customUnits}
-                        step={0.5}
-                      />
-                      <UnitInput
-                        label="Wall Height"
-                        category="length"
-                        siValue={activeWorkspace.masonry.wallHeightM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            masonry: { ...ws.masonry, wallHeightM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('mas.wallH', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('mas.wallH', u)}
-                        customUnits={appState.customUnits}
-                        step={0.2}
-                      />
-                      <UnitInput
-                        label="Thickness"
-                        category="length"
-                        siValue={activeWorkspace.masonry.wallThicknessM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            masonry: { ...ws.masonry, wallThicknessM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('mas.wallT', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('mas.wallT', u)}
-                        customUnits={appState.customUnits}
-                        step={0.125}
-                      />
-                    </div>
-                  </div>
+                  <MasonryFinishesInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
 
                 {/* MODULE 4: EARTHWORK & ALIGNMENT */}
                 {activeModule === 'earthwork-alignment' && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold mb-1.5">Calculation Type</label>
-                      <div className="grid grid-cols-3 gap-1.5 p-1 rounded-lg bg-[var(--md-sys-color-surface-container)]">
-                        {(
-                          [
-                            { id: 'pit-excavation', label: 'Sloped Pit' },
-                            { id: 'trapezoidal-trench', label: 'Trench' },
-                            { id: 'prismoidal-road', label: 'Road Align' },
-                          ] as const
-                        ).map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() =>
-                              updateActiveWorkspace((ws) => ({
-                                ...ws,
-                                earthwork: { ...ws.earthwork, calculationType: t.id },
-                              }))
-                            }
-                            className={`touch-target-48 px-1 rounded-md text-xs font-semibold ${
-                              activeWorkspace.earthwork.calculationType === t.id
-                                ? 'bg-[var(--md-sys-color-surface)] font-bold'
-                                : 'text-[var(--md-sys-color-on-surface-variant)]'
-                            }`}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {activeWorkspace.earthwork.calculationType === 'pit-excavation' && (
-                      <div className="grid grid-cols-3 gap-2">
-                        <UnitInput
-                          label="Pit Top Length"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.pitTopLengthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, pitTopLengthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.pitL', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.pitL', u)}
-                          customUnits={appState.customUnits}
-                          step={0.5}
-                        />
-                        <UnitInput
-                          label="Pit Top Width"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.pitTopWidthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, pitTopWidthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.pitW', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.pitW', u)}
-                          customUnits={appState.customUnits}
-                          step={0.5}
-                        />
-                        <UnitInput
-                          label="Excavation Depth"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.pitDepthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, pitDepthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.pitD', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.pitD', u)}
-                          customUnits={appState.customUnits}
-                          step={0.2}
-                        />
-                      </div>
-                    )}
-
-                    {activeWorkspace.earthwork.calculationType === 'trapezoidal-trench' && (
-                      <div className="grid grid-cols-3 gap-2">
-                        <UnitInput
-                          label="Trench Length"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.trenchLengthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, trenchLengthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.trenchL', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.trenchL', u)}
-                          customUnits={appState.customUnits}
-                          step={1}
-                        />
-                        <UnitInput
-                          label="Bottom Width"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.trenchBottomWidthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, trenchBottomWidthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.trenchW', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.trenchW', u)}
-                          customUnits={appState.customUnits}
-                          step={0.25}
-                        />
-                        <UnitInput
-                          label="Trench Depth"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.trenchDepthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, trenchDepthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.trenchD', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.trenchD', u)}
-                          customUnits={appState.customUnits}
-                          step={0.2}
-                        />
-                      </div>
-                    )}
-
-                    {activeWorkspace.earthwork.calculationType === 'prismoidal-road' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <UnitInput
-                          label="Road Align Length"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.roadLengthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, roadLengthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.roadL', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.roadL', u)}
-                          customUnits={appState.customUnits}
-                          step={5}
-                        />
-                        <UnitInput
-                          label="Formation Width"
-                          category="length"
-                          siValue={activeWorkspace.earthwork.formationWidthM}
-                          onChangeSI={(val) => {
-                            updateActiveWorkspace((ws) => ({
-                              ...ws,
-                              earthwork: { ...ws.earthwork, formationWidthM: val },
-                            }));
-                          }}
-                          currentUnitId={getFieldUnit('earth.roadW', 'length', 'm')}
-                          onUnitChange={(u) => updateFieldUnit('earth.roadW', u)}
-                          customUnits={appState.customUnits}
-                          step={0.5}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <EarthworkAlignmentInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
 
                 {/* MODULE 5: BEAM ANALYSIS */}
                 {activeModule === 'beam-analysis' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <UnitInput
-                        label="Span Length L"
-                        category="length"
-                        siValue={activeWorkspace.beam.spanLengthM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            beam: { ...ws.beam, spanLengthM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('beam.spanLength', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('beam.spanLength', u)}
-                        customUnits={appState.customUnits}
-                        step={0.5}
-                      />
-                      <UnitInput
-                        label="Uniform Load w"
-                        category="distributed_load"
-                        siValue={activeWorkspace.beam.uniformLoadKnPerM * 1000}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            beam: { ...ws.beam, uniformLoadKnPerM: val / 1000 },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('beam.udl', 'distributed_load', 'kN/m')}
-                        onUnitChange={(u) => updateFieldUnit('beam.udl', u)}
-                        customUnits={appState.customUnits}
-                        step={1}
-                      />
-                    </div>
-                  </div>
+                  <BeamAnalysisInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
 
                 {/* MODULE 6: BEARING CAPACITY */}
                 {activeModule === 'bearing-capacity' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <UnitInput
-                        label="Footing Width B"
-                        category="length"
-                        siValue={activeWorkspace.bearing.footingWidthM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            bearing: { ...ws.bearing, footingWidthM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('bearing.B', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('bearing.B', u)}
-                        customUnits={appState.customUnits}
-                        step={0.2}
-                      />
-                      <UnitInput
-                        label="Embedment Depth Df"
-                        category="length"
-                        siValue={activeWorkspace.bearing.embedmentDepthM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            bearing: { ...ws.bearing, embedmentDepthM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('bearing.Df', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('bearing.Df', u)}
-                        customUnits={appState.customUnits}
-                        step={0.2}
-                      />
-                    </div>
-                  </div>
+                  <BearingCapacityInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
 
                 {/* MODULE 7: CONCRETE MIX DESIGN */}
                 {activeModule === 'concrete-mix' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <UnitInput
-                        label="Target f'c"
-                        category="pressure"
-                        siValue={activeWorkspace.concrete.targetStrengthMpa * 1000000}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            concrete: { ...ws.concrete, targetStrengthMpa: val / 1000000 },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('mix.fc', 'pressure', 'MPa')}
-                        onUnitChange={(u) => updateFieldUnit('mix.fc', u)}
-                        customUnits={appState.customUnits}
-                        step={5}
-                      />
-                      <UnitInput
-                        label="Slump"
-                        category="length"
-                        siValue={activeWorkspace.concrete.slumpMm * 0.001}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            concrete: { ...ws.concrete, slumpMm: val * 1000 },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('mix.slump', 'length', 'mm')}
-                        onUnitChange={(u) => updateFieldUnit('mix.slump', u)}
-                        customUnits={appState.customUnits}
-                        step={25}
-                      />
-                    </div>
-                  </div>
+                  <ConcreteMixInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
 
                 {/* MODULE 8: OPEN CHANNEL */}
                 {activeModule === 'open-channel' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <UnitInput
-                        label="Bottom Width b"
-                        category="length"
-                        siValue={activeWorkspace.channel.bottomWidthM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            channel: { ...ws.channel, bottomWidthM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('hyd.b', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('hyd.b', u)}
-                        customUnits={appState.customUnits}
-                        step={0.2}
-                      />
-                      <UnitInput
-                        label="Flow Depth y"
-                        category="length"
-                        siValue={activeWorkspace.channel.flowDepthM}
-                        onChangeSI={(val) => {
-                          updateActiveWorkspace((ws) => ({
-                            ...ws,
-                            channel: { ...ws.channel, flowDepthM: val },
-                          }));
-                        }}
-                        currentUnitId={getFieldUnit('hyd.y', 'length', 'm')}
-                        onUnitChange={(u) => updateFieldUnit('hyd.y', u)}
-                        customUnits={appState.customUnits}
-                        step={0.1}
-                      />
-                    </div>
-                  </div>
+                  <OpenChannelInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
+                  />
                 )}
               </section>
 
               {/* Right Pane: Analytical Stage + Detailed Grids */}
               <section className="lg:col-span-7 space-y-6">
-                <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5">
+                <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 analytical-envelope-container">
                   <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-[var(--md-sys-color-outline-variant)]">
                     <div className="flex items-center gap-2.5">
                       <LogoMark size={24} className="text-[var(--md-sys-color-primary)]" />
                       <div>
-                        <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)] leading-tight">
-                          Analytical Vector Envelope
-                        </h2>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)] leading-tight">
+                            Analytical Vector Envelope
+                          </h2>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+                            {MODULE_META[activeModule].shortLabel}
+                          </span>
+                        </div>
                         <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                          CALCULATE SMARTER. BUILD BETTER.
+                          CALCULATE SMARTER. BUILD BETTER. · {MODULE_META[activeModule].codeStandard}
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 no-print">
+
+                    {/* Interactive Controls & View Mode Toggle */}
+                    <div className="flex flex-wrap items-center gap-2 no-print">
+                      {/* View Switcher Segmented Control */}
+                      <div className="flex items-center rounded-lg p-0.5 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticalViewMode('graphical')}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                            analyticalViewMode === 'graphical'
+                              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] font-bold shadow-xs'
+                              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                          }`}
+                          title="Vector Graphical Diagrams & Plots"
+                        >
+                          <Activity className="w-3.5 h-3.5" />
+                          <span>Graphical</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticalViewMode('tabular')}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                            analyticalViewMode === 'tabular'
+                              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] font-bold shadow-xs'
+                              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                          }`}
+                          title="Dense Tabular Schedule optimized for A4 Reports & Computations"
+                        >
+                          <Table className="w-3.5 h-3.5" />
+                          <span>Dense Tabular</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticalViewMode('both')}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                            analyticalViewMode === 'both'
+                              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] font-bold shadow-xs'
+                              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                          }`}
+                          title="Split / Combined View: Diagram + Dense Table"
+                        >
+                          <Columns className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Split</span>
+                        </button>
+                      </div>
+
+                      {/* Density Toggle (for dense table mode) */}
+                      {analyticalViewMode !== 'graphical' && (
+                        <button
+                          type="button"
+                          onClick={() => setIsTableCompact(!isTableCompact)}
+                          className="px-2 py-1 text-[11px] font-mono font-semibold rounded-md border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+                          title={isTableCompact ? "Switch to Standard Row Spacing" : "Switch to Compact Dense Row Spacing"}
+                        >
+                          {isTableCompact ? 'Normal' : 'Compact'}
+                        </button>
+                      )}
+
+                      {/* Copy Summary Button */}
+                      <button
+                        type="button"
+                        onClick={handleCopyAnalyticalSummary}
+                        className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors"
+                        title="Copy Formatted Calculation Summary"
+                      >
+                        {copiedSummary ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span className="hidden md:inline">{copiedSummary ? 'Copied' : 'Copy'}</span>
+                      </button>
+
+                      {/* Print A4 Report Button */}
                       <button
                         type="button"
                         onClick={() => setPrintPreviewModalOpen(true)}
-                        className="touch-target-48 px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors"
-                        title="Print Preview & Vector PDF Submittal Engine"
+                        className="px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-opacity"
+                        title="Print / Export Verified A4 Submittal Report"
                       >
-                        <Printer className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                        <span>Print / Export PDF</span>
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print A4 Report</span>
                       </button>
                     </div>
                   </div>
 
-                  <div className="bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] rounded-lg p-2">
-                    {activeModule === 'boq-estimator' && boqEnvelope.result && (
-                      <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={boqEnvelope.result} />
-                    )}
-                    {activeModule === 'rate-analysis' && rateAnalysisEnvelope.result && (
-                      <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={rateAnalysisEnvelope.result} />
-                    )}
-                    {activeModule === 'unit-converter' && (
-                      <UnitConverterDiagramSvg
-                        fromUnit={activeWorkspace.converter.fromUnit}
-                        toUnit={activeWorkspace.converter.toUnit}
-                        inputVal={activeWorkspace.converter.inputValue}
-                        outputVal={activeConversionResult.result}
-                        category={activeWorkspace.converter.category}
-                      />
-                    )}
-                    {activeModule === 'concrete-materials' && matEnvelope.result && (
-                      <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={matEnvelope.result} />
-                    )}
-                    {activeModule === 'rebar-bbs' && bbsEnvelope.result && (
-                      <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={bbsEnvelope.result} />
-                    )}
-                    {activeModule === 'masonry-finishes' && masonryEnvelope.result && (
-                      <MasonryDiagramSvg params={activeWorkspace.masonry} result={masonryEnvelope.result} />
-                    )}
-                    {activeModule === 'earthwork-alignment' && earthworkEnvelope.result && (
-                      <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={earthworkEnvelope.result} />
-                    )}
-                    {activeModule === 'beam-analysis' && beamEnvelope.result && (
-                      <BeamDiagramSvg params={activeWorkspace.beam} result={beamEnvelope.result} />
-                    )}
-                    {activeModule === 'bearing-capacity' && bearingEnvelope.result && (
-                      <BearingDiagramSvg params={activeWorkspace.bearing} result={bearingEnvelope.result} />
-                    )}
-                    {activeModule === 'concrete-mix' && concreteEnvelope.result && (
-                      <ConcreteMixSvg params={activeWorkspace.concrete} result={concreteEnvelope.result} />
-                    )}
-                    {activeModule === 'open-channel' && channelEnvelope.result && (
-                      <ChannelHydraulicsSvg params={activeWorkspace.channel} result={channelEnvelope.result} />
-                    )}
-                  </div>
-
-                  {/* Quantitative Metrics Readout for Unit Converter */}
-                  {activeModule === 'unit-converter' && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <div>
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Source Value</div>
-                        <div className="text-xl font-bold font-mono mt-0.5">{activeWorkspace.converter.inputValue} {activeWorkspace.converter.fromUnit}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Converted Value</div>
-                        <div className="text-xl font-bold font-mono mt-0.5 text-[var(--md-sys-color-primary)]">
-                          {Number(activeConversionResult.result.toFixed(4))} <span className="text-xs font-normal">{activeWorkspace.converter.toUnit}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Conversion Formula</div>
-                        <div className="text-xs font-mono mt-1 opacity-90 truncate">{activeConversionResult.formula}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Base SI Unit</div>
-                        <div className="text-xs font-mono font-bold mt-1">{BASE_UNITS[activeWorkspace.converter.category]}</div>
-                      </div>
+                  {/* 1. GRAPHICAL VIEW */}
+                  {(analyticalViewMode === 'graphical' || analyticalViewMode === 'both') && (
+                    <div className="bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] rounded-lg p-2 mb-3">
+                      {activeModule === 'boq-estimator' && boqEnvelope.result && (
+                        <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={boqEnvelope.result} />
+                      )}
+                      {activeModule === 'rate-analysis' && rateAnalysisEnvelope.result && (
+                        <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={rateAnalysisEnvelope.result} />
+                      )}
+                      {activeModule === 'unit-converter' && (
+                        <UnitConverterDiagramSvg
+                          fromUnit={activeWorkspace.converter.fromUnit}
+                          toUnit={activeWorkspace.converter.toUnit}
+                          inputVal={activeWorkspace.converter.inputValue}
+                          outputVal={activeConversionResult.result}
+                          category={activeWorkspace.converter.category}
+                        />
+                      )}
+                      {activeModule === 'concrete-materials' && matEnvelope.result && (
+                        <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={matEnvelope.result} />
+                      )}
+                      {activeModule === 'rebar-bbs' && bbsEnvelope.result && (
+                        <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={bbsEnvelope.result} />
+                      )}
+                      {activeModule === 'masonry-finishes' && masonryEnvelope.result && (
+                        <MasonryDiagramSvg params={activeWorkspace.masonry} result={masonryEnvelope.result} />
+                      )}
+                      {activeModule === 'earthwork-alignment' && earthworkEnvelope.result && (
+                        <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={earthworkEnvelope.result} />
+                      )}
+                      {activeModule === 'beam-analysis' && beamEnvelope.result && (
+                        <BeamDiagramSvg params={activeWorkspace.beam} result={beamEnvelope.result} />
+                      )}
+                      {activeModule === 'bearing-capacity' && bearingEnvelope.result && (
+                        <BearingDiagramSvg params={activeWorkspace.bearing} result={bearingEnvelope.result} />
+                      )}
+                      {activeModule === 'concrete-mix' && concreteEnvelope.result && (
+                        <ConcreteMixSvg params={activeWorkspace.concrete} result={concreteEnvelope.result} />
+                      )}
+                      {activeModule === 'open-channel' && channelEnvelope.result && (
+                        <ChannelHydraulicsSvg params={activeWorkspace.channel} result={channelEnvelope.result} />
+                      )}
                     </div>
                   )}
 
-                  {/* UNIVERSAL QUANTITATIVE METRICS READOUT WITH ON-THE-FLY UNIT SELECTION */}
-                  {activeModule === 'concrete-materials' && matEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <UnitValueDisplay
-                        label="Total Dry Volume"
-                        category="volume"
-                        siValue={matEnvelope.result.totalDryVolumeWithWastageM3}
-                        currentUnitId={getOutputUnit('mat.out.vol', 'volume', 'm3')}
-                        onUnitChange={(u) => updateOutputUnit('mat.out.vol', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Cement Required"
-                        category="mass"
-                        siValue={matEnvelope.result.cementMassKg}
-                        currentUnitId={getOutputUnit('mat.out.cement', 'mass', 'bag50')}
-                        onUnitChange={(u) => updateOutputUnit('mat.out.cement', u)}
-                        customUnits={appState.customUnits}
-                        highlight={true}
-                      />
-                      <UnitValueDisplay
-                        label="Fine Sand Volume"
-                        category="volume"
-                        siValue={matEnvelope.result.sandVolumeM3}
-                        currentUnitId={getOutputUnit('mat.out.sand', 'volume', 'cft')}
-                        onUnitChange={(u) => updateOutputUnit('mat.out.sand', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Coarse Agg Volume"
-                        category="volume"
-                        siValue={matEnvelope.result.aggregateVolumeM3}
-                        currentUnitId={getOutputUnit('mat.out.agg', 'volume', 'cft')}
-                        onUnitChange={(u) => updateOutputUnit('mat.out.agg', u)}
-                        customUnits={appState.customUnits}
+                  {/* 2. DENSE TABULAR VIEW (A4 Print-Ready) */}
+                  {(analyticalViewMode === 'tabular' || analyticalViewMode === 'both') && (
+                    <div className="mb-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-[var(--md-sys-color-on-surface-variant)] px-1">
+                        <span className="font-bold uppercase tracking-wider text-[10px]">
+                          {MODULE_META[activeModule].label} · Calculation Schedule (A4 Print-Ready)
+                        </span>
+                        <span className="text-[10px] font-mono">
+                          Governing Standard: {MODULE_META[activeModule].codeStandard}
+                        </span>
+                      </div>
+                      <AnalyticalDenseTable
+                        activeModule={activeModule}
+                        activeWorkspace={activeWorkspace}
+                        currentEnvelope={currentEnvelope}
+                        isCompact={isTableCompact}
                       />
                     </div>
+                  )}
+
+                  {/* UNIVERSAL QUANTITATIVE METRICS READOUTS */}
+                  {activeModule === 'unit-converter' && (
+                    <UnitConverterMetrics
+                      inputValue={activeWorkspace.converter.inputValue}
+                      fromUnit={activeWorkspace.converter.fromUnit}
+                      toUnit={activeWorkspace.converter.toUnit}
+                      category={activeWorkspace.converter.category}
+                      conversionResult={activeConversionResult}
+                    />
+                  )}
+
+                  {activeModule === 'concrete-materials' && matEnvelope.result && (
+                    <ConcreteMaterialsMetrics
+                      result={matEnvelope.result}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
 
                   {activeModule === 'beam-analysis' && beamEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <UnitValueDisplay
-                        label="Max Moment (Mmax)"
-                        category="moment"
-                        siValue={beamEnvelope.result.maxMomentKnm * 1000}
-                        currentUnitId={getOutputUnit('beam.out.moment', 'moment', 'kN.m')}
-                        onUnitChange={(u) => updateOutputUnit('beam.out.moment', u)}
-                        customUnits={appState.customUnits}
-                        highlight={true}
-                      />
-                      <UnitValueDisplay
-                        label="Max Shear (Vmax)"
-                        category="force"
-                        siValue={beamEnvelope.result.maxShearKn * 1000}
-                        currentUnitId={getOutputUnit('beam.out.shear', 'force', 'kN')}
-                        onUnitChange={(u) => updateOutputUnit('beam.out.shear', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Max Deflection"
-                        category="length"
-                        siValue={beamEnvelope.result.maxDeflectionMm * 0.001}
-                        currentUnitId={getOutputUnit('beam.out.defl', 'length', 'mm')}
-                        onUnitChange={(u) => updateOutputUnit('beam.out.defl', u)}
-                        customUnits={appState.customUnits}
-                        subText={`Allowable limit: ${beamEnvelope.result.allowableDeflectionMm.toFixed(2)} mm`}
-                      />
-                      <UnitValueDisplay
-                        label="Max Flexural Stress"
-                        category="pressure"
-                        siValue={beamEnvelope.result.bendingStressMpa * 1000000}
-                        currentUnitId={getOutputUnit('beam.out.stress', 'pressure', 'MPa')}
-                        onUnitChange={(u) => updateOutputUnit('beam.out.stress', u)}
-                        customUnits={appState.customUnits}
-                        subText={`Allowable: ${activeWorkspace.beam.allowableStressMpa} MPa`}
-                      />
-                    </div>
+                    <BeamAnalysisMetrics
+                      result={beamEnvelope.result}
+                      activeWorkspace={activeWorkspace}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
 
                   {activeModule === 'bearing-capacity' && bearingEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <UnitValueDisplay
-                        label="Allowable Pressure (qall)"
-                        category="pressure"
-                        siValue={bearingEnvelope.result.allowableBearingKpa * 1000}
-                        currentUnitId={getOutputUnit('bearing.out.qall', 'pressure', 'kPa')}
-                        onUnitChange={(u) => updateOutputUnit('bearing.out.qall', u)}
-                        customUnits={appState.customUnits}
-                        highlight={true}
-                      />
-                      <UnitValueDisplay
-                        label="Ultimate Bearing (qult)"
-                        category="pressure"
-                        siValue={bearingEnvelope.result.ultimateBearingKpa * 1000}
-                        currentUnitId={getOutputUnit('bearing.out.qult', 'pressure', 'kPa')}
-                        onUnitChange={(u) => updateOutputUnit('bearing.out.qult', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Applied Pressure (qapp)"
-                        category="pressure"
-                        siValue={bearingEnvelope.result.appliedPressureKpa * 1000}
-                        currentUnitId={getOutputUnit('bearing.out.qapp', 'pressure', 'kPa')}
-                        onUnitChange={(u) => updateOutputUnit('bearing.out.qapp', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Safety Factor</div>
-                        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
-                          FS = {bearingEnvelope.result.effectiveSafetyFactor.toFixed(2)}
-                        </div>
-                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-                          Footing Area: {bearingEnvelope.result.footingAreaM2.toFixed(2)} m²
-                        </div>
-                      </div>
-                    </div>
+                    <BearingCapacityMetrics
+                      result={bearingEnvelope.result}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
 
                   {activeModule === 'rebar-bbs' && bbsEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <UnitValueDisplay
-                        label="Total Steel Weight"
-                        category="mass"
-                        siValue={bbsEnvelope.result.totalSteelWeightKg}
-                        currentUnitId={getOutputUnit('rebar.out.mass', 'mass', 'kg')}
-                        onUnitChange={(u) => updateOutputUnit('rebar.out.mass', u)}
-                        customUnits={appState.customUnits}
-                        highlight={true}
-                      />
-                      <UnitValueDisplay
-                        label="Total Bar Length"
-                        category="length"
-                        siValue={bbsEnvelope.result.totalBarsLengthM}
-                        currentUnitId={getOutputUnit('rebar.out.len', 'length', 'm')}
-                        onUnitChange={(u) => updateOutputUnit('rebar.out.len', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Total Steel Tonnes</div>
-                        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
-                          {bbsEnvelope.result.totalSteelTonnes.toFixed(3)} <span className="text-xs font-normal">MT</span>
-                        </div>
-                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-                          Density: {bbsEnvelope.result.steelDensityKgPerM3} kg/m³
-                        </div>
-                      </div>
-                      <UnitValueDisplay
-                        label="Total Bend Deductions"
-                        category="length"
-                        siValue={bbsEnvelope.result.items.reduce((s, it) => s + (it.bendDeductionM || 0), 0)}
-                        currentUnitId={getOutputUnit('rebar.out.bend', 'length', 'm')}
-                        onUnitChange={(u) => updateOutputUnit('rebar.out.bend', u)}
-                        customUnits={appState.customUnits}
-                        subText={`Hook: ${activeWorkspace.rebarBbs.hookAngle}° standard`}
-                      />
-                    </div>
+                    <RebarBbsMetrics
+                      result={bbsEnvelope.result}
+                      activeWorkspace={activeWorkspace}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
 
                   {activeModule === 'masonry-finishes' && masonryEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-primary-container)]/30 border-[var(--md-sys-color-primary)]">
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Modular Bricks</div>
-                        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-primary)] mt-0.5">
-                          {masonryEnvelope.result.bricksWithWastageCount.toLocaleString()} <span className="text-xs font-normal">nos</span>
-                        </div>
-                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-                          Net Wall Area: {masonryEnvelope.result.netWallAreaM2.toFixed(2)} m²
-                        </div>
-                      </div>
-                      <UnitValueDisplay
-                        label="Dry Wall Mortar"
-                        category="volume"
-                        siValue={masonryEnvelope.result.mortarVolumeDryM3}
-                        currentUnitId={getOutputUnit('mas.out.mortar', 'volume', 'm3')}
-                        onUnitChange={(u) => updateOutputUnit('mas.out.mortar', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Plaster Dry Mortar"
-                        category="volume"
-                        siValue={masonryEnvelope.result.plasterDryVolM3}
-                        currentUnitId={getOutputUnit('mas.out.plaster', 'volume', 'm3')}
-                        onUnitChange={(u) => updateOutputUnit('mas.out.plaster', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Floor Tiles Required</div>
-                        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
-                          {masonryEnvelope.result.tileBoxesCount} <span className="text-xs font-normal">boxes</span>
-                        </div>
-                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-                          {masonryEnvelope.result.tilesWithWastageCount} tiles ({activeWorkspace.masonry.tilesPerBox}/box)
-                        </div>
-                      </div>
-                    </div>
+                    <MasonryFinishesMetrics
+                      result={masonryEnvelope.result}
+                      activeWorkspace={activeWorkspace}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
 
                   {activeModule === 'earthwork-alignment' && earthworkEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <UnitValueDisplay
-                        label="In-Situ Cut/Fill Volume"
-                        category="volume"
-                        siValue={earthworkEnvelope.result.bankVolumeM3}
-                        currentUnitId={getOutputUnit('earth.out.insitu', 'volume', 'm3')}
-                        onUnitChange={(u) => updateOutputUnit('earth.out.insitu', u)}
-                        customUnits={appState.customUnits}
-                        highlight={true}
-                      />
-                      <UnitValueDisplay
-                        label="Bulked Haul Volume"
-                        category="volume"
-                        siValue={earthworkEnvelope.result.looseVolumeM3}
-                        currentUnitId={getOutputUnit('earth.out.swelled', 'volume', 'm3')}
-                        onUnitChange={(u) => updateOutputUnit('earth.out.swelled', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Compacted Embankment"
-                        category="volume"
-                        siValue={earthworkEnvelope.result.compactedVolumeM3}
-                        currentUnitId={getOutputUnit('earth.out.compacted', 'volume', 'm3')}
-                        onUnitChange={(u) => updateOutputUnit('earth.out.compacted', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Dump Truck Trips</div>
-                        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
-                          {earthworkEnvelope.result.haulTruckTripsCount10M3} <span className="text-xs font-normal">loads</span>
-                        </div>
-                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-                          Basis: 10 m³ tipper truck
-                        </div>
-                      </div>
-                    </div>
+                    <EarthworkAlignmentMetrics
+                      result={earthworkEnvelope.result}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
 
                   {activeModule === 'concrete-mix' && concreteEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <UnitValueDisplay
-                        label="Mixing Water Demand"
-                        category="mass"
-                        siValue={concreteEnvelope.result.batchWaterKg}
-                        currentUnitId={getOutputUnit('mix.out.water', 'mass', 'kg')}
-                        onUnitChange={(u) => updateOutputUnit('mix.out.water', u)}
-                        customUnits={appState.customUnits}
-                        subText={`W/C ratio = ${activeWorkspace.concrete.waterCementRatio.toFixed(2)}`}
-                      />
-                      <UnitValueDisplay
-                        label="Cement Content"
-                        category="mass"
-                        siValue={concreteEnvelope.result.batchCementKg}
-                        currentUnitId={getOutputUnit('mix.out.cement', 'mass', 'bag50')}
-                        onUnitChange={(u) => updateOutputUnit('mix.out.cement', u)}
-                        customUnits={appState.customUnits}
-                        highlight={true}
-                        subText={`Target: ${activeWorkspace.concrete.targetStrengthMpa} MPa`}
-                      />
-                      <UnitValueDisplay
-                        label="Coarse Agg Dry Mass"
-                        category="mass"
-                        siValue={concreteEnvelope.result.batchCoarseAggKg}
-                        currentUnitId={getOutputUnit('mix.out.coarse', 'mass', 'kg')}
-                        onUnitChange={(u) => updateOutputUnit('mix.out.coarse', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Fine Agg Dry Mass"
-                        category="mass"
-                        siValue={concreteEnvelope.result.batchFineAggKg}
-                        currentUnitId={getOutputUnit('mix.out.fine', 'mass', 'kg')}
-                        onUnitChange={(u) => updateOutputUnit('mix.out.fine', u)}
-                        customUnits={appState.customUnits}
-                      />
-                    </div>
+                    <ConcreteMixMetrics
+                      result={concreteEnvelope.result}
+                      activeWorkspace={activeWorkspace}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
 
                   {activeModule === 'open-channel' && channelEnvelope.result && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                      <UnitValueDisplay
-                        label="Flow Discharge (Q)"
-                        category="flow_rate"
-                        siValue={channelEnvelope.result.dischargeM3ps}
-                        currentUnitId={getOutputUnit('hyd.out.Q', 'flow_rate', 'm3/s')}
-                        onUnitChange={(u) => updateOutputUnit('hyd.out.Q', u)}
-                        customUnits={appState.customUnits}
-                        highlight={true}
-                      />
-                      <UnitValueDisplay
-                        label="Mean Velocity (V)"
-                        category="velocity"
-                        siValue={channelEnvelope.result.velocityMps}
-                        currentUnitId={getOutputUnit('hyd.out.V', 'velocity', 'm/s')}
-                        onUnitChange={(u) => updateOutputUnit('hyd.out.V', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <UnitValueDisplay
-                        label="Wetted Flow Area"
-                        category="area"
-                        siValue={channelEnvelope.result.flowAreaM2}
-                        currentUnitId={getOutputUnit('hyd.out.A', 'area', 'm2')}
-                        onUnitChange={(u) => updateOutputUnit('hyd.out.A', u)}
-                        customUnits={appState.customUnits}
-                      />
-                      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
-                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Froude Number (Fr)</div>
-                        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
-                          Fr = {channelEnvelope.result.froudeNumber.toFixed(3)}
-                        </div>
-                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 capitalize">
-                          Regime: {channelEnvelope.result.flowRegime}
-                        </div>
-                      </div>
-                    </div>
+                    <OpenChannelMetrics
+                      result={channelEnvelope.result}
+                      customUnits={appState.customUnits}
+                      getOutputUnit={getOutputUnit}
+                      updateOutputUnit={updateOutputUnit}
+                    />
                   )}
                 </div>
 
                 {/* DYNAMIC MEASUREMENT SHEET (L x W x H) & BOQ SPREADSHEET TABLE */}
                 {activeModule === 'boq-estimator' && boqEnvelope.result && (
-                  <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                      <div>
-                        <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
-                          <FileSpreadsheet className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                          <span>Dynamic Measurement Sheet (L × W × H)</span>
-                        </h2>
-                        <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                          Itemized Takeoff & Cost Quantification ({boqEnvelope.result.items.length} Lines)
-                        </span>
-                      </div>
-
-                      {/* Category Filter Pills */}
-                      <div className="flex items-center gap-1 overflow-x-auto text-xs font-semibold">
-                        {(['all', 'earthwork', 'substructure', 'superstructure', 'rebar', 'masonry', 'finishing'] as const).map((cat) => (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => setBoqCategoryFilter(cat)}
-                            className={`px-2.5 py-1 rounded-md capitalize cursor-pointer transition-colors ${
-                              boqCategoryFilter === cat
-                                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
-                                : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
-                            }`}
-                          >
-                            {cat}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Table Container */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs font-mono">
-                        <thead>
-                          <tr className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] font-bold">
-                            <th className="py-2.5 px-2">Item #</th>
-                            <th className="py-2.5 px-2">Description</th>
-                            <th className="py-2.5 px-2 text-center">Nos</th>
-                            <th className="py-2.5 px-2 text-right">L (m)</th>
-                            <th className="py-2.5 px-2 text-right">W (m)</th>
-                            <th className="py-2.5 px-2 text-right">H (m)</th>
-                            <th className="py-2.5 px-2 text-right">Ded.</th>
-                            <th className="py-2.5 px-2 text-center">Unit</th>
-                            <th className="py-2.5 px-2 text-right">Billable</th>
-                            <th className="py-2.5 px-2 text-right">Rate ({boqEnvelope.result.currencySymbol})</th>
-                            <th className="py-2.5 px-2 text-right">Total ({boqEnvelope.result.currencySymbol})</th>
-                            <th className="py-2.5 px-2 text-center">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
-                          {filteredBOQItems.length === 0 ? (
-                            <tr>
-                              <td colSpan={10} className="py-12 text-center">
-                                <div className="flex flex-col items-center justify-center space-y-2 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                                  <FileSpreadsheet className="w-8 h-8 text-[var(--md-sys-color-outline)]" />
-                                  <p className="font-semibold text-sm text-[var(--md-sys-color-on-surface)]">
-                                    Takeoff Spreadsheet is Empty
-                                  </p>
-                                  <p className="max-w-md text-xs">
-                                    This project currently has no takeoff line items. Append items using the form on the left, or quickly load sample engineering data.
-                                  </p>
-                                  <div className="pt-2 flex items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={handleLoadSampleBOQItems}
-                                      className="touch-target-48 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer hover:opacity-90"
-                                    >
-                                      <Sparkles className="w-3.5 h-3.5" />
-                                      <span>Load Demo Takeoffs (7 Items)</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          ) : (
-                            filteredBOQItems.map((it) => (
-                              <tr key={it.id} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
-                                <td className="py-2 px-2 font-bold text-[var(--md-sys-color-primary)] whitespace-nowrap">
-                                  {it.itemNo}
-                                </td>
-                              <td className="py-2 px-2 min-w-[180px]">
-                                <div className="font-semibold text-[var(--md-sys-color-on-surface)] truncate max-w-xs">{it.description}</div>
-                                <span className="text-[10px] uppercase font-bold text-[var(--md-sys-color-on-surface-variant)]">
-                                  [{it.category}]
-                                </span>
-                              </td>
-                              <td className="py-2 px-2 text-center">{it.numberOfMembers}</td>
-                              <td className="py-2 px-2 text-right">{it.lengthM > 0 ? it.lengthM.toFixed(2) : '-'}</td>
-                              <td className="py-2 px-2 text-right">{it.widthM > 0 ? it.widthM.toFixed(2) : '-'}</td>
-                              <td className="py-2 px-2 text-right">{it.heightM > 0 ? it.heightM.toFixed(2) : '-'}</td>
-                              <td className="py-2 px-2 text-right text-[var(--md-sys-color-error)]">
-                                {it.deductionQty > 0 ? `-${it.deductionQty.toFixed(2)}` : '-'}
-                              </td>
-                              <td className="py-2 px-2 text-center font-bold">{it.unit}</td>
-                              <td className="py-2 px-2 text-right font-bold">
-                                {it.totalBillableQty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                {it.wastagePercent > 0 && (
-                                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block font-normal">
-                                    +{it.wastagePercent}% wst
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-2 px-2 text-right font-semibold">
-                                {it.unitRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className="py-2 px-2 text-right font-bold text-[var(--md-sys-color-on-surface)] whitespace-nowrap">
-                                {it.itemTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                              <td className="py-2 px-2 text-center whitespace-nowrap">
-                                <div className="inline-flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditTakeoffItem(it)}
-                                    className="p-1 hover:text-[var(--md-sys-color-primary)] cursor-pointer"
-                                    title="Edit Line Item"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDuplicateTakeoffItem(it)}
-                                    className="p-1 hover:text-[var(--md-sys-color-tertiary)] cursor-pointer"
-                                    title="Duplicate Line Item"
-                                  >
-                                    <Copy className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteTakeoffItem(it.id)}
-                                    className="p-1 hover:text-[var(--md-sys-color-error)] cursor-pointer"
-                                    title="Delete Line Item"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Financial Reconciliation Summary Card */}
-                    <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-2">
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <span className="text-[var(--md-sys-color-on-surface-variant)]">Direct Takeoff Subtotal:</span>
-                        <span className="font-bold">{boqEnvelope.result.currencySymbol} {boqEnvelope.result.subtotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <span className="text-[var(--md-sys-color-on-surface-variant)]">+ Contingency Reserve ({boqEnvelope.result.contingencyPercent}%):</span>
-                        <span>{boqEnvelope.result.currencySymbol} {boqEnvelope.result.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <span className="text-[var(--md-sys-color-on-surface-variant)]">+ Contractor Profit & Overhead CP&OH ({boqEnvelope.result.contractorOverheadPercent}%):</span>
-                        <span className="text-[var(--md-sys-color-tertiary)] font-bold">{boqEnvelope.result.currencySymbol} {boqEnvelope.result.contractorOverheadAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <span className="text-[var(--md-sys-color-on-surface-variant)]">+ Statutory VAT / Tax ({boqEnvelope.result.vatTaxPercent}%):</span>
-                        <span>{boqEnvelope.result.currencySymbol} {boqEnvelope.result.vatTaxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex justify-between items-center text-base font-mono font-bold text-[var(--md-sys-color-primary)]">
-                        <span>ESTIMATED GRAND TOTAL BOQ ({boqEnvelope.result.currency}):</span>
-                        <span className="text-xl font-extrabold">{boqEnvelope.result.currencySymbol} {boqEnvelope.result.grandTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <BoqEstimatorTable
+                    boqResult={boqEnvelope.result}
+                    filteredBOQItems={filteredBOQItems}
+                    boqCategoryFilter={boqCategoryFilter}
+                    setBoqCategoryFilter={setBoqCategoryFilter}
+                    onEditTakeoffItem={handleEditTakeoffItem}
+                    onDuplicateTakeoffItem={handleDuplicateTakeoffItem}
+                    onDeleteTakeoffItem={handleDeleteTakeoffItem}
+                    onLoadSampleBOQItems={handleLoadSampleBOQItems}
+                  />
                 )}
 
                 {/* RATE ANALYSIS COMPOSITE BREAKDOWN TABLES */}
                 {activeModule === 'rate-analysis' && rateAnalysisEnvelope.result && (
-                  <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 space-y-5">
-                    <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                      <div>
-                        <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
-                          <Calculator className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                          <span>Granular Cost Rate Analysis</span>
-                        </h2>
-                        <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                          {rateAnalysisEnvelope.result.workDescription} ({rateAnalysisEnvelope.result.basisVolumeM3} m³)
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-mono block text-[var(--md-sys-color-on-surface-variant)]">Composite Unit Rate</span>
-                        <span className="text-lg font-bold font-mono text-[var(--md-sys-color-primary)]">
-                          {rateAnalysisEnvelope.result.currencySymbol} {rateAnalysisEnvelope.result.unitRatePerM3.toFixed(2)} / m³
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Materials Breakdown */}
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mb-2">
-                        1. Direct Material Components
-                      </h3>
-                      <table className="w-full text-xs font-mono border-collapse">
-                        <thead>
-                          <tr className="border-b border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] font-bold bg-[var(--md-sys-color-surface-container-low)]">
-                            <th className="py-2 px-2 text-left">Material</th>
-                            <th className="py-2 px-2 text-right">Quantity</th>
-                            <th className="py-2 px-2 text-center">Unit</th>
-                            <th className="py-2 px-2 text-right">Rate ({rateAnalysisEnvelope.result.currencySymbol})</th>
-                            <th className="py-2 px-2 text-right">Cost ({rateAnalysisEnvelope.result.currencySymbol})</th>
-                            <th className="py-2 px-2 text-right">%</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
-                          {rateAnalysisEnvelope.result.materials.map((m, i) => (
-                            <tr key={i} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
-                              <td className="py-1.5 px-2 font-semibold text-[var(--md-sys-color-on-surface)]">{m.name}</td>
-                              <td className="py-1.5 px-2 text-right">{m.quantity}</td>
-                              <td className="py-1.5 px-2 text-center">{m.unit}</td>
-                              <td className="py-1.5 px-2 text-right">{m.unitPrice.toLocaleString()}</td>
-                              <td className="py-1.5 px-2 text-right font-bold">{m.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className="py-1.5 px-2 text-right text-[var(--md-sys-color-on-surface-variant)]">{m.percentageOfMaterial}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="font-bold border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
-                            <td colSpan={4} className="py-2 px-2 text-left">Materials Subtotal:</td>
-                            <td className="py-2 px-2 text-right text-[var(--md-sys-color-primary)]">
-                              {rateAnalysisEnvelope.result.currencySymbol} {rateAnalysisEnvelope.result.materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                            <td></td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-
-                    {/* Labor Breakdown */}
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mb-2">
-                        2. Direct Labor & Craftsmanship
-                      </h3>
-                      <table className="w-full text-xs font-mono border-collapse">
-                        <thead>
-                          <tr className="border-b border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] font-bold bg-[var(--md-sys-color-surface-container-low)]">
-                            <th className="py-2 px-2 text-left">Trade</th>
-                            <th className="py-2 px-2 text-right">Days</th>
-                            <th className="py-2 px-2 text-right">Daily Wage ({rateAnalysisEnvelope.result.currencySymbol})</th>
-                            <th className="py-2 px-2 text-right">Cost ({rateAnalysisEnvelope.result.currencySymbol})</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
-                          {rateAnalysisEnvelope.result.labors.map((l, i) => (
-                            <tr key={i} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
-                              <td className="py-1.5 px-2 font-semibold text-[var(--md-sys-color-on-surface)]">{l.trade}</td>
-                              <td className="py-1.5 px-2 text-right">{l.daysRequired}</td>
-                              <td className="py-1.5 px-2 text-right">{l.dailyWage.toLocaleString()}</td>
-                              <td className="py-1.5 px-2 text-right font-bold">{l.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="font-bold border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
-                            <td colSpan={3} className="py-2 px-2 text-left">Labor Subtotal:</td>
-                            <td className="py-2 px-2 text-right text-[var(--md-sys-color-tertiary)]">
-                              {rateAnalysisEnvelope.result.currencySymbol} {rateAnalysisEnvelope.result.laborsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-
-                    {/* Equipment & Scaffolding Breakdown */}
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mb-2">
-                        3. Equipment Plant & Formwork Centering
-                      </h3>
-                      <table className="w-full text-xs font-mono border-collapse">
-                        <thead>
-                          <tr className="border-b border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] font-bold bg-[var(--md-sys-color-surface-container-low)]">
-                            <th className="py-2 px-2 text-left">Plant / Formwork</th>
-                            <th className="py-2 px-2 text-right">Rate / Unit</th>
-                            <th className="py-2 px-2 text-right">Total ({rateAnalysisEnvelope.result.currencySymbol})</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
-                          {rateAnalysisEnvelope.result.equipment.map((eq, i) => (
-                            <tr key={i} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
-                              <td className="py-1.5 px-2 font-semibold text-[var(--md-sys-color-on-surface)]">{eq.equipment}</td>
-                              <td className="py-1.5 px-2 text-right">{eq.ratePerUnit.toLocaleString()}</td>
-                              <td className="py-1.5 px-2 text-right font-bold">{eq.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="font-bold border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
-                            <td colSpan={2} className="py-2 px-2 text-left">Equipment Subtotal:</td>
-                            <td className="py-2 px-2 text-right">
-                              {rateAnalysisEnvelope.result.currencySymbol} {rateAnalysisEnvelope.result.equipmentCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  </div>
+                  <RateAnalysisTables rateResult={rateAnalysisEnvelope.result} />
                 )}
 
                 {/* Calculation History */}
-                <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                    <div className="flex items-center gap-2">
-                      <LogoMark size={20} className="text-[var(--md-sys-color-primary)]" />
-                      <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-                        Calculation History Ledger
-                      </h2>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={historyScope}
-                        onChange={(e) => setHistoryScope(e.target.value as 'active-project' | 'all-projects')}
-                        className="touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-mono bg-[var(--md-sys-color-surface)]"
-                      >
-                        <option value="active-project">Active Project Only ({activeWorkspace.projectCode})</option>
-                        <option value="all-projects">All Projects Across Lab</option>
-                      </select>
-                      <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                        {filteredHistory.length} Entries
-                      </span>
-                      {filteredHistory.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleClearHistory}
-                          className="px-2 py-1 rounded text-xs font-mono text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/20 cursor-pointer"
-                          title="Clear history records"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="divide-y divide-[var(--md-sys-color-outline-variant)] mt-2">
-                    {filteredHistory.length === 0 ? (
-                      <div className="py-8 text-center text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] space-y-2">
-                        <div>No calculation snapshots logged for this project yet. Use &quot;Log Snapshot&quot; above to capture records.</div>
-                        <button
-                          type="button"
-                          onClick={handleLoadSampleHistory}
-                          className="px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                          <span>Load Sample History Records</span>
-                        </button>
-                      </div>
-                    ) : (
-                      filteredHistory.map((rec) => (
-                        <div key={rec.id} className="py-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                              {rec.id.slice(0, 8)} · {new Date(rec.timestamp).toLocaleTimeString()} · <span className="font-bold text-[var(--md-sys-color-primary)]">[{rec.moduleId}]</span>
-                            </div>
-                            <div className="text-sm font-semibold truncate">{rec.title}</div>
-                            <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] truncate mt-0.5">{rec.notes}</div>
-                            <div className="flex flex-wrap items-center gap-3 mt-1 text-xs font-mono">
-                              {rec.keyMetrics.map((m) => (
-                                <span key={m.label}>
-                                  {m.label}: <strong>{m.value} {m.unit}</strong>
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteHistoryItem(rec.id)}
-                            className="touch-target-48 px-2 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                <CalculationHistoryLedger
+                  filteredHistory={filteredHistory}
+                  historyScope={historyScope}
+                  setHistoryScope={setHistoryScope}
+                  activeProjectCode={activeWorkspace.projectCode}
+                  onClearHistory={handleClearHistory}
+                  onLoadSampleHistory={handleLoadSampleHistory}
+                  onDeleteHistoryItem={handleDeleteHistoryItem}
+                />
               </section>
             </div>
 
@@ -4362,694 +2817,107 @@ export default function App() {
         </div>
 
         {/* PROJECT WORKSPACES MANAGER MODAL */}
-        {workspaceManagerOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="w-full max-w-3xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] rounded-xl p-6 max-h-[90vh] overflow-y-auto space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
-                    <FolderArchive className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
-                    <span>Project Workspaces Manager</span>
-                  </h2>
-                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-                    Manage multi-project engineering workspaces, dedicated takeoff sheets, and validated JSON exports
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setWorkspaceManagerOpen(false)}
-                  className="p-1 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Action Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg bg-[var(--md-sys-color-surface-container)]">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWorkspaceManagerOpen(false);
-                      handleOpenNewWorkspace();
-                    }}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>New Project</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => projectFileInputRef.current?.click()}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Upload className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                    <span>Import Project JSON</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleAddDemoProject}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/20 text-xs font-bold inline-flex items-center gap-1.5 text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary-container)]/40 cursor-pointer"
-                    title="Load sample Padma River Viaduct project with 7 takeoffs"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Load Demo Project</span>
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleExportStateJson}
-                  className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-4 h-4 text-[var(--md-sys-color-tertiary)]" />
-                  <span>Export All Projects (Bundle JSON)</span>
-                </button>
-              </div>
-
-              {/* Workspaces List */}
-              <div className="space-y-3">
-                {appState.workspaces.map((ws) => {
-                  const isActive = ws.id === activeWorkspace.id;
-                  const boqItemsCount = ws.boq?.items?.length || 0;
-                  const historyCount = appState.calculationHistory.filter((rec) => rec.workspaceId === ws.id).length;
-                  const sym = getCurrencySymbol(ws.currency || 'BDT');
-
-                  return (
-                    <div
-                      key={ws.id}
-                      className={`p-4 rounded-xl border transition-all ${
-                        isActive
-                          ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/10 ring-1 ring-[var(--md-sys-color-primary)]'
-                          : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-outline)]'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-[var(--md-sys-color-on-surface)] truncate">
-                              {ws.name}
-                            </span>
-                            {isActive && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]">
-                                ACTIVE
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 flex flex-wrap items-center gap-2">
-                            <span>Code: <strong>{ws.projectCode}</strong></span>
-                            <span>·</span>
-                            <span>Site: {ws.siteLocation}</span>
-                            <span>·</span>
-                            <span>EOR: {ws.engineerOfRecord}</span>
-                            <span>·</span>
-                            <span className="font-bold text-[var(--md-sys-color-primary)]">Currency: {ws.currency || 'BDT'} ({sym})</span>
-                          </div>
-
-                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                            <span className="p-1 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                              📋 <strong>{boqItemsCount}</strong> Takeoff Items
-                            </span>
-                            <span className="p-1 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                              📑 <strong>{historyCount}</strong> History Logs
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {!isActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAppState((prev) => ({ ...prev, activeWorkspaceId: ws.id }));
-                                setToastBanner(`Switched active workspace to "${ws.name}"`);
-                              }}
-                              className="touch-target-48 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] text-xs font-bold text-[var(--md-sys-color-primary)] cursor-pointer"
-                            >
-                              Switch To
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditWorkspace(ws)}
-                            className="p-2 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
-                            title="Edit Project Metadata"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDuplicateWorkspace(ws)}
-                            className="p-2 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-tertiary)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
-                            title="Duplicate Project Workspace"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleExportSingleProject(ws)}
-                            className="p-2 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
-                            title="Export Project (.json)"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-
-                          {appState.workspaces.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteWorkspace(ws.id)}
-                              className="p-2 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
-                              title="Delete Project Workspace"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+        <WorkspaceManagerModal
+          isOpen={workspaceManagerOpen}
+          onClose={() => setWorkspaceManagerOpen(false)}
+          workspaces={appState.workspaces}
+          activeWorkspaceId={activeWorkspace.id}
+          calculationHistory={appState.calculationHistory}
+          onSwitchWorkspace={(id, name) => {
+            setAppState((prev) => ({ ...prev, activeWorkspaceId: id }));
+            setToastBanner(`Switched active workspace to "${name}"`);
+          }}
+          onOpenNewWorkspace={() => {
+            setWorkspaceManagerOpen(false);
+            handleOpenNewWorkspace();
+          }}
+          onOpenEditWorkspace={(ws) => {
+            setWorkspaceManagerOpen(false);
+            handleOpenEditWorkspace(ws);
+          }}
+          onDuplicateWorkspace={handleDuplicateWorkspace}
+          onExportSingleProject={handleExportSingleProject}
+          onDeleteWorkspace={handleDeleteWorkspace}
+          onImportProjectJson={() => projectFileInputRef.current?.click()}
+          onLoadDemoProject={handleAddDemoProject}
+          onExportAllProjects={handleExportStateJson}
+        />
 
         {/* EDIT WORKSPACE METADATA MODAL */}
-        {editWsModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="w-full max-w-md bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] rounded-xl p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-                  Edit Project Metadata
-                </h2>
-                <button type="button" onClick={() => setEditWsModalOpen(false)}>
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveEditWorkspace} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Project Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={editWsName}
-                    onChange={(e) => setEditWsName(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Project Code</label>
-                  <input
-                    type="text"
-                    required
-                    value={editWsCode}
-                    onChange={(e) => setEditWsCode(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Jobsite Location</label>
-                  <input
-                    type="text"
-                    value={editWsSite}
-                    onChange={(e) => setEditWsSite(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Engineer of Record (EOR)</label>
-                  <input
-                    type="text"
-                    value={editWsEngineer}
-                    onChange={(e) => setEditWsEngineer(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Default Currency</label>
-                  <select
-                    value={editWsCurrency}
-                    onChange={(e) => setEditWsCurrency(e.target.value as CurrencyCode)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  >
-                    {SUPPORTED_CURRENCIES.map((c) => (
-                      <option key={c.code} value={c.code}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="pt-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditWsModalOpen(false)}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="touch-target-48 px-4 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-bold"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        <EditWorkspaceModal
+          isOpen={editWsModalOpen}
+          onClose={() => setEditWsModalOpen(false)}
+          onSave={handleSaveEditWorkspace}
+          name={editWsName}
+          setName={setEditWsName}
+          code={editWsCode}
+          setCode={setEditWsCode}
+          site={editWsSite}
+          setSite={setEditWsSite}
+          engineer={editWsEngineer}
+          setEngineer={setEditWsEngineer}
+          currency={editWsCurrency}
+          setCurrency={setEditWsCurrency}
+        />
 
         {/* CREATE NEW WORKSPACE MODAL */}
-        {newWorkspaceOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="w-full max-w-md bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] rounded-xl p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-                  Create New Project Workspace
-                </h2>
-                <button type="button" onClick={() => setNewWorkspaceOpen(false)}>
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateWorkspace} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Project Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Dhaka Metro Line 5 — Station Box"
-                    value={newWsName}
-                    onChange={(e) => setNewWsName(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Project Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CIV-2026-DML5"
-                    value={newWsCode}
-                    onChange={(e) => setNewWsCode(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Jobsite Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mirpur Sector 10"
-                    value={newWsSite}
-                    onChange={(e) => setNewWsSite(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Engineer of Record (EOR)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. P. Biswas, PE"
-                    value={newWsEngineer}
-                    onChange={(e) => setNewWsEngineer(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Default Currency</label>
-                  <select
-                    value={newWsCurrency}
-                    onChange={(e) => setNewWsCurrency(e.target.value as CurrencyCode)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  >
-                    {SUPPORTED_CURRENCIES.map((c) => (
-                      <option key={c.code} value={c.code}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Takeoff Spreadsheet Initial State</label>
-                  <div className="space-y-1.5 text-xs font-mono">
-                    <label className={`p-2 rounded-lg border cursor-pointer flex items-center gap-2 ${newWsTemplate === 'clean' ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/10 font-bold' : 'border-[var(--md-sys-color-outline-variant)]'}`}>
-                      <input
-                        type="radio"
-                        name="newWsTemplate"
-                        value="clean"
-                        checked={newWsTemplate === 'clean'}
-                        onChange={() => setNewWsTemplate('clean')}
-                      />
-                      <span>Clean Blank Slate (0 Takeoff Items)</span>
-                    </label>
-                    <label className={`p-2 rounded-lg border cursor-pointer flex items-center gap-2 ${newWsTemplate === 'clone' ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/10 font-bold' : 'border-[var(--md-sys-color-outline-variant)]'}`}>
-                      <input
-                        type="radio"
-                        name="newWsTemplate"
-                        value="clone"
-                        checked={newWsTemplate === 'clone'}
-                        onChange={() => setNewWsTemplate('clone')}
-                      />
-                      <span>Copy Items from Active Project ({activeWorkspace.boq.items.length} Items)</span>
-                    </label>
-                    <label className={`p-2 rounded-lg border cursor-pointer flex items-center gap-2 ${newWsTemplate === 'demo' ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/10 font-bold' : 'border-[var(--md-sys-color-outline-variant)]'}`}>
-                      <input
-                        type="radio"
-                        name="newWsTemplate"
-                        value="demo"
-                        checked={newWsTemplate === 'demo'}
-                        onChange={() => setNewWsTemplate('demo')}
-                      />
-                      <span>Pre-load Padma Viaduct Demo Items (7 Items)</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewWorkspaceOpen(false)}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="touch-target-48 px-4 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-bold"
-                  >
-                    Create Project
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        <NewWorkspaceModal
+          isOpen={newWorkspaceOpen}
+          onClose={() => setNewWorkspaceOpen(false)}
+          onCreate={handleCreateWorkspace}
+          name={newWsName}
+          setName={setNewWsName}
+          code={newWsCode}
+          setCode={setNewWsCode}
+          site={newWsSite}
+          setSite={setNewWsSite}
+          engineer={newWsEngineer}
+          setEngineer={setNewWsEngineer}
+          currency={newWsCurrency}
+          setCurrency={setNewWsCurrency}
+          template={newWsTemplate}
+          setTemplate={setNewWsTemplate}
+          activeWorkspaceItemCount={activeWorkspace.boq.items.length}
+        />
 
         {/* CUSTOM UNIT MANAGER MODAL */}
-        {customUnitModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="w-full max-w-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] rounded-xl p-6 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                <div>
-                  <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-                    Custom Engineering Unit Manager
-                  </h2>
-                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-                    Define and persist project-specific or local customary units
-                  </p>
-                </div>
-                <button type="button" onClick={() => setCustomUnitModalOpen(false)}>
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Form to add unit */}
-              <form onSubmit={handleCreateCustomUnit} className="mt-4 p-4 rounded-lg bg-[var(--md-sys-color-surface-container)] space-y-3">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-                  Add New Jobsite Unit
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold mb-1">Unit Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Tipper Truck"
-                      value={newUnitName}
-                      onChange={(e) => setNewUnitName(e.target.value)}
-                      className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold mb-1">Unit Symbol</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. truck"
-                      value={newUnitSymbol}
-                      onChange={(e) => setNewUnitSymbol(e.target.value)}
-                      className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold mb-1">Discipline Category</label>
-                    <select
-                      value={newUnitCategory}
-                      onChange={(e) => setNewUnitCategory(e.target.value as UnitCategoryKey)}
-                      className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                    >
-                      <option value="length">Length</option>
-                      <option value="area">Area / Land</option>
-                      <option value="volume">Volume / CFT</option>
-                      <option value="mass">Mass / Bags</option>
-                      <option value="pressure">Pressure / Stress</option>
-                      <option value="force">Force</option>
-                      <option value="slope">Slope / Gradient</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold mb-1">
-                      Multiplier to SI Base ({BASE_UNITS[newUnitCategory]})
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      placeholder="e.g. 10.0"
-                      value={newUnitFactor}
-                      onChange={(e) => setNewUnitFactor(Number(e.target.value))}
-                      className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Description / Jobsite Note</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Standard 3-axle 10 m³ hauling dump truck"
-                    value={newUnitDesc}
-                    onChange={(e) => setNewUnitDesc(e.target.value)}
-                    className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full touch-target-48 py-2 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold text-xs"
-                >
-                  Save Custom Engineering Unit
-                </button>
-              </form>
-
-              {/* List of custom units */}
-              <div className="mt-5 space-y-2">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                  Active Custom Units ({appState.customUnits.length})
-                </div>
-                {appState.customUnits.map((u) => (
-                  <div key={u.id} className="p-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-xs">{u.name} ({u.symbol})</div>
-                      <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                        1 {u.symbol} = {u.toBaseFactor} {BASE_UNITS[u.category]} · {u.description}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCustomUnit(u.id)}
-                      className="touch-target-48 px-2 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)]"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        <CustomUnitModal
+          isOpen={customUnitModalOpen}
+          onClose={() => setCustomUnitModalOpen(false)}
+          customUnits={appState.customUnits}
+          onCreateUnit={handleCreateCustomUnit}
+          onDeleteUnit={handleDeleteCustomUnit}
+          unitName={newUnitName}
+          setUnitName={setNewUnitName}
+          unitSymbol={newUnitSymbol}
+          setUnitSymbol={setNewUnitSymbol}
+          unitCategory={newUnitCategory}
+          setUnitCategory={setNewUnitCategory}
+          unitFactor={newUnitFactor}
+          setUnitFactor={setNewUnitFactor}
+          unitDesc={newUnitDesc}
+          setUnitDesc={setNewUnitDesc}
+        />
 
         {/* Persistence Inspector Modal */}
-        {inspectorModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="w-full max-w-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] rounded-xl p-6 max-h-[90vh] overflow-y-auto space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                <div>
-                  <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-                    Local-First Schema v2 Storage Diagnostics
-                  </h2>
-                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-                    PB CivilLab offline persistence and schema state inspector
-                  </p>
-                </div>
-                <button type="button" onClick={() => setInspectorModalOpen(false)}>
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-                <div className="p-2.5 rounded bg-[var(--md-sys-color-surface-container)]">
-                  <div className="text-[var(--md-sys-color-on-surface-variant)]">Schema Version</div>
-                  <div className="text-base font-bold">{appState.schemaVersion}</div>
-                </div>
-                <div className="p-2.5 rounded bg-[var(--md-sys-color-surface-container)]">
-                  <div className="text-[var(--md-sys-color-on-surface-variant)]">Workspaces</div>
-                  <div className="text-base font-bold">{appState.workspaces.length}</div>
-                </div>
-                <div className="p-2.5 rounded bg-[var(--md-sys-color-surface-container)]">
-                  <div className="text-[var(--md-sys-color-on-surface-variant)]">Custom Units</div>
-                  <div className="text-base font-bold">{appState.customUnits.length}</div>
-                </div>
-                <div className="p-2.5 rounded bg-[var(--md-sys-color-surface-container)]">
-                  <div className="text-[var(--md-sys-color-on-surface-variant)]">History Logs</div>
-                  <div className="text-base font-bold">{appState.calculationHistory.length}</div>
-                </div>
-              </div>
-
-              {/* Dual-Layer Local-First Storage Health Card */}
-              <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
-                      Dual-Layer Local-First Persistence Architecture
-                    </span>
-                  </div>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[var(--md-sys-color-success)]/15 text-[var(--md-sys-color-success)] border border-[var(--md-sys-color-success)]/30">
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>Zero-Data-Loss Active</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                    <div className="text-[var(--md-sys-color-on-surface-variant)] text-[10px]">Tier 1: Synchronous Web Storage</div>
-                    <div className="font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">localStorage ({STORAGE_KEY})</div>
-                    <div className="text-[10px] text-[var(--md-sys-color-success)] flex items-center gap-1 mt-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Instant in-memory & session reload</span>
-                    </div>
-                  </div>
-
-                  <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                    <div className="text-[var(--md-sys-color-on-surface-variant)] text-[10px]">Tier 2: Asynchronous Resilient DB</div>
-                    <div className="font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
-                      IndexedDB (pb_civillab_db)
-                    </div>
-                    <div className="text-[10px] text-[var(--md-sys-color-primary)] flex items-center gap-1 mt-1">
-                      {idbDiagnostics.supported ? (
-                        <>
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>
-                            {idbDiagnostics.hasStoredState ? `Synced (~${Math.round(idbDiagnostics.approxSizeChars / 1024 * 10) / 10} KB)` : 'Ready & Connected'}
-                          </span>
-                        </>
-                      ) : (
-                        <span>Fallback mode</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
-                  <button
-                    type="button"
-                    onClick={handleForceIdbSync}
-                    disabled={idbDiagnostics.syncing}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-[var(--md-sys-color-surface)] cursor-pointer"
-                  >
-                    <HardDrive className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                    <span>{idbDiagnostics.syncing ? 'Backing up...' : 'Backup to IndexedDB Now'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleRestoreFromIdb}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-[var(--md-sys-color-surface)] cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-[var(--md-sys-color-tertiary)]" />
-                    <span>Restore from IndexedDB</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-2 pt-1">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                  Storage Management & State Controls
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleResetToClean}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-xs font-semibold inline-flex items-center gap-1.5 hover:border-[var(--md-sys-color-primary)] cursor-pointer"
-                    title="Initialize clean project with 0 takeoff items and 0 logs"
-                  >
-                    <Trash2 className="w-4 h-4 text-[var(--md-sys-color-error)]" />
-                    <span>Reset to Clean Slate (0 Items)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleLoadDemoDataset}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/20 text-xs font-bold inline-flex items-center gap-1.5 text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary-container)]/40 cursor-pointer"
-                    title="Load complete Padma River Viaduct demo project with 7 takeoffs"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Load Demo Dataset (Padma Viaduct)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleExportStateJson}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Export JSON</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span>Import JSON</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const migrated = simulateV1MigrationSample();
-                      setAppState(migrated);
-                      setToastBanner('Simulated Legacy Schema v1 → v2 Migration.');
-                    }}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Test v1 Migration</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTriggerErrorTest(true)}
-                    className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Bug className="w-4 h-4" />
-                    <span>Test ErrorBoundary</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <PersistenceInspectorModal
+          isOpen={inspectorModalOpen}
+          onClose={() => setInspectorModalOpen(false)}
+          appState={appState}
+          idbDiagnostics={idbDiagnostics}
+          onForceIdbSync={handleForceIdbSync}
+          onRestoreFromIdb={handleRestoreFromIdb}
+          onResetToClean={handleResetToClean}
+          onLoadDemoDataset={handleLoadDemoDataset}
+          onExportJson={handleExportStateJson}
+          onImportJson={() => fileInputRef.current?.click()}
+          onTestV1Migration={() => {
+            const migrated = simulateV1MigrationSample();
+            setAppState(migrated);
+            setToastBanner('Simulated Legacy Schema v1 → v2 Migration.');
+          }}
+          onTestErrorBoundary={() => setTriggerErrorTest(true)}
+        />
 
         {/* User Profile, Custom Preferences & Presets Modal */}
         <ProfilePreferencesModal
@@ -5086,7 +2954,7 @@ export default function App() {
         />
 
         {/* Isolated container for pristine vector print / PDF execution */}
-        <div id="pb-printable-report" className="hidden"></div>
+        <div id="pb-printable-report" className="hidden print:block bg-white text-slate-900"></div>
       </div>
     </ErrorBoundary>
   );

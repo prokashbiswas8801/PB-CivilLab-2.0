@@ -425,7 +425,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       required
                       value={profileForm.fullName}
                       onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
-                      placeholder="e.g. Engr. Prokash Biswas, PE"
+                      placeholder="e.g. Project Engineer, PE"
                       className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)] font-medium"
                     />
                   </div>
@@ -524,7 +524,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                         type="email"
                         value={profileForm.email || ''}
                         onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                        placeholder="prokashbiswas8801@gmail.com"
+                        placeholder="engineer@consultingfirm.com"
                         className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)] font-mono"
                       />
                     </div>
@@ -541,7 +541,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                         type="tel"
                         value={profileForm.phone || ''}
                         onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                        placeholder="+880 1712-345678"
+                        placeholder="+1 (555) 019-2834 / +880 1700-000000"
                         className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)] font-mono"
                       />
                     </div>
@@ -572,19 +572,21 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                 <div className="p-4 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono">
                   <div className="space-y-1">
                     <div className="font-bold text-sm text-[var(--md-sys-color-on-surface)] font-sans">
-                      {profileForm.fullName || 'Engr. Prokash Biswas, PE'}
+                      {profileForm.fullName || 'Project Engineer, PE'}
                     </div>
                     <div className="text-[var(--md-sys-color-primary)] font-semibold">
-                      {profileForm.designation || 'Senior Structural Engineer'} · {profileForm.organization || 'PB CivilLab Consultancy'}
+                      {profileForm.designation || 'Project Engineer, PE'} · {profileForm.organization || 'Consulting Firm'}
                     </div>
                     <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                      Reg ID: {profileForm.licenseNumber || 'IEB PE-41892'} · {profileForm.email || 'prokashbiswas8801@gmail.com'}
+                      Reg ID: {profileForm.licenseNumber || 'PE-00000'} · {profileForm.email || 'engineer@consultingfirm.com'}
                     </div>
                   </div>
                   <div className="text-right sm:border-l sm:pl-4 border-[var(--md-sys-color-outline-variant)] shrink-0">
                     <div className="inline-block px-3 py-1.5 rounded border border-dashed border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/20 text-center">
                       <div className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">CERTIFICATION STAMP</div>
-                      <div className="font-bold text-xs text-[var(--md-sys-color-primary)]">{profileForm.initials || 'PB'} SEAL</div>
+                      <div className="font-bold text-xs text-[var(--md-sys-color-primary)]">
+                        {profileForm.initials || (profileForm.fullName ? profileForm.fullName.slice(0, 2).toUpperCase() : 'PE')} SEAL
+                      </div>
                     </div>
                   </div>
                 </div>

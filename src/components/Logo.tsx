@@ -19,6 +19,8 @@ export interface LogoProps {
   asLink?: boolean;
   /** Optional custom href for asLink */
   href?: string;
+  /** When true, smoothly collapses typography and displays only the compact LogoMark icon */
+  collapsed?: boolean;
 }
 
 const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', { height: number; markSize: number }> = {
@@ -111,23 +113,32 @@ export const Logo: React.FC<LogoProps> = ({
   onClick,
   asLink = false,
   href = '#top',
+  collapsed = false,
 }) => {
   const resolved = typeof size === 'number' ? { height: size, markSize: size * 0.9 } : SIZE_MAP[size];
 
   const content = (
     <div
-      className={`inline-flex items-center gap-2.5 sm:gap-3 transition-colors ${
-        variant === 'stacked' ? 'flex-col text-center items-center' : 'flex-row'
-      } ${className}`}
+      className={`inline-flex items-center transition-all duration-300 ${
+        collapsed ? 'gap-0 justify-center' : 'gap-2.5 sm:gap-3'
+      } ${variant === 'stacked' ? 'flex-col text-center items-center' : 'flex-row'} ${className}`}
     >
       {/* Structural Logo Mark */}
-      <div className="relative shrink-0 flex items-center justify-center">
-        <LogoMark size={resolved.markSize} animated={animated} />
+      <div className="relative shrink-0 flex items-center justify-center transition-transform duration-300">
+        <LogoMark size={collapsed ? 24 : resolved.markSize} animated={animated} />
       </div>
 
       {/* Typography: PB CivilLab & Optional Official Tagline */}
       {variant !== 'mark' && (
-        <div className={`flex flex-col min-w-0 ${variant === 'stacked' ? 'items-center' : 'items-start'}`}>
+        <div
+          className={`flex flex-col min-w-0 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap ${
+            variant === 'stacked' ? 'items-center' : 'items-start'
+          } ${
+            collapsed
+              ? 'max-w-0 opacity-0 -translate-x-3 pointer-events-none'
+              : 'max-w-[220px] opacity-100 translate-x-0'
+          }`}
+        >
           <div className="flex items-baseline tracking-tight font-sans leading-none select-none">
             <span className="font-extrabold text-[var(--md-sys-color-on-surface)] tracking-tight" style={{ fontSize: `${resolved.height * 0.52}px` }}>
               PB

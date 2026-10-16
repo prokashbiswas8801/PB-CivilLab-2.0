@@ -238,7 +238,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                     Primary Engineering Inquiries
                   </div>
                   <div className="font-mono text-sm font-bold text-[var(--md-sys-color-primary)]">
-                    prokashbiswas8801@gmail.com
+                    support@pbcivillab.com
                   </div>
                   <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
                     Creator: PROKASH BISWAS

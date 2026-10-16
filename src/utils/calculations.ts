@@ -18,6 +18,7 @@ import {
   ValidationIssue,
   CalculationStatus,
 } from '../types/civil';
+import { EXACT_CONVERSION } from './unitConverter';
 
 /* -------------------------------------------------------------
    VALIDATION CONTRACT HELPERS
@@ -618,9 +619,8 @@ export function computeConcreteMaterials(
   const cementBags = cementMass / params.cementBagWeightKg;
   const waterDemandLiters = cementMass * params.waterCementRatio;
 
-  const M3_TO_CFT = 35.3147;
-  const sandCft = sandVol * M3_TO_CFT;
-  const aggregateCft = aggVol * M3_TO_CFT;
+  const sandCft = sandVol * EXACT_CONVERSION.M3_TO_CFT;
+  const aggregateCft = aggVol * EXACT_CONVERSION.M3_TO_CFT;
 
   return createEnvelope<ConcreteMaterialResult>(
     {
@@ -1057,7 +1057,7 @@ export function computeMasonryFinishes(
   const mortarCementM3 = (params.mortarRatioCement / mortarSum) * dryMortarVol;
   const mortarSandM3 = (params.mortarRatioSand / mortarSum) * dryMortarVol;
   const mortarCementBags = (mortarCementM3 * 1440) / 50;
-  const mortarSandCft = mortarSandM3 * 35.3147;
+  const mortarSandCft = mortarSandM3 * EXACT_CONVERSION.M3_TO_CFT;
 
   // Plastering Coat Calculation:
   const plasterSides = params.plasterSides || 2;
@@ -1070,7 +1070,7 @@ export function computeMasonryFinishes(
   const plasterCementM3 = ((params.plasterRatioCement || 1) / plasterSum) * plasterDryVolM3;
   const plasterSandM3 = ((params.plasterRatioSand || 4) / plasterSum) * plasterDryVolM3;
   const plasterCementBags = (plasterCementM3 * 1440) / 50;
-  const plasterSandCft = plasterSandM3 * 35.3147;
+  const plasterSandCft = plasterSandM3 * EXACT_CONVERSION.M3_TO_CFT;
 
   // Floor Tiles:
   const floorAreaM2 = (params.floorLengthM || 0) * (params.floorWidthM || 0);
@@ -1376,20 +1376,22 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
         gross = nos * (l > 0 ? l : 1) * (w > 0 ? w : 1) * (h > 0 ? h : 1);
         break;
       case 'cft':
-        // If dimensions entered in meters, convert m3 -> CFT (35.3147)
-        gross = nos * (l > 0 ? l : 1) * (w > 0 ? w : 1) * (h > 0 ? h : 1) * 35.3147;
+        // Dimensions entered in SI meters -> convert base m3 to CFT exactly
+        gross = nos * (l > 0 ? l : 1) * (w > 0 ? w : 1) * (h > 0 ? h : 1) * EXACT_CONVERSION.M3_TO_CFT;
         break;
       case 'm2':
         gross = nos * (l > 0 ? l : 1) * (w > 0 ? w : 1);
         break;
       case 'sft':
-        gross = nos * (l > 0 ? l : 1) * (w > 0 ? w : 1) * 10.7639;
+        // Dimensions entered in SI meters -> convert base m2 to SFT exactly
+        gross = nos * (l > 0 ? l : 1) * (w > 0 ? w : 1) * EXACT_CONVERSION.M2_TO_SFT;
         break;
       case 'm':
         gross = nos * (l > 0 ? l : 1);
         break;
       case 'rft':
-        gross = nos * (l > 0 ? l : 1) * 3.28084;
+        // Dimensions entered in SI meters -> convert base m to RFT (feet) exactly
+        gross = nos * (l > 0 ? l : 1) * EXACT_CONVERSION.M_TO_FT;
         break;
       case 'kg':
       case 'ton':
@@ -1887,7 +1889,7 @@ export function computeRateAnalysis(
   const grandTotalCost = subtotalBeforeProfit + contractorProfitCost;
 
   const unitRatePerM3 = grandTotalCost / vol;
-  const unitRatePerCft = unitRatePerM3 / 35.3147;
+  const unitRatePerCft = unitRatePerM3 / EXACT_CONVERSION.M3_TO_CFT;
 
   const costDistributionPercent = {
     materials: grandTotalCost > 0 ? Number(((materialsCost / grandTotalCost) * 100).toFixed(1)) : 0,

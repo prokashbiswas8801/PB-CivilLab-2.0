@@ -70,10 +70,9 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   const computedDisplayValue = useMemo(() => {
     if (isNaN(siValue)) return '';
     const converted = denormalizeFromBase(siValue, activeUnitInfo.id, category, customUnits);
-    // Format sensibly: if integer keep integer, else round to reasonable precision
     if (Number.isInteger(converted)) return converted.toString();
-    const precision = Math.abs(converted) >= 100 ? 2 : Math.abs(converted) >= 1 ? 3 : 4;
-    return Number(converted.toFixed(precision)).toString();
+    // High-precision representation without floating point jitter
+    return parseFloat(converted.toPrecision(8)).toString();
   }, [siValue, activeUnitInfo.id, category, customUnits]);
 
   const [rawText, setRawText] = useState<string>(computedDisplayValue);

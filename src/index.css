@@ -166,35 +166,118 @@
 
 @media print {
   @page {
-    margin: 12mm 15mm 15mm 15mm;
-    size: auto;
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
   }
 
-  html, body {
+  /* Force universal high-contrast print canvas - completely eliminate black background */
+  html,
+  body {
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
     background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #0f172a !important;
-    font-size: 11pt !important;
-    line-height: 1.4 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide app shell, interactive menus, drawers and non-print UI */
-  #root > div > div,
+  /* Reset all root containers to prevent 100vh clipping or dark theme inherited backgrounds */
+  #root,
+  #root > div,
+  #root > div > div {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Hide screen-only interactive chrome, drawers, navigation, buttons, and popups */
   header,
   aside,
   nav,
+  footer,
   .no-print,
   #modal-root,
   .modal-backdrop,
-  [role="dialog"],
-  #pb-print-dialog {
+  .app-splash,
+  .toast-banner,
+  button,
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
     display: none !important;
   }
 
-  /* Target the isolated printable report */
+  /* When printing from the Print Preview Modal */
+  #pb-print-dialog {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    backdrop-filter: none !important;
+  }
+
+  #pb-print-dialog > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #pb-report-preview-sheet {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  /* Isolated container for pristine vector print / PDF execution */
   #pb-printable-report {
     display: block !important;
     position: static !important;
@@ -203,36 +286,71 @@
     margin: 0 auto !important;
     padding: 0 !important;
     background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #0f172a !important;
     box-shadow: none !important;
     border: none !important;
     overflow: visible !important;
   }
 
-  /* Prevent text overlapping and overflow clipping */
-  #pb-printable-report * {
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
+  #pb-printable-report:empty {
+    display: none !important;
   }
 
-  /* Table rules for certified publication sheets */
-  #pb-printable-report table {
+  /* Ensure SVG diagrams retain vector clarity on paper without dark backgrounds */
+  svg {
+    background: transparent !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  svg text {
+    fill: #0f172a !important;
+  }
+
+  /* Table rules for clean A4 report pagination */
+  table {
     width: 100% !important;
     border-collapse: collapse !important;
     page-break-inside: auto !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 9.5pt !important;
   }
 
-  #pb-printable-report tr {
+  tr {
     page-break-inside: avoid !important;
     page-break-after: auto !important;
   }
 
-  #pb-printable-report thead {
+  th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #94a3b8 !important;
+  }
+
+  td {
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  thead {
     display: table-header-group !important;
   }
 
-  #pb-printable-report tfoot {
+  tfoot {
     display: table-footer-group !important;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-force-break {
+    break-before: page !important;
+    page-break-before: always !important;
   }
 
   .print-only {

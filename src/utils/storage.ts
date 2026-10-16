@@ -160,7 +160,7 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
       name: 'Primary Civil Engineering Project',
       projectCode: 'CIV-2026-001',
       siteLocation: 'Main Construction Sector',
-      engineerOfRecord: 'P. Biswas, PE',
+      engineerOfRecord: 'Project Engineer, PE',
       createdAt: now,
       updatedAt: now,
       activeModule: 'boq-estimator',
@@ -411,7 +411,7 @@ export function createDemoWorkspaces(): CivilWorkspace[] {
       name: 'Padma River Viaduct — Pier P14',
       projectCode: 'CIV-2026-P14',
       siteLocation: 'Sector 4 North Abutment',
-      engineerOfRecord: 'P. Biswas, PE',
+      engineerOfRecord: 'Project Engineer, PE',
       createdAt: now,
       updatedAt: now,
       boq: {
@@ -424,14 +424,14 @@ export function createDemoWorkspaces(): CivilWorkspace[] {
 
 export function createDefaultUserProfile(): UserProfile {
   return {
-    fullName: 'Engr. Prokash Biswas, PE',
-    designation: 'Senior Structural Engineer',
-    organization: 'PB CivilLab Consultancy',
+    fullName: '',
+    designation: 'Project Engineer, PE',
+    organization: 'Consulting Firm',
     role: 'structural-engineer',
-    licenseNumber: 'IEB PE-41892',
-    email: 'prokashbiswas8801@gmail.com',
-    phone: '+880 1712-345678',
-    initials: 'PB',
+    licenseNumber: '',
+    email: '',
+    phone: '',
+    initials: '',
     bio: 'Civil & Structural Design Engineer specializing in reinforced concrete, geotechnical foundations, and infrastructure project cost engineering.',
   };
 }
@@ -900,26 +900,42 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
   const validUserProfile: UserProfile = candidate.userProfile
     ? {
         fullName:
-          typeof candidate.userProfile.fullName === 'string' &&
-          candidate.userProfile.fullName.trim().length > 0
+          typeof candidate.userProfile.fullName === 'string'
             ? candidate.userProfile.fullName.trim()
-            : fallback.userProfile?.fullName || 'Engr. Prokash Biswas, PE',
+            : (fallback.userProfile?.fullName || ''),
         designation:
           typeof candidate.userProfile.designation === 'string' &&
           candidate.userProfile.designation.trim().length > 0
             ? candidate.userProfile.designation.trim()
-            : fallback.userProfile?.designation || 'Senior Structural Engineer',
+            : fallback.userProfile?.designation || 'Project Engineer, PE',
         organization:
           typeof candidate.userProfile.organization === 'string' &&
           candidate.userProfile.organization.trim().length > 0
             ? candidate.userProfile.organization.trim()
-            : fallback.userProfile?.organization || 'PB CivilLab Consultancy',
+            : fallback.userProfile?.organization || 'Consulting Firm',
         role: candidate.userProfile.role || fallback.userProfile?.role || 'structural-engineer',
-        licenseNumber: candidate.userProfile.licenseNumber ?? fallback.userProfile?.licenseNumber,
-        email: candidate.userProfile.email ?? fallback.userProfile?.email,
-        phone: candidate.userProfile.phone ?? fallback.userProfile?.phone,
-        initials: candidate.userProfile.initials ?? fallback.userProfile?.initials,
-        bio: candidate.userProfile.bio ?? fallback.userProfile?.bio,
+        licenseNumber:
+          typeof candidate.userProfile.licenseNumber === 'string'
+            ? candidate.userProfile.licenseNumber.trim()
+            : (fallback.userProfile?.licenseNumber || ''),
+        email:
+          typeof candidate.userProfile.email === 'string'
+            ? candidate.userProfile.email.trim()
+            : (fallback.userProfile?.email || ''),
+        phone:
+          typeof candidate.userProfile.phone === 'string'
+            ? candidate.userProfile.phone.trim()
+            : (fallback.userProfile?.phone || ''),
+        initials:
+          typeof candidate.userProfile.initials === 'string'
+            ? candidate.userProfile.initials.trim().toUpperCase()
+            : (fallback.userProfile?.initials || ''),
+        bio:
+          typeof candidate.userProfile.bio === 'string' &&
+          candidate.userProfile.bio.trim().length > 0
+            ? candidate.userProfile.bio.trim()
+            : fallback.userProfile?.bio ||
+              'Civil & Structural Design Engineer specializing in reinforced concrete, geotechnical foundations, and infrastructure project cost engineering.',
       }
     : (fallback.userProfile || createDefaultUserProfile());
 

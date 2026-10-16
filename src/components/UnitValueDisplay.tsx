@@ -94,7 +94,7 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
         <span className="font-semibold truncate">{label}</span>
         {activeUnitInfo.id !== baseUnitSymbol && (
           <span className="text-[10px] font-mono opacity-80" title="Canonical SI base readout">
-            SI: {Number(siValue.toFixed(precision))} {baseUnitSymbol}
+            SI: {Math.abs(siValue) > 0 && Math.abs(siValue) < 0.01 ? parseFloat(siValue.toPrecision(4)) : Number(siValue.toFixed(precision))} {baseUnitSymbol}
           </span>
         )}
       </div>
