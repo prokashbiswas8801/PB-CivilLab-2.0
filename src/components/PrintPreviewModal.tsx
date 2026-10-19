@@ -227,17 +227,23 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
     const previewEl = document.getElementById('pb-report-preview-sheet');
     if (printEl && previewEl) {
       printEl.innerHTML = previewEl.innerHTML;
-      printEl.className = 'print:block bg-white text-slate-900 p-0 m-0';
+      printEl.className = `print:block bg-white text-slate-900 ${marginPaddingClass} font-sans m-0 leading-relaxed`;
+      printEl.style.fontSize = fontScaleStyle.fontSize;
+      document.body.classList.add('is-printing-report');
     }
     const cleanUp = () => {
       if (printEl) {
         printEl.innerHTML = '';
         printEl.className = 'hidden print:block bg-white text-slate-900';
+        printEl.style.fontSize = '';
       }
+      document.body.classList.remove('is-printing-report');
       window.removeEventListener('afterprint', cleanUp);
     };
     window.addEventListener('afterprint', cleanUp);
-    window.print();
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   // Download Standalone Self-Contained Vector HTML Report
@@ -317,7 +323,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
       id="pb-print-dialog"
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150 no-print print:hidden"
     >
       <div className="relative w-full max-w-7xl h-[94vh] flex flex-col rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-2xl overflow-hidden">
         {/* Top Control Bar */}

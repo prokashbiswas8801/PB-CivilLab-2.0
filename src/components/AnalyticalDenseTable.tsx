@@ -24,6 +24,7 @@ export interface AnalyticalDenseTableProps {
   activeWorkspace: CivilWorkspace;
   currentEnvelope: CalculationEnvelope<any>;
   isCompact?: boolean;
+  searchQuery?: string;
   className?: string;
 }
 
@@ -32,10 +33,17 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
   activeWorkspace,
   currentEnvelope,
   isCompact = false,
+  searchQuery = '',
   className = '',
 }) => {
   const result = currentEnvelope.result;
   const status = currentEnvelope.status;
+
+  const matchesSearch = (terms: (string | number | undefined)[]) => {
+    if (!searchQuery || !searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    return terms.some((t) => t !== undefined && String(t).toLowerCase().includes(q));
+  };
 
   const renderStatusBadge = (st: string) => {
     switch (st) {

@@ -48,7 +48,15 @@ import {
   Activity,
   Columns,
   Check,
+  FileText,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import {
+  exportAnalyticalScheduleCsv,
+  getGoverningEquations,
+  getCapacityUtilization,
+} from './utils/analyticalExport';
 import { Logo, LogoMark } from './components/Logo';
 import { Footer } from './components/Footer';
 import { AppSplash } from './components/AppSplash';
@@ -308,6 +316,8 @@ export default function App() {
   const [printPreviewModalOpen, setPrintPreviewModalOpen] = useState(false);
   const [analyticalViewMode, setAnalyticalViewMode] = useState<'graphical' | 'tabular' | 'both'>('graphical');
   const [isTableCompact, setIsTableCompact] = useState(false);
+  const [denseTableSearch, setDenseTableSearch] = useState('');
+  const [showGoverningEquations, setShowGoverningEquations] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
 
   // File Inputs
@@ -548,6 +558,16 @@ export default function App() {
     concreteEnvelope,
     channelEnvelope,
   ]);
+
+  // Live Capacity Utilization / Demand-Capacity Ratio (DCR) Assessment
+  const capacityInfo = useMemo(() => {
+    return getCapacityUtilization(activeModule, activeWorkspace, currentEnvelope);
+  }, [activeModule, activeWorkspace, currentEnvelope]);
+
+  // Governing Code Equations & Formulations Reference
+  const governingEqInfo = useMemo(() => {
+    return getGoverningEquations(activeModule);
+  }, [activeModule]);
 
   const updateActiveWorkspace = (updater: (ws: CivilWorkspace) => CivilWorkspace) => {
     setAppState((prev) => ({
@@ -1113,6 +1133,168 @@ export default function App() {
     setToastBanner('Copied analytical calculation summary to clipboard');
     setTimeout(() => setCopiedSummary(false), 2500);
   };
+
+  // Export Analytical Schedule CSV
+  const handleExportAnalyticalCsv = () => {
+    if (!currentEnvelope.result) {
+      setToastBanner('No active analytical calculation result to export.');
+      return;
+    }
+    exportAnalyticalScheduleCsv(activeModule, activeWorkspace, currentEnvelope, userProfile);
+    setToastBanner(`Exported ${MODULE_META[activeModule].shortLabel} Schedule to CSV`);
+  };
+
+  // Helper to construct and inject printable A4 submittal report into pb-printable-report
+  const renderQuickPrintSheetToEl = (printEl: HTMLElement) => {
+    const previewEl = document.getElementById('pb-report-preview-sheet');
+    if (previewEl) {
+      printEl.innerHTML = previewEl.innerHTML;
+      printEl.className = 'print:block bg-white text-slate-900 p-8 font-sans m-0 leading-relaxed';
+      return;
+    }
+
+    const docId = `DOC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    const nowStr = new Date().toLocaleString();
+    const meta = MODULE_META[activeModule];
+    const eqInfo = getGoverningEquations(activeModule);
+    const capInfo = getCapacityUtilization(activeModule, activeWorkspace, currentEnvelope);
+
+    const tableEl = document.querySelector('.analytical-dense-table-container');
+    const diagramEl = document.querySelector('.analytical-diagram-container');
+
+    printEl.innerHTML = `
+      <div class="space-y-6 font-sans text-slate-900 bg-white p-6 max-w-5xl mx-auto leading-relaxed">
+        <!-- Certified Executive Header -->
+        <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
+          <div>
+            <div class="text-2xl font-black font-sans tracking-tight text-blue-700">PB CivilLab</div>
+            <div class="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-600 mt-0.5">
+              CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS
+            </div>
+            <div class="text-xs font-mono text-slate-500 mt-1">Official Engineering Submittal &amp; Verification Sheet</div>
+          </div>
+          <div class="text-right text-xs font-mono shrink-0">
+            <div class="font-bold text-sm uppercase text-slate-900">${meta.label}</div>
+            <div>Doc Ref: <strong>${docId}</strong></div>
+            <div>Governing Standard: <strong class="text-blue-700">${meta.codeStandard}</strong></div>
+            <div>Timestamp: ${nowStr}</div>
+          </div>
+        </div>
+
+        <!-- Project Identification & Engineer Credentials -->
+        <div class="grid grid-cols-2 gap-4 p-3.5 bg-slate-50 border border-slate-300 rounded print-avoid-break text-xs font-mono">
+          <div>
+            <div class="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Project Identification</div>
+            <div class="font-bold text-sm text-slate-900 mt-0.5">${activeWorkspace.name} [${activeWorkspace.projectCode}]</div>
+            <div class="text-slate-600 mt-0.5">Location: ${activeWorkspace.siteLocation} · Currency: ${activeWorkspace.currency}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Certified Prepared By</div>
+            <div class="font-bold text-sm text-slate-900 mt-0.5">${userProfile.fullName || 'Project Engineer, PE'}</div>
+            <div class="text-slate-600 mt-0.5">${userProfile.designation} · ${userProfile.organization}</div>
+            <div class="text-[11px] text-slate-500">License ID: <strong>${userProfile.licenseNumber || 'PE-00000'}</strong></div>
+          </div>
+        </div>
+
+        <!-- Primary Capacity & Limit State Banner -->
+        <div class="p-3 bg-slate-100 border border-slate-300 rounded flex items-center justify-between text-xs font-mono print-avoid-break">
+          <div>
+            <span class="text-[9px] uppercase font-bold text-slate-500">Compliance &amp; Capacity Check:</span>
+            <span class="ml-2 font-bold ${currentEnvelope.status === 'valid' ? 'text-emerald-700' : currentEnvelope.status === 'warning' ? 'text-amber-700' : 'text-rose-700'}">
+              ● ${currentEnvelope.status === 'valid' ? 'VERIFIED & CONFORMANT' : currentEnvelope.status === 'warning' ? 'CHECK LIMIT STATE ADVISORY' : 'CRITICAL CAPACITY EXCEEDED'}
+            </span>
+          </div>
+          ${capInfo ? `<div><strong>${capInfo.metricLabel}:</strong> <span class="font-bold">${capInfo.formattedValue}</span></div>` : ''}
+        </div>
+
+        <!-- Analytical Calculation Schedule Table -->
+        <div class="space-y-2">
+          <div class="font-bold font-mono text-xs uppercase tracking-wider text-slate-800 border-b border-slate-300 pb-1">
+            Analytical Calculation Schedule &amp; Numerical Convergence (${meta.shortLabel})
+          </div>
+          ${tableEl ? `<div class="a4-table-render">${tableEl.innerHTML}</div>` : ''}
+          ${!tableEl && diagramEl ? `<div class="a4-diagram-render py-2">${diagramEl.innerHTML}</div>` : ''}
+        </div>
+
+        <!-- Governing Code Equations & Formulations -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono space-y-2 print-avoid-break">
+          <div class="font-bold uppercase text-slate-800 tracking-wider border-b border-slate-200 pb-1">
+            Governing Standards &amp; Formulations (${eqInfo.codeStandard})
+          </div>
+          <div class="space-y-1.5 text-slate-700">
+            ${eqInfo.equations.map(eq => `<div><strong>${eq.name}:</strong> <code class="font-mono bg-white px-1 py-0.5 border border-slate-200 rounded text-blue-900">${eq.formula}</code></div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Quality Sign-Off & Official Stamp -->
+        <div class="pt-6 border-t-2 border-slate-800 flex justify-between items-end text-xs font-mono print-avoid-break">
+          <div>
+            <div class="text-[10px] text-slate-500 uppercase font-bold">Engineer of Record Sign-off</div>
+            <div class="font-bold text-slate-900 text-sm mt-0.5">${userProfile.fullName}</div>
+            <div class="text-slate-600">${userProfile.designation} · ${userProfile.organization}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Date: ${new Date().toLocaleDateString()}</div>
+          </div>
+          <div class="text-right">
+            <div class="w-52 border-b-2 border-slate-900 mb-1.5"></div>
+            <div class="text-[10px] uppercase font-bold text-slate-600">Certified Structural Stamp / Signature</div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-3 border-t border-slate-300 text-[10px] font-mono text-slate-500 flex justify-between print-avoid-break">
+          <div>© 2026 PB CivilLab · Developed &amp; Designed by PROKASH BISWAS</div>
+          <div>Ref: ${docId} · All Rights Reserved</div>
+        </div>
+      </div>
+    `;
+    printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
+  };
+
+  // Instant Quick Print A4 Execution
+  const handleQuickPrintA4Report = () => {
+    const printEl = document.getElementById('pb-printable-report');
+    if (!printEl) return;
+    renderQuickPrintSheetToEl(printEl);
+    document.body.classList.add('is-printing-report');
+
+    const cleanUp = () => {
+      if (printEl) {
+        printEl.innerHTML = '';
+        printEl.className = 'hidden print:block bg-white text-slate-900';
+      }
+      document.body.classList.remove('is-printing-report');
+      window.removeEventListener('afterprint', cleanUp);
+    };
+    window.addEventListener('afterprint', cleanUp);
+    setTimeout(() => {
+      window.print();
+    }, 50);
+  };
+
+  // Synchronize pristine vector print state whenever browser print (Ctrl+P) is invoked
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      const printEl = document.getElementById('pb-printable-report');
+      if (printEl && (!printEl.innerHTML || !printEl.innerHTML.trim())) {
+        renderQuickPrintSheetToEl(printEl);
+      }
+    };
+    const handleAfterPrint = () => {
+      const printEl = document.getElementById('pb-printable-report');
+      if (printEl) {
+        printEl.innerHTML = '';
+        printEl.className = 'hidden print:block bg-white text-slate-900';
+      }
+      document.body.classList.remove('is-printing-report');
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [activeModule, activeWorkspace, currentEnvelope, userProfile]);
 
   // Log calculation record
   const handleLogCalculationSnapshot = () => {
@@ -1708,7 +1890,7 @@ export default function App() {
 
       {showSplash && <AppSplash onComplete={() => setShowSplash(false)} />}
 
-      <div className="h-screen h-[100dvh] flex flex-col bg-[var(--md-sys-color-background)] text-[var(--md-sys-color-on-background)] overflow-hidden">
+      <div className="screen-app-container h-screen h-[100dvh] flex flex-col bg-[var(--md-sys-color-background)] text-[var(--md-sys-color-on-background)] overflow-hidden print:hidden">
         {/* Top Bar Contract: 3 Zones */}
         <header className="shrink-0 z-30 flex items-center justify-between gap-4 md:gap-8 px-4 md:px-6 h-16 bg-[var(--md-sys-color-surface)] border-b border-[var(--md-sys-color-outline-variant)]">
           {/* Zone 1: Brand & Project Switcher */}
@@ -2538,7 +2720,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Interactive Controls & View Mode Toggle */}
+                    {/* Interactive Engineering Controls & View Mode Toolbar */}
                     <div className="flex flex-wrap items-center gap-2 no-print">
                       {/* View Switcher Segmented Control */}
                       <div className="flex items-center rounded-lg p-0.5 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
@@ -2583,17 +2765,71 @@ export default function App() {
                         </button>
                       </div>
 
-                      {/* Density Toggle (for dense table mode) */}
+                      {/* Dense Table Filter & Density Controls (when tabular view is active) */}
                       {analyticalViewMode !== 'graphical' && (
-                        <button
-                          type="button"
-                          onClick={() => setIsTableCompact(!isTableCompact)}
-                          className="px-2 py-1 text-[11px] font-mono font-semibold rounded-md border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
-                          title={isTableCompact ? "Switch to Standard Row Spacing" : "Switch to Compact Dense Row Spacing"}
-                        >
-                          {isTableCompact ? 'Normal' : 'Compact'}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setIsTableCompact(!isTableCompact)}
+                            className="px-2 py-1 text-[11px] font-mono font-semibold rounded-md border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+                            title={isTableCompact ? "Switch to Standard Row Spacing" : "Switch to Compact Dense Row Spacing"}
+                          >
+                            {isTableCompact ? 'Normal' : 'Compact'}
+                          </button>
+
+                          <div className="relative flex items-center">
+                            <Search className="w-3 h-3 text-[var(--md-sys-color-primary)] absolute left-2 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={denseTableSearch}
+                              onChange={(e) => setDenseTableSearch(e.target.value)}
+                              placeholder="Filter schedule..."
+                              className="h-7 pl-6 pr-5 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:border-[var(--md-sys-color-primary)] w-28 sm:w-36 transition-all"
+                            />
+                            {denseTableSearch && (
+                              <button
+                                type="button"
+                                onClick={() => setDenseTableSearch('')}
+                                className="absolute right-1 p-0.5 text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
+                                aria-label="Clear filter"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       )}
+
+                      {/* Export CSV Button */}
+                      <button
+                        type="button"
+                        onClick={handleExportAnalyticalCsv}
+                        className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors shadow-2xs"
+                        title="Export Itemized Analytical Calculation Schedule to CSV"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="hidden sm:inline">CSV</span>
+                      </button>
+
+                      {/* Governing Equations Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowGoverningEquations(!showGoverningEquations)}
+                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all ${
+                          showGoverningEquations
+                            ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
+                            : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
+                        }`}
+                        title="Inspect Governing Engineering Equations & Code Derivations"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="hidden md:inline">Equations</span>
+                        {showGoverningEquations ? (
+                          <ChevronUp className="w-3 h-3 opacity-70" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3 opacity-70" />
+                        )}
+                      </button>
 
                       {/* Copy Summary Button */}
                       <button
@@ -2603,25 +2839,150 @@ export default function App() {
                         title="Copy Formatted Calculation Summary"
                       >
                         {copiedSummary ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span className="hidden md:inline">{copiedSummary ? 'Copied' : 'Copy'}</span>
+                        <span className="hidden lg:inline">{copiedSummary ? 'Copied' : 'Copy'}</span>
                       </button>
 
-                      {/* Print A4 Report Button */}
+                      {/* Quick Print A4 Submittal Sheet Button */}
+                      <button
+                        type="button"
+                        onClick={handleQuickPrintA4Report}
+                        className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer shadow-xs transition-colors"
+                        title="Instant 1-Click Print of Verified A4 Submittal Sheet"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                        <span className="hidden sm:inline">Quick Print</span>
+                      </button>
+
+                      {/* Print A4 Report (Full Modal Engine) */}
                       <button
                         type="button"
                         onClick={() => setPrintPreviewModalOpen(true)}
-                        className="px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-opacity"
-                        title="Print / Export Verified A4 Submittal Report"
+                        className="px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-opacity"
+                        title="Open Full Verified A4 Report Generator with QR & Stamps"
                       >
-                        <Printer className="w-3.5 h-3.5" />
+                        <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Print A4 Report</span>
                       </button>
                     </div>
                   </div>
 
+                  {/* LIVE CAPACITY UTILIZATION & DEMAND-CAPACITY RATIO (DCR) GAUGE */}
+                  {capacityInfo && (
+                    <div className="p-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2 mb-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                              capacityInfo.status === 'safe'
+                                ? 'bg-emerald-500'
+                                : capacityInfo.status === 'warning'
+                                ? 'bg-amber-500 animate-pulse'
+                                : 'bg-rose-500 animate-bounce'
+                            }`}
+                          />
+                          <span className="font-bold text-[var(--md-sys-color-on-surface)] font-mono">
+                            {capacityInfo.metricLabel}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase ${
+                              capacityInfo.status === 'safe'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                : capacityInfo.status === 'warning'
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                            }`}
+                          >
+                            {capacityInfo.formattedValue}
+                          </span>
+                        </div>
+                        {capacityInfo.referenceLimit && (
+                          <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                            {capacityInfo.referenceLimit}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Capacity Gauge Progress Track */}
+                      <div className="w-full h-2 rounded-full bg-[var(--md-sys-color-surface-container)] overflow-hidden border border-[var(--md-sys-color-outline-variant)]">
+                        <div
+                          className={`h-full transition-all duration-500 ${
+                            capacityInfo.status === 'safe'
+                              ? 'bg-emerald-500'
+                              : capacityInfo.status === 'warning'
+                              ? 'bg-amber-500'
+                              : 'bg-rose-500'
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(5, capacityInfo.percentage))}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-mono leading-tight">
+                        {capacityInfo.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* COLLAPSIBLE GOVERNING CODE EQUATIONS & FORMULATIONS PANEL */}
+                  {showGoverningEquations && governingEqInfo && (
+                    <div className="p-4 rounded-xl border border-[var(--md-sys-color-primary)]/40 bg-[var(--md-sys-color-surface-container-low)] space-y-3 mb-4 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between border-b border-[var(--md-sys-color-outline-variant)] pb-2">
+                        <div>
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                            {governingEqInfo.category}
+                          </span>
+                          <h4 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                            Governing Standard: {governingEqInfo.codeStandard}
+                          </h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowGoverningEquations(false)}
+                          className="text-xs text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] p-1 cursor-pointer"
+                          aria-label="Close equations reference"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {governingEqInfo.equations.map((eq, i) => (
+                          <div
+                            key={i}
+                            className="p-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-1.5"
+                          >
+                            <div className="text-[11px] font-bold text-[var(--md-sys-color-on-surface)]">
+                              {eq.name}
+                            </div>
+                            <div className="p-2 rounded bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono font-bold text-[var(--md-sys-color-primary)] select-all overflow-x-auto">
+                              {eq.formula}
+                            </div>
+                            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
+                              {eq.description}
+                            </div>
+                            <div className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]/80 pt-1 border-t border-[var(--md-sys-color-outline-variant)]/40 space-y-0.5">
+                              {eq.variables.map((v, vi) => (
+                                <div key={vi}>• {v}</div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {governingEqInfo.assumptions.length > 0 && (
+                        <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] space-y-1">
+                          <span className="font-bold text-[var(--md-sys-color-on-surface)]">Code Design Assumptions:</span>
+                          <ul className="list-disc list-inside space-y-0.5">
+                            {governingEqInfo.assumptions.map((asm, ai) => (
+                              <li key={ai}>{asm}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* 1. GRAPHICAL VIEW */}
                   {(analyticalViewMode === 'graphical' || analyticalViewMode === 'both') && (
-                    <div className="bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] rounded-lg p-2 mb-3">
+                    <div className="bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] rounded-lg p-2 mb-3 analytical-diagram-container">
                       {activeModule === 'boq-estimator' && boqEnvelope.result && (
                         <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={boqEnvelope.result} />
                       )}
@@ -2666,7 +3027,7 @@ export default function App() {
 
                   {/* 2. DENSE TABULAR VIEW (A4 Print-Ready) */}
                   {(analyticalViewMode === 'tabular' || analyticalViewMode === 'both') && (
-                    <div className="mb-3 space-y-2">
+                    <div className="mb-3 space-y-2 analytical-dense-table-container">
                       <div className="flex items-center justify-between text-xs text-[var(--md-sys-color-on-surface-variant)] px-1">
                         <span className="font-bold uppercase tracking-wider text-[10px]">
                           {MODULE_META[activeModule].label} · Calculation Schedule (A4 Print-Ready)
@@ -2680,6 +3041,7 @@ export default function App() {
                         activeWorkspace={activeWorkspace}
                         currentEnvelope={currentEnvelope}
                         isCompact={isTableCompact}
+                        searchQuery={denseTableSearch}
                       />
                     </div>
                   )}
@@ -2952,10 +3314,10 @@ export default function App() {
           }}
           currentEnvelope={currentEnvelope}
         />
-
-        {/* Isolated container for pristine vector print / PDF execution */}
-        <div id="pb-printable-report" className="hidden print:block bg-white text-slate-900"></div>
       </div>
+
+      {/* Isolated root-level container for pristine vector print / PDF execution (never clipped by screen layout) */}
+      <div id="pb-printable-report" className="hidden print:block bg-white text-slate-900 m-0 p-0 font-sans"></div>
     </ErrorBoundary>
   );
 }
