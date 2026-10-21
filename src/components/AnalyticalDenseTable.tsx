@@ -15,6 +15,9 @@ import {
   EarthworkResult,
   BOQResult,
   RateAnalysisResult,
+  ContinuousBeamResult,
+  PileCapacityResult,
+  PipeHydraulicsResult,
   getCurrencySymbol,
 } from '../utils/calculations';
 import { CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
@@ -800,6 +803,297 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
           </table>
         </div>
       )}
+
+      {/* 12. CONTINUOUS BEAM INDETERMINATE ANALYSIS SCHEDULE */}
+      {activeModule === 'continuous-beam' && (() => {
+        const cbRes = result as ContinuousBeamResult;
+        const cbParams = activeWorkspace.continuousBeam;
+
+        return (
+          <div className="space-y-3">
+            {/* Span by Span Mechanical Envelopes */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Span Index</th>
+                    <th className={`${cellPadding} text-right`}>Clear Span (L)</th>
+                    <th className={`${cellPadding} text-right`}>UDL (w)</th>
+                    <th className={`${cellPadding} text-right`}>Point Load (P)</th>
+                    <th className={`${cellPadding} text-right`}>Max Pos. Moment (+M)</th>
+                    <th className={`${cellPadding} text-right`}>Max Shear (V_max)</th>
+                    <th className={`${cellPadding} text-center`}>Limit State Check</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
+                  {cbRes.spans.map((span) => {
+                    const spanParam = cbParams?.spans?.[span.spanIndex];
+                    return (
+                      <tr key={span.spanIndex} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                        <td className={`${cellPadding} font-bold text-[var(--md-sys-color-primary)]`}>
+                          Span {span.spanIndex + 1}
+                        </td>
+                        <td className={`${cellPadding} text-right font-mono`}>{span.lengthM.toFixed(2)} m</td>
+                        <td className={`${cellPadding} text-right font-mono`}>{(spanParam?.udlKnPerM ?? 0).toFixed(1)} kN/m</td>
+                        <td className={`${cellPadding} text-right font-mono`}>{(spanParam?.pointLoadKn ?? 0).toFixed(1)} kN</td>
+                        <td className={`${cellPadding} text-right font-mono font-bold text-emerald-600 dark:text-emerald-400`}>
+                          {span.maxPositiveMomentKnm.toFixed(1)} kN·m
+                        </td>
+                        <td className={`${cellPadding} text-right font-mono font-bold text-sky-600 dark:text-sky-400`}>
+                          {span.maxShearKn.toFixed(1)} kN
+                        </td>
+                        <td className={`${cellPadding} text-center`}>
+                          {renderStatusBadge(status)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Governing Extreme Summary */}
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold border-t-2 border-[var(--md-sys-color-outline)]">
+                    <td className={cellPadding}>Continuous Envelope Maxima</td>
+                    <td className={`${cellPadding} text-right font-mono font-black`}>
+                      {cbRes.totalLengthM.toFixed(2)} m total
+                    </td>
+                    <td className={`${cellPadding} text-right`} colSpan={2}>
+                      Extreme Fiber Stress: <strong className="text-[var(--md-sys-color-primary)]">{cbRes.bendingStressMpa.toFixed(1)} MPa</strong>
+                    </td>
+                    <td className={`${cellPadding} text-right font-black text-rose-600 dark:text-rose-400`}>
+                      +M: {cbRes.maxSaggingMomentKnm.toFixed(1)} | -M: {cbRes.maxHoggingMomentKnm.toFixed(1)} kN·m
+                    </td>
+                    <td className={`${cellPadding} text-right font-black text-sky-600 dark:text-sky-400`}>
+                      {cbRes.maxShearKn.toFixed(1)} kN
+                    </td>
+                    <td className={`${cellPadding} text-center font-black text-emerald-600 dark:text-emerald-400`}>
+                      DCR = {(cbRes.utilizationRatio * 100).toFixed(1)}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Support Reactions & Support Moments Sub-schedule */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Support Station</th>
+                    <th className={`${cellPadding} text-center`}>Support Fixity</th>
+                    <th className={`${cellPadding} text-right`}>Reaction Force (R)</th>
+                    <th className={`${cellPadding} text-right`}>Support Hogging Moment (M_sup)</th>
+                    <th className={`${cellPadding} text-center`}>Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
+                  {cbRes.supportMomentsKnm.map((mom, sIdx) => {
+                    const rxn = cbRes.supportReactionsKn[sIdx] || 0;
+                    const isEnd = sIdx === 0 || sIdx === cbRes.supportMomentsKnm.length - 1;
+                    return (
+                      <tr key={sIdx} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                        <td className={`${cellPadding} font-semibold`}>Support #{sIdx + 1}</td>
+                        <td className={`${cellPadding} text-center font-mono`}>{isEnd ? 'Exterior Pin/Roller' : 'Continuous Intermediate'}</td>
+                        <td className={`${cellPadding} text-right font-mono font-bold text-sky-600 dark:text-sky-400`}>{rxn.toFixed(1)} kN</td>
+                        <td className={`${cellPadding} text-right font-mono font-bold ${mom < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                          {mom.toFixed(1)} kN·m
+                        </td>
+                        <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 13. DEEP PILE FOUNDATION BEARING CAPACITY SCHEDULE */}
+      {activeModule === 'pile-capacity' && (() => {
+        const pileRes = result as PileCapacityResult;
+        return (
+          <div className="space-y-3">
+            {/* Primary Pile Bearing Summary */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Geotechnical Capacity Metric</th>
+                    <th className={`${cellPadding} text-right`}>Design Magnitude</th>
+                    <th className={`${cellPadding} text-center`}>Code Criterion</th>
+                    <th className={`${cellPadding} text-center`}>Safety Factor / DCR</th>
+                    <th className={`${cellPadding} text-center`}>Verification State</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
+                  <tr>
+                    <td className={`${cellPadding} font-semibold`}>Allowable Axial Pile Capacity (Q_all)</td>
+                    <td className={`${cellPadding} text-right font-mono font-bold text-emerald-600 dark:text-emerald-400`}>
+                      {pileRes.allowableCapacityKn.toFixed(1)} kN
+                    </td>
+                    <td className={`${cellPadding} text-center`}>Q_all = Q_ult / FS (BNBC Sec 3.12)</td>
+                    <td className={`${cellPadding} text-center font-mono font-bold text-sky-600 dark:text-sky-400`}>
+                      FS = {pileRes.factorOfSafety.toFixed(2)}
+                    </td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge(pileRes.status)}</td>
+                  </tr>
+                  <tr>
+                    <td className={`${cellPadding} font-semibold`}>Total Ultimate Geotechnical Resistance (Q_ult)</td>
+                    <td className={`${cellPadding} text-right font-mono font-bold text-[var(--md-sys-color-primary)]`}>
+                      {pileRes.ultimateCapacityKn.toFixed(1)} kN
+                    </td>
+                    <td className={`${cellPadding} text-center`}>Q_ult = Q_s (Shaft) + Q_p (Tip)</td>
+                    <td className={`${cellPadding} text-center font-mono`}>100.0%</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                  </tr>
+                  <tr>
+                    <td className={`${cellPadding} font-semibold pl-6`}>↳ Skin Friction / Shaft Resistance (Q_s)</td>
+                    <td className={`${cellPadding} text-right font-mono font-semibold`}>{pileRes.skinFrictionKn.toFixed(1)} kN</td>
+                    <td className={`${cellPadding} text-center`}>Tomlinson α &amp; β Skin Friction</td>
+                    <td className={`${cellPadding} text-center font-mono text-[var(--md-sys-color-on-surface-variant)]`}>
+                      {((pileRes.skinFrictionKn / pileRes.ultimateCapacityKn) * 100).toFixed(1)}% of Q_ult
+                    </td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                  </tr>
+                  <tr>
+                    <td className={`${cellPadding} font-semibold pl-6`}>↳ End Bearing / Tip Resistance (Q_p)</td>
+                    <td className={`${cellPadding} text-right font-mono font-semibold`}>{pileRes.endBearingKn.toFixed(1)} kN</td>
+                    <td className={`${cellPadding} text-center`}>Meyerhof Deep Bearing (q_p = {pileRes.unitEndBearingKpa.toFixed(1)} kPa)</td>
+                    <td className={`${cellPadding} text-center font-mono text-[var(--md-sys-color-on-surface-variant)]`}>
+                      {((pileRes.endBearingKn / pileRes.ultimateCapacityKn) * 100).toFixed(1)}% of Q_ult
+                    </td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                  </tr>
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold border-t border-[var(--md-sys-color-outline)]">
+                    <td className={cellPadding}>Applied Axial Column Load (P_applied)</td>
+                    <td className={`${cellPadding} text-right font-mono font-black text-rose-600 dark:text-rose-400`}>
+                      {pileRes.appliedLoadKn.toFixed(1)} kN
+                    </td>
+                    <td className={`${cellPadding} text-center`}>Settlement: {pileRes.elasticSettlementMm.toFixed(2)} mm (Allowable &le; 25mm)</td>
+                    <td className={`${cellPadding} text-center font-black text-[var(--md-sys-color-primary)]`}>
+                      DCR = {(pileRes.utilizationRatio * 100).toFixed(1)}%
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      {renderStatusBadge(pileRes.utilizationRatio <= 1.0 ? 'nominal' : 'critical')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Layer-by-Layer Stratum Friction Schedule */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Soil Strata Profile</th>
+                    <th className={`${cellPadding} text-center`}>Depth Interval</th>
+                    <th className={`${cellPadding} text-right`}>Unit Friction (f_s)</th>
+                    <th className={`${cellPadding} text-right`}>Shaft Resistance (Q_s)</th>
+                    <th className={`${cellPadding} text-center`}>Friction Share</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
+                  {pileRes.layerContributions.map((contrib, idx) => (
+                    <tr key={idx} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                      <td className={`${cellPadding} font-semibold`}>{contrib.layerName}</td>
+                      <td className={`${cellPadding} text-center font-mono`}>{contrib.depthFromM} m → {contrib.depthToM} m</td>
+                      <td className={`${cellPadding} text-right font-mono`}>{contrib.unitFrictionKpa.toFixed(1)} kPa</td>
+                      <td className={`${cellPadding} text-right font-mono font-bold text-sky-600 dark:text-sky-400`}>
+                        {contrib.frictionKn.toFixed(1)} kN
+                      </td>
+                      <td className={`${cellPadding} text-center font-mono text-[var(--md-sys-color-on-surface-variant)]`}>
+                        {pileRes.skinFrictionKn > 0 ? ((contrib.frictionKn / pileRes.skinFrictionKn) * 100).toFixed(1) : 0}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 14. PIPE HYDRAULICS (HAZEN-WILLIAMS) PRESSURE & SEWER FLOW SCHEDULE */}
+      {activeModule === 'pipe-hydraulics' && (() => {
+        const pipeRes = result as PipeHydraulicsResult;
+        return (
+          <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                  <th className={cellPadding}>Hydraulic Flow Parameter</th>
+                  <th className={`${cellPadding} text-right`}>Calculated Magnitude</th>
+                  <th className={`${cellPadding} text-center`}>Engineering Unit</th>
+                  <th className={`${cellPadding} text-center`}>Governing Formulation</th>
+                  <th className={`${cellPadding} text-center`}>Compliance State</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
+                <tr>
+                  <td className={`${cellPadding} font-semibold`}>Discharge Capacity (Q)</td>
+                  <td className={`${cellPadding} text-right font-mono font-bold text-[var(--md-sys-color-primary)]`}>
+                    {pipeRes.flowRateLps.toFixed(2)}
+                  </td>
+                  <td className={`${cellPadding} text-center`}>L/s ({pipeRes.flowRateM3ps.toFixed(4)} m³/s)</td>
+                  <td className={`${cellPadding} text-center`}>Mass Conservation Q = V·A</td>
+                  <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                </tr>
+                <tr>
+                  <td className={`${cellPadding} font-semibold`}>Mean Flow Velocity (V)</td>
+                  <td className={`${cellPadding} text-right font-mono font-bold text-sky-600 dark:text-sky-400`}>
+                    {pipeRes.velocityMps.toFixed(2)}
+                  </td>
+                  <td className={`${cellPadding} text-center`}>m/s</td>
+                  <td className={`${cellPadding} text-center`}>Self-Cleansing: {pipeRes.selfCleansingStatus.toUpperCase()} (0.6 - 3.0 m/s)</td>
+                  <td className={`${cellPadding} text-center`}>{renderStatusBadge(pipeRes.selfCleansingStatus === 'pass' ? 'nominal' : 'warning')}</td>
+                </tr>
+                <tr>
+                  <td className={`${cellPadding} font-semibold`}>Frictional Head Loss (h_f)</td>
+                  <td className={`${cellPadding} text-right font-mono font-bold text-amber-600 dark:text-amber-400`}>
+                    {pipeRes.frictionHeadLossM.toFixed(2)}
+                  </td>
+                  <td className={`${cellPadding} text-center`}>meters of fluid</td>
+                  <td className={`${cellPadding} text-center`}>Hazen-Williams: 10.67·L·Q^1.852 / (C^1.852·D^4.87)</td>
+                  <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                </tr>
+                <tr>
+                  <td className={`${cellPadding} font-semibold`}>Minor Head Loss (h_m)</td>
+                  <td className={`${cellPadding} text-right font-mono font-semibold`}>{pipeRes.minorHeadLossM.toFixed(2)}</td>
+                  <td className={`${cellPadding} text-center`}>meters of fluid</td>
+                  <td className={`${cellPadding} text-center`}>h_m = K·(V² / 2g)</td>
+                  <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                </tr>
+                <tr>
+                  <td className={`${cellPadding} font-semibold`}>Total Dynamic Head Loss (h_L)</td>
+                  <td className={`${cellPadding} text-right font-mono font-bold text-rose-600 dark:text-rose-400`}>
+                    {pipeRes.totalHeadLossM.toFixed(2)}
+                  </td>
+                  <td className={`${cellPadding} text-center`}>meters of water</td>
+                  <td className={`${cellPadding} text-center`}>h_L = h_f + h_m (Friction Slope: {(pipeRes.frictionSlopeMPerM * 100).toFixed(3)}%)</td>
+                  <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                </tr>
+                <tr>
+                  <td className={`${cellPadding} font-semibold`}>Reynolds Number (Re)</td>
+                  <td className={`${cellPadding} text-right font-mono font-bold`}>{pipeRes.reynoldsNumber.toLocaleString()}</td>
+                  <td className={`${cellPadding} text-center`}>Dimensionless</td>
+                  <td className={`${cellPadding} text-center`}>Flow Regime: {pipeRes.flowRegime.toUpperCase()} (Re &gt; 4000)</td>
+                  <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                </tr>
+                <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold border-t border-[var(--md-sys-color-outline)]">
+                  <td className={cellPadding}>Outlet Residual Dynamic Pressure</td>
+                  <td className={`${cellPadding} text-right font-mono font-black text-emerald-600 dark:text-emerald-400`}>
+                    {pipeRes.outletPressureKpa.toFixed(1)}
+                  </td>
+                  <td className={`${cellPadding} text-center`}>kPa ({(pipeRes.outletPressureKpa * 0.145038).toFixed(1)} psi)</td>
+                  <td className={`${cellPadding} text-center`}>Energy Grade Line (EGL): {pipeRes.outletTotalHeadM.toFixed(2)} m</td>
+                  <td className={`${cellPadding} text-center`}>
+                    {renderStatusBadge(pipeRes.outletPressureKpa >= 100 ? 'nominal' : 'warning')}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
     </div>
   );
 };

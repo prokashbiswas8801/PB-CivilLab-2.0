@@ -9,4 +9,7 @@ export * from './BeamAnalysisModule';
 export * from './BearingCapacityModule';
 export * from './ConcreteMixModule';
 export * from './OpenChannelModule';
+export * from './ContinuousBeamModule';
+export * from './PileCapacityModule';
+export * from './PipeHydraulicsModule';
 export * from './CalculationHistoryLedger';

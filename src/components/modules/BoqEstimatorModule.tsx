@@ -63,6 +63,7 @@ export interface BoqEstimatorInputsProps {
   onClearAllBOQItems: () => void;
   onLoadSampleBOQItems: () => void;
   onExportBOQCSV: () => void;
+  onSyncFromModules?: () => void;
 }
 
 export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
@@ -101,6 +102,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   onClearAllBOQItems,
   onLoadSampleBOQItems,
   onExportBOQCSV,
+  onSyncFromModules,
 }) => {
   return (
     <div className="space-y-4">
@@ -396,6 +398,18 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             <Calculator className="w-3.5 h-3.5" />
             <span>Apply Rate Analysis to BOQ</span>
           </button>
+
+          {onSyncFromModules && (
+            <button
+              type="button"
+              onClick={onSyncFromModules}
+              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 hover:underline cursor-pointer px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10"
+              title="One-click auto-sync Rebar BBS tonnage and Concrete Mix batch volumes into this BOQ"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Auto-Sync BBS &amp; Mix</span>
+            </button>
+          )}
 
           {activeWorkspace.boq.items.length > 0 ? (
             <button

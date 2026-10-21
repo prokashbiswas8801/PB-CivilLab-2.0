@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogoMark } from './Logo';
+import { BrandLogoIcon } from './Logo';
 
 export interface AppSplashProps {
   onComplete?: () => void;
@@ -36,11 +36,11 @@ export const AppSplash: React.FC<AppSplashProps> = ({ onComplete, minDurationMs 
       }`}
     >
       <div className="flex flex-col items-center max-w-sm px-6 text-center space-y-6 animate-in fade-in zoom-in-95 duration-500">
-        {/* Animated Architectural Logo Mark */}
+        {/* Animated Architectural Brand Logo */}
         <div className="relative flex items-center justify-center p-4">
-          <div className="absolute inset-0 rounded-full bg-[var(--md-sys-color-primary)]/10 blur-xl animate-pulse" />
-          <div className="relative text-[var(--md-sys-color-primary)]">
-            <LogoMark size={68} animated={true} />
+          <div className="absolute inset-0 rounded-full bg-[var(--md-sys-color-primary)]/20 blur-2xl animate-pulse" />
+          <div className="relative">
+            <BrandLogoIcon size={80} animated={true} className="shadow-lg border-2 border-white/20" />
           </div>
         </div>
 

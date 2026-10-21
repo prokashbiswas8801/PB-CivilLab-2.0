@@ -51,11 +51,13 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  LayoutDashboard,
 } from 'lucide-react';
 import {
   exportAnalyticalScheduleCsv,
   getGoverningEquations,
   getCapacityUtilization,
+  getAllCapacityUtilizations,
 } from './utils/analyticalExport';
 import { Logo, LogoMark } from './components/Logo';
 import { Footer } from './components/Footer';
@@ -114,10 +116,16 @@ import {
   computeEarthwork,
   computeBOQEstimator,
   computeRateAnalysis,
+  computeContinuousBeam,
+  computePileCapacity,
+  computePipeHydraulics,
   getCurrencySymbol,
   BeamAnalysisResult,
   BearingAnalysisResult,
   ChannelHydraulicsResult,
+  ContinuousBeamResult,
+  PileCapacityResult,
+  PipeHydraulicsResult,
 } from './utils/calculations';
 import {
   convertUnitValue,
@@ -137,6 +145,9 @@ import {
   UnitConverterDiagramSvg,
   BOQCostBreakdownDiagramSvg,
   RateAnalysisBreakdownDiagramSvg,
+  ContinuousBeamDiagramSvg,
+  PileCapacityDiagramSvg,
+  PipeHydraulicsDiagramSvg,
 } from './components/EngineeringDiagrams';
 import { CommandPalette } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -147,6 +158,11 @@ import { ProfilePreferencesModal } from './components/ProfilePreferencesModal';
 import { PresetQuickBar } from './components/PresetQuickBar';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { AnalyticalDenseTable } from './components/AnalyticalDenseTable';
+import { DashboardView } from './components/DashboardView';
+import { DcrCapacityGauge, DcrGaugeSuite } from './components/DcrCapacityGauge';
+import { exportCertifiedEngineeringPdf } from './utils/pdfExport';
+import { syncAllModulesToBoq } from './utils/boqAutoSync';
+import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
 import {
   WorkspaceManagerModal,
   EditWorkspaceModal,
@@ -177,6 +193,12 @@ import {
   ConcreteMixMetrics,
   OpenChannelInputs,
   OpenChannelMetrics,
+  ContinuousBeamInputs,
+  ContinuousBeamMetrics,
+  PileCapacityInputs,
+  PileCapacityMetrics,
+  PipeHydraulicsInputs,
+  PipeHydraulicsMetrics,
   CalculationHistoryLedger,
 } from './components/modules';
 import { SYSTEM_PRESET_UNITS } from './utils/unitEngine';
@@ -251,6 +273,24 @@ const MODULE_META: Record<
     codeStandard: 'Manning / Froude',
     icon: Waves,
   },
+  'continuous-beam': {
+    label: 'Continuous Beam Analysis',
+    shortLabel: 'Continuous Beam',
+    codeStandard: 'Three-Moment / BMD & SFD',
+    icon: SlidersHorizontal,
+  },
+  'pile-capacity': {
+    label: 'Deep Pile Foundation Bearing',
+    shortLabel: 'Pile Capacity',
+    codeStandard: 'BNBC-2020 / Tomlinson α & β',
+    icon: HardHat,
+  },
+  'pipe-hydraulics': {
+    label: 'Pipe Pressure & Storm Flow',
+    shortLabel: 'Pipe Hydraulics',
+    codeStandard: 'Hazen-Williams / Reynolds',
+    icon: Waves,
+  },
 };
 
 function RuntimeFaultProbe({ shouldThrow }: { shouldThrow: boolean }) {
@@ -319,6 +359,8 @@ export default function App() {
   const [denseTableSearch, setDenseTableSearch] = useState('');
   const [showGoverningEquations, setShowGoverningEquations] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
+  const [isDashboardView, setIsDashboardView] = useState(true);
+  const [activeReportQr, setActiveReportQr] = useState<GeneratedReportQrResult | null>(null);
 
   // File Inputs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -523,6 +565,63 @@ export default function App() {
     [activeWorkspace.channel]
   );
 
+  // Fallbacks for newly integrated modules if undefined in legacy workspace
+  const defaultContinuousBeam = useMemo(() => ({
+    spanCount: 3 as const,
+    spans: [
+      { id: 's1', spanIndex: 0, lengthM: 6.0, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 25.0, pointLoadKn: 40.0, pointLoadPositionM: 3.0 },
+      { id: 's2', spanIndex: 1, lengthM: 7.5, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 30.0, pointLoadKn: 60.0, pointLoadPositionM: 3.75 },
+      { id: 's3', spanIndex: 2, lengthM: 5.5, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 20.0, pointLoadKn: 30.0, pointLoadPositionM: 2.75 },
+    ],
+    leftSupport: 'pin' as const,
+    rightSupport: 'pin' as const,
+    allowableStressMpa: 250,
+    sectionDepthMm: 600,
+  }), []);
+
+  const defaultPile = useMemo(() => ({
+    pileType: 'bored-cast-in-situ' as const,
+    diameterM: 0.6,
+    lengthM: 22.0,
+    groundwaterDepthM: 3.0,
+    appliedLoadKn: 1650,
+    factorOfSafety: 2.5,
+    layers: [
+      { id: 'l1', name: 'Soft Silty Clay (Overburden)', thicknessM: 6.0, soilType: 'clay' as const, cohesionKpa: 28, frictionAngleDeg: 0, unitWeightKnPerM3: 17.5 },
+      { id: 'l2', name: 'Medium Dense Silty Sand', thicknessM: 8.0, soilType: 'sand' as const, cohesionKpa: 0, frictionAngleDeg: 30, unitWeightKnPerM3: 18.5 },
+      { id: 'l3', name: 'Dense Bearing Sand & Gravel', thicknessM: 10.0, soilType: 'sand' as const, cohesionKpa: 0, frictionAngleDeg: 36, unitWeightKnPerM3: 20.0 },
+    ],
+    tipBearingCohesionKpa: 0,
+    tipBearingFrictionDeg: 36,
+    tipBearingUnitWeightKnPerM3: 20.0,
+  }), []);
+
+  const defaultPipe = useMemo(() => ({
+    pipeMaterial: 'pvc-hdpe' as const,
+    hazenWilliamsC: 150,
+    internalDiameterMm: 250,
+    lengthM: 180,
+    flowRateLps: 45,
+    inletElevationM: 25.0,
+    outletElevationM: 18.0,
+    inletPressureKpa: 300,
+    minorLossCoefficientK: 2.0,
+    waterTempC: 20,
+  }), []);
+
+  const continuousBeamEnvelope = useMemo(
+    () => computeContinuousBeam(activeWorkspace.continuousBeam || defaultContinuousBeam),
+    [activeWorkspace.continuousBeam, defaultContinuousBeam]
+  );
+  const pileEnvelope = useMemo(
+    () => computePileCapacity(activeWorkspace.pile || defaultPile),
+    [activeWorkspace.pile, defaultPile]
+  );
+  const pipeEnvelope = useMemo(
+    () => computePipeHydraulics(activeWorkspace.pipe || defaultPipe),
+    [activeWorkspace.pipe, defaultPipe]
+  );
+
   // Active Envelope
   const currentEnvelope = useMemo(() => {
     switch (activeModule) {
@@ -542,6 +641,9 @@ export default function App() {
       case 'bearing-capacity': return bearingEnvelope;
       case 'concrete-mix': return concreteEnvelope;
       case 'open-channel': return channelEnvelope;
+      case 'continuous-beam': return continuousBeamEnvelope;
+      case 'pile-capacity': return pileEnvelope;
+      case 'pipe-hydraulics': return pipeEnvelope;
       default: return boqEnvelope;
     }
   }, [
@@ -557,11 +659,19 @@ export default function App() {
     bearingEnvelope,
     concreteEnvelope,
     channelEnvelope,
+    continuousBeamEnvelope,
+    pileEnvelope,
+    pipeEnvelope,
   ]);
 
   // Live Capacity Utilization / Demand-Capacity Ratio (DCR) Assessment
   const capacityInfo = useMemo(() => {
     return getCapacityUtilization(activeModule, activeWorkspace, currentEnvelope);
+  }, [activeModule, activeWorkspace, currentEnvelope]);
+
+  // All relevant Demand-Capacity Ratio (DCR) limit-state gauges for the active module
+  const capacityGauges = useMemo(() => {
+    return getAllCapacityUtilizations(activeModule, activeWorkspace, currentEnvelope);
   }, [activeModule, activeWorkspace, currentEnvelope]);
 
   // Governing Code Equations & Formulations Reference
@@ -639,7 +749,48 @@ export default function App() {
 
   const handleSetModule = (moduleId: EngineeringModuleId) => {
     updateActiveWorkspace((ws) => ({ ...ws, activeModule: moduleId }));
+    setIsDashboardView(false);
     setMobileDrawerOpen(false);
+  };
+
+  const handleOpenDashboard = () => {
+    setIsDashboardView(true);
+    setMobileDrawerOpen(false);
+    const mainEl = document.getElementById('top');
+    if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleRestoreCalculation = (record: CalculationRecord) => {
+    if (record.inputsSnapshot && Object.keys(record.inputsSnapshot).length > 0) {
+      updateActiveWorkspace((ws) => {
+        const modKey =
+          record.moduleId === 'beam-analysis' ? 'beam' :
+          record.moduleId === 'bearing-capacity' ? 'bearing' :
+          record.moduleId === 'concrete-mix' ? 'concrete' :
+          record.moduleId === 'open-channel' ? 'channel' :
+          record.moduleId === 'rebar-bbs' ? 'rebarBbs' :
+          record.moduleId === 'boq-estimator' ? 'boq' :
+          record.moduleId === 'rate-analysis' ? 'rateAnalysis' :
+          record.moduleId === 'masonry-finishes' ? 'masonry' :
+          record.moduleId === 'earthwork-alignment' ? 'earthwork' :
+          record.moduleId === 'concrete-materials' ? 'concreteMaterials' :
+          record.moduleId === 'continuous-beam' ? 'continuousBeam' :
+          record.moduleId === 'pile-capacity' ? 'pile' :
+          record.moduleId === 'pipe-hydraulics' ? 'pipe' : 'boq';
+        return {
+          ...ws,
+          activeModule: record.moduleId,
+          [modKey]: {
+            ...(ws as any)[modKey],
+            ...record.inputsSnapshot,
+          },
+        };
+      });
+    } else {
+      updateActiveWorkspace((ws) => ({ ...ws, activeModule: record.moduleId }));
+    }
+    setIsDashboardView(false);
+    setToastBanner(`Restored ${record.title}`);
   };
 
   const handleThemeChange = (pref: ThemePreference) => {
@@ -648,6 +799,14 @@ export default function App() {
 
   const handleToggleSidebar = () => {
     setAppState((prev) => ({ ...prev, sidebarCollapsed: !prev.sidebarCollapsed }));
+  };
+
+  const handleSelectWorkspace = (id: string) => {
+    setAppState((prev) => ({ ...prev, activeWorkspaceId: id }));
+    const target = appState.workspaces.find((w) => w.id === id);
+    if (target) {
+      setToastBanner(`Switched active workspace to "${target.name}"`);
+    }
   };
 
   const handleAddRecentQuery = (query: string) => {
@@ -1144,8 +1303,8 @@ export default function App() {
     setToastBanner(`Exported ${MODULE_META[activeModule].shortLabel} Schedule to CSV`);
   };
 
-  // Helper to construct and inject printable A4 submittal report into pb-printable-report
-  const renderQuickPrintSheetToEl = (printEl: HTMLElement) => {
+  // Helper to construct and inject printable A4 submittal report with verified QR code into pb-printable-report
+  const renderQuickPrintSheetToEl = async (printEl: HTMLElement) => {
     const previewEl = document.getElementById('pb-report-preview-sheet');
     if (previewEl) {
       printEl.innerHTML = previewEl.innerHTML;
@@ -1153,18 +1312,32 @@ export default function App() {
       return;
     }
 
-    const docId = `DOC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-    const nowStr = new Date().toLocaleString();
     const meta = MODULE_META[activeModule];
     const eqInfo = getGoverningEquations(activeModule);
     const capInfo = getCapacityUtilization(activeModule, activeWorkspace, currentEnvelope);
+    const nowStr = new Date().toLocaleString();
+
+    // Generate Scannable QR Code containing document reference & project metadata
+    const qrResult = activeReportQr || await generateReportQrCode({
+      projectCode: activeWorkspace.projectCode,
+      projectName: activeWorkspace.name,
+      moduleId: activeModule,
+      moduleName: meta.label,
+      codeStandard: meta.codeStandard,
+      siteLocation: activeWorkspace.siteLocation,
+      engineerOfRecord: userProfile.fullName || activeWorkspace.engineerOfRecord,
+      organization: userProfile.organization,
+      licenseNumber: userProfile.licenseNumber,
+      status: currentEnvelope.status,
+    });
+    const docId = qrResult.documentId;
 
     const tableEl = document.querySelector('.analytical-dense-table-container');
     const diagramEl = document.querySelector('.analytical-diagram-container');
 
     printEl.innerHTML = `
       <div class="space-y-6 font-sans text-slate-900 bg-white p-6 max-w-5xl mx-auto leading-relaxed">
-        <!-- Certified Executive Header -->
+        <!-- Certified Executive Header with Dynamic Verification QR Code -->
         <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
           <div>
             <div class="text-2xl font-black font-sans tracking-tight text-blue-700">PB CivilLab</div>
@@ -1173,11 +1346,20 @@ export default function App() {
             </div>
             <div class="text-xs font-mono text-slate-500 mt-1">Official Engineering Submittal &amp; Verification Sheet</div>
           </div>
-          <div class="text-right text-xs font-mono shrink-0">
-            <div class="font-bold text-sm uppercase text-slate-900">${meta.label}</div>
-            <div>Doc Ref: <strong>${docId}</strong></div>
-            <div>Governing Standard: <strong class="text-blue-700">${meta.codeStandard}</strong></div>
-            <div>Timestamp: ${nowStr}</div>
+          <div class="flex items-center gap-3.5 shrink-0">
+            <div class="text-right text-xs font-mono space-y-0.5">
+              <div class="font-bold text-sm uppercase text-slate-900">${meta.label}</div>
+              <div>Doc Ref: <strong>${docId}</strong></div>
+              <div>Governing Standard: <strong class="text-blue-700">${meta.codeStandard}</strong></div>
+              <div>Timestamp: ${nowStr}</div>
+              <div class="text-[9.5px] text-slate-500 font-semibold mt-0.5">Hash: <code>${qrResult.verificationHash}</code></div>
+            </div>
+            <!-- Injected Dynamic Scannable Verification QR Code -->
+            <div class="flex flex-col items-center border-2 border-slate-900 rounded-lg p-1 bg-white shadow-2xs">
+              <img src="${qrResult.dataUrl}" alt="Document Verification QR Code [${docId}]" class="w-20 h-20" />
+              <span class="text-[7.5px] font-mono font-bold text-slate-700 mt-0.5 tracking-tight">SCAN TO VERIFY</span>
+              <span class="text-[6.5px] font-mono text-slate-500">${docId}</span>
+            </div>
           </div>
         </div>
 
@@ -1240,21 +1422,28 @@ export default function App() {
           </div>
         </div>
 
-        <!-- Footer -->
-        <div class="pt-3 border-t border-slate-300 text-[10px] font-mono text-slate-500 flex justify-between print-avoid-break">
+        <!-- Footer with Verification Ledger -->
+        <div class="pt-3 border-t border-slate-300 text-[10px] font-mono text-slate-500 flex justify-between items-center print-avoid-break">
           <div>© 2026 PB CivilLab · Developed &amp; Designed by PROKASH BISWAS</div>
-          <div>Ref: ${docId} · All Rights Reserved</div>
+          <div class="flex items-center gap-2">
+            <span>Doc Ref: <strong>${docId}</strong></span>
+            <span>·</span>
+            <span class="text-blue-700 font-bold">${qrResult.verificationHash}</span>
+            <span>·</span>
+            <span>Digitally Verified</span>
+          </div>
         </div>
       </div>
     `;
     printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
   };
 
-  // Instant Quick Print A4 Execution
-  const handleQuickPrintA4Report = () => {
+  // Instant Quick Print A4 Execution with Injected Verification QR Code
+  const handleQuickPrintA4Report = async () => {
     const printEl = document.getElementById('pb-printable-report');
     if (!printEl) return;
-    renderQuickPrintSheetToEl(printEl);
+    setToastBanner('Injecting verification QR code into certified A4 report...');
+    await renderQuickPrintSheetToEl(printEl);
     document.body.classList.add('is-printing-report');
 
     const cleanUp = () => {
@@ -1271,12 +1460,68 @@ export default function App() {
     }, 50);
   };
 
+  // Direct Client-Side PDF Generation & Download (jsPDF) - No Print Dialog Required
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const handleDirectDownloadPdf = async () => {
+    if (!currentEnvelope || !currentEnvelope.result) {
+      setToastBanner('Cannot export PDF: No calculation result is available for this module.');
+      return;
+    }
+    try {
+      setIsExportingPdf(true);
+      setToastBanner('Generating certified A4 engineering PDF...');
+      await exportCertifiedEngineeringPdf({
+        workspace: activeWorkspace,
+        activeModule,
+        envelope: currentEnvelope,
+        userProfile,
+      });
+      setToastBanner(`Certified A4 PDF report downloaded successfully for ${MODULE_META[activeModule].shortLabel}.`);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      setToastBanner(`Failed to export PDF: ${errMsg}`);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  // Cross-Module Auto-Sync: Rebar BBS & Concrete Mix -> BOQ Takeoff Schedule
+  const handleSyncAllModulesToBoq = () => {
+    const res = syncAllModulesToBoq(activeWorkspace, bbsEnvelope, concreteEnvelope);
+    if (res.syncedItemsCount > 0) {
+      updateActiveWorkspace(() => res.updatedWorkspace);
+      setToastBanner(res.message);
+    } else {
+      setToastBanner(res.message);
+    }
+  };
+
   // Synchronize pristine vector print state whenever browser print (Ctrl+P) is invoked
   useEffect(() => {
-    const handleBeforePrint = () => {
+    let isCancelled = false;
+    generateReportQrCode({
+      projectCode: activeWorkspace.projectCode,
+      projectName: activeWorkspace.name,
+      moduleId: activeModule,
+      moduleName: MODULE_META[activeModule].label,
+      codeStandard: MODULE_META[activeModule].codeStandard,
+      siteLocation: activeWorkspace.siteLocation,
+      engineerOfRecord: userProfile.fullName || activeWorkspace.engineerOfRecord,
+      organization: userProfile.organization,
+      licenseNumber: userProfile.licenseNumber,
+      status: currentEnvelope.status,
+    }).then((res) => {
+      if (!isCancelled) {
+        setActiveReportQr(res);
+      }
+    }).catch((err) => {
+      console.warn('Failed to pre-generate QR code for report:', err);
+    });
+
+    const handleBeforePrint = async () => {
       const printEl = document.getElementById('pb-printable-report');
       if (printEl && (!printEl.innerHTML || !printEl.innerHTML.trim())) {
-        renderQuickPrintSheetToEl(printEl);
+        await renderQuickPrintSheetToEl(printEl);
       }
     };
     const handleAfterPrint = () => {
@@ -1291,6 +1536,7 @@ export default function App() {
     window.addEventListener('beforeprint', handleBeforePrint);
     window.addEventListener('afterprint', handleAfterPrint);
     return () => {
+      isCancelled = true;
       window.removeEventListener('beforeprint', handleBeforePrint);
       window.removeEventListener('afterprint', handleAfterPrint);
     };
@@ -1484,6 +1730,57 @@ export default function App() {
           { label: 'Froude Fr', value: channelEnvelope.result.froudeNumber.toFixed(2), unit: 'ratio' },
         ],
         inputsSnapshot: { ...activeWorkspace.channel },
+      };
+    } else if (activeModule === 'continuous-beam' && continuousBeamEnvelope.result) {
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'continuous-beam',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Continuous Beam (${continuousBeamEnvelope.result.spanCount} Spans)`,
+        notes: `Max +M=${continuousBeamEnvelope.result.maxSaggingMomentKnm.toFixed(1)} kN·m, Max V=${continuousBeamEnvelope.result.maxShearKn.toFixed(1)} kN, σ=${continuousBeamEnvelope.result.bendingStressMpa.toFixed(1)} MPa`,
+        status: continuousBeamEnvelope.result.status,
+        keyMetrics: [
+          { label: 'Max Moment', value: continuousBeamEnvelope.result.maxSaggingMomentKnm.toFixed(1), unit: 'kN·m' },
+          { label: 'Max Shear', value: continuousBeamEnvelope.result.maxShearKn.toFixed(1), unit: 'kN' },
+          { label: 'Stress σ', value: continuousBeamEnvelope.result.bendingStressMpa.toFixed(1), unit: 'MPa' },
+          { label: 'DCR', value: `${(continuousBeamEnvelope.result.utilizationRatio * 100).toFixed(1)}%`, unit: 'ratio' },
+        ],
+        inputsSnapshot: { ...(activeWorkspace.continuousBeam || defaultContinuousBeam) },
+      };
+    } else if (activeModule === 'pile-capacity' && pileEnvelope.result) {
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'pile-capacity',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Pile Capacity (D=${(activeWorkspace.pile?.diameterM || 0.6)}m, L=${(activeWorkspace.pile?.lengthM || 22)}m)`,
+        notes: `Q_ult=${pileEnvelope.result.ultimateCapacityKn.toFixed(1)} kN, Q_all=${pileEnvelope.result.allowableCapacityKn.toFixed(1)} kN (FS=${(activeWorkspace.pile?.factorOfSafety || 2.5)})`,
+        status: pileEnvelope.result.status,
+        keyMetrics: [
+          { label: 'Q_allowable', value: pileEnvelope.result.allowableCapacityKn.toFixed(1), unit: 'kN' },
+          { label: 'Q_ultimate', value: pileEnvelope.result.ultimateCapacityKn.toFixed(1), unit: 'kN' },
+          { label: 'Skin Friction Qs', value: pileEnvelope.result.skinFrictionKn.toFixed(1), unit: 'kN' },
+          { label: 'End Bearing Qp', value: pileEnvelope.result.endBearingKn.toFixed(1), unit: 'kN' },
+        ],
+        inputsSnapshot: { ...(activeWorkspace.pile || defaultPile) },
+      };
+    } else if (activeModule === 'pipe-hydraulics' && pipeEnvelope.result) {
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'pipe-hydraulics',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Pipe Hydraulics (Q=${pipeEnvelope.result.flowRateLps} L/s)`,
+        notes: `Hazen-Williams C=${(activeWorkspace.pipe?.hazenWilliamsC || 150)}, Head Loss=${pipeEnvelope.result.totalHeadLossM.toFixed(2)} m, V=${pipeEnvelope.result.velocityMps.toFixed(2)} m/s`,
+        status: pipeEnvelope.result.status,
+        keyMetrics: [
+          { label: 'Discharge Q', value: pipeEnvelope.result.flowRateLps.toFixed(1), unit: 'L/s' },
+          { label: 'Velocity V', value: pipeEnvelope.result.velocityMps.toFixed(2), unit: 'm/s' },
+          { label: 'Total Loss h_L', value: pipeEnvelope.result.totalHeadLossM.toFixed(2), unit: 'm' },
+          { label: 'Reynolds Re', value: pipeEnvelope.result.reynoldsNumber.toLocaleString(), unit: '-' },
+        ],
+        inputsSnapshot: { ...(activeWorkspace.pipe || defaultPipe) },
       };
     } else {
       return;
@@ -1908,11 +2205,7 @@ export default function App() {
               size="md"
               asLink={true}
               href="/"
-              onClick={() => {
-                handleSetModule('boq-estimator');
-                const mainEl = document.getElementById('top');
-                if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              onClick={() => handleOpenDashboard()}
               className="shrink-0"
             />
 
@@ -1945,10 +2238,23 @@ export default function App() {
 
             <nav
               aria-label="Primary Engineering Modules"
-              className="flex items-center gap-3 text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] overflow-x-auto"
+              className="flex items-center gap-2 text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] overflow-x-auto"
             >
+              <button
+                type="button"
+                onClick={handleOpenDashboard}
+                className={`touch-target-48 px-2 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 border-b-2 transition-colors cursor-pointer ${
+                  isDashboardView
+                    ? 'border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] font-bold'
+                    : 'border-transparent hover:text-[var(--md-sys-color-on-surface)] hover:border-[var(--md-sys-color-outline)]'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </button>
+
               {(Object.keys(MODULE_META) as EngineeringModuleId[]).map((modId) => {
-                const isCurrent = activeModule === modId;
+                const isCurrent = !isDashboardView && activeModule === modId;
                 return (
                   <button
                     key={modId}
@@ -2081,9 +2387,30 @@ export default function App() {
                     Engineering Workbenches
                   </div>
                   <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleOpenDashboard();
+                        setMobileDrawerOpen(false);
+                      }}
+                      className={`w-full touch-target-48 px-3 rounded-lg flex items-center gap-3 text-left transition-colors cursor-pointer ${
+                        isDashboardView
+                          ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
+                          : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
+                      }`}
+                    >
+                      <LayoutDashboard className="w-4 h-4 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs truncate font-semibold">Dashboard Overview</div>
+                        <div className="text-[11px] font-mono opacity-75 truncate">
+                          Command Center &amp; Solvers
+                        </div>
+                      </div>
+                    </button>
+
                     {(Object.keys(MODULE_META) as EngineeringModuleId[]).map((modId) => {
                       const Icon = MODULE_META[modId].icon;
-                      const active = activeModule === modId;
+                      const active = !isDashboardView && activeModule === modId;
                       return (
                         <button
                           key={modId}
@@ -2242,9 +2569,35 @@ export default function App() {
                   </div>
                 )}
                 <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={handleOpenDashboard}
+                    title="PB CivilLab Overview Dashboard"
+                    aria-label="Overview Dashboard"
+                    className={`w-full rounded-lg flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
+                      appState.sidebarCollapsed
+                        ? 'h-10 justify-center px-0'
+                        : 'h-11 px-3 gap-3 text-left'
+                    } ${
+                      isDashboardView
+                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-xs'
+                        : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4 shrink-0" />
+                    {!appState.sidebarCollapsed && (
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="text-xs truncate font-medium">Dashboard Overview</div>
+                        <div className="text-[11px] font-mono opacity-75 truncate">
+                          Command Center &amp; Solvers
+                        </div>
+                      </div>
+                    )}
+                  </button>
+
                   {(Object.keys(MODULE_META) as EngineeringModuleId[]).map((modId) => {
                     const Icon = MODULE_META[modId].icon;
-                    const active = activeModule === modId;
+                    const active = !isDashboardView && activeModule === modId;
                     return (
                       <button
                         key={modId}
@@ -2454,8 +2807,32 @@ export default function App() {
               </div>
             </div>
 
-            {/* Context Sub-Bar (Sticky at top of Main Page) */}
-            <div className="sticky top-0 z-20 shrink-0 px-4 md:px-6 py-3 bg-[var(--md-sys-color-surface-container-low)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-4">
+            {isDashboardView ? (
+              <DashboardView
+                activeWorkspace={activeWorkspace}
+                workspaces={appState.workspaces}
+                activeModule={activeModule}
+                onSelectModule={handleSetModule}
+                onSelectWorkspace={handleSelectWorkspace}
+                onOpenNewWorkspace={handleOpenNewWorkspace}
+                onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
+                onOpenProfileModal={handleOpenProfileModal}
+                onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
+                onDirectDownloadPdf={handleDirectDownloadPdf}
+                calculationHistory={appState.calculationHistory}
+                onRestoreCalculation={handleRestoreCalculation}
+                userProfile={userProfile}
+                boqEnvelope={boqEnvelope}
+                bbsEnvelope={bbsEnvelope}
+                concreteEnvelope={concreteEnvelope}
+                matEnvelope={matEnvelope}
+                capacityInfo={capacityInfo}
+                moduleMeta={MODULE_META}
+              />
+            ) : (
+              <>
+                {/* Context Sub-Bar (Sticky at top of Main Page) */}
+                <div className="sticky top-0 z-20 shrink-0 px-4 md:px-6 py-3 bg-[var(--md-sys-color-surface-container-low)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
                   <button
@@ -2583,6 +2960,7 @@ export default function App() {
                     onClearAllBOQItems={handleClearAllBOQItems}
                     onLoadSampleBOQItems={handleLoadSampleBOQItems}
                     onExportBOQCSV={handleExportBOQCSV}
+                    onSyncFromModules={handleSyncAllModulesToBoq}
                   />
                 )}
 
@@ -2695,6 +3073,30 @@ export default function App() {
                     customUnits={appState.customUnits}
                     getFieldUnit={getFieldUnit}
                     updateFieldUnit={updateFieldUnit}
+                  />
+                )}
+
+                {/* MODULE 9: CONTINUOUS BEAM */}
+                {activeModule === 'continuous-beam' && (
+                  <ContinuousBeamInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                  />
+                )}
+
+                {/* MODULE 10: PILE CAPACITY */}
+                {activeModule === 'pile-capacity' && (
+                  <PileCapacityInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                  />
+                )}
+
+                {/* MODULE 11: PIPE HYDRAULICS */}
+                {activeModule === 'pipe-hydraulics' && (
+                  <PipeHydraulicsInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
                   />
                 )}
               </section>
@@ -2863,63 +3265,35 @@ export default function App() {
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Print A4 Report</span>
                       </button>
+
+                      {/* Direct Client-Side PDF Download Engine (jsPDF) */}
+                      <button
+                        type="button"
+                        onClick={handleDirectDownloadPdf}
+                        disabled={isExportingPdf}
+                        className="px-3 py-1.5 rounded-lg border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors disabled:opacity-50"
+                        title="Direct Client-Side PDF Generation (jsPDF) with Certified QR Stamp"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
+                      </button>
                     </div>
                   </div>
 
-                  {/* LIVE CAPACITY UTILIZATION & DEMAND-CAPACITY RATIO (DCR) GAUGE */}
-                  {capacityInfo && (
-                    <div className="p-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2 mb-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                              capacityInfo.status === 'safe'
-                                ? 'bg-emerald-500'
-                                : capacityInfo.status === 'warning'
-                                ? 'bg-amber-500 animate-pulse'
-                                : 'bg-rose-500 animate-bounce'
-                            }`}
-                          />
-                          <span className="font-bold text-[var(--md-sys-color-on-surface)] font-mono">
-                            {capacityInfo.metricLabel}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase ${
-                              capacityInfo.status === 'safe'
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                : capacityInfo.status === 'warning'
-                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                            }`}
-                          >
-                            {capacityInfo.formattedValue}
-                          </span>
-                        </div>
-                        {capacityInfo.referenceLimit && (
-                          <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                            {capacityInfo.referenceLimit}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Capacity Gauge Progress Track */}
-                      <div className="w-full h-2 rounded-full bg-[var(--md-sys-color-surface-container)] overflow-hidden border border-[var(--md-sys-color-outline-variant)]">
-                        <div
-                          className={`h-full transition-all duration-500 ${
-                            capacityInfo.status === 'safe'
-                              ? 'bg-emerald-500'
-                              : capacityInfo.status === 'warning'
-                              ? 'bg-amber-500'
-                              : 'bg-rose-500'
-                          }`}
-                          style={{ width: `${Math.min(100, Math.max(5, capacityInfo.percentage))}%` }}
-                        />
-                      </div>
-                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-mono leading-tight">
-                        {capacityInfo.description}
-                      </p>
-                    </div>
-                  )}
+                  {/* LIVE CAPACITY UTILIZATION & DEMAND-CAPACITY RATIO (DCR) GAUGES (STAGGERED FRAMER MOTION) */}
+                  {capacityGauges && capacityGauges.length > 0 ? (
+                    <DcrGaugeSuite
+                      gauges={capacityGauges}
+                      moduleKey={`${activeWorkspace.id}-${activeModule}`}
+                      className="mb-3"
+                    />
+                  ) : capacityInfo ? (
+                    <DcrCapacityGauge
+                      capacityInfo={capacityInfo}
+                      className="mb-3"
+                      customIndex={0}
+                    />
+                  ) : null}
 
                   {/* COLLAPSIBLE GOVERNING CODE EQUATIONS & FORMULATIONS PANEL */}
                   {showGoverningEquations && governingEqInfo && (
@@ -3021,6 +3395,15 @@ export default function App() {
                       )}
                       {activeModule === 'open-channel' && channelEnvelope.result && (
                         <ChannelHydraulicsSvg params={activeWorkspace.channel} result={channelEnvelope.result} />
+                      )}
+                      {activeModule === 'continuous-beam' && continuousBeamEnvelope.result && (
+                        <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={continuousBeamEnvelope.result} />
+                      )}
+                      {activeModule === 'pile-capacity' && pileEnvelope.result && (
+                        <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={pileEnvelope.result} />
+                      )}
+                      {activeModule === 'pipe-hydraulics' && pipeEnvelope.result && (
+                        <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={pipeEnvelope.result} />
                       )}
                     </div>
                   )}
@@ -3132,6 +3515,24 @@ export default function App() {
                       updateOutputUnit={updateOutputUnit}
                     />
                   )}
+
+                  {activeModule === 'continuous-beam' && continuousBeamEnvelope.result && (
+                    <ContinuousBeamMetrics
+                      result={continuousBeamEnvelope.result}
+                    />
+                  )}
+
+                  {activeModule === 'pile-capacity' && pileEnvelope.result && (
+                    <PileCapacityMetrics
+                      result={pileEnvelope.result}
+                    />
+                  )}
+
+                  {activeModule === 'pipe-hydraulics' && pipeEnvelope.result && (
+                    <PipeHydraulicsMetrics
+                      result={pipeEnvelope.result}
+                    />
+                  )}
                 </div>
 
                 {/* DYNAMIC MEASUREMENT SHEET (L x W x H) & BOQ SPREADSHEET TABLE */}
@@ -3165,6 +3566,8 @@ export default function App() {
                 />
               </section>
             </div>
+              </>
+            )}
 
             {/* PB CivilLab Global Engineered Footer */}
             <Footer
@@ -3177,6 +3580,84 @@ export default function App() {
             />
           </main>
         </div>
+
+        {/* ADAPTIVE MOBILE BOTTOM NAVIGATION BAR (Material Design 3 - 48px touch targets) */}
+        <nav
+          aria-label="Mobile Bottom Navigation"
+          className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[var(--md-sys-color-surface-container)]/95 backdrop-blur-md border-t border-[var(--md-sys-color-outline-variant)] px-2 py-1 flex items-center justify-around shadow-lg"
+        >
+          <button
+            type="button"
+            onClick={handleOpenDashboard}
+            className={`touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl transition-colors cursor-pointer ${
+              isDashboardView
+                ? 'text-[var(--md-sys-color-primary)] font-bold'
+                : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+            }`}
+          >
+            <div
+              className={`px-3 py-1 rounded-full transition-colors ${
+                isDashboardView ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]' : ''
+              }`}
+            >
+              <LayoutDashboard className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-medium leading-none">Dashboard</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileDrawerOpen(true)}
+            className={`touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl transition-colors cursor-pointer ${
+              !isDashboardView
+                ? 'text-[var(--md-sys-color-primary)] font-bold'
+                : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+            }`}
+          >
+            <div
+              className={`px-3 py-1 rounded-full transition-colors ${
+                !isDashboardView ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]' : ''
+              }`}
+            >
+              <Calculator className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-medium leading-none">Solvers</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSetModule('boq-estimator')}
+            className="touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+          >
+            <div className="px-3 py-1 rounded-full">
+              <FileSpreadsheet className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-medium leading-none">Takeoff</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setWorkspaceManagerOpen(true)}
+            className="touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+          >
+            <div className="px-3 py-1 rounded-full">
+              <FolderArchive className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-medium leading-none">Projects</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDirectDownloadPdf}
+            className="touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-colors cursor-pointer"
+            title="Direct Download Certified PDF"
+          >
+            <div className="px-3 py-1 rounded-full bg-emerald-500/10">
+              <Download className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-semibold leading-none">PDF</span>
+          </button>
+        </nav>
 
         {/* PROJECT WORKSPACES MANAGER MODAL */}
         <WorkspaceManagerModal

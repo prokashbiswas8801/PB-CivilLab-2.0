@@ -12,6 +12,9 @@ import {
   ConcreteMaterialResult,
   RebarBBSResult,
   BOQResult,
+  ContinuousBeamResult,
+  PileCapacityResult,
+  PipeHydraulicsResult,
 } from './calculations';
 
 export interface GoverningEquationInfo {
@@ -337,6 +340,111 @@ export function getGoverningEquations(moduleId: EngineeringModuleId): GoverningE
         ],
       };
 
+    case 'continuous-beam':
+      return {
+        codeStandard: 'AISC 360 / ACI 318 / Clapeyron Three-Moment Theorem',
+        category: 'Indeterminate Structural Analysis & Continuous Beams',
+        equations: [
+          {
+            name: 'Clapeyron Three-Moment Equation for Multi-Span Continuity',
+            formula: 'M_{i-1}·(L_i/I_i) + 2·M_i·(L_i/I_i + L_{i+1}/I_{i+1}) + M_{i+1}·(L_{i+1}/I_{i+1}) = -6·A_i·a_i/(L_i·I_i) - 6·A_{i+1}·b_{i+1}/(L_{i+1}·I_{i+1})',
+            description: 'Enforces slope continuity across intermediate supports for indeterminate multi-span beams.',
+            variables: ['M = Support bending moments (kN·m)', 'L = Span lengths (m)', 'I = Moments of inertia (cm⁴)', 'A·a/L = Load area coefficients'],
+          },
+          {
+            name: 'Span Shear Force Superposition & Equilibrium',
+            formula: 'V_{left, k} = (w_k·L_k)/2 + (P_k·b_k)/L_k + (M_k - M_{k-1})/L_k',
+            description: 'Computes end reactions and shear distribution combining simply supported load shears and end continuity moments.',
+            variables: ['w = UDL (kN/m)', 'P = Concentrated point load (kN)', 'M_k = Support moment at right end'],
+          },
+          {
+            name: 'Extreme Fiber Flexural Stress',
+            formula: 'f_b = (M_{max}·c) / I ≤ F_{allowable}',
+            description: 'Checks maximum sagging span moment and intermediate support hogging moments against allowable bending limit.',
+            variables: ['c = Distance to extreme fiber = d/2 (mm)', 'I = Moment of inertia (cm⁴)', 'F_{allowable} = Allowable stress (MPa)'],
+          },
+        ],
+        assumptions: [
+          'Linear elastic isotropic beam behavior with homogeneous section properties.',
+          'Zero support settlement (rigid unyielding vertical supports).',
+          'Plane sections remain plane under flexure (Euler-Bernoulli hypothesis).',
+        ],
+      };
+
+    case 'pile-capacity':
+      return {
+        codeStandard: 'BNBC 2020 Part 6 Ch 3 / ACI 543R / Tomlinson / Meyerhof',
+        category: 'Geotechnical Deep Foundations & Pile Capacity',
+        equations: [
+          {
+            name: 'Total Ultimate Pile Axial Compressive Capacity',
+            formula: 'Q_{ult} = Q_s + Q_p = ∑ (p·ΔL_i·f_{s,i}) + q_p·A_p',
+            description: 'Total ultimate resistance equal to sum of cumulative shaft skin friction (Q_s) and base tip bearing (Q_p).',
+            variables: ['p = Perimeter = π·D (m)', 'A_p = Base area = π·D²/4 (m²)', 'f_s = Unit skin friction (kPa)', 'q_p = Unit end bearing (kPa)'],
+          },
+          {
+            name: 'Tomlinson α-Method for Cohesive Strata (Clay)',
+            formula: 'f_s = α · c_u',
+            description: 'Shaft friction in clays based on empirical adhesion factor α as a function of undrained shear strength c_u.',
+            variables: ['α = Adhesion factor (0.35 to 1.0)', 'c_u = Undrained cohesion (kPa)'],
+          },
+          {
+            name: 'Meyerhof Deep Bearing Capacity for Cohesionless Soils (Sand)',
+            formula: 'q_p = σ\'_v · N_q ≤ q_{p,max}',
+            description: 'Base resistance derived from effective overburden stress at tip and deep foundation bearing factor N_q.',
+            variables: ['σ\'_v = Effective vertical overburden stress at tip (kPa)', 'N_q = Bearing capacity factor', 'q_{p,max} = 11,000 kPa limit'],
+          },
+          {
+            name: 'Allowable Working Axial Load',
+            formula: 'Q_{all} = Q_{ult} / FS (FS = 2.5 per BNBC 2020)',
+            description: 'Safe allowable axial working capacity applied with design factor of safety.',
+            variables: ['FS = Factor of safety (2.5 for bored cast-in-situ, 2.5-3.0 for driven)'],
+          },
+        ],
+        assumptions: [
+          'Static axial compressive loading on isolated single vertical pile.',
+          'Overburden stress corrected for buoyant unit weight below groundwater table.',
+          'Critical depth limit for skin friction and base resistance enforced at 15D.',
+        ],
+      };
+
+    case 'pipe-hydraulics':
+      return {
+        codeStandard: 'Hazen-Williams Formulation / AWWA / ASCE Storm Drainage',
+        category: 'Pressure Pipe & Storm Conduit Hydraulics',
+        equations: [
+          {
+            name: 'Hazen-Williams Friction Head Loss Formulation (SI Units)',
+            formula: 'h_f = (10.67 · L · Q^{1.852}) / (C^{1.852} · D^{4.87})',
+            description: 'Calculates longitudinal friction energy dissipation along pressurized conduits.',
+            variables: ['h_f = Friction head loss (m)', 'L = Pipe length (m)', 'Q = Flow rate (m³/s)', 'C = Roughness coefficient', 'D = Internal diameter (m)'],
+          },
+          {
+            name: 'Continuity Flow Velocity',
+            formula: 'V = Q / A = (4 · Q) / (π · D²)',
+            description: 'Mean cross-sectional velocity evaluated against self-cleansing (≥0.6 m/s) and scour (≤3.0 m/s) criteria.',
+            variables: ['V = Mean velocity (m/s)', 'A = Cross-sectional flow area (m²)'],
+          },
+          {
+            name: 'Reynolds Number & Viscous Flow Regime',
+            formula: 'Re = (V · D) / ν',
+            description: 'Dimensionless ratio of inertial to viscous forces in conduit flow.',
+            variables: ['ν = Kinematic viscosity of water (1.004 × 10⁻⁶ m²/s at 20°C)'],
+          },
+          {
+            name: 'Hydraulic & Energy Grade Lines (HGL & EGL)',
+            formula: 'EGL = z + P/(γ) + V²/(2g) | HGL = z + P/(γ)',
+            description: 'Total dynamic head and piezometric surface tracing along the pipeline profile.',
+            variables: ['z = Pipe invert elevation (m)', 'P = Internal pressure (kPa)', 'V²/(2g) = Velocity head (m)'],
+          },
+        ],
+        assumptions: [
+          'Steady incompressible single-phase water flow under pressurized closed-conduit conditions.',
+          'Hazen-Williams equation valid for water temperatures 5°C to 25°C and diameters D ≥ 50mm.',
+          'Minor fitting losses evaluated via K · V²/(2g).',
+        ],
+      };
+
     case 'unit-converter':
     default:
       return {
@@ -453,9 +561,449 @@ export function getCapacityUtilization(
       };
     }
 
+    case 'continuous-beam': {
+      const cbRes = result as ContinuousBeamResult;
+      const dcr = cbRes.utilizationRatio || 0;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical';
+      return {
+        metricLabel: 'Continuous Beam Flexural DCR (Demand / Capacity)',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: pct,
+        status,
+        description:
+          dcr <= 0.85
+            ? 'Optimal multi-span moment reserve (Demand < 85% Allowable).'
+            : dcr <= 1.0
+            ? 'Advisory: Operating within 85%-100% of allowable bending capacity.'
+            : 'CRITICAL: Section flexural stress exceeds allowable limit (DCR > 1.0). Increase moment of inertia.',
+        referenceLimit: `Allowable Stress: ${workspace.continuousBeam?.allowableStressMpa || 250} MPa`,
+      };
+    }
+
+    case 'pile-capacity': {
+      const pRes = result as PileCapacityResult;
+      const dcr = pRes.utilizationRatio || 0;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical';
+      return {
+        metricLabel: 'Pile Axial Bearing DCR (P_applied / Q_allowable)',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: pct,
+        status,
+        description:
+          dcr <= 0.85
+            ? `Deep foundation axial capacity verified (P ${pRes.appliedLoadKn} kN ≤ Q_all ${pRes.allowableCapacityKn.toFixed(0)} kN).`
+            : dcr <= 1.0
+            ? `Advisory: Axial working load approaching allowable capacity limit.`
+            : `CRITICAL: Working load exceeds allowable capacity. Increase pile diameter or embedment length.`,
+        referenceLimit: `Allowable Capacity: ${pRes.allowableCapacityKn.toFixed(0)} kN (FS = ${pRes.factorOfSafety})`,
+      };
+    }
+
+    case 'pipe-hydraulics': {
+      const pipeRes = result as PipeHydraulicsResult;
+      const dcr = pipeRes.utilizationRatio || 0;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        pipeRes.selfCleansingStatus === 'pass' && pipeRes.maxVelocityStatus === 'pass'
+          ? 'safe'
+          : pipeRes.maxVelocityStatus === 'fail'
+          ? 'critical'
+          : 'warning';
+      return {
+        metricLabel: 'Conduit Velocity & Scour Limit DCR',
+        formattedValue: `${pipeRes.velocityMps.toFixed(2)} m/s (${(dcr * 100).toFixed(0)}%)`,
+        percentage: pct,
+        status,
+        description:
+          status === 'safe'
+            ? `Flow velocity satisfies both self-cleansing (≥0.6 m/s) and non-scouring (≤3.0 m/s) criteria.`
+            : pipeRes.velocityMps < 0.6
+            ? `Advisory: Velocity < 0.6 m/s; risk of silt deposition in pipeline.`
+            : `CRITICAL: Velocity exceeds 3.0 m/s; excessive surge pressure and pipe scouring hazard.`,
+        referenceLimit: `Velocity Range: 0.60 m/s ≤ V ≤ 3.00 m/s`,
+      };
+    }
+
     default:
       return null;
   }
+}
+
+/**
+ * Computes all relevant Demand-Capacity Ratio (DCR) limit-state gauges for the active module,
+ * returning an array of evaluated gauges (e.g. flexure, shear, deflection, bearing, etc.)
+ */
+export function getAllCapacityUtilizations(
+  moduleId: EngineeringModuleId,
+  workspace: CivilWorkspace,
+  envelope: CalculationEnvelope<any>
+): CapacityUtilizationInfo[] {
+  const result = envelope.result;
+  if (!result) return [];
+
+  const gauges: CapacityUtilizationInfo[] = [];
+
+  switch (moduleId) {
+    case 'beam-analysis': {
+      const beamRes = result as BeamAnalysisResult;
+      const flexDcr = beamRes.utilizationRatio || 0;
+      const flexPct = Math.min(100, Math.max(4, Math.round(flexDcr * 100)));
+      const flexStatus: 'safe' | 'warning' | 'critical' =
+        flexDcr <= 0.85 ? 'safe' : flexDcr <= 1.0 ? 'warning' : 'critical';
+
+      gauges.push({
+        metricLabel: 'Flexural Bending Stress DCR',
+        formattedValue: `${(flexDcr * 100).toFixed(1)}%`,
+        percentage: flexPct,
+        status: flexStatus,
+        description:
+          flexDcr <= 0.85
+            ? 'Optimal structural capacity reserve (Demand < 85% Allowable).'
+            : flexDcr <= 1.0
+            ? 'Advisory: Operating within 85%-100% of allowable bending capacity.'
+            : 'CRITICAL: Section flexural stress exceeds allowable limit (DCR > 1.0). Upsize beam section.',
+        referenceLimit: `Allowable: ${workspace.beam.allowableStressMpa} MPa (Actual: ${beamRes.bendingStressMpa.toFixed(1)} MPa)`,
+      });
+
+      // Deflection limit state DCR
+      const deflDemand = beamRes.maxDeflectionMm || 0;
+      const deflAllowable = beamRes.allowableDeflectionMm || (workspace.beam.spanLengthM * 1000) / 250;
+      const deflDcr = deflAllowable > 0 ? deflDemand / deflAllowable : 0;
+      const deflPct = Math.min(100, Math.max(4, Math.round(deflDcr * 100)));
+      const deflStatus: 'safe' | 'warning' | 'critical' =
+        deflDcr <= 0.80 ? 'safe' : deflDcr <= 1.0 ? 'warning' : 'critical';
+
+      gauges.push({
+        metricLabel: 'Serviceability Deflection DCR (Δ / Δ_all)',
+        formattedValue: `${(deflDcr * 100).toFixed(1)}%`,
+        percentage: deflPct,
+        status: deflStatus,
+        description:
+          deflDcr <= 0.80
+            ? `Deflection comfortably satisfies L/250 code limit (${deflDemand.toFixed(1)} mm vs ${deflAllowable.toFixed(1)} mm max).`
+            : deflDcr <= 1.0
+            ? `Advisory: Beam deflection nearing span limit criteria (${deflDemand.toFixed(1)} mm).`
+            : `CRITICAL: Deflection exceeds serviceability limit (${deflDemand.toFixed(1)} mm > ${deflAllowable.toFixed(1)} mm). Increase moment of inertia.`,
+        referenceLimit: `Allowable Deflection: ${deflAllowable.toFixed(1)} mm`,
+      });
+
+      // Shear capacity DCR
+      const shearDemand = Math.abs(beamRes.maxShearKn || 0);
+      const secModCm3 = (20 * workspace.beam.momentOfInertiaCm4) / (workspace.beam.sectionDepthMm || 1);
+      const estShearCapacity = workspace.beam.allowableStressMpa * 0.4 * (secModCm3 / 10);
+      const shearCapKn = Math.max(50, estShearCapacity);
+      const shearDcr = shearDemand / shearCapKn;
+      const shearPct = Math.min(100, Math.max(4, Math.round(shearDcr * 100)));
+      const shearStatus: 'safe' | 'warning' | 'critical' =
+        shearDcr <= 0.85 ? 'safe' : shearDcr <= 1.0 ? 'warning' : 'critical';
+
+      gauges.push({
+        metricLabel: 'Shear Force Capacity DCR (V_u / V_c)',
+        formattedValue: `${(shearDcr * 100).toFixed(1)}%`,
+        percentage: shearPct,
+        status: shearStatus,
+        description:
+          shearDcr <= 0.85
+            ? `Section shear stress operates within allowable web limits (V_max = ${shearDemand.toFixed(1)} kN).`
+            : shearDcr <= 1.0
+            ? `Advisory: Web shear stress approaching limit state.`
+            : `CRITICAL: Shear demand exceeds nominal resistance. Add web stiffeners or increase web thickness.`,
+        referenceLimit: `Shear Demand: ${shearDemand.toFixed(1)} kN`,
+      });
+      break;
+    }
+
+    case 'bearing-capacity': {
+      const bRes = result as BearingAnalysisResult;
+      const applied = bRes.appliedPressureKpa || 0;
+      const allowable = bRes.allowableBearingKpa || 1;
+      const dcr = applied / allowable;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical';
+
+      gauges.push({
+        metricLabel: 'Soil Bearing Pressure DCR (q_app / q_all)',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: pct,
+        status,
+        description:
+          dcr <= 0.85
+            ? `Net foundation bearing pressure satisfies allowable geotechnical capacity (${applied.toFixed(1)} kPa ≤ ${allowable.toFixed(1)} kPa).`
+            : dcr <= 1.0
+            ? `Advisory: Footing bearing pressure operating within 85-100% of allowable limit.`
+            : `CRITICAL: Applied soil pressure exceeds allowable bearing capacity. Increase footing footprint.`,
+        referenceLimit: `Allowable Bearing: ${allowable.toFixed(1)} kPa`,
+      });
+
+      const fos = bRes.effectiveSafetyFactor || workspace.bearing.factorOfSafety;
+      const minFos = workspace.bearing.factorOfSafety;
+      const fosPct = Math.min(100, Math.max(4, Math.round((fos / (minFos * 1.5)) * 100)));
+      const fosStatus: 'safe' | 'warning' | 'critical' =
+        fos >= minFos ? 'safe' : fos >= minFos * 0.85 ? 'warning' : 'critical';
+
+      gauges.push({
+        metricLabel: 'Geotechnical Safety Factor (FoS Compliance)',
+        formattedValue: `FoS = ${fos.toFixed(2)}`,
+        percentage: fosPct,
+        status: fosStatus,
+        description:
+          fos >= minFos
+            ? `Design safety margin verified (FoS ${fos.toFixed(2)} ≥ required ${minFos.toFixed(2)}).`
+            : `FoS ${fos.toFixed(2)} is BELOW code required minimum ${minFos.toFixed(2)}.`,
+        referenceLimit: `Required FoS: ${minFos.toFixed(2)}`,
+      });
+
+      const ultReserve = Math.max(4, Math.min(100, Math.round(((bRes.ultimateBearingKpa - applied) / (bRes.ultimateBearingKpa || 1)) * 100)));
+      gauges.push({
+        metricLabel: 'Ultimate Geotechnical Capacity Reserve',
+        formattedValue: `${ultReserve}% Reserve`,
+        percentage: ultReserve,
+        status: ultReserve >= 60 ? 'safe' : ultReserve >= 30 ? 'warning' : 'critical',
+        description: `Ultimate capacity margin against shear failure (q_ult = ${bRes.ultimateBearingKpa.toFixed(1)} kPa).`,
+        referenceLimit: `Ultimate: ${bRes.ultimateBearingKpa.toFixed(1)} kPa`,
+      });
+      break;
+    }
+
+    case 'open-channel': {
+      const chRes = result as ChannelHydraulicsResult;
+      const fr = chRes.froudeNumber;
+      const isSubcritical = fr < 1.0;
+      const isCritical = Math.abs(fr - 1.0) <= 0.05;
+      const frPct = Math.min(100, Math.max(4, Math.round(fr * 50)));
+      const status: 'safe' | 'warning' | 'critical' =
+        isSubcritical ? 'safe' : isCritical ? 'warning' : 'warning';
+
+      gauges.push({
+        metricLabel: 'Hydrodynamic Flow Regime (Froude Number)',
+        formattedValue: `Fr = ${fr.toFixed(2)} (${chRes.flowRegime})`,
+        percentage: frPct,
+        status,
+        description:
+          isSubcritical
+            ? 'Subcritical Flow (Tranquil): Gravitational waves propagate upstream. Stable erosion characteristics.'
+            : isCritical
+            ? 'Critical Flow (Fr ≈ 1.0): Unstable water surface; prone to standing waves.'
+            : 'Supercritical Flow (Rapid): High velocity flow. Check for scour and design energy dissipators.',
+        referenceLimit: `Critical Threshold: Fr = 1.00`,
+      });
+
+      const vel = chRes.velocityMps || 0;
+      const maxVel = 3.0; // m/s non-scouring threshold
+      const velDcr = vel / maxVel;
+      const velPct = Math.min(100, Math.max(4, Math.round(velDcr * 100)));
+      gauges.push({
+        metricLabel: 'Channel Velocity Scour Limit DCR',
+        formattedValue: `${vel.toFixed(2)} m/s (${(velDcr * 100).toFixed(0)}%)`,
+        percentage: velPct,
+        status: velDcr <= 0.8 ? 'safe' : velDcr <= 1.0 ? 'warning' : 'critical',
+        description:
+          velDcr <= 0.8
+            ? `Flow velocity satisfies non-erodible lining criteria (${vel.toFixed(2)} m/s < ${maxVel.toFixed(1)} m/s).`
+            : velDcr <= 1.0
+            ? `Advisory: Velocity approaching max non-scouring threshold.`
+            : `CRITICAL: Velocity exceeds 3.0 m/s; channel lining revetment or riprap required.`,
+        referenceLimit: `Max Permissible: ${maxVel.toFixed(1)} m/s`,
+      });
+
+      const shear = chRes.shearStressPa || 0;
+      const shearPct = Math.min(100, Math.max(4, Math.round((shear / 40) * 100)));
+      gauges.push({
+        metricLabel: 'Boundary Shear Stress Utilization',
+        formattedValue: `${shear.toFixed(1)} Pa`,
+        percentage: shearPct,
+        status: shearPct <= 75 ? 'safe' : shearPct <= 100 ? 'warning' : 'critical',
+        description: `Tractive force on wetted boundary perimeter: τ_0 = γ * R * S.`,
+        referenceLimit: `Boundary Shear: ${shear.toFixed(1)} Pa`,
+      });
+      break;
+    }
+
+    case 'concrete-mix': {
+      const cmRes = result as ConcreteMixResult;
+      const target = cmRes.estimated28DayMpa;
+      const specified = workspace.concrete.targetStrengthMpa;
+      const ratio = (specified / (target || 1));
+      const pct = Math.min(100, Math.max(4, Math.round(ratio * 100)));
+
+      gauges.push({
+        metricLabel: 'Concrete Compressive Strength Margin',
+        formattedValue: `${target.toFixed(1)} MPa (Req: ${specified.toFixed(1)} MPa)`,
+        percentage: pct,
+        status: 'safe',
+        description: `Target strength satisfies statistical overdesign requirement per ACI 214 / IS 10262.`,
+        referenceLimit: `Estimated 28-Day Strength = ${target.toFixed(1)} MPa`,
+      });
+
+      const wcRatio = workspace.concrete.waterCementRatio;
+      const maxWc = 0.50;
+      const wcPct = Math.min(100, Math.max(4, Math.round((wcRatio / maxWc) * 100)));
+      gauges.push({
+        metricLabel: 'Water-Cement Ratio (w/c) Code Limit',
+        formattedValue: `w/c = ${wcRatio.toFixed(2)}`,
+        percentage: wcPct,
+        status: wcRatio <= 0.45 ? 'safe' : wcRatio <= 0.50 ? 'warning' : 'critical',
+        description: `Permissible water-cement ratio for durability and permeability exposure class.`,
+        referenceLimit: `Max Code Limit: w/c ≤ ${maxWc.toFixed(2)}`,
+      });
+      break;
+    }
+
+    case 'continuous-beam': {
+      const cbRes = result as ContinuousBeamResult;
+      const flexDcr = cbRes.utilizationRatio || 0;
+      const flexPct = Math.min(100, Math.max(4, Math.round(flexDcr * 100)));
+      const flexStatus: 'safe' | 'warning' | 'critical' =
+        flexDcr <= 0.85 ? 'safe' : flexDcr <= 1.0 ? 'warning' : 'critical';
+
+      gauges.push({
+        metricLabel: 'Flexural Stress DCR (Extreme Fiber)',
+        formattedValue: `${(flexDcr * 100).toFixed(1)}%`,
+        percentage: flexPct,
+        status: flexStatus,
+        description:
+          flexDcr <= 0.85
+            ? 'Safe: Multi-span bending stresses operate within allowable limits.'
+            : flexDcr <= 1.0
+            ? 'Advisory: Maximum moment approaches section capacity.'
+            : 'CRITICAL: Section flexural stress exceeds allowable limit state.',
+        referenceLimit: `Allowable: ${workspace.continuousBeam?.allowableStressMpa || 250} MPa (Actual: ${cbRes.bendingStressMpa.toFixed(1)} MPa)`,
+      });
+
+      const maxHog = cbRes.maxHoggingMomentKnm || 0;
+      const maxSag = cbRes.maxSaggingMomentKnm || 1;
+      const hogRatio = maxHog / (maxSag * 1.5);
+      gauges.push({
+        metricLabel: 'Hogging / Sagging Moment Distribution',
+        formattedValue: `${maxHog.toFixed(1)} / ${maxSag.toFixed(1)} kN·m`,
+        percentage: Math.min(100, Math.max(4, Math.round(hogRatio * 100))),
+        status: hogRatio <= 0.85 ? 'safe' : hogRatio <= 1.0 ? 'warning' : 'warning',
+        description: `Support negative hogging moment vs span positive sagging moment envelope.`,
+        referenceLimit: `Max Hogging: -${maxHog.toFixed(1)} kN·m`,
+      });
+
+      const shearDemand = Math.abs(cbRes.maxShearKn || 0);
+      const estShearCap = (workspace.continuousBeam?.allowableStressMpa || 250) * 0.4 * 50;
+      const shearDcr = shearDemand / estShearCap;
+      gauges.push({
+        metricLabel: 'Continuous Web Shear Capacity DCR',
+        formattedValue: `${(shearDcr * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(shearDcr * 100))),
+        status: shearDcr <= 0.85 ? 'safe' : shearDcr <= 1.0 ? 'warning' : 'critical',
+        description: `Critical shear force developing adjacent to intermediate continuous supports.`,
+        referenceLimit: `Critical Shear: ${shearDemand.toFixed(1)} kN`,
+      });
+      break;
+    }
+
+    case 'pile-capacity': {
+      const pRes = result as PileCapacityResult;
+      const axialDcr = pRes.utilizationRatio || 0;
+      const axialPct = Math.min(100, Math.max(4, Math.round(axialDcr * 100)));
+      const axialStatus: 'safe' | 'warning' | 'critical' =
+        axialDcr <= 0.85 ? 'safe' : axialDcr <= 1.0 ? 'warning' : 'critical';
+
+      gauges.push({
+        metricLabel: 'Axial Compression DCR (P / Q_allowable)',
+        formattedValue: `${(axialDcr * 100).toFixed(1)}%`,
+        percentage: axialPct,
+        status: axialStatus,
+        description:
+          axialDcr <= 0.85
+            ? `Deep foundation bearing reserve verified (P ≤ Q_all).`
+            : axialDcr <= 1.0
+            ? `Advisory: Approaching maximum allowable bearing capacity.`
+            : `CRITICAL: Working load exceeds allowable geotechnical capacity.`,
+        referenceLimit: `Allowable: ${pRes.allowableCapacityKn.toFixed(0)} kN (FS = ${pRes.factorOfSafety})`,
+      });
+
+      const skinRatio = pRes.ultimateCapacityKn > 0 ? (pRes.skinFrictionKn / pRes.ultimateCapacityKn) : 0;
+      gauges.push({
+        metricLabel: 'Shaft Skin Friction Contribution (Qs / Q_ult)',
+        formattedValue: `${(skinRatio * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(skinRatio * 100))),
+        status: 'safe',
+        description: `Proportion of ultimate capacity carried by shaft friction (${pRes.skinFrictionKn.toFixed(0)} kN of ${pRes.ultimateCapacityKn.toFixed(0)} kN).`,
+        referenceLimit: `Skin Friction Qs: ${pRes.skinFrictionKn.toFixed(0)} kN`,
+      });
+
+      const sLimitMm = 25.0; // standard 25mm structural limit
+      const sDcr = pRes.elasticSettlementMm / sLimitMm;
+      gauges.push({
+        metricLabel: 'Elastic Settlement Serviceability Check',
+        formattedValue: `${pRes.elasticSettlementMm.toFixed(1)} mm`,
+        percentage: Math.min(100, Math.max(4, Math.round(sDcr * 100))),
+        status: sDcr <= 0.8 ? 'safe' : sDcr <= 1.0 ? 'warning' : 'critical',
+        description: `Estimated total pile settlement (elastic shaft + base penetration) under working load.`,
+        referenceLimit: `Allowable Settlement: ≤ ${sLimitMm.toFixed(0)} mm`,
+      });
+      break;
+    }
+
+    case 'pipe-hydraulics': {
+      const pipeRes = result as PipeHydraulicsResult;
+      const velDcr = pipeRes.utilizationRatio || 0;
+      const velPct = Math.min(100, Math.max(4, Math.round(velDcr * 100)));
+      const velStatus: 'safe' | 'warning' | 'critical' =
+        pipeRes.selfCleansingStatus === 'pass' && pipeRes.maxVelocityStatus === 'pass'
+          ? 'safe'
+          : pipeRes.maxVelocityStatus === 'fail'
+          ? 'critical'
+          : 'warning';
+
+      gauges.push({
+        metricLabel: 'Flow Velocity & Scour Limit DCR',
+        formattedValue: `${pipeRes.velocityMps.toFixed(2)} m/s (${(velDcr * 100).toFixed(0)}%)`,
+        percentage: velPct,
+        status: velStatus,
+        description:
+          velStatus === 'safe'
+            ? `Flow velocity satisfies both self-cleansing and non-scouring criteria.`
+            : pipeRes.velocityMps < 0.6
+            ? `Advisory: Velocity is below 0.6 m/s; risk of silt deposition.`
+            : `CRITICAL: Velocity exceeds 3.0 m/s; risk of pipe scouring and water hammer.`,
+        referenceLimit: `Design Envelope: 0.60 m/s ≤ V ≤ 3.00 m/s`,
+      });
+
+      const pOut = pipeRes.outletPressureKpa || 0;
+      const pNominal = 200; // kPa
+      const pPct = Math.min(100, Math.max(4, Math.round((pOut / pNominal) * 100)));
+      gauges.push({
+        metricLabel: 'Residual Terminal Delivery Pressure',
+        formattedValue: `${pOut.toFixed(1)} kPa`,
+        percentage: pPct,
+        status: pOut >= 100 ? 'safe' : pOut >= 50 ? 'warning' : 'critical',
+        description: `Remaining pressure head at delivery outlet after friction and minor losses.`,
+        referenceLimit: `Target Residual: ≥ 100 kPa`,
+      });
+
+      const lossRatio = pipeRes.totalHeadLossM / (pipeRes.lengthM || 1);
+      gauges.push({
+        metricLabel: 'Dynamic Head Loss Gradient (H_L / L)',
+        formattedValue: `${(lossRatio * 1000).toFixed(1)} m/km`,
+        percentage: Math.min(100, Math.max(4, Math.round(lossRatio * 5000))),
+        status: lossRatio <= 0.02 ? 'safe' : lossRatio <= 0.05 ? 'warning' : 'critical',
+        description: `Total energy grade slope: h_f (${pipeRes.frictionHeadLossM.toFixed(1)}m) + h_m (${pipeRes.minorHeadLossM.toFixed(1)}m).`,
+        referenceLimit: `Total Loss H_L: ${pipeRes.totalHeadLossM.toFixed(2)} m`,
+      });
+      break;
+    }
+
+    default: {
+      const primary = getCapacityUtilization(moduleId, workspace, envelope);
+      if (primary) {
+        gauges.push(primary);
+      }
+      break;
+    }
+  }
+
+  return gauges;
 }
 
 /**

@@ -17,6 +17,11 @@ import {
   RateAnalysisWorkType,
   ValidationIssue,
   CalculationStatus,
+  ContinuousBeamParameters,
+  ContinuousBeamSpan,
+  PileCapacityParameters,
+  SoilLayer,
+  PipeHydraulicsParameters,
 } from '../types/civil';
 import { EXACT_CONVERSION } from './unitConverter';
 
@@ -365,6 +370,10 @@ export interface ConcreteMixResult {
   cementBags50Kg: number;
   estimated28DayMpa: number;
   status: 'nominal' | 'warning' | 'critical';
+  batchVolumeM3: number;
+  cementBags: number;
+  fineAggM3: number;
+  coarseAggM3: number;
 }
 
 export function computeConcreteMix(
@@ -436,6 +445,10 @@ export function computeConcreteMix(
       cementBags50Kg: (cementKgPerM3 * V) / 50,
       estimated28DayMpa,
       status,
+      batchVolumeM3: V,
+      cementBags: (cementKgPerM3 * V) / 50,
+      fineAggM3: Number((volFine * V).toFixed(3)),
+      coarseAggM3: Number((volCoarse * V).toFixed(3)),
     },
     issues
   );
@@ -665,6 +678,7 @@ export interface RebarBBSResult {
   items: BBSItem[];
   totalSteelWeightKg: number;
   totalSteelTonnes: number;
+  totalSteelWeightTon: number;
   unitWeightFormulaUsed: string;
   totalBarsLengthM: number;
   steelDensityKgPerM3: number;
@@ -948,6 +962,7 @@ export function computeRebarBBS(
       items,
       totalSteelWeightKg: Number(totalSteelWeightKg.toFixed(2)),
       totalSteelTonnes: Number(totalSteelTonnes.toFixed(3)),
+      totalSteelWeightTon: Number(totalSteelTonnes.toFixed(3)),
       unitWeightFormulaUsed: `W = (π·D²·ρ)/4 [exact physics] ~ D²/162.2 kg/m at ρ=${density} kg/m³`,
       totalBarsLengthM: Number(totalBarsLengthM.toFixed(2)),
       steelDensityKgPerM3: density,
@@ -1945,4 +1960,709 @@ export function computeRateAnalysis(
     issues
   );
 }
+
+/* -------------------------------------------------------------
+   MODULE 12: CONTINUOUS BEAM MULTI-SPAN ANALYSIS (THREE-MOMENT THEOREM)
+------------------------------------------------------------- */
+export interface ContinuousBeamPoint {
+  xTotal: number;
+  xSpan: number;
+  spanIndex: number;
+  momentKnm: number;
+  shearKn: number;
+}
+
+export interface ContinuousSpanResult {
+  spanIndex: number;
+  lengthM: number;
+  leftReactionKn: number;
+  rightReactionKn: number;
+  maxPositiveMomentKnm: number;
+  maxPositiveMomentLocationM: number;
+  maxShearKn: number;
+  inflectionPointsM: number[];
+}
+
+export interface ContinuousBeamResult {
+  spanCount: number;
+  totalLengthM: number;
+  supportMomentsKnm: number[]; // M_0, M_1, ..., M_n
+  supportReactionsKn: number[]; // R_0, R_1, ..., R_n
+  spans: ContinuousSpanResult[];
+  points: ContinuousBeamPoint[];
+  maxSaggingMomentKnm: number;
+  maxHoggingMomentKnm: number;
+  maxShearKn: number;
+  bendingStressMpa: number;
+  utilizationRatio: number;
+  status: 'nominal' | 'warning' | 'critical';
+}
+
+export function computeContinuousBeam(
+  params: ContinuousBeamParameters
+): CalculationEnvelope<ContinuousBeamResult> {
+  const issues: ValidationIssue[] = [];
+  const spanCount = Math.max(2, Math.min(4, params.spanCount || 2));
+  const spans = (params.spans || []).slice(0, spanCount);
+
+  if (spans.length < spanCount) {
+    issues.push({
+      field: 'spans',
+      message: `Expected ${spanCount} span definitions, but found ${spans.length}.`,
+      severity: 'error',
+    });
+    return createEnvelope<ContinuousBeamResult>(null, issues);
+  }
+
+  for (let i = 0; i < spanCount; i++) {
+    if (spans[i].lengthM <= 0) {
+      issues.push({
+        field: `span_${i}_length`,
+        message: `Span ${i + 1} length must be strictly positive (> 0 m).`,
+        severity: 'error',
+      });
+    }
+  }
+
+  const numSupports = spanCount + 1;
+  const matrixA: number[][] = Array.from({ length: numSupports }, () =>
+    new Array(numSupports).fill(0)
+  );
+  const vectorB: number[] = new Array(numSupports).fill(0);
+
+  // Left boundary condition at support 0
+  if (params.leftSupport === 'fixed') {
+    const L1 = spans[0].lengthM;
+    const I1 = spans[0].momentOfInertiaCm4 || 10000;
+    matrixA[0][0] = (2 * L1) / I1;
+    matrixA[0][1] = L1 / I1;
+    const w1 = spans[0].udlKnPerM || 0;
+    const P1 = spans[0].pointLoadKn || 0;
+    const a1 = Math.min(L1, Math.max(0, spans[0].pointLoadPositionM || L1 / 2));
+    const b1 = L1 - a1;
+    const loadTerm =
+      (w1 * Math.pow(L1, 3)) / (4 * I1) +
+      (P1 * a1 * b1 * (L1 + b1)) / (L1 * I1);
+    vectorB[0] = -loadTerm;
+  } else {
+    // Pinned: M_0 = 0
+    matrixA[0][0] = 1;
+    vectorB[0] = 0;
+  }
+
+  // Intermediate supports 1 to spanCount - 1 (Clapeyron's Three-Moment Theorem)
+  for (let i = 1; i < spanCount; i++) {
+    const leftSpan = spans[i - 1];
+    const rightSpan = spans[i];
+
+    const L_left = leftSpan.lengthM;
+    const I_left = leftSpan.momentOfInertiaCm4 || 10000;
+    const L_right = rightSpan.lengthM;
+    const I_right = rightSpan.momentOfInertiaCm4 || 10000;
+
+    matrixA[i][i - 1] = L_left / I_left;
+    matrixA[i][i] = 2 * (L_left / I_left + L_right / I_right);
+    matrixA[i][i + 1] = L_right / I_right;
+
+    // Load term for left span (evaluated at right support of that span)
+    const w_l = leftSpan.udlKnPerM || 0;
+    const P_l = leftSpan.pointLoadKn || 0;
+    const a_l = Math.min(L_left, Math.max(0, leftSpan.pointLoadPositionM || L_left / 2));
+    const b_l = L_left - a_l;
+    const termLeft =
+      (w_l * Math.pow(L_left, 3)) / (4 * I_left) +
+      (P_l * a_l * b_l * (L_left + a_l)) / (L_left * I_left);
+
+    // Load term for right span (evaluated at left support of that span)
+    const w_r = rightSpan.udlKnPerM || 0;
+    const P_r = rightSpan.pointLoadKn || 0;
+    const a_r = Math.min(L_right, Math.max(0, rightSpan.pointLoadPositionM || L_right / 2));
+    const b_r = L_right - a_r;
+    const termRight =
+      (w_r * Math.pow(L_right, 3)) / (4 * I_right) +
+      (P_r * a_r * b_r * (L_right + b_r)) / (L_right * I_right);
+
+    vectorB[i] = -(termLeft + termRight);
+  }
+
+  // Right boundary condition at support spanCount
+  const lastIdx = spanCount;
+  if (params.rightSupport === 'fixed') {
+    const Ln = spans[spanCount - 1].lengthM;
+    const In = spans[spanCount - 1].momentOfInertiaCm4 || 10000;
+    matrixA[lastIdx][lastIdx - 1] = Ln / In;
+    matrixA[lastIdx][lastIdx] = (2 * Ln) / In;
+    const wn = spans[spanCount - 1].udlKnPerM || 0;
+    const Pn = spans[spanCount - 1].pointLoadKn || 0;
+    const an = Math.min(Ln, Math.max(0, spans[spanCount - 1].pointLoadPositionM || Ln / 2));
+    const bn = Ln - an;
+    const loadTerm =
+      (wn * Math.pow(Ln, 3)) / (4 * In) +
+      (Pn * an * bn * (Ln + an)) / (Ln * In);
+    vectorB[lastIdx] = -loadTerm;
+  } else {
+    // Pinned: M_n = 0
+    matrixA[lastIdx][lastIdx] = 1;
+    vectorB[lastIdx] = 0;
+  }
+
+  // Gaussian elimination with partial pivoting
+  const n = numSupports;
+  for (let i = 0; i < n; i++) {
+    let maxRow = i;
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(matrixA[k][i]) > Math.abs(matrixA[maxRow][i])) {
+        maxRow = k;
+      }
+    }
+    const tempRow = matrixA[i];
+    matrixA[i] = matrixA[maxRow];
+    matrixA[maxRow] = tempRow;
+    const tempB = vectorB[i];
+    vectorB[i] = vectorB[maxRow];
+    vectorB[maxRow] = tempB;
+
+    const pivot = matrixA[i][i];
+    if (Math.abs(pivot) < 1e-12) continue;
+
+    for (let k = i + 1; k < n; k++) {
+      const factor = matrixA[k][i] / pivot;
+      for (let j = i; j < n; j++) {
+        matrixA[k][j] -= factor * matrixA[i][j];
+      }
+      vectorB[k] -= factor * vectorB[i];
+    }
+  }
+
+  const supportMoments = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let sum = vectorB[i];
+    for (let j = i + 1; j < n; j++) {
+      sum -= matrixA[i][j] * supportMoments[j];
+    }
+    supportMoments[i] = Math.abs(matrixA[i][i]) > 1e-12 ? sum / matrixA[i][i] : 0;
+  }
+
+  // Calculate span end shears, support reactions, and points
+  const spanResults: ContinuousSpanResult[] = [];
+  const points: ContinuousBeamPoint[] = [];
+  const supportReactions = new Array(numSupports).fill(0);
+
+  let currentXOffset = 0;
+  let globalMaxSagging = 0;
+  let globalMaxHogging = 0;
+  let globalMaxShear = 0;
+
+  for (let i = 0; i < spanCount; i++) {
+    const span = spans[i];
+    const L = span.lengthM;
+    const w = span.udlKnPerM || 0;
+    const P = span.pointLoadKn || 0;
+    const a = Math.min(L, Math.max(0, span.pointLoadPositionM || L / 2));
+    const b = L - a;
+
+    const M_left = supportMoments[i];
+    const M_right = supportMoments[i + 1];
+
+    // Equilibrium for span i:
+    // Hogging moments are negative in standard beam convention
+    // Sum moments about right support:
+    // V_left * L + M_left - M_right - w * L^2 / 2 - P * b = 0
+    const V_left = (w * L) / 2 + (P * b) / L + (M_right - M_left) / L;
+    const V_right = w * L + P - V_left;
+
+    supportReactions[i] += V_left;
+    supportReactions[i + 1] += V_right;
+
+    let spanMaxPositiveM = 0;
+    let spanMaxPosLoc = L / 2;
+    let spanMaxV = Math.max(Math.abs(V_left), Math.abs(V_right));
+    const inflections: number[] = [];
+
+    const numStations = 50;
+    let prevM = M_left;
+
+    for (let s = 0; s <= numStations; s++) {
+      const x = (s / numStations) * L;
+      const xTotal = currentXOffset + x;
+
+      // Shear at station x
+      const Vx = V_left - w * x - (x >= a ? P : 0);
+
+      // Moment at station x
+      const Mx = M_left + V_left * x - (w * Math.pow(x, 2)) / 2 - (x >= a ? P * (x - a) : 0);
+
+      points.push({
+        xTotal: Number(xTotal.toFixed(3)),
+        xSpan: Number(x.toFixed(3)),
+        spanIndex: i,
+        momentKnm: Number(Mx.toFixed(2)),
+        shearKn: Number(Vx.toFixed(2)),
+      });
+
+      if (Mx > spanMaxPositiveM) {
+        spanMaxPositiveM = Mx;
+        spanMaxPosLoc = x;
+      }
+      if (Math.abs(Vx) > spanMaxV) {
+        spanMaxV = Math.abs(Vx);
+      }
+
+      // Detect zero crossings for inflection points
+      if (s > 0 && ((prevM < 0 && Mx >= 0) || (prevM > 0 && Mx <= 0))) {
+        inflections.push(Number(x.toFixed(2)));
+      }
+      prevM = Mx;
+    }
+
+    if (spanMaxPositiveM > globalMaxSagging) globalMaxSagging = spanMaxPositiveM;
+    if (spanMaxV > globalMaxShear) globalMaxShear = spanMaxV;
+
+    spanResults.push({
+      spanIndex: i,
+      lengthM: L,
+      leftReactionKn: Number(V_left.toFixed(2)),
+      rightReactionKn: Number(V_right.toFixed(2)),
+      maxPositiveMomentKnm: Number(spanMaxPositiveM.toFixed(2)),
+      maxPositiveMomentLocationM: Number(spanMaxPosLoc.toFixed(2)),
+      maxShearKn: Number(spanMaxV.toFixed(2)),
+      inflectionPointsM: inflections,
+    });
+
+    currentXOffset += L;
+  }
+
+  for (const m of supportMoments) {
+    if (m < 0 && Math.abs(m) > globalMaxHogging) {
+      globalMaxHogging = Math.abs(m);
+    }
+  }
+
+  const governingMoment = Math.max(globalMaxSagging, globalMaxHogging);
+  const I_avg = spans.reduce((sum, s) => sum + s.momentOfInertiaCm4, 0) / spanCount;
+  const d_mm = params.sectionDepthMm || 600;
+  const c_mm = d_mm / 2;
+  const i_mm4 = I_avg * 1e4;
+  const bendingStressMpa = (governingMoment * 1e6 * c_mm) / (i_mm4 || 1);
+  const allowableStressMpa = params.allowableStressMpa || 250;
+  const utilizationRatio = bendingStressMpa / allowableStressMpa;
+
+  let status: 'nominal' | 'warning' | 'critical' = 'nominal';
+  if (utilizationRatio > 1.0) {
+    status = 'critical';
+    issues.push({
+      field: 'utilizationRatio',
+      message: `Beam section exceeds allowable bending stress (${bendingStressMpa.toFixed(1)} MPa > ${allowableStressMpa} MPa). DCR = ${(utilizationRatio * 100).toFixed(1)}%.`,
+      severity: 'error',
+    });
+  } else if (utilizationRatio > 0.85) {
+    status = 'warning';
+    issues.push({
+      field: 'utilizationRatio',
+      message: `Beam operating near allowable limit state (Utilization: ${(utilizationRatio * 100).toFixed(1)}%).`,
+      severity: 'warning',
+    });
+  }
+
+  return createEnvelope<ContinuousBeamResult>(
+    {
+      spanCount,
+      totalLengthM: Number(currentXOffset.toFixed(2)),
+      supportMomentsKnm: supportMoments.map((m) => Number(m.toFixed(2))),
+      supportReactionsKn: supportReactions.map((r) => Number(r.toFixed(2))),
+      spans: spanResults,
+      points,
+      maxSaggingMomentKnm: Number(globalMaxSagging.toFixed(2)),
+      maxHoggingMomentKnm: Number(globalMaxHogging.toFixed(2)),
+      maxShearKn: Number(globalMaxShear.toFixed(2)),
+      bendingStressMpa: Number(bendingStressMpa.toFixed(2)),
+      utilizationRatio: Number(utilizationRatio.toFixed(3)),
+      status,
+    },
+    issues
+  );
+}
+
+/* -------------------------------------------------------------
+   MODULE 13: PILE FOUNDATION BEARING CAPACITY (BNBC-2020 / ACI / TOMLINSON)
+------------------------------------------------------------- */
+export interface PileLayerContribution {
+  layerName: string;
+  depthFromM: number;
+  depthToM: number;
+  effectiveThicknessM: number;
+  unitFrictionKpa: number;
+  frictionKn: number;
+}
+
+export interface PileCapacityResult {
+  pileType: string;
+  diameterM: number;
+  lengthM: number;
+  perimeterM: number;
+  crossSectionAreaM2: number;
+  skinFrictionKn: number;
+  endBearingKn: number;
+  ultimateCapacityKn: number;
+  allowableCapacityKn: number;
+  appliedLoadKn: number;
+  factorOfSafety: number;
+  utilizationRatio: number;
+  unitEndBearingKpa: number;
+  layerContributions: PileLayerContribution[];
+  elasticSettlementMm: number;
+  status: 'nominal' | 'warning' | 'critical';
+}
+
+export function computePileCapacity(
+  params: PileCapacityParameters
+): CalculationEnvelope<PileCapacityResult> {
+  const issues: ValidationIssue[] = [];
+
+  const D = Math.max(0.2, params.diameterM || 0.6);
+  const L = Math.max(1.0, params.lengthM || 20.0);
+  const P = Math.max(0, params.appliedLoadKn || 1500);
+  const FS = Math.max(1.5, params.factorOfSafety || 2.5);
+  const Dw = Math.max(0, params.groundwaterDepthM ?? 3.0);
+
+  const Ap = (Math.PI * Math.pow(D, 2)) / 4;
+  const p = Math.PI * D;
+
+  // Default soil strata if layers empty
+  const layers: SoilLayer[] =
+    params.layers && params.layers.length > 0
+      ? params.layers
+      : [
+          {
+            id: 'l1',
+            name: 'Soft Silty Clay (Upper Layer)',
+            thicknessM: 6.0,
+            soilType: 'clay',
+            cohesionKpa: 30,
+            frictionAngleDeg: 0,
+            unitWeightKnPerM3: 17.5,
+          },
+          {
+            id: 'l2',
+            name: 'Medium Stiff Clayey Silt',
+            thicknessM: 8.0,
+            soilType: 'clay',
+            cohesionKpa: 55,
+            frictionAngleDeg: 0,
+            unitWeightKnPerM3: 18.5,
+          },
+          {
+            id: 'l3',
+            name: 'Dense Sand & Gravel Bearing Strata',
+            thicknessM: 10.0,
+            soilType: 'sand',
+            cohesionKpa: 0,
+            frictionAngleDeg: 35,
+            unitWeightKnPerM3: 19.5,
+          },
+        ];
+
+  let currentDepth = 0;
+  let totalSkinFrictionKn = 0;
+  const layerContribs: PileLayerContribution[] = [];
+  let overburdenStressKpa = 0;
+
+  // Calculate skin friction for each stratum along pile length
+  for (const layer of layers) {
+    if (currentDepth >= L) break;
+
+    const layerTop = currentDepth;
+    const layerBottom = currentDepth + layer.thicknessM;
+    const effectiveBottom = Math.min(layerBottom, L);
+    const thickM = effectiveBottom - layerTop;
+
+    if (thickM <= 0) {
+      currentDepth = layerBottom;
+      continue;
+    }
+
+    const midDepth = layerTop + thickM / 2;
+
+    // Effective vertical overburden stress at mid-depth
+    // Water table correction: gamma' = gamma_sat - 9.81 below water table
+    let gammaEff = layer.unitWeightKnPerM3;
+    if (midDepth > Dw) {
+      gammaEff = Math.max(8.0, layer.unitWeightKnPerM3 - 9.81);
+    }
+    const layerSigmaV = overburdenStressKpa + gammaEff * (thickM / 2);
+    overburdenStressKpa += gammaEff * thickM;
+
+    let unitFrictionKpa = 0;
+    const isBored = params.pileType === 'bored-cast-in-situ';
+
+    if (layer.soilType === 'clay') {
+      // Tomlinson alpha method for clay: f_s = alpha * c_u
+      const cu = layer.cohesionKpa;
+      let alpha = 1.0;
+      if (cu <= 25) {
+        alpha = 1.0;
+      } else if (cu <= 50) {
+        alpha = 0.9 - 0.008 * (cu - 25);
+      } else if (cu <= 100) {
+        alpha = 0.7 - 0.004 * (cu - 50);
+      } else {
+        alpha = Math.max(0.35, 0.5 - 0.001 * (cu - 100));
+      }
+      const boredReduction = isBored ? 0.85 : 1.0;
+      unitFrictionKpa = alpha * cu * boredReduction;
+    } else {
+      // Beta method for sand: f_s = beta * sigma'_v
+      const phiRad = (layer.frictionAngleDeg * Math.PI) / 180;
+      const Ks = isBored ? 0.7 : 1.25;
+      const delta = isBored ? 0.8 * phiRad : phiRad;
+      const beta = Ks * Math.tan(delta);
+
+      // Critical depth limit (15D) per Meyerhof
+      const zCrit = 15 * D;
+      const effectiveSigma = Math.min(layerSigmaV, gammaEff * zCrit);
+      unitFrictionKpa = Math.min(120, beta * effectiveSigma);
+    }
+
+    const frictionAreaM2 = p * thickM;
+    const layerQs = unitFrictionKpa * frictionAreaM2;
+    totalSkinFrictionKn += layerQs;
+
+    layerContribs.push({
+      layerName: layer.name,
+      depthFromM: Number(layerTop.toFixed(2)),
+      depthToM: Number(effectiveBottom.toFixed(2)),
+      effectiveThicknessM: Number(thickM.toFixed(2)),
+      unitFrictionKpa: Number(unitFrictionKpa.toFixed(2)),
+      frictionKn: Number(layerQs.toFixed(2)),
+    });
+
+    currentDepth = layerBottom;
+  }
+
+  // End bearing Q_p = q_p * A_p
+  // Look at soil properties at pile tip (depth L)
+  const tipCohesion = params.tipBearingCohesionKpa ?? 0;
+  const tipPhi = params.tipBearingFrictionDeg ?? 35;
+  const isBored = params.pileType === 'bored-cast-in-situ';
+
+  let unitEndBearingKpa = 0;
+  if (tipCohesion > 0 && tipPhi < 10) {
+    // Cohesive tip: q_p = 9 * c_u (Skempton) with bored reduction
+    const boredFactor = isBored ? 0.8 : 1.0;
+    unitEndBearingKpa = 9 * tipCohesion * boredFactor;
+  } else {
+    // Cohesionless sand tip: q_p = sigma'_v * N_q (Meyerhof)
+    const phiRad = (tipPhi * Math.PI) / 180;
+    // Meyerhof deep foundation N_q formula
+    const Nq =
+      Math.exp(Math.PI * Math.tan(phiRad)) *
+      Math.pow(Math.tan(Math.PI / 4 + phiRad / 2), 2);
+    const tipSigmaV = Math.min(overburdenStressKpa, 15 * D * 18.0);
+    // Limiting end bearing q_p,max = 50 * N_q * tan(phi) (kPa), capped at 11,000 kPa per BNBC
+    const qpLimit = Math.min(11000, 50 * Nq * Math.tan(phiRad));
+    unitEndBearingKpa = Math.min(qpLimit, tipSigmaV * Nq);
+  }
+
+  const endBearingKn = unitEndBearingKpa * Ap;
+  const ultimateCapacityKn = totalSkinFrictionKn + endBearingKn;
+  const allowableCapacityKn = ultimateCapacityKn / FS;
+  const utilizationRatio = P / (allowableCapacityKn || 1);
+
+  // Elastic settlement estimation (Vesic simplified model):
+  // S_e = S_shaft + S_tip (mm)
+  // S_shaft = (Q_wp + 0.5 * Q_ws) * L / (A_p * E_pile)
+  const EpileKpa = 25e6; // Concrete E = 25 GPa = 25,000,000 kPa
+  const Qws = totalSkinFrictionKn / FS;
+  const Qwp = endBearingKn / FS;
+  const sShaftMm =
+    (((Qwp + 0.5 * Qws) * L) / ((Ap * EpileKpa) || 1)) * 1000;
+  const sTipMm = (0.05 * Qwp) / ((D * unitEndBearingKpa) || 1) * 1000;
+  const elasticSettlementMm = Math.max(1.0, Math.min(50, sShaftMm + sTipMm));
+
+  let status: 'nominal' | 'warning' | 'critical' = 'nominal';
+  if (utilizationRatio > 1.0) {
+    status = 'critical';
+    issues.push({
+      field: 'utilizationRatio',
+      message: `Applied working load exceeds allowable pile capacity (${P} kN > ${allowableCapacityKn.toFixed(0)} kN). DCR = ${(utilizationRatio * 100).toFixed(1)}%. Increase pile diameter or depth.`,
+      severity: 'error',
+    });
+  } else if (utilizationRatio > 0.85) {
+    status = 'warning';
+    issues.push({
+      field: 'utilizationRatio',
+      message: `Pile operating near allowable geotechnical limit state (Utilization: ${(utilizationRatio * 100).toFixed(1)}%).`,
+      severity: 'warning',
+    });
+  }
+
+  return createEnvelope<PileCapacityResult>(
+    {
+      pileType: params.pileType,
+      diameterM: D,
+      lengthM: L,
+      perimeterM: Number(p.toFixed(3)),
+      crossSectionAreaM2: Number(Ap.toFixed(4)),
+      skinFrictionKn: Number(totalSkinFrictionKn.toFixed(1)),
+      endBearingKn: Number(endBearingKn.toFixed(1)),
+      ultimateCapacityKn: Number(ultimateCapacityKn.toFixed(1)),
+      allowableCapacityKn: Number(allowableCapacityKn.toFixed(1)),
+      appliedLoadKn: P,
+      factorOfSafety: FS,
+      utilizationRatio: Number(utilizationRatio.toFixed(3)),
+      unitEndBearingKpa: Number(unitEndBearingKpa.toFixed(1)),
+      layerContributions: layerContribs,
+      elasticSettlementMm: Number(elasticSettlementMm.toFixed(2)),
+      status,
+    },
+    issues
+  );
+}
+
+/* -------------------------------------------------------------
+   MODULE 14: PIPE HYDRAULICS (HAZEN-WILLIAMS FORMULATION)
+------------------------------------------------------------- */
+export interface PipeHydraulicsResult {
+  pipeMaterial: string;
+  hazenWilliamsC: number;
+  internalDiameterMm: number;
+  lengthM: number;
+  flowRateLps: number;
+  flowRateM3ps: number;
+  flowAreaM2: number;
+  velocityMps: number;
+  hydraulicRadiusM: number;
+  reynoldsNumber: number;
+  flowRegime: 'Laminar' | 'Transitional' | 'Turbulent';
+  frictionSlopeMPerM: number;
+  frictionHeadLossM: number;
+  minorHeadLossM: number;
+  totalHeadLossM: number;
+  velocityHeadM: number;
+  inletTotalHeadM: number;
+  outletTotalHeadM: number;
+  inletPressureKpa: number;
+  outletPressureKpa: number;
+  selfCleansingStatus: 'pass' | 'fail';
+  maxVelocityStatus: 'pass' | 'warning' | 'fail';
+  utilizationRatio: number;
+  status: 'nominal' | 'warning' | 'critical';
+}
+
+export function computePipeHydraulics(
+  params: PipeHydraulicsParameters
+): CalculationEnvelope<PipeHydraulicsResult> {
+  const issues: ValidationIssue[] = [];
+
+  const C = Math.max(40, Math.min(160, params.hazenWilliamsC || 130));
+  const D_mm = Math.max(25, params.internalDiameterMm || 200);
+  const D_m = D_mm / 1000;
+  const L = Math.max(1, params.lengthM || 100);
+  const Q_lps = Math.max(0.1, params.flowRateLps || 25);
+  const Q_m3s = Q_lps / 1000;
+  const K = Math.max(0, params.minorLossCoefficientK || 1.5);
+  const z1 = params.inletElevationM ?? 15.0;
+  const z2 = params.outletElevationM ?? 10.0;
+  const P_in_kpa = Math.max(0, params.inletPressureKpa || 250);
+  const T_c = params.waterTempC || 20;
+
+  const Area = (Math.PI * Math.pow(D_m, 2)) / 4;
+  const V = Q_m3s / Area;
+  const Rh = D_m / 4;
+
+  // Hazen-Williams friction slope:
+  // S_f = 10.67 * Q^1.852 / (C^1.852 * D^4.87)
+  const Sf =
+    (10.67 * Math.pow(Q_m3s, 1.852)) /
+    (Math.pow(C, 1.852) * Math.pow(D_m, 4.87));
+
+  const hf = Sf * L;
+  const g = 9.80665;
+  const hv = Math.pow(V, 2) / (2 * g);
+  const hm = K * hv;
+  const totalHeadLoss = hf + hm;
+
+  // Kinematic viscosity of water at temperature T (°C)
+  const nu =
+    (1.787e-6) / (1 + 0.0337 * T_c + 0.000221 * Math.pow(T_c, 2));
+  const Re = (V * D_m) / nu;
+
+  let flowRegime: 'Laminar' | 'Transitional' | 'Turbulent' = 'Turbulent';
+  if (Re < 2000) {
+    flowRegime = 'Laminar';
+  } else if (Re <= 4000) {
+    flowRegime = 'Transitional';
+  }
+
+  // Total Energy Grade Line (EGL) & Pressure Head
+  // Head in meters of water: P / (rho * g) = P_kpa * 1000 / (1000 * 9.80665) = P_kpa / 9.80665
+  const HinletTotal = z1 + P_in_kpa / g + hv;
+  const HoutletTotal = HinletTotal - totalHeadLoss;
+  const P_out_head = Math.max(0, HoutletTotal - z2 - hv);
+  const P_out_kpa = P_out_head * g;
+
+  // Velocity checks
+  const selfCleansing: 'pass' | 'fail' = V >= 0.6 ? 'pass' : 'fail';
+  const maxVelocity: 'pass' | 'warning' | 'fail' =
+    V <= 2.5 ? 'pass' : V <= 3.5 ? 'warning' : 'fail';
+
+  // Velocity utilization against standard design limit 3.0 m/s
+  const utilizationRatio = V / 3.0;
+
+  let status: 'nominal' | 'warning' | 'critical' = 'nominal';
+  if (V < 0.6) {
+    status = 'warning';
+    issues.push({
+      field: 'velocity',
+      message: `Flow velocity (${V.toFixed(2)} m/s) is below recommended self-cleansing velocity (0.6 m/s). Sedimentation risk in storm/waste lines.`,
+      severity: 'warning',
+    });
+  } else if (V > 3.0) {
+    status = 'critical';
+    issues.push({
+      field: 'velocity',
+      message: `Flow velocity (${V.toFixed(2)} m/s) exceeds maximum non-scouring threshold (3.0 m/s). Risk of cavitation, pipe wear, and excessive water hammer.`,
+      severity: 'error',
+    });
+  }
+
+  if (P_out_kpa < 70) {
+    issues.push({
+      field: 'outletPressure',
+      message: `Residual outlet pressure (${P_out_kpa.toFixed(1)} kPa) is very low. Increase pipe diameter or inlet booster head.`,
+      severity: 'warning',
+    });
+  }
+
+  return createEnvelope<PipeHydraulicsResult>(
+    {
+      pipeMaterial: params.pipeMaterial,
+      hazenWilliamsC: C,
+      internalDiameterMm: D_mm,
+      lengthM: L,
+      flowRateLps: Q_lps,
+      flowRateM3ps: Number(Q_m3s.toFixed(6)),
+      flowAreaM2: Number(Area.toFixed(5)),
+      velocityMps: Number(V.toFixed(2)),
+      hydraulicRadiusM: Number(Rh.toFixed(4)),
+      reynoldsNumber: Math.round(Re),
+      flowRegime,
+      frictionSlopeMPerM: Number(Sf.toFixed(5)),
+      frictionHeadLossM: Number(hf.toFixed(2)),
+      minorHeadLossM: Number(hm.toFixed(2)),
+      totalHeadLossM: Number(totalHeadLoss.toFixed(2)),
+      velocityHeadM: Number(hv.toFixed(3)),
+      inletTotalHeadM: Number(HinletTotal.toFixed(2)),
+      outletTotalHeadM: Number(HoutletTotal.toFixed(2)),
+      inletPressureKpa: P_in_kpa,
+      outletPressureKpa: Number(P_out_kpa.toFixed(1)),
+      selfCleansingStatus: selfCleansing,
+      maxVelocityStatus: maxVelocity,
+      utilizationRatio: Number(utilizationRatio.toFixed(3)),
+      status,
+    },
+    issues
+  );
+}
+
 

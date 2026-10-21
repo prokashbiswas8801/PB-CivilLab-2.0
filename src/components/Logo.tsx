@@ -1,5 +1,7 @@
 import React from 'react';
 
+export const BRAND_LOGO_SRC = '/src/assets/images/civil_lab_logo_1792487018872.jpg';
+
 export interface LogoProps {
   /** Variant of the logo display */
   variant?: 'full' | 'mark' | 'horizontal' | 'stacked';
@@ -21,6 +23,8 @@ export interface LogoProps {
   href?: string;
   /** When true, smoothly collapses typography and displays only the compact LogoMark icon */
   collapsed?: boolean;
+  /** When true, uses the generated modern geometric 3D brand logo icon */
+  useBrandIcon?: boolean;
 }
 
 const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', { height: number; markSize: number }> = {
@@ -29,6 +33,31 @@ const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', { height: number; markS
   md: { height: 40, markSize: 36 },
   lg: { height: 56, markSize: 48 },
   xl: { height: 80, markSize: 72 },
+};
+
+/**
+ * Modern Geometric 3D Brand Logo Icon rendered from the high-resolution generated brand asset.
+ */
+export const BrandLogoIcon: React.FC<{ size?: number; className?: string; animated?: boolean }> = ({
+  size = 36,
+  className = '',
+  animated = false,
+}) => {
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className={`rounded-xl overflow-hidden shrink-0 shadow-xs border border-[var(--md-sys-color-outline-variant)]/60 bg-slate-900 flex items-center justify-center transition-all ${
+        animated ? 'hover:scale-105 hover:shadow-md transition-transform' : ''
+      } ${className}`}
+    >
+      <img
+        src={BRAND_LOGO_SRC}
+        alt="PB CivilLab Logo Icon"
+        referrerPolicy="no-referrer"
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
 };
 
 /**
@@ -114,6 +143,7 @@ export const Logo: React.FC<LogoProps> = ({
   asLink = false,
   href = '#top',
   collapsed = false,
+  useBrandIcon = true,
 }) => {
   const resolved = typeof size === 'number' ? { height: size, markSize: size * 0.9 } : SIZE_MAP[size];
 
@@ -123,9 +153,13 @@ export const Logo: React.FC<LogoProps> = ({
         collapsed ? 'gap-0 justify-center' : 'gap-2.5 sm:gap-3'
       } ${variant === 'stacked' ? 'flex-col text-center items-center' : 'flex-row'} ${className}`}
     >
-      {/* Structural Logo Mark */}
+      {/* Structural Logo Mark or Brand Icon */}
       <div className="relative shrink-0 flex items-center justify-center transition-transform duration-300">
-        <LogoMark size={collapsed ? 24 : resolved.markSize} animated={animated} />
+        {useBrandIcon ? (
+          <BrandLogoIcon size={collapsed ? 28 : resolved.markSize} animated={animated} />
+        ) : (
+          <LogoMark size={collapsed ? 24 : resolved.markSize} animated={animated} />
+        )}
       </div>
 
       {/* Typography: PB CivilLab & Optional Official Tagline */}

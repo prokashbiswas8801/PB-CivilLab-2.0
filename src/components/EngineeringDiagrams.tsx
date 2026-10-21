@@ -10,6 +10,9 @@ import {
   EarthworkResult,
   BOQResult,
   RateAnalysisResult,
+  ContinuousBeamResult,
+  PileCapacityResult,
+  PipeHydraulicsResult,
 } from '../utils/calculations';
 import {
   BeamParameters,
@@ -22,6 +25,9 @@ import {
   EarthworkParameters,
   BOQParameters,
   RateAnalysisParameters,
+  ContinuousBeamParameters,
+  PileCapacityParameters,
+  PipeHydraulicsParameters,
 } from '../types/civil';
 
 /* 1. Beam Diagram */
@@ -685,4 +691,383 @@ export const RateAnalysisBreakdownDiagramSvg: React.FC<{
     </svg>
   );
 };
+
+/* 12. Continuous Beam Diagram (Multi-Span BMD & SFD Envelopes) */
+export const ContinuousBeamDiagramSvg: React.FC<{
+  params: ContinuousBeamParameters;
+  result: ContinuousBeamResult;
+}> = ({ params, result }) => {
+  const width = 760;
+  const height = 380;
+  const padLeft = 60;
+  const padRight = 40;
+  const plotW = width - padLeft - padRight;
+  const totalL = Math.max(0.1, result.totalLengthM);
+
+  const toX = (xM: number) => padLeft + (xM / totalL) * plotW;
+
+  const maxV = Math.max(0.1, result.maxShearKn);
+  const maxM = Math.max(0.1, Math.max(result.maxSaggingMomentKnm, result.maxHoggingMomentKnm));
+
+  // Shear plot vertical center & amplitude
+  const sfdCenterY = 175;
+  const sfdAmp = 45;
+
+  // Moment plot vertical center & amplitude (Hogging is negative, drawn upwards or standard)
+  const bmdCenterY = 300;
+  const bmdAmp = 50;
+
+  const sfdPoints = result.points
+    .map((pt) => `${toX(pt.xTotal).toFixed(1)},${(sfdCenterY - (pt.shearKn / maxV) * sfdAmp).toFixed(1)}`)
+    .join(' ');
+
+  const bmdPoints = result.points
+    .map((pt) => `${toX(pt.xTotal).toFixed(1)},${(bmdCenterY - (pt.momentKnm / maxM) * bmdAmp).toFixed(1)}`)
+    .join(' ');
+
+  // Calculate support X positions
+  const supportPositions: number[] = [padLeft];
+  let accX = 0;
+  for (const span of result.spans) {
+    accX += span.lengthM;
+    supportPositions.push(toX(accX));
+  }
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
+      {/* 1. Beam Elevation, Applied Loads & Supports */}
+      <text x={12} y={35} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+        LOADS &amp; SPANS
+      </text>
+
+      {/* Beam Axis Line */}
+      <line x1={padLeft} y1={70} x2={padLeft + plotW} y2={70} stroke="var(--md-sys-color-primary)" strokeWidth="5" strokeLinecap="round" />
+
+      {/* Spans and Loads */}
+      {result.spans.map((span, idx) => {
+        const xStart = supportPositions[idx];
+        const xEnd = supportPositions[idx + 1];
+        const spanW = xEnd - xStart;
+        const spanDef = params.spans[idx];
+
+        return (
+          <g key={`span-load-${idx}`}>
+            {/* UDL representation */}
+            {spanDef && spanDef.udlKnPerM > 0 && (
+              <g>
+                <rect x={xStart} y={48} width={spanW} height={18} fill="var(--md-sys-color-primary)" opacity="0.12" />
+                <line x1={xStart} y1={48} x2={xEnd} y2={48} stroke="var(--md-sys-color-primary)" strokeWidth="1" strokeDasharray="3 2" />
+                {Array.from({ length: Math.max(3, Math.floor(spanW / 24)) }).map((_, arrIdx) => {
+                  const arrX = xStart + (arrIdx + 0.5) * (spanW / Math.max(3, Math.floor(spanW / 24)));
+                  return (
+                    <line key={arrIdx} x1={arrX} y1={48} x2={arrX} y2={67} stroke="var(--md-sys-color-primary)" strokeWidth="1" markerEnd="url(#arrow)" />
+                  );
+                })}
+                <text x={xStart + spanW / 2} y={44} fontSize="8.5" fontWeight="600" textAnchor="middle" fill="var(--md-sys-color-primary)">
+                  w = {spanDef.udlKnPerM} kN/m
+                </text>
+              </g>
+            )}
+
+            {/* Point load */}
+            {spanDef && spanDef.pointLoadKn > 0 && (
+              <g>
+                {(() => {
+                  const ptX = xStart + ((spanDef.pointLoadPositionM || span.lengthM / 2) / span.lengthM) * spanW;
+                  return (
+                    <g>
+                      <line x1={ptX} y1={28} x2={ptX} y2={66} stroke="#f43f5e" strokeWidth="2.5" />
+                      <polygon points={`${ptX},70 ${ptX - 4},62 ${ptX + 4},62`} fill="#f43f5e" />
+                      <text x={ptX} y={24} fontSize="8.5" fontWeight="700" textAnchor="middle" fill="#f43f5e">
+                        P={spanDef.pointLoadKn} kN
+                      </text>
+                    </g>
+                  );
+                })()}
+              </g>
+            )}
+
+            {/* Span length dimension line */}
+            <line x1={xStart} y1={92} x2={xEnd} y2={92} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+            <line x1={xStart} y1={88} x2={xStart} y2={96} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+            <line x1={xEnd} y1={88} x2={xEnd} y2={96} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+            <text x={xStart + spanW / 2} y={102} fontSize="9" fontWeight="600" textAnchor="middle" fill="var(--md-sys-color-on-surface-variant)">
+              Span {idx + 1}: L = {span.lengthM}m
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Support Triangles & Reactions */}
+      {supportPositions.map((supX, sIdx) => {
+        const reaction = result.supportReactionsKn[sIdx] || 0;
+        const isLeftFixed = sIdx === 0 && params.leftSupport === 'fixed';
+        const isRightFixed = sIdx === supportPositions.length - 1 && params.rightSupport === 'fixed';
+
+        return (
+          <g key={`sup-${sIdx}`}>
+            {isLeftFixed ? (
+              <line x1={supX} y1={55} x2={supX} y2={85} stroke="var(--md-sys-color-on-surface)" strokeWidth="4" />
+            ) : isRightFixed ? (
+              <line x1={supX} y1={55} x2={supX} y2={85} stroke="var(--md-sys-color-on-surface)" strokeWidth="4" />
+            ) : (
+              <polygon points={`${supX},72 ${supX - 7},86 ${supX + 7},86`} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
+            )}
+            <text x={supX} y={116} fontSize="8" fontWeight="700" textAnchor="middle" fill="var(--md-sys-color-primary)">
+              R{sIdx}={reaction.toFixed(1)}kN
+            </text>
+          </g>
+        );
+      })}
+
+      {/* 2. Continuous Shear Force Diagram (SFD) */}
+      <text x={12} y={sfdCenterY - 20} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+        SFD (kN)
+      </text>
+      <line x1={padLeft} y1={sfdCenterY} x2={padLeft + plotW} y2={sfdCenterY} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+      <polyline points={sfdPoints} fill="none" stroke="#0ea5e9" strokeWidth="2" />
+      <polygon points={`${padLeft},${sfdCenterY} ${sfdPoints} ${padLeft + plotW},${sfdCenterY}`} fill="#0ea5e9" opacity="0.15" />
+      <text x={padLeft + plotW + 5} y={sfdCenterY - 25} fontSize="8" fill="#0ea5e9">+{maxV.toFixed(1)}</text>
+      <text x={padLeft + plotW + 5} y={sfdCenterY + 28} fontSize="8" fill="#0ea5e9">-{maxV.toFixed(1)}</text>
+
+      {/* 3. Continuous Bending Moment Diagram (BMD) */}
+      <text x={12} y={bmdCenterY - 20} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+        BMD (kN·m)
+      </text>
+      <line x1={padLeft} y1={bmdCenterY} x2={padLeft + plotW} y2={bmdCenterY} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+      <polyline points={bmdPoints} fill="none" stroke="#8b5cf6" strokeWidth="2.2" />
+      <polygon points={`${padLeft},${bmdCenterY} ${bmdPoints} ${padLeft + plotW},${bmdCenterY}`} fill="#8b5cf6" opacity="0.18" />
+
+      {/* Callouts for maximum sagging and support hogging moments */}
+      <text x={padLeft + plotW + 5} y={bmdCenterY - (result.maxHoggingMomentKnm / maxM) * bmdAmp} fontSize="8" fontWeight="700" fill="#f43f5e">
+        -{result.maxHoggingMomentKnm.toFixed(1)} (Hog)
+      </text>
+      <text x={padLeft + plotW + 5} y={bmdCenterY + (result.maxSaggingMomentKnm / maxM) * bmdAmp + 5} fontSize="8" fontWeight="700" fill="#10b981">
+        +{result.maxSaggingMomentKnm.toFixed(1)} (Sag)
+      </text>
+    </svg>
+  );
+};
+
+/* 13. Deep Foundation Pile Capacity Diagram */
+export const PileCapacityDiagramSvg: React.FC<{
+  params: PileCapacityParameters;
+  result: PileCapacityResult;
+}> = ({ params, result }) => {
+  const width = 680;
+  const height = 360;
+  const pileLength = Math.max(1, result.lengthM);
+  const pileDiameter = result.diameterM;
+
+  const groundY = 60;
+  const bottomY = 310;
+  const totalH = bottomY - groundY;
+  const toY = (depthM: number) => groundY + (depthM / pileLength) * totalH;
+
+  const pileCenterX = 280;
+  const pileW = Math.max(18, Math.min(45, (pileDiameter / 1.5) * 40));
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
+      {/* Ground Surface */}
+      <line x1={40} y1={groundY} x2={520} y2={groundY} stroke="#78716c" strokeWidth="3" />
+      <text x={40} y={groundY - 8} fontSize="9" fontWeight="700" fill="#78716c">EGL Ground Level (0.00 m)</text>
+
+      {/* Soil Strata Layers */}
+      {result.layerContributions.map((layer, idx) => {
+        const yTop = toY(layer.depthFromM);
+        const yBot = toY(layer.depthToM);
+        const lH = yBot - yTop;
+        const isClay = layer.layerName.toLowerCase().includes('clay');
+        const fillColor = isClay ? '#fef3c7' : '#ecfdf5';
+        const strokeColor = isClay ? '#fde68a' : '#a7f3d0';
+
+        return (
+          <g key={`strata-${idx}`}>
+            <rect x={40} y={yTop} width={480} height={lH} fill={fillColor} stroke={strokeColor} opacity="0.65" />
+            <text x={48} y={yTop + 14} fontSize="8.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+              {layer.layerName}
+            </text>
+            <text x={48} y={yTop + 26} fontSize="7.5" fill="var(--md-sys-color-on-surface-variant)">
+              Depth: {layer.depthFromM}m to {layer.depthToM}m · fs = {layer.unitFrictionKpa} kPa · Qs = {layer.frictionKn} kN
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Groundwater Table */}
+      {params.groundwaterDepthM < pileLength && (
+        <g>
+          {(() => {
+            const gwtY = toY(params.groundwaterDepthM);
+            return (
+              <g>
+                <line x1={40} y1={gwtY} x2={520} y2={gwtY} stroke="#0ea5e9" strokeWidth="1.5" strokeDasharray="6 4" />
+                <text x={430} y={gwtY - 5} fontSize="8" fontWeight="700" fill="#0ea5e9">
+                  ▼ GWT ({params.groundwaterDepthM.toFixed(1)} m)
+                </text>
+              </g>
+            );
+          })()}
+        </g>
+      )}
+
+      {/* Pile Shaft Body */}
+      <rect
+        x={pileCenterX - pileW / 2}
+        y={groundY}
+        width={pileW}
+        height={totalH}
+        fill="#94a3b8"
+        stroke="#475569"
+        strokeWidth="2"
+        rx="2"
+      />
+
+      {/* Pile Cap / Top Working Load */}
+      <rect x={pileCenterX - pileW - 6} y={groundY - 14} width={pileW * 2 + 12} height={14} fill="#64748b" rx="2" />
+      <line x1={pileCenterX} y1={12} x2={pileCenterX} y2={groundY - 16} stroke="#e11d48" strokeWidth="3" markerEnd="url(#arrow)" />
+      <polygon points={`${pileCenterX},${groundY - 14} ${pileCenterX - 5},${groundY - 24} ${pileCenterX + 5},${groundY - 24}`} fill="#e11d48" />
+      <text x={pileCenterX} y={10} fontSize="10" fontWeight="700" textAnchor="middle" fill="#e11d48">
+        P = {result.appliedLoadKn} kN
+      </text>
+
+      {/* Skin Friction Distribution Arrows */}
+      {Array.from({ length: 6 }).map((_, i) => {
+        const arrY = groundY + (i + 0.8) * (totalH / 7);
+        return (
+          <g key={`arrow-${i}`}>
+            <line x1={pileCenterX - pileW / 2 - 12} y1={arrY} x2={pileCenterX - pileW / 2 - 2} y2={arrY - 6} stroke="#3b82f6" strokeWidth="1.5" />
+            <line x1={pileCenterX + pileW / 2 + 12} y1={arrY} x2={pileCenterX + pileW / 2 + 2} y2={arrY - 6} stroke="#3b82f6" strokeWidth="1.5" />
+          </g>
+        );
+      })}
+
+      {/* End Bearing Bulb */}
+      <path
+        d={`M ${pileCenterX - pileW} ${bottomY} Q ${pileCenterX} ${bottomY + 35} ${pileCenterX + pileW} ${bottomY} Z`}
+        fill="#f59e0b"
+        opacity="0.5"
+        stroke="#d97706"
+        strokeWidth="1.5"
+      />
+      <text x={pileCenterX} y={bottomY + 22} fontSize="8" fontWeight="700" textAnchor="middle" fill="#92400e">
+        qp = {result.unitEndBearingKpa} kPa
+      </text>
+
+      {/* Right Column: Capacity Summary Card */}
+      <g transform="translate(540, 50)">
+        <rect x={0} y={0} width={130} height={260} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
+        <text x={10} y={20} fontSize="9" fontWeight="700" fill="var(--md-sys-color-primary)">BEARING CAPACITY</text>
+
+        <text x={10} y={45} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Skin Friction (Qs):</text>
+        <text x={10} y={58} fontSize="11" fontWeight="700" fill="#3b82f6">{result.skinFrictionKn} kN</text>
+
+        <text x={10} y={85} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">End Bearing (Qp):</text>
+        <text x={10} y={98} fontSize="11" fontWeight="700" fill="#f59e0b">{result.endBearingKn} kN</text>
+
+        <line x1={10} y1={112} x2={120} y2={112} stroke="var(--md-sys-color-outline-variant)" />
+
+        <text x={10} y={128} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Ultimate Q_ult:</text>
+        <text x={10} y={142} fontSize="12" fontWeight="800" fill="var(--md-sys-color-on-surface)">{result.ultimateCapacityKn} kN</text>
+
+        <text x={10} y={165} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Allowable (FS={result.factorOfSafety}):</text>
+        <text x={10} y={180} fontSize="12" fontWeight="800" fill="#10b981">{result.allowableCapacityKn} kN</text>
+
+        <line x1={10} y1={194} x2={120} y2={194} stroke="var(--md-sys-color-outline-variant)" />
+
+        <text x={10} y={212} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">DCR Utilization:</text>
+        <text x={10} y={226} fontSize="11" fontWeight="700" fill={result.utilizationRatio <= 1 ? '#10b981' : '#f43f5e'}>
+          {(result.utilizationRatio * 100).toFixed(1)}%
+        </text>
+
+        <text x={10} y={244} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Est. Settlement: <tspan fontWeight="700">{result.elasticSettlementMm}mm</tspan></text>
+      </g>
+    </svg>
+  );
+};
+
+/* 14. Pipe Hydraulics Diagram (Hazen-Williams EGL & HGL Profile) */
+export const PipeHydraulicsDiagramSvg: React.FC<{
+  params: PipeHydraulicsParameters;
+  result: PipeHydraulicsResult;
+}> = ({ params, result }) => {
+  const width = 680;
+  const height = 320;
+  const padLeft = 60;
+  const padRight = 80;
+  const plotW = width - padLeft - padRight;
+
+  const inletY = 80;
+  const outletY = 160;
+
+  // Energy grade line (EGL) and Hydraulic grade line (HGL)
+  const eglInletY = inletY - 40;
+  const hglInletY = eglInletY + 12;
+  const hglOutletY = hglInletY + (result.frictionHeadLossM / Math.max(1, result.totalHeadLossM || 1)) * 50;
+  const eglOutletY = hglOutletY - 12;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
+      <text x={12} y={25} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+        HYDRAULIC GRADE LINE (HGL) &amp; ENERGY GRADE LINE (EGL)
+      </text>
+
+      {/* Energy Grade Line (EGL) */}
+      <line x1={padLeft} y1={eglInletY} x2={padLeft + plotW} y2={eglOutletY} stroke="#e11d48" strokeWidth="2" strokeDasharray="4 2" />
+      <text x={padLeft + 5} y={eglInletY - 6} fontSize="8.5" fontWeight="700" fill="#e11d48">EGL Inlet ({result.inletTotalHeadM} m)</text>
+      <text x={padLeft + plotW - 100} y={eglOutletY - 6} fontSize="8.5" fontWeight="700" fill="#e11d48">EGL Outlet ({result.outletTotalHeadM} m)</text>
+
+      {/* Hydraulic Grade Line (HGL) */}
+      <line x1={padLeft} y1={hglInletY} x2={padLeft + plotW} y2={hglOutletY} stroke="#0284c7" strokeWidth="2.5" />
+      <text x={padLeft + 5} y={hglInletY + 14} fontSize="8.5" fontWeight="700" fill="#0284c7">HGL Slope (Sf = {result.frictionSlopeMPerM} m/m)</text>
+
+      {/* Pipe Profile */}
+      <line x1={padLeft} y1={inletY + 60} x2={padLeft + plotW} y2={outletY + 60} stroke="#475569" strokeWidth="16" strokeLinecap="round" />
+      <line x1={padLeft} y1={inletY + 60} x2={padLeft + plotW} y2={outletY + 60} stroke="#38bdf8" strokeWidth="10" strokeLinecap="round" />
+
+      {/* Velocity Vector & Direction */}
+      <line x1={padLeft + plotW / 2 - 40} y1={inletY + 60 + (outletY - inletY) / 2} x2={padLeft + plotW / 2 + 40} y2={inletY + 60 + (outletY - inletY) / 2} stroke="#ffffff" strokeWidth="3" markerEnd="url(#arrow)" />
+      <text x={padLeft + plotW / 2} y={inletY + 52 + (outletY - inletY) / 2} fontSize="9" fontWeight="800" textAnchor="middle" fill="#0f172a">
+        V = {result.velocityMps} m/s ({result.flowRegime})
+      </text>
+
+      {/* Inlet & Outlet Elevation Callouts */}
+      <text x={padLeft} y={inletY + 95} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+        Inlet Elev: {params.inletElevationM}m · Pin = {result.inletPressureKpa} kPa
+      </text>
+      <text x={padLeft + plotW - 110} y={outletY + 95} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+        Outlet Elev: {params.outletElevationM}m · Pout = {result.outletPressureKpa} kPa
+      </text>
+
+      {/* Head Loss Dimension */}
+      <g transform={`translate(${padLeft + plotW + 15}, ${eglInletY})`}>
+        <line x1={0} y1={0} x2={0} y2={eglOutletY - eglInletY} stroke="#f43f5e" strokeWidth="1.5" />
+        <line x1={-4} y1={0} x2={4} y2={0} stroke="#f43f5e" strokeWidth="1.5" />
+        <line x1={-4} y1={eglOutletY - eglInletY} x2={4} y2={eglOutletY - eglInletY} stroke="#f43f5e" strokeWidth="1.5" />
+        <text x={8} y={(eglOutletY - eglInletY) / 2 + 4} fontSize="8.5" fontWeight="700" fill="#f43f5e">
+          h_f = {result.frictionHeadLossM}m
+        </text>
+      </g>
+
+      {/* Velocity Status Indicators */}
+      <g transform="translate(60, 260)">
+        <rect x={0} y={0} width={260} height={42} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
+        <text x={12} y={18} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Self-Cleansing Velocity Check (&ge; 0.6 m/s):</text>
+        <text x={12} y={32} fontSize="9.5" fontWeight="700" fill={result.selfCleansingStatus === 'pass' ? '#10b981' : '#f59e0b'}>
+          {result.selfCleansingStatus === 'pass' ? '✓ PASS: Adequate Sediment Flushing' : '⚠ WARNING: Siltation Risk'}
+        </text>
+      </g>
+
+      <g transform="translate(340, 260)">
+        <rect x={0} y={0} width={260} height={42} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
+        <text x={12} y={18} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Scour / Water-Hammer Velocity Check (&le; 3.0 m/s):</text>
+        <text x={12} y={32} fontSize="9.5" fontWeight="700" fill={result.maxVelocityStatus === 'pass' ? '#10b981' : '#f43f5e'}>
+          {result.maxVelocityStatus === 'pass' ? '✓ PASS: Velocity Within Safe Envelope' : '✕ EXCEEDED: Excessive Scour / Surge'}
+        </text>
+      </g>
+    </svg>
+  );
+};
+
 

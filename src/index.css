@@ -304,4 +304,127 @@
   }
 }
 
+/* ==========================================================================
+   Demand-Capacity Ratio (DCR) Gauge & Dynamic Fill Engine
+   Optimized for cross-platform GPU compositing (iOS, Android, macOS, Windows, Linux)
+   ========================================================================== */
 
+/* Hardware-accelerated Gauge Track */
+.dcr-gauge-track {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--md-sys-color-surface-container, #f1f5f9);
+  /* Force GPU compositing layer & subpixel antialiasing */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
+  isolation: isolate;
+  contain: paint layout;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Dynamic Smooth Progress Fill Bar */
+.dcr-gauge-fill {
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  /* Hint browser compositor for 60/120fps hardware acceleration */
+  will-change: width, background-color, box-shadow;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Smooth fluid easing curve: snappy start with graceful, physics-damped deceleration */
+  transition-property: width, background-color, box-shadow;
+  transition-duration: 650ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Subtle continuous dynamic shimmer sheen across the gauge fill */
+.dcr-gauge-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-100%);
+  animation: dcr-shimmer 2.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+@keyframes dcr-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  60%, 100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Color palettes & lighting for DCR Limit States */
+.dcr-fill-safe {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+}
+
+.dcr-fill-warning {
+  background: linear-gradient(90deg, #f59e0b 0%, #ea580c 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+}
+
+.dcr-fill-critical {
+  background: linear-gradient(90deg, #f43f5e 0%, #e11d48 50%, #be123c 100%);
+  box-shadow: 0 0 14px rgba(225, 29, 72, 0.6);
+  animation: dcr-pulse-critical 1.8s infinite ease-in-out;
+}
+
+@keyframes dcr-pulse-critical {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.88;
+    filter: brightness(1.15);
+  }
+}
+
+/* Platform Accessibility: Respect Reduced Motion on iOS, macOS, Windows, Android */
+@media (prefers-reduced-motion: reduce) {
+  .dcr-gauge-fill {
+    transition: none !important;
+    animation: none !important;
+  }
+  .dcr-gauge-fill::after {
+    display: none !important;
+  }
+  .dcr-fill-critical {
+    animation: none !important;
+  }
+}
+
+/* Windows High Contrast Mode support */
+@media (forced-colors: active) {
+  .dcr-gauge-track {
+    border: 1px solid ButtonText !important;
+    background: Canvas !important;
+  }
+  .dcr-gauge-fill {
+    background: Highlight !important;
+    border: 1px solid HighlightText !important;
+  }
+  .dcr-gauge-fill::after {
+    display: none !important;
+  }
+}

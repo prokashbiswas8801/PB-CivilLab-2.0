@@ -19,7 +19,10 @@ export type EngineeringModuleId =
   | 'beam-analysis'
   | 'bearing-capacity'
   | 'concrete-mix'
-  | 'open-channel';
+  | 'open-channel'
+  | 'continuous-beam'
+  | 'pile-capacity'
+  | 'pipe-hydraulics';
 
 export type BuildingCode = 'BNBC-2020' | 'ACI-318' | 'IS-456';
 
@@ -256,6 +259,74 @@ export interface ChannelParameters {
   freeboardRequirementM: number;
 }
 
+/* Module 12: Continuous Beam Multi-Span Analysis */
+export interface ContinuousBeamSpan {
+  id: string;
+  spanIndex: number;
+  lengthM: number;
+  momentOfInertiaCm4: number;
+  elasticModulusGpa: number;
+  udlKnPerM: number;
+  pointLoadKn: number;
+  pointLoadPositionM: number;
+}
+
+export interface ContinuousBeamParameters {
+  spanCount: 2 | 3 | 4;
+  spans: ContinuousBeamSpan[];
+  leftSupport: 'pin' | 'fixed';
+  rightSupport: 'pin' | 'fixed';
+  allowableStressMpa: number;
+  sectionDepthMm: number;
+}
+
+/* Module 13: Pile Foundation Bearing Capacity (Deep Foundation) */
+export interface SoilLayer {
+  id: string;
+  name: string;
+  thicknessM: number;
+  soilType: 'clay' | 'sand';
+  cohesionKpa: number;
+  frictionAngleDeg: number;
+  unitWeightKnPerM3: number;
+}
+
+export type PileType = 'bored-cast-in-situ' | 'driven-precast' | 'driven-steel-pipe';
+
+export interface PileCapacityParameters {
+  pileType: PileType;
+  diameterM: number;
+  lengthM: number;
+  groundwaterDepthM: number;
+  appliedLoadKn: number;
+  factorOfSafety: number;
+  layers: SoilLayer[];
+  tipBearingCohesionKpa: number;
+  tipBearingFrictionDeg: number;
+  tipBearingUnitWeightKnPerM3: number;
+}
+
+/* Module 14: Pipe Hydraulics (Hazen-Williams Pressure & Storm Flow) */
+export type PipeMaterialType =
+  | 'pvc-hdpe'
+  | 'ductile-iron'
+  | 'cast-iron'
+  | 'concrete'
+  | 'galvanized-steel';
+
+export interface PipeHydraulicsParameters {
+  pipeMaterial: PipeMaterialType;
+  hazenWilliamsC: number;
+  internalDiameterMm: number;
+  lengthM: number;
+  flowRateLps: number;
+  inletElevationM: number;
+  outletElevationM: number;
+  inletPressureKpa: number;
+  minorLossCoefficientK: number;
+  waterTempC: number;
+}
+
 export interface ConcreteMemberItem {
   id: string;
   name: string;
@@ -477,6 +548,9 @@ export interface CivilWorkspace {
   masonry: MasonryParameters;
   earthwork: EarthworkParameters;
   surveying?: SurveyingParameters;
+  continuousBeam?: ContinuousBeamParameters;
+  pile?: PileCapacityParameters;
+  pipe?: PipeHydraulicsParameters;
   unitPreferences?: WorkspaceUnitPreferences;
 }
 

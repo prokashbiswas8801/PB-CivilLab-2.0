@@ -11,7 +11,7 @@ export interface ReportVerificationPayload {
   engineerOfRecord: string;
   organization: string;
   licenseNumber?: string;
-  status: 'nominal' | 'warning' | 'critical' | 'valid';
+  status: 'nominal' | 'warning' | 'critical' | 'valid' | 'invalid' | string;
   timestamp: string;
   verificationHash: string;
 }
@@ -89,4 +89,70 @@ export function generateVerificationHash(input: string): string {
   }
   const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
   return `VER-${hex}-${input.length}`;
+}
+
+export interface GenerateReportQrOptions {
+  documentId?: string;
+  projectCode: string;
+  projectName: string;
+  moduleId: string;
+  moduleName: string;
+  codeStandard: string;
+  siteLocation?: string;
+  engineerOfRecord?: string;
+  organization?: string;
+  licenseNumber?: string;
+  status?: 'nominal' | 'warning' | 'critical' | 'valid' | 'invalid' | string;
+  timestamp?: string;
+}
+
+export interface GeneratedReportQrResult {
+  documentId: string;
+  verificationHash: string;
+  verificationString: string;
+  dataUrl: string;
+  svgString: string;
+  payload: ReportVerificationPayload;
+}
+
+/**
+ * Generate a QR code containing the unique document reference and project metadata.
+ * Returns both high-DPI raster DataURL and vector SVG along with metadata payload and tamper-evident hash.
+ */
+export async function generateReportQrCode(options: GenerateReportQrOptions): Promise<GeneratedReportQrResult> {
+  const documentId = options.documentId || `DOC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  const timestamp = options.timestamp || new Date().toISOString();
+  const seedString = `${documentId}|${options.projectCode}|${options.moduleId}|${timestamp}`;
+  const verificationHash = generateVerificationHash(seedString);
+
+  const payload: ReportVerificationPayload = {
+    documentId,
+    projectCode: options.projectCode,
+    projectName: options.projectName,
+    moduleId: options.moduleId,
+    moduleName: options.moduleName,
+    codeStandard: options.codeStandard,
+    siteLocation: options.siteLocation || 'Site Engineering Office',
+    engineerOfRecord: options.engineerOfRecord || 'Project Engineer, PE',
+    organization: options.organization || 'Structural Design Department',
+    licenseNumber: options.licenseNumber || 'PE-00000',
+    status: options.status || 'nominal',
+    timestamp,
+    verificationHash,
+  };
+
+  const verificationString = buildReportVerificationString(payload);
+  const [dataUrl, svgString] = await Promise.all([
+    generateQrCodeDataUrl(verificationString),
+    generateQrCodeSvg(verificationString),
+  ]);
+
+  return {
+    documentId,
+    verificationHash,
+    verificationString,
+    dataUrl,
+    svgString,
+    payload,
+  };
 }
