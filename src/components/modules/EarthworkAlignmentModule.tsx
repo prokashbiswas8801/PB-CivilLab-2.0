@@ -56,7 +56,7 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
       </div>
 
       {activeWorkspace.earthwork.calculationType === 'pit-excavation' && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <UnitInput
             label="Pit Top Length"
             category="length"
@@ -71,6 +71,14 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             onUnitChange={(u) => updateFieldUnit('earth.pitL', u)}
             customUnits={customUnits}
             step={0.5}
+            presets={[
+              { label: '3.0 m', valueSI: 3.0, title: 'Single Footing Pit' },
+              { label: '6.0 m', valueSI: 6.0, title: 'Combined Pit' },
+              { label: '12.0 m', valueSI: 12.0, title: 'Raft Foundation Excavation' },
+            ]}
+            standardRef="BNBC 2020 Part 7 / OSHA 1926 Subpart P"
+            recommendedRange="2.0 m – 30.0 m"
+            designTip="Include working clearance (min 0.6m each side) outside formwork line."
           />
           <UnitInput
             label="Pit Top Width"
@@ -86,6 +94,11 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             onUnitChange={(u) => updateFieldUnit('earth.pitW', u)}
             customUnits={customUnits}
             step={0.5}
+            presets={[
+              { label: '3.0 m', valueSI: 3.0, title: 'Single Footing Pit' },
+              { label: '6.0 m', valueSI: 6.0, title: 'Combined Pit' },
+              { label: '10.0 m', valueSI: 10.0, title: 'Basement Pit' },
+            ]}
           />
           <UnitInput
             label="Excavation Depth"
@@ -101,12 +114,26 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             onUnitChange={(u) => updateFieldUnit('earth.pitD', u)}
             customUnits={customUnits}
             step={0.2}
+            presets={[
+              { label: '1.5 m (5 ft)', valueSI: 1.5, title: 'OSHA max un-shored vertical trench depth' },
+              { label: '2.5 m (8 ft)', valueSI: 2.5, title: 'Standard Basement Depth' },
+              { label: '4.0 m (13 ft)', valueSI: 4.0, title: 'Deep Basement / Underground Tank' },
+            ]}
+            validationRule={{
+              minSI: 0.2,
+              maxSI: 25.0,
+              warningAboveSI: 1.5,
+              warningHint: 'Safety Warning: Excavations deeper than 1.5m (5 ft) require shoring, sheet piling, or safe slope angle under OSHA & BNBC 2020 Part 7.',
+            }}
+            standardRef="OSHA 1926.652 / BNBC 2020 Part 7"
+            recommendedRange="1.0 m – 5.0 m"
+            designTip="For depths > 1.5m without shoring, side slopes must be battered (e.g. 1:1 for Type B soils)."
           />
         </div>
       )}
 
       {activeWorkspace.earthwork.calculationType === 'trapezoidal-trench' && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <UnitInput
             label="Trench Length"
             category="length"
@@ -120,7 +147,12 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             currentUnitId={getFieldUnit('earth.trenchL', 'length', 'm')}
             onUnitChange={(u) => updateFieldUnit('earth.trenchL', u)}
             customUnits={customUnits}
-            step={1}
+            step={5}
+            presets={[
+              { label: '25 m', valueSI: 25, title: 'Short Pipe Laying' },
+              { label: '50 m', valueSI: 50, title: 'Standard Sewer Run' },
+              { label: '150 m', valueSI: 150, title: 'Street Utility Trench' },
+            ]}
           />
           <UnitInput
             label="Bottom Width"
@@ -136,6 +168,13 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             onUnitChange={(u) => updateFieldUnit('earth.trenchW', u)}
             customUnits={customUnits}
             step={0.25}
+            presets={[
+              { label: '0.8 m (32")', valueSI: 0.8, title: 'Small Water / Gas Pipe Trench' },
+              { label: '1.2 m (4 ft)', valueSI: 1.2, title: 'Medium Sewer / Storm Drain' },
+              { label: '2.0 m (6.5 ft)', valueSI: 2.0, title: 'Large Culvert / Foundation Trench' },
+            ]}
+            standardRef="BNBC 2020 Part 7"
+            recommendedRange="0.6 m – 3.0 m"
           />
           <UnitInput
             label="Trench Depth"
@@ -151,12 +190,23 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             onUnitChange={(u) => updateFieldUnit('earth.trenchD', u)}
             customUnits={customUnits}
             step={0.2}
+            presets={[
+              { label: '1.2 m (4 ft)', valueSI: 1.2, title: 'Frost Safe Utility Depth' },
+              { label: '1.8 m (6 ft)', valueSI: 1.8, title: 'Standard Gravity Sewer Depth' },
+              { label: '3.0 m (10 ft)', valueSI: 3.0, title: 'Deep Trunk Sewer' },
+            ]}
+            validationRule={{
+              minSI: 0.2,
+              maxSI: 15.0,
+              warningAboveSI: 1.5,
+              warningHint: 'Trench safety alert: Depths > 1.5m mandate trench boxes, hydraulic shoring, or stepped benching.',
+            }}
           />
         </div>
       )}
 
       {activeWorkspace.earthwork.calculationType === 'prismoidal-road' && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <UnitInput
             label="Road Align Length"
             category="length"
@@ -170,7 +220,13 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             currentUnitId={getFieldUnit('earth.roadL', 'length', 'm')}
             onUnitChange={(u) => updateFieldUnit('earth.roadL', u)}
             customUnits={customUnits}
-            step={5}
+            step={25}
+            presets={[
+              { label: '50 m', valueSI: 50, title: 'Cul-de-sac / Internal Access' },
+              { label: '200 m', valueSI: 200, title: 'Residential Street Block' },
+              { label: '1,000 m (1 km)', valueSI: 1000, title: 'Highway Kilometer Section' },
+            ]}
+            standardRef="AASHTO Green Book / RHD Bangladesh"
           />
           <UnitInput
             label="Formation Width"
@@ -186,6 +242,15 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             onUnitChange={(u) => updateFieldUnit('earth.roadW', u)}
             customUnits={customUnits}
             step={0.5}
+            presets={[
+              { label: '5.5 m', valueSI: 5.5, title: 'Single Lane + Earthen Shoulders' },
+              { label: '7.3 m', valueSI: 7.3, title: 'Standard Two-Lane Carriageway' },
+              { label: '10.3 m', valueSI: 10.3, title: 'Two-Lane Highway with Paved Shoulders' },
+              { label: '14.0 m', valueSI: 14.0, title: 'Four-Lane Sub-arterial' },
+            ]}
+            standardRef="AASHTO / RHD Standard Geometric Design"
+            recommendedRange="5.5 m – 24.0 m"
+            designTip="Formation width is total embankment width at finished road formation level, including shoulders."
           />
         </div>
       )}

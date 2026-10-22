@@ -122,6 +122,99 @@ export function getUnitDefinition(
 /**
  * Smart Input Parser
  * Parses both plain numbers and expressions like "12'-6 1/2\"", "250 mm", "14.5 ft", "18 kN/m3"
+/**
+ * Gets the primary Metric/Imperial counterpart unit ID for rapid 1-click toggling
+ */
+export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey): string {
+  const counterpartMap: Record<string, string> = {
+    // Length
+    m: 'ft',
+    ft: 'm',
+    mm: 'in',
+    in: 'mm',
+    cm: 'in',
+    km: 'mile',
+    mile: 'km',
+    yard: 'm',
+    // Area
+    m2: 'ft2',
+    ft2: 'm2',
+    sqm: 'ft2',
+    sqft: 'm2',
+    sft: 'm2',
+    acre: 'hectare',
+    hectare: 'acre',
+    // Volume
+    m3: 'cft',
+    cft: 'm3',
+    cum: 'cft',
+    ft3: 'm3',
+    liter: 'gal',
+    gal: 'liter',
+    // Mass
+    kg: 'lb',
+    lb: 'kg',
+    tonne: 'ton_us',
+    ton_us: 'tonne',
+    ton_uk: 'tonne',
+    // Force
+    kN: 'kip',
+    kip: 'kN',
+    N: 'lbf',
+    lbf: 'N',
+    kgf: 'lbf',
+    tonf: 'kip',
+    // Distributed Load
+    'kN/m': 'kip/ft',
+    'kip/ft': 'kN/m',
+    'N/m': 'lbf/ft',
+    'lbf/ft': 'N/m',
+    'kgf/m': 'kip/ft',
+    // Pressure / Stress
+    MPa: 'psi',
+    psi: 'MPa',
+    kPa: 'psf',
+    psf: 'kPa',
+    GPa: 'ksi',
+    ksi: 'GPa',
+    bar: 'psi',
+    'N/mm2': 'psi',
+    'kgf/cm2': 'psi',
+    // Density
+    'kg/m3': 'pcf',
+    pcf: 'kg/m3',
+    'kN/m3': 'pcf',
+    'g/cm3': 'pcf',
+    // Moment
+    'kN.m': 'kip.ft',
+    'kip.ft': 'kN.m',
+    'N.m': 'lbf.ft',
+    'lbf.ft': 'N.m',
+    // Velocity
+    'm/s': 'ft/s',
+    'ft/s': 'm/s',
+    'km/h': 'mph',
+    mph: 'km/h',
+    // Flow Rate
+    'm3/s': 'cfs',
+    cfs: 'm3/s',
+    'L/s': 'gpm',
+    gpm: 'L/s',
+  };
+
+  if (counterpartMap[unitId]) {
+    return counterpartMap[unitId];
+  }
+
+  // Fallback: pick standard unit from imperial or metric preset
+  const isMetric = SYSTEM_PRESET_UNITS.metric[category] === unitId;
+  return isMetric ? SYSTEM_PRESET_UNITS.imperial[category] : SYSTEM_PRESET_UNITS.metric[category];
+}
+
+/**
+ * Smart Input Parser
+ * Parses plain numbers, comma-formatted strings, simple arithmetic ("15 * 2", "250 / 2"),
+ * and architectural expressions like "12'-6 1/2\"", "250 mm", "14.5 ft", "18 kN/m3"
  */
 export function parseSmartUnitInput(
   rawString: string,
@@ -133,7 +226,7 @@ export function parseSmartUnitInput(
   isValid: boolean;
   errorMessage?: string;
 } {
-  const trimmed = rawString.trim();
+  let trimmed = rawString.trim();
   if (!trimmed) {
     return { parsedValue: 0, detectedUnitId: currentUnitId, isValid: false, errorMessage: 'Empty input' };
   }
@@ -160,19 +253,36 @@ export function parseSmartUnitInput(
   for (const u of unitsInCat) {
     const escapedSymbol = u.symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const escapedId = u.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`^([+-]?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)\\s*(?:${escapedSymbol}|${escapedId})$`, 'i');
+    const regex = new RegExp(`^([+-]?[0-9,]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\\s*(?:${escapedSymbol}|${escapedId})$`, 'i');
     const match = trimmed.match(regex);
     if (match) {
-      const num = parseFloat(match[1]);
+      const cleanNumStr = match[1].replace(/,/g, '');
+      const num = parseFloat(cleanNumStr);
       if (!isNaN(num)) {
         return { parsedValue: num, detectedUnitId: u.id, isValid: true };
       }
     }
   }
 
-  // 3. Fallback: Parse plain float
-  const numericVal = parseFloat(trimmed);
-  if (!isNaN(numericVal)) {
+  // 3. Strip out thousands commas for arithmetic or numeric parsing (e.g. "1,250.5" -> "1250.5")
+  const sanitized = trimmed.replace(/,/g, '');
+
+  // 4. Safe Arithmetic Evaluation (e.g. "25 / 2", "12.5 * 2.4", "10 + 5.5")
+  if (/^[0-9\s.+\-*/()]+$/.test(sanitized) && /[+\-*/]/.test(sanitized)) {
+    try {
+      // Evaluate only valid mathematical operations without variable access
+      const evaluated = Function(`'use strict'; return (${sanitized});`)();
+      if (typeof evaluated === 'number' && !isNaN(evaluated) && isFinite(evaluated)) {
+        return { parsedValue: evaluated, detectedUnitId: currentUnitId, isValid: true };
+      }
+    } catch {
+      // Ignore evaluation error and proceed to standard parsing
+    }
+  }
+
+  // 5. Standard Float Parsing
+  const numericVal = parseFloat(sanitized);
+  if (!isNaN(numericVal) && isFinite(numericVal)) {
     return { parsedValue: numericVal, detectedUnitId: currentUnitId, isValid: true };
   }
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { motion } from 'framer-motion';
 import {
   Menu,
   X,
@@ -59,7 +60,7 @@ import {
   getCapacityUtilization,
   getAllCapacityUtilizations,
 } from './utils/analyticalExport';
-import { Logo, LogoMark } from './components/Logo';
+import { Logo, LogoMark, BrandLogoIcon, BRAND_LOGO_SRC } from './components/Logo';
 import { Footer } from './components/Footer';
 import { AppSplash } from './components/AppSplash';
 import {
@@ -160,6 +161,7 @@ import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { AnalyticalDenseTable } from './components/AnalyticalDenseTable';
 import { DashboardView } from './components/DashboardView';
 import { DcrCapacityGauge, DcrGaugeSuite } from './components/DcrCapacityGauge';
+import { CelebrationToast, ToastMessage } from './components/CelebrationToast';
 import { exportCertifiedEngineeringPdf } from './utils/pdfExport';
 import { syncAllModulesToBoq } from './utils/boqAutoSync';
 import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
@@ -349,7 +351,30 @@ export default function App() {
   const [historyScope, setHistoryScope] = useState<'active-project' | 'all-projects'>('active-project');
   const [historySearch, setHistorySearch] = useState('');
   const [triggerErrorTest, setTriggerErrorTest] = useState(false);
-  const [toastBanner, setToastBanner] = useState<string | null>(null);
+  const [celebrationToast, setCelebrationToast] = useState<ToastMessage | null>(null);
+  const [sunlightMode, setSunlightMode] = useState<boolean>(false);
+
+  const triggerCelebration = (
+    title: string,
+    description?: string,
+    type: ToastMessage['type'] = 'celebrate'
+  ) => {
+    setCelebrationToast({
+      id: `toast-${Date.now()}-${Math.random()}`,
+      title,
+      description,
+      type,
+      duration: 4500,
+    });
+  };
+
+  const setToastBanner = (msg: string | null) => {
+    if (!msg) {
+      setCelebrationToast(null);
+    } else {
+      triggerCelebration(msg, undefined, 'info');
+    }
+  };
   const [showSplash, setShowSplash] = useState(true);
   const [profilePreferencesModalOpen, setProfilePreferencesModalOpen] = useState(false);
   const [profileModalInitialTab, setProfileModalInitialTab] = useState<'profile' | 'preferences' | 'presets'>('profile');
@@ -467,13 +492,12 @@ export default function App() {
     } else {
       root.classList.remove('dark');
     }
-  }, [effectiveTheme]);
-
-  useEffect(() => {
-    if (!toastBanner) return;
-    const timer = setTimeout(() => setToastBanner(null), 4500);
-    return () => clearTimeout(timer);
-  }, [toastBanner]);
+    if (sunlightMode) {
+      root.classList.add('sunlight-mode');
+    } else {
+      root.classList.remove('sunlight-mode');
+    }
+  }, [effectiveTheme, sunlightMode]);
 
   const activeWorkspace: CivilWorkspace = useMemo(() => {
     return (
@@ -735,7 +759,14 @@ export default function App() {
     }));
   };
 
+  const [isUnitSystemTransitioning, setIsUnitSystemTransitioning] = useState(false);
+  const [unitTransitionKey, setUnitTransitionKey] = useState(0);
+
   const handleSelectUnitPreset = (preset: UnitSystemPreset) => {
+    if (preset === (activeWorkspace.unitPreferences?.systemPreset || 'metric')) return;
+    setIsUnitSystemTransitioning(true);
+    setUnitTransitionKey((prev) => prev + 1);
+
     updateActiveWorkspace((ws) => ({
       ...ws,
       unitPreferences: {
@@ -744,7 +775,13 @@ export default function App() {
         outputUnits: {},
       },
     }));
-    setToastBanner(`Switched project unit system to ${preset.toUpperCase()}`);
+
+    const presetLabel = preset === 'metric' ? 'METRIC (SI)' : preset === 'imperial' ? 'IMPERIAL (US)' : 'REGIONAL';
+    setToastBanner(`Switched project unit system to ${presetLabel} · Values smoothly converted`);
+
+    setTimeout(() => {
+      setIsUnitSystemTransitioning(false);
+    }, 380);
   };
 
   const handleSetModule = (moduleId: EngineeringModuleId) => {
@@ -1020,7 +1057,7 @@ export default function App() {
           ),
         },
       }));
-      setToastBanner(`Updated line item "${itemDesc.trim()}"`);
+      triggerCelebration('Takeoff Item Updated', `Updated line item: ${itemDesc.trim()}`, 'success');
     } else {
       // Add new item
       const newItem: TakeoffLineItem = {
@@ -1045,7 +1082,7 @@ export default function App() {
           items: [...ws.boq.items, newItem],
         },
       }));
-      setToastBanner(`Added line item #${newItem.itemNo} to takeoff sheet`);
+      triggerCelebration('BOQ Line Item Saved', `Added #${newItem.itemNo} to takeoff schedule.`, 'success');
     }
 
     // Reset Form
@@ -1339,12 +1376,15 @@ export default function App() {
       <div class="space-y-6 font-sans text-slate-900 bg-white p-6 max-w-5xl mx-auto leading-relaxed">
         <!-- Certified Executive Header with Dynamic Verification QR Code -->
         <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
-          <div>
-            <div class="text-2xl font-black font-sans tracking-tight text-blue-700">PB CivilLab</div>
-            <div class="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-600 mt-0.5">
-              CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS
+          <div class="flex items-center gap-3.5">
+            <img src="${BRAND_LOGO_SRC}" alt="PB CivilLab Official Brand Logo" class="w-14 h-14 rounded-xl object-cover border border-slate-300 shadow-xs shrink-0" />
+            <div>
+              <div class="text-2xl font-black font-sans tracking-tight text-blue-700">PB CivilLab</div>
+              <div class="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-600 mt-0.5">
+                CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS
+              </div>
+              <div class="text-xs font-mono text-slate-500 mt-1">Official Engineering Submittal &amp; Verification Sheet</div>
             </div>
-            <div class="text-xs font-mono text-slate-500 mt-1">Official Engineering Submittal &amp; Verification Sheet</div>
           </div>
           <div class="flex items-center gap-3.5 shrink-0">
             <div class="text-right text-xs font-mono space-y-0.5">
@@ -1476,10 +1516,14 @@ export default function App() {
         envelope: currentEnvelope,
         userProfile,
       });
-      setToastBanner(`Certified A4 PDF report downloaded successfully for ${MODULE_META[activeModule].shortLabel}.`);
+      triggerCelebration(
+        'Certified Engineering PDF Exported',
+        `Generated cryptographically verified submittal for ${MODULE_META[activeModule].shortLabel}.`,
+        'celebrate'
+      );
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error';
-      setToastBanner(`Failed to export PDF: ${errMsg}`);
+      triggerCelebration('PDF Export Failed', errMsg, 'warning');
     } finally {
       setIsExportingPdf(false);
     }
@@ -1791,7 +1835,11 @@ export default function App() {
       calculationHistory: [newRecord, ...prev.calculationHistory],
     }));
 
-    setToastBanner(`Logged snapshot #${newId.slice(0, 8)} to ${activeWorkspace.name}`);
+    triggerCelebration(
+      'Analytical Snapshot Logged',
+      `Archived snapshot #${newId.slice(0, 8)} to ${activeWorkspace.name} calculation ledger.`,
+      'celebrate'
+    );
   };
 
   // Project Workspaces Management
@@ -2297,17 +2345,42 @@ export default function App() {
             <button
               type="button"
               onClick={() => setPrintPreviewModalOpen(true)}
-              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] items-center gap-1.5 cursor-pointer"
+              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] items-center gap-1.5 cursor-pointer btn-tactile"
               title="Print Preview & Vector PDF Submittal Engine"
             >
               <Printer className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
               <span className="hidden xl:inline">Print / PDF</span>
             </button>
 
+            {/* Sunlight High-Contrast Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                setSunlightMode((prev) => {
+                  const next = !prev;
+                  triggerCelebration(
+                    next ? 'Sunlight High-Contrast Mode Active' : 'Standard Contrast Restored',
+                    next ? 'Tuned for direct bright sunlight on construction jobsites.' : 'Returned to default theme.',
+                    'info'
+                  );
+                  return next;
+                });
+              }}
+              className={`touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer inline-flex items-center gap-1.5 btn-tactile ${
+                sunlightMode
+                  ? 'bg-amber-400 text-black border-amber-500 font-bold shadow-md'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
+              }`}
+              title="Jobsite High-Contrast Sunlight Mode for outdoor bright sun"
+            >
+              <Sun className={`w-4 h-4 shrink-0 ${sunlightMode ? 'text-black' : 'text-amber-500'}`} />
+              <span className="hidden xl:inline">Sunlight</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setWorkspaceManagerOpen(true)}
-              className="touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-1.5 cursor-pointer"
+              className="touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-1.5 cursor-pointer btn-tactile"
               title="Manage Projects & Takeoffs"
             >
               <FolderArchive className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
@@ -2859,6 +2932,7 @@ export default function App() {
                 <UnitPresetSelector
                   currentPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'}
                   onSelectPreset={handleSelectUnitPreset}
+                  isTransitioning={isUnitSystemTransitioning}
                 />
                 {renderStatusBadge()}
                 <button
@@ -2882,13 +2956,6 @@ export default function App() {
               />
             </div>
 
-            {toastBanner && (
-              <div className="mx-4 md:mx-6 mt-3 px-4 py-3 rounded-lg bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] text-xs font-mono flex items-center justify-between">
-                <span>{toastBanner}</span>
-                <button type="button" onClick={() => setToastBanner(null)} className="underline font-bold">Dismiss</button>
-              </div>
-            )}
-
             {/* Validation Issues Alert Banner (No Silent Coercion) */}
             {currentEnvelope.issues.length > 0 && (
               <div className="mx-4 md:mx-6 mt-4 p-4 rounded-xl border border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/30 text-[var(--md-sys-color-on-surface)] space-y-2">
@@ -2911,8 +2978,14 @@ export default function App() {
 
             {/* Split Screen Grids */}
             <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Pane: Parameter Input Form */}
-              <section className="lg:col-span-5 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 space-y-4">
+              {/* Left Pane: Parameter Input Form with Smooth Unit Transition */}
+              <motion.section
+                key={`inputs-pane-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                className="lg:col-span-5 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 space-y-4"
+              >
                 <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
                   <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
                     Input Parameters
@@ -3097,12 +3170,21 @@ export default function App() {
                   <PipeHydraulicsInputs
                     activeWorkspace={activeWorkspace}
                     updateActiveWorkspace={updateActiveWorkspace}
+                    customUnits={appState.customUnits}
+                    getFieldUnit={getFieldUnit}
+                    updateFieldUnit={updateFieldUnit}
                   />
                 )}
-              </section>
+              </motion.section>
 
-              {/* Right Pane: Analytical Stage + Detailed Grids */}
-              <section className="lg:col-span-7 space-y-6">
+              {/* Right Pane: Analytical Stage + Detailed Grids with Smooth Unit Transition */}
+              <motion.section
+                key={`outputs-pane-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                className="lg:col-span-7 space-y-6"
+              >
                 <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 analytical-envelope-container">
                   <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-[var(--md-sys-color-outline-variant)]">
                     <div className="flex items-center gap-2.5">
@@ -3564,7 +3646,7 @@ export default function App() {
                   onLoadSampleHistory={handleLoadSampleHistory}
                   onDeleteHistoryItem={handleDeleteHistoryItem}
                 />
-              </section>
+              </motion.section>
             </div>
               </>
             )}
@@ -3794,6 +3876,12 @@ export default function App() {
             codeStandard: MODULE_META[activeModule].codeStandard,
           }}
           currentEnvelope={currentEnvelope}
+        />
+
+        {/* Floating Celebratory Toast Micro-Interactions */}
+        <CelebrationToast
+          toast={celebrationToast}
+          onDismiss={() => setCelebrationToast(null)}
         />
       </div>
 

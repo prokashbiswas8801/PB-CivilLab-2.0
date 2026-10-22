@@ -67,6 +67,19 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
     });
   }, [convertedValue, precision]);
 
+  // Smooth fade transition tracking when unit system changes
+  const [isUnitFading, setIsUnitFading] = useState(false);
+  const prevUnitIdRef = useRef(activeUnitInfo.id);
+
+  useEffect(() => {
+    if (prevUnitIdRef.current !== activeUnitInfo.id) {
+      prevUnitIdRef.current = activeUnitInfo.id;
+      setIsUnitFading(true);
+      const timer = setTimeout(() => setIsUnitFading(false), 280);
+      return () => clearTimeout(timer);
+    }
+  }, [activeUnitInfo.id]);
+
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -84,8 +97,10 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
 
   return (
     <div
-      className={`p-3 rounded-xl border transition-all ${
-        highlight
+      className={`p-3 rounded-xl border transition-all duration-300 ${
+        isUnitFading
+          ? 'border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)]/40 shadow-xs'
+          : highlight
           ? 'bg-[var(--md-sys-color-primary-container)]/30 border-[var(--md-sys-color-primary)]'
           : 'bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]'
       } ${className}`}
@@ -101,8 +116,12 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
 
       <div className="flex items-baseline justify-between gap-2 mt-0.5">
         <div
-          className={`text-xl font-bold font-mono truncate ${
-            highlight ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-on-surface)]'
+          className={`text-xl font-bold font-mono truncate transition-all duration-300 ease-out ${
+            isUnitFading
+              ? 'opacity-25 scale-[0.985] text-[var(--md-sys-color-primary)] translate-y-0.5'
+              : highlight
+              ? 'opacity-100 scale-100 text-[var(--md-sys-color-primary)] translate-y-0'
+              : 'opacity-100 scale-100 text-[var(--md-sys-color-on-surface)] translate-y-0'
           }`}
         >
           {displayFormatted}
@@ -116,7 +135,11 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-mono font-bold text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
             title={`Display Unit: ${activeUnitInfo.name}. Click to change.`}
           >
-            <span>{activeUnitInfo.symbol}</span>
+            <span className={`transition-all duration-300 ease-out inline-block ${
+              isUnitFading ? 'opacity-25 scale-90 text-[var(--md-sys-color-primary)]' : 'opacity-100 scale-100'
+            }`}>
+              {activeUnitInfo.symbol}
+            </span>
             <ChevronDown className={`w-3 h-3 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 

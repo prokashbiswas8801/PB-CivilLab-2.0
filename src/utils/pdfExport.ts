@@ -12,6 +12,7 @@ import {
   getCapacityUtilization,
   getAllCapacityUtilizations,
 } from './analyticalExport';
+import { BRAND_LOGO_BASE64 } from '../assets/brandLogoData';
 
 export interface PdfExportOptions {
   workspace: CivilWorkspace;
@@ -101,27 +102,34 @@ export async function exportCertifiedEngineeringPdf({
   doc.setFillColor(lightBgColor[0], lightBgColor[1], lightBgColor[2]);
   doc.rect(margin, cursorY, contentWidth, 32, 'F');
   doc.setLineWidth(0.4);
-  doc.rect(margin, cursorY, contentWidth, 32, 'D');
+  // Brand Logo Icon on left side
+  const logoSize = 24;
+  try {
+    doc.addImage(BRAND_LOGO_BASE64, 'JPEG', margin + 4, cursorY + 4, logoSize, logoSize);
+  } catch (err) {
+    console.warn('Could not add brand logo to PDF header:', err);
+  }
 
-  // Left Title
+  // Left Title (aligned next to brand logo)
+  const textX = margin + logoSize + 8;
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('PB CivilLab', margin + 4, cursorY + 8);
+  doc.setFontSize(15);
+  doc.text('PB CivilLab', textX, cursorY + 8);
 
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text('CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS', margin + 4, cursorY + 13);
+  doc.setFontSize(7);
+  doc.text('CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS', textX, cursorY + 13);
 
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text('OFFICIAL CERTIFIED ENGINEERING SUBMITTAL SHEET', margin + 4, cursorY + 19);
+  doc.setFontSize(8.5);
+  doc.text('OFFICIAL CERTIFIED ENGINEERING SUBMITTAL SHEET', textX, cursorY + 19);
 
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Governing Standard: ${workspace.governingCode} · Module: ${activeModule.toUpperCase()}`, margin + 4, cursorY + 25);
+  doc.text(`Governing Standard: ${workspace.governingCode} · Module: ${activeModule.toUpperCase()}`, textX, cursorY + 25);
 
   // QR Code on right side
   if (qrDataUrl) {

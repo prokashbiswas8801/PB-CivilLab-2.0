@@ -49,6 +49,7 @@ import {
   getCurrencySymbol,
 } from '../utils/calculations';
 import { CapacityUtilizationInfo } from '../utils/analyticalExport';
+import { Logo, BrandLogoIcon } from './Logo';
 
 export interface DashboardViewProps {
   activeWorkspace: CivilWorkspace;
@@ -258,9 +259,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)]">
-              {activeWorkspace.name}
-            </h1>
+            <div className="flex items-center gap-3.5 pt-1">
+              <BrandLogoIcon size={48} animated={true} className="shadow-xs border border-[var(--md-sys-color-outline-variant)] shrink-0" />
+              <div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)] leading-tight">
+                  {activeWorkspace.name}
+                </h1>
+                <div className="text-[11px] font-mono font-bold text-[var(--md-sys-color-primary)] tracking-wider uppercase mt-0.5">
+                  PB CivilLab · Precision Computational Suite
+                </div>
+              </div>
+            </div>
 
             <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] max-w-2xl leading-relaxed">
               Integrated civil, structural, geotechnical, and hydraulic design workspace. Real-time limit-state convergence, verified code formulations, and one-click submittals.

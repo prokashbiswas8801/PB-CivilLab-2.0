@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   BeamAnalysisResult,
   BearingAnalysisResult,
@@ -30,100 +30,420 @@ import {
   PipeHydraulicsParameters,
 } from '../types/civil';
 
-/* 1. Beam Diagram */
+/* 1. Beam Diagram with Interactive Crosshair & Limit State Safety */
 export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnalysisResult }> = ({
   params,
   result,
 }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverData, setHoverData] = useState<{ x: number; shearKn: number; momentKnm: number; px: number } | null>(null);
+
   const width = 680;
-  const height = 320;
+  const height = 330;
   const padLeft = 58;
-  const padRight = 36;
+  const padRight = 130; // Room for beam section vignette
   const plotW = width - padLeft - padRight;
-  const L = params.spanLengthM;
+  const L = Math.max(0.1, params.spanLengthM);
   const maxV = Math.max(0.1, result.maxShearKn);
   const maxM = Math.max(0.1, result.maxMomentKnm);
-  const toX = (xM: number) => padLeft + (xM / L) * plotW;
+  const toX = (xM: number) => padLeft + (Math.max(0, Math.min(L, xM)) / L) * plotW;
 
-  const shearCenterY = 140;
-  const shearAmp = 36;
+  const shearCenterY = 142;
+  const shearAmp = 38;
   const shearPoints = result.points
     .map((pt) => `${toX(pt.x).toFixed(1)},${(shearCenterY - (pt.shearKn / maxV) * shearAmp).toFixed(1)}`)
     .join(' ');
   const shearAreaPoints = `${padLeft},${shearCenterY} ${shearPoints} ${padLeft + plotW},${shearCenterY}`;
 
-  const momentCenterY = 250;
-  const momentAmp = 38;
+  const momentCenterY = 254;
+  const momentAmp = 40;
   const momentPoints = result.points
     .map((pt) => `${toX(pt.x).toFixed(1)},${(momentCenterY + (pt.momentKnm / maxM) * momentAmp).toFixed(1)}`)
     .join(' ');
   const momentAreaPoints = `${padLeft},${momentCenterY} ${momentPoints} ${padLeft + plotW},${momentCenterY}`;
   const pointLoadX = toX(Math.min(L, params.pointLoadPositionM));
 
+  // Serviceability limit state check (L/250)
+  const allowableDeflMm = (L * 1000) / 250;
+  const deflRatio = result.maxDeflectionMm / Math.max(0.001, allowableDeflMm);
+  const isDeflPassing = deflRatio <= 1.0;
+  const deflStatusColor = deflRatio <= 0.8 ? '#10b981' : deflRatio <= 1.0 ? '#f59e0b' : '#ef4444';
+  const deflStatusText = deflRatio <= 0.8 ? 'PASS · Serviceability Satisfied' : deflRatio <= 1.0 ? 'ATTENTION · High Deflection' : 'EXCEEDED · Deflection > L/250';
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const clientX = e.clientX - rect.left;
+    const scaleX = width / rect.width;
+    const svgX = clientX * scaleX;
+
+    if (svgX >= padLeft && svgX <= padLeft + plotW) {
+      const curX = ((svgX - padLeft) / plotW) * L;
+      // Interpolate or find nearest point
+      let nearest = result.points[0];
+      let minDiff = Infinity;
+      for (const pt of result.points) {
+        const diff = Math.abs(pt.x - curX);
+        if (diff < minDiff) {
+          minDiff = diff;
+          nearest = pt;
+        }
+      }
+      setHoverData({
+        x: nearest.x,
+        shearKn: nearest.shearKn,
+        momentKnm: nearest.momentKnm,
+        px: toX(nearest.x),
+      });
+    } else {
+      setHoverData(null);
+    }
+  };
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-      <text x={12} y={38} fontSize="10" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">LOAD</text>
-      {params.uniformLoadKnPerM > 0 && (
-        <g>
-          <line x1={padLeft} y1={22} x2={padLeft + plotW} y2={22} stroke="var(--md-sys-color-primary)" strokeWidth="1.5" />
-          <text x={padLeft + 4} y={16} fontSize="10" fill="var(--md-sys-color-primary)">w = {params.uniformLoadKnPerM} kN/m</text>
+    <div className="relative w-full">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full h-auto select-none font-mono cursor-crosshair touch-none"
+        role="img"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={() => setHoverData(null)}
+      >
+        <defs>
+          <linearGradient id="beamGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="var(--md-sys-color-primary)" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="var(--md-sys-color-primary)" stopOpacity="0.4" />
+          </linearGradient>
+          <pattern id="diagonalHatch" width="6" height="6" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+          </pattern>
+        </defs>
+
+        {/* Header / Limit State Indicator */}
+        <text x={12} y={22} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+          STRUCTURAL ACTIONS & DEFLECTION CHECK
+        </text>
+        <rect x={width - 250} y={10} width={240} height={20} rx={4} fill={deflStatusColor} fillOpacity="0.12" stroke={deflStatusColor} strokeWidth="1" />
+        <circle cx={width - 240} cy={20} r={4} fill={deflStatusColor} />
+        <text x={width - 230} y={23} fontSize="9" fontWeight="700" fill={deflStatusColor}>
+          {deflStatusText} ({result.maxDeflectionMm.toFixed(2)}mm / {allowableDeflMm.toFixed(1)}mm)
+        </text>
+
+        {/* 1. Beam & Loads */}
+        <text x={12} y={54} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">LOADS</text>
+        {params.uniformLoadKnPerM > 0 && (
+          <g>
+            <line x1={padLeft} y1={36} x2={padLeft + plotW} y2={36} stroke="var(--md-sys-color-primary)" strokeWidth="1.5" />
+            {Array.from({ length: 9 }).map((_, i) => {
+              const xPos = padLeft + (i / 8) * plotW;
+              return (
+                <g key={i}>
+                  <line x1={xPos} y1={36} x2={xPos} y2={50} stroke="var(--md-sys-color-primary)" strokeWidth="1" />
+                  <polygon points={`${xPos - 2.5},47 ${xPos + 2.5},47 ${xPos},51`} fill="var(--md-sys-color-primary)" />
+                </g>
+              );
+            })}
+            <text x={padLeft + plotW / 2} y={32} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              w = {params.uniformLoadKnPerM} kN/m
+            </text>
+          </g>
+        )}
+        {params.pointLoadKn > 0 && (
+          <g>
+            <line x1={pointLoadX} y1={25} x2={pointLoadX} y2={50} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
+            <polygon points={`${pointLoadX - 4},44 ${pointLoadX + 4},44 ${pointLoadX},52`} fill="var(--md-sys-color-tertiary)" />
+            <text x={pointLoadX + 6} y={32} fontSize="9" fontWeight="700" fill="var(--md-sys-color-tertiary)">
+              P = {params.pointLoadKn} kN
+            </text>
+          </g>
+        )}
+
+        {/* Beam Solid Geometry */}
+        <rect x={padLeft} y={52} width={plotW} height={10} rx={2} fill="url(#beamGradient)" />
+        {/* Pinned Support (Left) */}
+        <polygon points={`${padLeft},62 ${padLeft - 7},74 ${padLeft + 7},74`} fill="var(--md-sys-color-outline)" />
+        <line x1={padLeft - 10} y1={74} x2={padLeft + 10} y2={74} stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+        {/* Roller Support (Right) */}
+        <polygon points={`${padLeft + plotW},62 ${padLeft + plotW - 7},71 ${padLeft + plotW + 7},71`} fill="var(--md-sys-color-outline)" />
+        <circle cx={padLeft + plotW - 4} cy={74} r={2} fill="var(--md-sys-color-outline)" />
+        <circle cx={padLeft + plotW + 4} cy={74} r={2} fill="var(--md-sys-color-outline)" />
+        <line x1={padLeft + plotW - 10} y1={77} x2={padLeft + plotW + 10} y2={77} stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+
+        {/* Span Dimension */}
+        <text x={padLeft + plotW / 2} y={80} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
+          Span L = {L.toFixed(2)} m
+        </text>
+
+        {/* 2. SFD */}
+        <text x={12} y={146} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">SFD (kN)</text>
+        <line x1={padLeft} y1={shearCenterY} x2={padLeft + plotW} y2={shearCenterY} stroke="var(--md-sys-color-outline)" strokeWidth="1" strokeDasharray="3 3" />
+        <polygon points={shearAreaPoints} fill="var(--md-sys-color-primary)" fillOpacity="0.18" />
+        <polyline fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2" points={shearPoints} />
+        <text x={padLeft + 4} y={shearCenterY - shearAmp + 6} fontSize="9" fill="var(--md-sys-color-primary)" fontWeight="600">
+          +{maxV.toFixed(1)}
+        </text>
+        <text x={padLeft + 4} y={shearCenterY + shearAmp} fontSize="9" fill="var(--md-sys-color-primary)" fontWeight="600">
+          -{maxV.toFixed(1)}
+        </text>
+
+        {/* 3. BMD */}
+        <text x={12} y={258} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">BMD (kN·m)</text>
+        <line x1={padLeft} y1={momentCenterY} x2={padLeft + plotW} y2={momentCenterY} stroke="var(--md-sys-color-outline)" strokeWidth="1" strokeDasharray="3 3" />
+        <polygon points={momentAreaPoints} fill="var(--md-sys-color-secondary)" fillOpacity="0.20" />
+        <polyline fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2" points={momentPoints} />
+        <text x={padLeft + 4} y={momentCenterY + momentAmp} fontSize="9" fill="var(--md-sys-color-secondary)" fontWeight="600">
+          M_max = {maxM.toFixed(1)} kN·m
+        </text>
+
+        {/* Beam Cross Section Vignette */}
+        <g transform={`translate(${width - 110}, 85)`}>
+          <rect x={0} y={0} width={100} height={190} rx={6} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+          <text x={50} y={18} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+            SECTION
+          </text>
+          {/* Concrete Core */}
+          <rect x={15} y={28} width={70} height={120} rx={3} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
+          {/* Stirrup Tie */}
+          <rect x={20} y={33} width={60} height={110} rx={2} fill="none" stroke="var(--md-sys-color-tertiary)" strokeWidth="1.2" strokeDasharray="2 1" />
+          {/* Top Bars (Hanger) */}
+          <circle cx={26} cy={39} r={3} fill="var(--md-sys-color-on-surface)" />
+          <circle cx={74} cy={39} r={3} fill="var(--md-sys-color-on-surface)" />
+          {/* Bottom Bars (Main Tension) */}
+          <circle cx={26} cy={137} r={4} fill="var(--md-sys-color-primary)" />
+          <circle cx={50} cy={137} r={4} fill="var(--md-sys-color-primary)" />
+          <circle cx={74} cy={137} r={4} fill="var(--md-sys-color-primary)" />
+          {/* Dimensions */}
+          <text x={50} y={160} textAnchor="middle" fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+            b × h mm
+          </text>
+          <text x={50} y={174} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">
+            Main: 3-Ø16
+          </text>
         </g>
+
+        {/* Interactive Inspection Crosshair */}
+        {hoverData && (
+          <g pointerEvents="none">
+            <line x1={hoverData.px} y1={25} x2={hoverData.px} y2={305} stroke="var(--md-sys-color-primary)" strokeWidth="1.5" strokeDasharray="3 2" />
+            <circle cx={hoverData.px} cy={shearCenterY - (hoverData.shearKn / maxV) * shearAmp} r={4.5} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1.5" />
+            <circle cx={hoverData.px} cy={momentCenterY + (hoverData.momentKnm / maxM) * momentAmp} r={4.5} fill="var(--md-sys-color-secondary)" stroke="#ffffff" strokeWidth="1.5" />
+
+            {/* Floating Value Tag */}
+            <g transform={`translate(${Math.min(width - 230, Math.max(padLeft, hoverData.px - 60))}, 92)`}>
+              <rect x={0} y={0} width={135} height={38} rx={6} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))" />
+              <text x={8} y={15} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+                x = {hoverData.x.toFixed(2)} m
+              </text>
+              <text x={8} y={28} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+                V: {hoverData.shearKn.toFixed(1)} kN
+              </text>
+              <text x={70} y={28} fontSize="9" fontWeight="600" fill="var(--md-sys-color-secondary)">
+                M: {hoverData.momentKnm.toFixed(1)} kNm
+              </text>
+            </g>
+          </g>
+        )}
+      </svg>
+      {!hoverData && (
+        <div className="absolute top-2 left-16 text-[10px] text-zinc-400 dark:text-zinc-500 pointer-events-none select-none font-mono">
+          Hover or drag across span to inspect shear & moment coordinates
+        </div>
       )}
-      {params.pointLoadKn > 0 && (
-        <g>
-          <line x1={pointLoadX} y1={10} x2={pointLoadX} y2={40} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
-          <polygon points={`${pointLoadX - 4},34 ${pointLoadX + 4},34 ${pointLoadX},42`} fill="var(--md-sys-color-tertiary)" />
-          <text x={pointLoadX + 6} y={16} fontSize="10" fontWeight="600" fill="var(--md-sys-color-tertiary)">P = {params.pointLoadKn} kN</text>
-        </g>
-      )}
-      <rect x={padLeft} y={42} width={plotW} height={8} rx={2} fill="var(--md-sys-color-on-surface)" />
-      
-      {/* SFD */}
-      <text x={12} y={144} fontSize="10" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">SFD (kN)</text>
-      <line x1={padLeft} y1={shearCenterY} x2={padLeft + plotW} y2={shearCenterY} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
-      <polygon points={shearAreaPoints} fill="var(--md-sys-color-primary)" fillOpacity="0.16" />
-      <polyline fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2" points={shearPoints} />
-      
-      {/* BMD */}
-      <text x={12} y={254} fontSize="10" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">BMD (kN·m)</text>
-      <line x1={padLeft} y1={momentCenterY} x2={padLeft + plotW} y2={momentCenterY} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
-      <polygon points={momentAreaPoints} fill="var(--md-sys-color-secondary)" fillOpacity="0.18" />
-      <polyline fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2" points={momentPoints} />
-    </svg>
+    </div>
   );
 };
 
-/* 2. Bearing Diagram */
+/* 2. Bearing Diagram with Soil Strata, GWT, and Boussinesq Stress Bulbs */
 export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: BearingAnalysisResult }> = ({
   params,
   result,
 }) => {
   const width = 680;
-  const height = 260;
-  const footingCenterX = 340;
-  const footingW = Math.min(220, Math.max(90, params.footingWidthM * 35));
-  const footingBaseY = 145;
+  const height = 300;
+  const footingCenterX = 300;
+  const footingW = Math.min(220, Math.max(90, params.footingWidthM * 40));
+  const footingD = Math.min(65, Math.max(26, params.embedmentDepthM * 20));
+  const gradeY = 75;
+  const footingBaseY = gradeY + footingD;
+
+  const fs = result.effectiveSafetyFactor;
+  const isPassingFs = fs >= 3.0;
+  const isMarginalFs = fs >= 2.0 && fs < 3.0;
+  const fsColor = isPassingFs ? '#10b981' : isMarginalFs ? '#f59e0b' : '#ef4444';
+  const fsLabel = isPassingFs ? 'SAFE (FS ≥ 3.0)' : isMarginalFs ? 'MARGINAL (2.0 ≤ FS < 3.0)' : 'UNSAFE (FS < 2.0)';
+
+  // Water table relative position
+  const waterDepthPx = Math.min(180, params.waterTableDepthM * 25);
+  const waterY = gradeY + waterDepthPx;
+  const netUltKpa = Math.max(0, result.ultimateBearingKpa - params.embedmentDepthM * params.unitWeightKnPerM3);
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-      <line x1={40} y1={70} x2={width - 40} y2={70} stroke="var(--md-sys-color-on-surface)" strokeWidth="2" />
-      <text x={48} y={62} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">FINISHED GRADE EL 0.00m</text>
-      
-      {/* Column and Pad */}
-      <rect x={footingCenterX - 20} y={25} width={40} height={100} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
-      <rect x={footingCenterX - footingW / 2} y={footingBaseY - 24} width={footingW} height={24} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-on-surface)" strokeWidth="2" />
-      
-      {/* Prandtl Failure Wedge */}
-      <path
-        d={`M ${footingCenterX - footingW / 2} ${footingBaseY} L ${footingCenterX} ${footingBaseY + footingW * 0.5} L ${footingCenterX + footingW / 2} ${footingBaseY} Z`}
-        fill="var(--md-sys-color-primary)"
-        fillOpacity="0.15"
-        stroke="var(--md-sys-color-primary)"
-        strokeDasharray="4 3"
-      />
-      <text x={footingCenterX} y={235} textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--md-sys-color-primary)">
-        q_all = {result.allowableBearingKpa.toFixed(1)} kPa · q_app = {result.appliedPressureKpa.toFixed(1)} kPa · FS = {result.effectiveSafetyFactor.toFixed(2)}
+      <defs>
+        <pattern id="soilStripe" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="0" x2="0" y2="8" stroke="var(--md-sys-color-outline-variant)" strokeWidth="0.8" strokeOpacity="0.4" />
+        </pattern>
+        <pattern id="gravelPattern" width="16" height="16" patternUnits="userSpaceOnUse">
+          <circle cx="4" cy="4" r="1.5" fill="var(--md-sys-color-outline-variant)" fillOpacity="0.5" />
+          <circle cx="12" cy="12" r="2" fill="var(--md-sys-color-outline-variant)" fillOpacity="0.5" />
+          <circle cx="12" cy="4" r="1" fill="var(--md-sys-color-outline-variant)" fillOpacity="0.4" />
+        </pattern>
+      </defs>
+
+      {/* Title & Safety Banner */}
+      <text x={24} y={24} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+        FOUNDATION PROFILE & STRESS BULB (BOUSSINESQ ISOBARS)
       </text>
+
+      {/* Safety Factor Indicator Card (Top Right) */}
+      <g transform={`translate(${width - 240}, 10)`}>
+        <rect x={0} y={0} width={220} height={52} rx={6} fill="var(--md-sys-color-surface-container-high)" stroke={fsColor} strokeWidth="1.2" />
+        <circle cx={14} cy={16} r={4.5} fill={fsColor} />
+        <text x={24} y={19} fontSize="10" fontWeight="700" fill={fsColor}>
+          {fsLabel}
+        </text>
+        <text x={14} y={35} fontSize="9" fill="var(--md-sys-color-on-surface)">
+          FS = {fs.toFixed(2)} · q_allow = {result.allowableBearingKpa.toFixed(1)} kPa
+        </text>
+        <text x={14} y={46} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+          Applied Pressure = {result.appliedPressureKpa.toFixed(1)} kPa
+        </text>
+      </g>
+
+      {/* Soil Strata Layers */}
+      {/* Upper Stratum (Topsoil / Overburden) */}
+      <rect x={30} y={gradeY} width={500} height={footingD} fill="var(--md-sys-color-surface-container)" />
+      <rect x={30} y={gradeY} width={500} height={footingD} fill="url(#soilStripe)" />
+
+      {/* Lower Stratum (Bearing Subgrade) */}
+      <rect x={30} y={footingBaseY} width={500} height={height - footingBaseY - 15} fill="var(--md-sys-color-surface-container-low)" />
+      <rect x={30} y={footingBaseY} width={500} height={height - footingBaseY - 15} fill="url(#gravelPattern)" />
+
+      {/* Finished Ground Surface Line */}
+      <line x1={30} y1={gradeY} x2={530} y2={gradeY} stroke="var(--md-sys-color-on-surface)" strokeWidth="2.5" />
+      <text x={34} y={gradeY - 6} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+        FINISHED GRADE EL ±0.00m
+      </text>
+
+      {/* Water Table (GWT) */}
+      {waterY <= height - 20 && (
+        <g>
+          <line x1={30} y1={waterY} x2={530} y2={waterY} stroke="#0ea5e9" strokeWidth="1.5" strokeDasharray="5 3" />
+          <polygon points={`38,${waterY - 7} 44,${waterY - 7} 41,${waterY}`} fill="#0ea5e9" />
+          <text x={48} y={waterY - 3} fontSize="9" fontWeight="700" fill="#0ea5e9">
+            GWT ∇ -{params.waterTableDepthM.toFixed(1)}m
+          </text>
+        </g>
+      )}
+
+      {/* Boussinesq Stress Bulbs (Concentric Isobars under Footing) */}
+      {/* 0.1q Isobar */}
+      <path
+        d={`M ${footingCenterX - footingW * 0.85} ${footingBaseY} Q ${footingCenterX} ${footingBaseY + footingW * 1.8} ${footingCenterX + footingW * 0.85} ${footingBaseY}`}
+        fill="none"
+        stroke="var(--md-sys-color-primary)"
+        strokeWidth="1"
+        strokeOpacity="0.25"
+        strokeDasharray="3 3"
+      />
+      <text x={footingCenterX + 4} y={footingBaseY + footingW * 1.7} fontSize="8" fill="var(--md-sys-color-primary)" fillOpacity="0.7">0.10q</text>
+
+      {/* 0.2q Isobar */}
+      <path
+        d={`M ${footingCenterX - footingW * 0.7} ${footingBaseY} Q ${footingCenterX} ${footingBaseY + footingW * 1.25} ${footingCenterX + footingW * 0.7} ${footingBaseY}`}
+        fill="none"
+        stroke="var(--md-sys-color-primary)"
+        strokeWidth="1.2"
+        strokeOpacity="0.4"
+        strokeDasharray="4 2"
+      />
+      <text x={footingCenterX + 4} y={footingBaseY + footingW * 1.2} fontSize="8" fill="var(--md-sys-color-primary)" fillOpacity="0.8">0.20q</text>
+
+      {/* 0.5q Isobar */}
+      <path
+        d={`M ${footingCenterX - footingW * 0.55} ${footingBaseY} Q ${footingCenterX} ${footingBaseY + footingW * 0.75} ${footingCenterX + footingW * 0.55} ${footingBaseY}`}
+        fill="var(--md-sys-color-primary)"
+        fillOpacity="0.08"
+        stroke="var(--md-sys-color-primary)"
+        strokeWidth="1.5"
+        strokeOpacity="0.7"
+      />
+      <text x={footingCenterX + 4} y={footingBaseY + footingW * 0.7} fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">0.50q</text>
+
+      {/* 0.9q Isobar */}
+      <path
+        d={`M ${footingCenterX - footingW * 0.38} ${footingBaseY} Q ${footingCenterX} ${footingBaseY + footingW * 0.35} ${footingCenterX + footingW * 0.38} ${footingBaseY}`}
+        fill="var(--md-sys-color-primary)"
+        fillOpacity="0.16"
+        stroke="var(--md-sys-color-primary)"
+        strokeWidth="1.8"
+      />
+      <text x={footingCenterX + 4} y={footingBaseY + footingW * 0.32} fontSize="8" fontWeight="700" fill="var(--md-sys-color-primary)">0.90q</text>
+
+      {/* Column Stub */}
+      <rect x={footingCenterX - 18} y={30} width={36} height={gradeY - 30 + footingD - 18} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
+
+      {/* Applied Column Load Arrow */}
+      <line x1={footingCenterX} y1={12} x2={footingCenterX} y2={28} stroke="var(--md-sys-color-tertiary)" strokeWidth="3" />
+      <polygon points={`${footingCenterX - 4},24 ${footingCenterX + 4},24 ${footingCenterX},30`} fill="var(--md-sys-color-tertiary)" />
+      <text x={footingCenterX + 8} y={20} fontSize="9" fontWeight="700" fill="var(--md-sys-color-tertiary)">
+        P_col
+      </text>
+
+      {/* Reinforced Concrete Footing Pad */}
+      <rect
+        x={footingCenterX - footingW / 2}
+        y={footingBaseY - 20}
+        width={footingW}
+        height={20}
+        rx={2}
+        fill="var(--md-sys-color-surface-container-high)"
+        stroke="var(--md-sys-color-on-surface)"
+        strokeWidth="2"
+      />
+      {/* Rebar Mat Representation inside footing */}
+      <line
+        x1={footingCenterX - footingW / 2 + 6}
+        y1={footingBaseY - 5}
+        x2={footingCenterX + footingW / 2 - 6}
+        y2={footingBaseY - 5}
+        stroke="var(--md-sys-color-primary)"
+        strokeWidth="2"
+      />
+
+      {/* Depth Dimension D_f */}
+      <line x1={footingCenterX + footingW / 2 + 15} y1={gradeY} x2={footingCenterX + footingW / 2 + 15} y2={footingBaseY} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
+      <polyline points={`${footingCenterX + footingW / 2 + 12},${gradeY + 4} ${footingCenterX + footingW / 2 + 15},${gradeY} ${footingCenterX + footingW / 2 + 18},${gradeY + 4}`} fill="none" stroke="var(--md-sys-color-outline)" strokeWidth="1" />
+      <polyline points={`${footingCenterX + footingW / 2 + 12},${footingBaseY - 4} ${footingCenterX + footingW / 2 + 15},${footingBaseY} ${footingCenterX + footingW / 2 + 18},${footingBaseY - 4}`} fill="none" stroke="var(--md-sys-color-outline)" strokeWidth="1" />
+      <text x={footingCenterX + footingW / 2 + 22} y={gradeY + footingD / 2 + 3} fontSize="9" fill="var(--md-sys-color-on-surface)">
+        D_f = {params.embedmentDepthM.toFixed(1)}m
+      </text>
+
+      {/* Footing Width Dimension B */}
+      <line x1={footingCenterX - footingW / 2} y1={footingBaseY + 6} x2={footingCenterX + footingW / 2} y2={footingBaseY + 6} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
+      <text x={footingCenterX} y={footingBaseY + 18} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-on-surface)">
+        B = {params.footingWidthM.toFixed(2)}m
+      </text>
+
+      {/* Geotechnical Parameters Tag */}
+      <g transform="translate(545, 80)">
+        <rect x={0} y={0} width={125} height={190} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+        <text x={10} y={20} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">SOIL PARAMS</text>
+        <text x={10} y={38} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">c = {params.soilCohesionKpa} kPa</text>
+        <text x={10} y={54} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">φ = {params.frictionAngleDeg}°</text>
+        <text x={10} y={70} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">γ = {params.unitWeightKnPerM3} kN/m³</text>
+        <line x1={10} y1={82} x2={115} y2={82} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+        <text x={10} y={98} fontSize="9" fontWeight="700" fill="var(--md-sys-color-primary)">BEARING CAPACITY</text>
+        <text x={10} y={114} fontSize="8" fill="var(--md-sys-color-on-surface)">q_ult: {result.ultimateBearingKpa.toFixed(0)} kPa</text>
+        <text x={10} y={128} fontSize="8" fill="var(--md-sys-color-on-surface)">q_net: {netUltKpa.toFixed(0)} kPa</text>
+        <text x={10} y={142} fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">q_all: {result.allowableBearingKpa.toFixed(0)} kPa</text>
+        <line x1={10} y1={154} x2={115} y2={154} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+        <text x={10} y={170} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Water Submergence:</text>
+        <text x={10} y={182} fontSize="8" fontWeight="600" fill={waterDepthPx < footingD ? '#0ea5e9' : 'var(--md-sys-color-on-surface)'}>
+          {params.waterTableDepthM <= params.embedmentDepthM ? 'Active Surcharge' : 'Deep (No Red.)'}
+        </text>
+      </g>
     </svg>
   );
 };
@@ -188,18 +508,18 @@ export const ConcreteMixSvg: React.FC<{ params: ConcreteMixParameters; result: C
   );
 };
 
-/* 4. Open Channel Hydraulics Diagram */
+/* 4. Open Channel Hydraulics Diagram with Flow Regime & Freeboard */
 export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result: ChannelHydraulicsResult }> = ({
   params,
   result,
 }) => {
   const width = 680;
-  const height = 240;
-  const centerX = 340;
-  const bedY = 190;
+  const height = 250;
+  const centerX = 290;
+  const bedY = 195;
   const totalDepth = params.flowDepthM + params.freeboardRequirementM;
   const topWidthTotal = params.bottomWidthM + 2 * params.sideSlopeZ * totalDepth;
-  const scale = Math.min(110 / Math.max(0.5, totalDepth), 420 / Math.max(1, topWidthTotal));
+  const scale = Math.min(110 / Math.max(0.5, totalDepth), 350 / Math.max(1, topWidthTotal));
 
   const bPx = params.bottomWidthM * scale;
   const yPx = params.flowDepthM * scale;
@@ -215,24 +535,92 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
   `;
 
   const channelPolyline = `
-    ${centerX - bankTopHalfPx - 20},${bedY - totalDepthPx}
+    ${centerX - bankTopHalfPx - 25},${bedY - totalDepthPx}
     ${centerX - bankTopHalfPx},${bedY - totalDepthPx}
     ${centerX - bPx / 2},${bedY}
     ${centerX + bPx / 2},${bedY}
     ${centerX + bankTopHalfPx},${bedY - totalDepthPx}
-    ${centerX + bankTopHalfPx + 20},${bedY - totalDepthPx}
+    ${centerX + bankTopHalfPx + 25},${bedY - totalDepthPx}
   `;
+
+  // Flow regime styling
+  const fr = result.froudeNumber;
+  const isSubcritical = fr < 1;
+  const isCritical = Math.abs(fr - 1.0) < 0.05;
+  const regimeColor = isCritical ? '#f59e0b' : isSubcritical ? '#0ea5e9' : '#ec4899';
+  const regimeLabel = isCritical ? 'CRITICAL FLOW (Fr ≈ 1.0)' : isSubcritical ? 'SUBCRITICAL (Tranquil, Fr < 1)' : 'SUPERCRITICAL (Rapid, Fr > 1)';
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-      <polygon points={waterPolygon} fill="var(--md-sys-color-primary)" fillOpacity="0.22" stroke="var(--md-sys-color-primary)" strokeWidth="1.5" />
+      <defs>
+        <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#0284c7" stopOpacity="0.2" />
+        </linearGradient>
+      </defs>
+
+      {/* Header & Flow Regime Badge */}
+      <text x={24} y={24} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+        MANNING HYDRAULIC GEOMETRY & FLOW REGIME
+      </text>
+
+      {/* Regime Badge */}
+      <g transform={`translate(${width - 270}, 10)`}>
+        <rect x={0} y={0} width={250} height={26} rx={4} fill={regimeColor} fillOpacity="0.12" stroke={regimeColor} strokeWidth="1" />
+        <circle cx={14} cy={13} r={4} fill={regimeColor} />
+        <text x={24} y={16} fontSize="9" fontWeight="700" fill={regimeColor}>
+          {regimeLabel}
+        </text>
+      </g>
+
+      {/* Channel Bed & Banks */}
       <polyline fill="none" stroke="var(--md-sys-color-on-surface)" strokeWidth="3" points={channelPolyline} />
-      <text x={centerX} y={bedY - yPx - 8} textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--md-sys-color-primary)">
-        WSE (y = {params.flowDepthM.toFixed(2)}m · T = {result.topWidthM.toFixed(2)}m)
+
+      {/* Flow Body */}
+      <polygon points={waterPolygon} fill="url(#waterGrad)" stroke="#0ea5e9" strokeWidth="1.8" />
+
+      {/* Water Surface Wave Motif */}
+      <line x1={centerX - waterTopHalfPx} y1={bedY - yPx} x2={centerX + waterTopHalfPx} y2={bedY - yPx} stroke="#0ea5e9" strokeWidth="2" strokeDasharray="6 3" />
+
+      {/* Water Depth y Dimension */}
+      <line x1={centerX - waterTopHalfPx - 18} y1={bedY - yPx} x2={centerX - waterTopHalfPx - 18} y2={bedY} stroke="#0ea5e9" strokeWidth="1.2" />
+      <polyline points={`${centerX - waterTopHalfPx - 21},${bedY - yPx + 4} ${centerX - waterTopHalfPx - 18},${bedY - yPx} ${centerX - waterTopHalfPx - 15},${bedY - yPx + 4}`} fill="none" stroke="#0ea5e9" strokeWidth="1.2" />
+      <polyline points={`${centerX - waterTopHalfPx - 21},${bedY - 4} ${centerX - waterTopHalfPx - 18},${bedY} ${centerX - waterTopHalfPx - 15},${bedY - 4}`} fill="none" stroke="#0ea5e9" strokeWidth="1.2" />
+      <text x={centerX - waterTopHalfPx - 24} y={bedY - yPx / 2 + 3} textAnchor="end" fontSize="9" fontWeight="600" fill="#0ea5e9">
+        y = {params.flowDepthM.toFixed(2)}m
       </text>
-      <text x={centerX} y={bedY + 22} textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--md-sys-color-on-surface)">
-        Q = {result.dischargeM3ps.toFixed(2)} m³/s · V = {result.velocityMps.toFixed(2)} m/s · Fr = {result.froudeNumber.toFixed(2)} ({result.flowRegime})
+
+      {/* Freeboard Dimension */}
+      {params.freeboardRequirementM > 0 && (
+        <g>
+          <line x1={centerX + bankTopHalfPx + 15} y1={bedY - totalDepthPx} x2={centerX + bankTopHalfPx + 15} y2={bedY - yPx} stroke="var(--md-sys-color-tertiary)" strokeWidth="1.2" />
+          <text x={centerX + bankTopHalfPx + 20} y={bedY - yPx - (totalDepthPx - yPx) / 2 + 3} fontSize="8" fontWeight="600" fill="var(--md-sys-color-tertiary)">
+            FB: {params.freeboardRequirementM.toFixed(2)}m
+          </text>
+        </g>
+      )}
+
+      {/* Bottom Width Dimension */}
+      <line x1={centerX - bPx / 2} y1={bedY + 12} x2={centerX + bPx / 2} y2={bedY + 12} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
+      <text x={centerX} y={bedY + 24} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-on-surface)">
+        Bed b = {params.bottomWidthM.toFixed(2)}m (Side Slope 1:{params.sideSlopeZ})
       </text>
+
+      {/* Hydraulic Metrics Summary Card (Right Inset) */}
+      <g transform={`translate(${width - 170}, 48)`}>
+        <rect x={0} y={0} width={150} height={180} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+        <text x={12} y={20} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">HYDRAULIC METRICS</text>
+        <line x1={12} y1={28} x2={138} y2={28} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+        <text x={12} y={44} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Discharge Q:</text>
+        <text x={12} y={58} fontSize="12" fontWeight="700" fill="#0ea5e9">{result.dischargeM3ps.toFixed(2)} m³/s</text>
+        <text x={12} y={76} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Mean Velocity V:</text>
+        <text x={12} y={90} fontSize="11" fontWeight="600" fill="var(--md-sys-color-on-surface)">{result.velocityMps.toFixed(2)} m/s</text>
+        <text x={12} y={108} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Hydraulic Radius R:</text>
+        <text x={12} y={122} fontSize="11" fontWeight="600" fill="var(--md-sys-color-on-surface)">{result.hydraulicRadiusM.toFixed(3)} m</text>
+        <text x={12} y={140} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Froude Number Fr:</text>
+        <text x={12} y={154} fontSize="12" fontWeight="700" fill={regimeColor}>{result.froudeNumber.toFixed(2)}</text>
+        <text x={12} y={170} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Top Width: {result.topWidthM.toFixed(2)}m</text>
+      </g>
     </svg>
   );
 };
@@ -286,7 +674,7 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
   );
 };
 
-/* 6. Rebar BBS Diagram */
+/* 6. Rebar BBS Diagram with Bar Marks & Seismic Hook Detailing */
 export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: RebarBBSResult }> = ({
   params,
   result,
@@ -296,77 +684,103 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-      <text x={40} y={28} fontSize="11" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-        STRUCTURAL REBAR BBS CUTTING ENVELOPE ({params.elementType.toUpperCase()} · CLEAR COVER: {params.clearCoverMm}mm)
+      {/* Title */}
+      <text x={30} y={24} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+        STRUCTURAL REBAR BBS CUTTING ENVELOPE ({params.elementType.toUpperCase()} · COVER: {params.clearCoverMm}mm)
       </text>
 
       {params.elementType === 'slab' && (
-        <g transform="translate(50, 48)">
-          <rect x={0} y={0} width={340} height={130} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
-          {[22, 52, 82, 112].map((y, i) => (
-            <line key={i} x1={15} y1={y} x2={325} y2={y} stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
+        <g transform="translate(35, 45)">
+          <rect x={0} y={0} width={340} height={140} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
+          {/* Main Bottom Reinforcement */}
+          {[25, 55, 85, 115].map((y, i) => (
+            <g key={i}>
+              <line x1={15} y1={y} x2={325} y2={y} stroke="var(--md-sys-color-primary)" strokeWidth="2.8" />
+              {/* Crank / Bend at edges */}
+              <polyline points={`15,${y} 8,${y - 8} 8,${y - 14}`} fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
+              <polyline points={`325,${y} 332,${y - 8} 332,${y - 14}`} fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
+            </g>
           ))}
-          {[30, 85, 140, 195, 250, 305].map((x, i) => (
-            <line key={i} x1={x} y1={12} x2={x} y2={118} stroke="var(--md-sys-color-secondary)" strokeWidth="1.8" strokeDasharray="3 2" />
+          {/* Distribution Bars */}
+          {[35, 90, 145, 200, 255, 310].map((x, i) => (
+            <line key={i} x1={x} y1={12} x2={x} y2={128} stroke="var(--md-sys-color-secondary)" strokeWidth="1.8" strokeDasharray="3 2" />
           ))}
+          <text x={15} y={155} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+            MK-01: Main Ø{params.mainBarDiaMm} @ {params.mainBarSpacingMm}mm c/c
+          </text>
         </g>
       )}
 
       {params.elementType === 'column-rect' && (
-        <g transform="translate(140, 48)">
-          <rect x={0} y={0} width={130} height={130} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
-          <rect x={14} y={14} width={102} height={102} rx={2} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2" />
+        <g transform="translate(120, 45)">
+          <rect x={0} y={0} width={150} height={150} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+          {/* 135-deg Seismic Tie */}
+          <rect x={18} y={18} width={114} height={114} rx={3} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
+          <polyline points="22,22 14,30 20,38" fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
+          {/* Longitudinal Rebars */}
           {[
-            [22, 22], [65, 22], [108, 22],
-            [22, 65], [108, 65],
-            [22, 108], [65, 108], [108, 108],
+            [24, 24], [75, 24], [126, 24],
+            [24, 75], [126, 75],
+            [24, 126], [75, 126], [126, 126],
           ].map(([x, y], i) => (
-            <circle key={i} cx={x} cy={y} r={6} fill="var(--md-sys-color-primary)" />
+            <circle key={i} cx={x} cy={y} r={7} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />
           ))}
+          <text x={75} y={166} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+            MK-01: 8-Ø{params.colMainBarDiaMm || 16} Long. + MK-02: Ø8 Tie @ 150 c/c (135° hook)
+          </text>
         </g>
       )}
 
       {params.elementType === 'column-circ' && (
-        <g transform="translate(140, 48)">
-          <circle cx={65} cy={65} r={62} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
-          <circle cx={65} cy={65} r={48} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2" strokeDasharray="5 3" />
+        <g transform="translate(120, 45)">
+          <circle cx={75} cy={75} r={70} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+          <circle cx={75} cy={75} r={54} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" strokeDasharray="6 3" />
           {Array.from({ length: 8 }).map((_, i) => {
             const rad = (i * 2 * Math.PI) / 8;
-            return <circle key={i} cx={65 + 48 * Math.cos(rad)} cy={65 + 48 * Math.sin(rad)} r={6} fill="var(--md-sys-color-primary)" />;
+            return <circle key={i} cx={75 + 54 * Math.cos(rad)} cy={75 + 54 * Math.sin(rad)} r={6.5} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />;
           })}
+          <text x={75} y={166} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+            MK-01: 8-Ø{params.circMainBarDiaMm || 16} + MK-02: Spiral Ø8 @ 100mm pitch
+          </text>
         </g>
       )}
 
       {params.elementType === 'footing' && (
-        <g transform="translate(70, 48)">
-          <rect x={0} y={0} width={280} height={130} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
-          {[20, 50, 80, 110].map((y, i) => (
-            <line key={i} x1={12} y1={y} x2={268} y2={y} stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
+        <g transform="translate(60, 45)">
+          <rect x={0} y={0} width={290} height={140} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
+          {[22, 55, 88, 120].map((y, i) => (
+            <line key={i} x1={12} y1={y} x2={278} y2={y} stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
           ))}
-          {[30, 80, 130, 180, 230].map((x, i) => (
-            <line key={i} x1={x} y1={12} x2={x} y2={118} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
+          {[30, 85, 140, 195, 250].map((x, i) => (
+            <line key={i} x1={x} y1={12} x2={x} y2={128} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
           ))}
+          <text x={145} y={155} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+            MK-01: Bi-directional mesh Ø{params.footingBarDiaMm || 12} @ {params.footingBarSpacingMm || 150}mm c/c
+          </text>
         </g>
       )}
 
       {params.elementType === 'staircase-waist' && (
-        <g transform="translate(60, 48)">
-          <polyline points="0,120 180,40 280,40 280,10 180,10 0,90" fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
-          <line x1={5} y1={105} x2={275} y2={25} stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
+        <g transform="translate(50, 45)">
+          <polyline points="0,130 180,45 290,45 290,15 180,15 0,100" fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
+          <line x1={8} y1={115} x2={285} y2={30} stroke="var(--md-sys-color-primary)" strokeWidth="3" />
+          <text x={140} y={155} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+            Waist Slab Reinforcement: Main Ø{params.stairMainBarDiaMm || 12} tension bottom
+          </text>
         </g>
       )}
 
-      <g transform="translate(420, 48)">
-        <rect x={0} y={0} width={220} height={130} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
-        <text x={16} y={26} fontSize="10" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">TOTAL REBAR QUANTITY</text>
-        <text x={16} y={58} fontSize="22" fontWeight="700" fill="var(--md-sys-color-primary)">{result.totalSteelWeightKg.toFixed(1)} kg</text>
-        <text x={16} y={82} fontSize="11" fill="var(--md-sys-color-on-surface)">= {result.totalSteelTonnes.toFixed(3)} Tonnes</text>
-        <text x={16} y={110} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">Length: {result.totalBarsLengthM.toFixed(1)} m</text>
+      {/* Bill of Quantities / Rebar Summary Card */}
+      <g transform="translate(420, 45)">
+        <rect x={0} y={0} width={230} height={150} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
+        <text x={16} y={24} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">TOTAL REBAR QUANTITY</text>
+        <text x={16} y={56} fontSize="24" fontWeight="800" fill="var(--md-sys-color-primary)">{result.totalSteelWeightKg.toFixed(1)} kg</text>
+        <text x={16} y={80} fontSize="12" fontWeight="600" fill="var(--md-sys-color-on-surface)">= {result.totalSteelTonnes.toFixed(3)} Tonnes</text>
+        <line x1={16} y1={92} x2={214} y2={92} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+        <text x={16} y={108} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Total Cut Length: {result.totalBarsLengthM.toFixed(1)} m</text>
+        <text x={16} y={124} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Est. Scrap / Wastage: 5% incl.</text>
+        <text x={16} y={138} fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">Unit Wt: {result.unitWeightFormulaUsed}</text>
       </g>
-
-      <text x={40} y={218} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-        {result.unitWeightFormulaUsed}
-      </text>
     </svg>
   );
 };

@@ -1,6 +1,7 @@
 import React from 'react';
+import brandLogoImg from '../assets/images/civil_lab_logo_1792487018872.jpg';
 
-export const BRAND_LOGO_SRC = '/src/assets/images/civil_lab_logo_1792487018872.jpg';
+export const BRAND_LOGO_SRC = brandLogoImg || '/logo.jpg';
 
 export interface LogoProps {
   /** Variant of the logo display */
@@ -61,10 +62,21 @@ export const BrandLogoIcon: React.FC<{ size?: number; className?: string; animat
 };
 
 /**
- * Pure SVG Emblem Mark extracting the stylized PB monogram & structural building perspective
- * from 'PB CivlLab gray .svg'. Adapts dynamically to light and dark themes using currentColor.
+ * Brand Logo Mark - renders the modern geometric brand logo icon everywhere consistently.
  */
 export const LogoMark: React.FC<{ size?: number; className?: string; animated?: boolean }> = ({
+  size = 36,
+  className = '',
+  animated = false,
+}) => {
+  return <BrandLogoIcon size={size} className={className} animated={animated} />;
+};
+
+/**
+ * Legacy Pure SVG Emblem Mark extracting the stylized PB monogram & structural building perspective
+ * from 'PB CivlLab gray .svg'.
+ */
+export const LegacySvgEmblem: React.FC<{ size?: number; className?: string; animated?: boolean }> = ({
   size = 36,
   className = '',
   animated = false,

@@ -1,19 +1,19 @@
-import React from 'react';
-import {
-  CivilWorkspace,
-  PipeMaterialType,
-} from '../../types/civil';
-import { PipeHydraulicsResult } from '../../utils/calculations';
-import { Waves, Activity, ShieldCheck, Gauge } from 'lucide-react';
+import { UnitInput } from '../UnitInput';
 
 export interface PipeHydraulicsInputsProps {
   activeWorkspace: CivilWorkspace;
   updateActiveWorkspace: (updater: (ws: CivilWorkspace) => CivilWorkspace) => void;
+  customUnits?: CustomUnitDefinition[];
+  getFieldUnit?: (fieldKey: string, category: UnitCategoryKey, fallbackUnitId: string) => string;
+  updateFieldUnit?: (fieldKey: string, unitId: string) => void;
 }
 
 export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
   activeWorkspace,
   updateActiveWorkspace,
+  customUnits = [],
+  getFieldUnit = (_k, _c, fallback) => fallback,
+  updateFieldUnit = () => {},
 }) => {
   const pipe = activeWorkspace.pipe || {
     pipeMaterial: 'pvc-hdpe',
@@ -49,6 +49,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
     });
   };
 
+  // Instant velocity calculation for proactive hints
+  const areaM2 = Math.PI * Math.pow((pipe.internalDiameterMm / 1000) / 2, 2);
+  const dischargeM3s = pipe.flowRateLps / 1000;
+  const currentVelocityMps = areaM2 > 0 ? dischargeM3s / areaM2 : 0;
+
   return (
     <div className="space-y-4">
       {/* Pipe Material & Hazen-Williams Roughness */}
@@ -83,93 +88,164 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             min="40"
             max="160"
           />
+          <div className="flex items-center gap-1 mt-1 overflow-x-auto">
+            {[
+              { label: 'C=150', val: 150, title: 'Plastic / Smooth PVC / HDPE' },
+              { label: 'C=130', val: 130, title: 'Cement-lined Ductile Iron' },
+              { label: 'C=120', val: 120, title: 'RCC / Galvanized Steel' },
+              { label: 'C=100', val: 100, title: 'Cast Iron (Aged/Corroded)' },
+            ].map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => updatePipe({ hazenWilliamsC: item.val })}
+                className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
+                  pipe.hazenWilliamsC === item.val
+                    ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent'
+                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                }`}
+                title={item.title}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-            Internal Diameter D (mm)
-          </label>
-          <input
-            type="number"
-            value={pipe.internalDiameterMm}
-            onChange={(e) => updatePipe({ internalDiameterMm: Math.max(25, Number(e.target.value) || 200) })}
-            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="25"
-            min="25"
-          />
-        </div>
+        <UnitInput
+          label="Internal Diameter D"
+          category="length"
+          siValue={pipe.internalDiameterMm * 0.001}
+          onChangeSI={(val) => updatePipe({ internalDiameterMm: Math.max(25, Math.round(val * 1000)) })}
+          currentUnitId={getFieldUnit('pipe.dia', 'length', 'mm')}
+          onUnitChange={(u) => updateFieldUnit('pipe.dia', u)}
+          customUnits={customUnits}
+          step={25}
+          presets={[
+            { label: '100 mm (4")', valueSI: 0.100, title: '4" Distribution Lateral' },
+            { label: '150 mm (6")', valueSI: 0.150, title: '6" Sub-main Feeder' },
+            { label: '200 mm (8")', valueSI: 0.200, title: '8" Municipal Water Main' },
+            { label: '250 mm (10")', valueSI: 0.250, title: '10" Trunk Supply Line' },
+            { label: '300 mm (12")', valueSI: 0.300, title: '12" Primary Water Main' },
+          ]}
+          validationRule={{
+            minSI: 0.025,
+            maxSI: 3.0,
+            warningBelowSI: 0.05,
+            warningAboveSI: 1.5,
+            warningHint: 'Standard pressure distribution mains generally range from 100 mm to 600 mm.',
+          }}
+          standardRef="AWWA C900 / ASTM D3034 / BNBC 2020 Part 8"
+          recommendedRange="100 mm – 400 mm"
+          designTip="Internal diameter D directly dictates flow cross-section A = π·D²/4 and velocity head V²/(2g)."
+        />
       </div>
 
       {/* Hydraulic Flow, Length & Pressure Controls */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-            Flow Rate Q (L/s)
-          </label>
-          <input
-            type="number"
-            value={pipe.flowRateLps}
-            onChange={(e) => updatePipe({ flowRateLps: Math.max(0.1, Number(e.target.value) || 10) })}
-            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="5"
-            min="0.1"
-          />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+        <UnitInput
+          label="Flow Rate Q"
+          category="flow_rate"
+          siValue={pipe.flowRateLps * 0.001}
+          onChangeSI={(val) => updatePipe({ flowRateLps: Math.max(0.1, val * 1000) })}
+          currentUnitId={getFieldUnit('pipe.flow', 'flow_rate', 'L/s')}
+          onUnitChange={(u) => updateFieldUnit('pipe.flow', u)}
+          customUnits={customUnits}
+          step={5}
+          presets={[
+            { label: '10 L/s', valueSI: 0.010, title: 'Light Residential Branch' },
+            { label: '25 L/s', valueSI: 0.025, title: 'Medium Distribution Flow' },
+            { label: '50 L/s', valueSI: 0.050, title: 'High Municipal Main Demand' },
+            { label: '100 L/s', valueSI: 0.100, title: 'Industrial / Booster Station' },
+          ]}
+          validationRule={{
+            minSI: 0.0001,
+            maxSI: 5.0,
+            warningBelowSI: currentVelocityMps < 0.6 ? pipe.flowRateLps * 0.001 + 0.001 : undefined,
+            warningAboveSI: currentVelocityMps > 3.0 ? pipe.flowRateLps * 0.001 - 0.001 : undefined,
+            warningHint: currentVelocityMps < 0.6
+              ? `Low velocity (${currentVelocityMps.toFixed(2)} m/s): Below 0.6 m/s self-cleansing velocity. Silt deposits and suspended solids may settle.`
+              : currentVelocityMps > 3.0
+              ? `High velocity (${currentVelocityMps.toFixed(2)} m/s): Exceeds 3.0 m/s limit. High friction losses and severe water hammer risks.`
+              : undefined,
+          }}
+          standardRef="AWWA Manual M11 / BNBC 2020 Part 8"
+          recommendedRange="0.6 m/s ≤ Velocity ≤ 2.5 m/s"
+          designTip="Velocity V = Q/A should ideally be maintained between 0.9 m/s and 2.0 m/s for economic pumping."
+        />
 
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-            Pipe Length L (m)
-          </label>
-          <input
-            type="number"
-            value={pipe.lengthM}
-            onChange={(e) => updatePipe({ lengthM: Math.max(1, Number(e.target.value) || 50) })}
-            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="10"
-            min="1"
-          />
-        </div>
+        <UnitInput
+          label="Pipe Length L"
+          category="length"
+          siValue={pipe.lengthM}
+          onChangeSI={(val) => updatePipe({ lengthM: Math.max(1, val) })}
+          currentUnitId={getFieldUnit('pipe.length', 'length', 'm')}
+          onUnitChange={(u) => updateFieldUnit('pipe.length', u)}
+          customUnits={customUnits}
+          step={20}
+          presets={[
+            { label: '50 m', valueSI: 50, title: 'Short Site Run' },
+            { label: '150 m', valueSI: 150, title: 'Standard Street Block' },
+            { label: '300 m', valueSI: 300, title: 'Long Distribution Feeder' },
+            { label: '1,000 m', valueSI: 1000, title: '1 km Trunk Transmission' },
+          ]}
+          standardRef="AWWA / Hydraulics"
+          recommendedRange="10 m – 5,000 m"
+          designTip="Friction head loss is directly proportional to length L in the Hazen-Williams equation."
+        />
 
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-            Inlet Pressure (kPa)
-          </label>
-          <input
-            type="number"
-            value={pipe.inletPressureKpa}
-            onChange={(e) => updatePipe({ inletPressureKpa: Math.max(0, Number(e.target.value) || 0) })}
-            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="25"
-            min="0"
-          />
-        </div>
+        <UnitInput
+          label="Inlet Pressure"
+          category="pressure"
+          siValue={pipe.inletPressureKpa * 1000}
+          onChangeSI={(val) => updatePipe({ inletPressureKpa: Math.max(0, val / 1000) })}
+          currentUnitId={getFieldUnit('pipe.inletP', 'pressure', 'kPa')}
+          onUnitChange={(u) => updateFieldUnit('pipe.inletP', u)}
+          customUnits={customUnits}
+          step={25}
+          presets={[
+            { label: '150 kPa', valueSI: 150000, title: 'Low Distribution Pressure (1.5 bar / 22 psi)' },
+            { label: '300 kPa', valueSI: 300000, title: 'Normal Municipal Pressure (3 bar / 44 psi)' },
+            { label: '500 kPa', valueSI: 500000, title: 'High Pressure Main (5 bar / 73 psi)' },
+          ]}
+          standardRef="BNBC 2020 Part 8 / AWWA"
+          recommendedRange="140 kPa (20 psi) – 550 kPa (80 psi)"
+          designTip="Minimum residual pressure at any delivery fixture must exceed 100 kPa (15 psi) per plumbing codes."
+        />
+      </div>
 
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-            Inlet Elevation z1 (m)
-          </label>
-          <input
-            type="number"
-            value={pipe.inletElevationM}
-            onChange={(e) => updatePipe({ inletElevationM: Number(e.target.value) || 0 })}
-            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="1"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-            Outlet Elevation z2 (m)
-          </label>
-          <input
-            type="number"
-            value={pipe.outletElevationM}
-            onChange={(e) => updatePipe({ outletElevationM: Number(e.target.value) || 0 })}
-            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="1"
-          />
-        </div>
-
+      {/* Minor Losses & Elevations */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+        <UnitInput
+          label="Inlet Elevation z1"
+          category="length"
+          siValue={pipe.inletElevationM}
+          onChangeSI={(val) => updatePipe({ inletElevationM: val })}
+          currentUnitId={getFieldUnit('pipe.z1', 'length', 'm')}
+          onUnitChange={(u) => updateFieldUnit('pipe.z1', u)}
+          customUnits={customUnits}
+          step={1}
+          presets={[
+            { label: '10 m', valueSI: 10, title: 'Elevation 10m' },
+            { label: '20 m', valueSI: 20, title: 'Elevation 20m' },
+            { label: '30 m', valueSI: 30, title: 'Elevation 30m' },
+          ]}
+        />
+        <UnitInput
+          label="Outlet Elevation z2"
+          category="length"
+          siValue={pipe.outletElevationM}
+          onChangeSI={(val) => updatePipe({ outletElevationM: val })}
+          currentUnitId={getFieldUnit('pipe.z2', 'length', 'm')}
+          onUnitChange={(u) => updateFieldUnit('pipe.z2', u)}
+          customUnits={customUnits}
+          step={1}
+          presets={[
+            { label: '10 m', valueSI: 10, title: 'Elevation 10m' },
+            { label: '15 m', valueSI: 15, title: 'Elevation 15m' },
+            { label: '25 m', valueSI: 25, title: 'Elevation 25m' },
+          ]}
+        />
         <div>
           <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
             Minor Loss Coeff ΣK
@@ -182,6 +258,27 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             step="0.5"
             min="0"
           />
+          <div className="flex items-center gap-1 mt-1 overflow-x-auto">
+            {[
+              { label: '1.0', val: 1.0, title: 'Straight line with entry/exit' },
+              { label: '2.5', val: 2.5, title: 'A few bends and standard gate valve' },
+              { label: '5.0', val: 5.0, title: 'Multiple bends, tee & check valve' },
+            ].map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => updatePipe({ minorLossCoefficientK: item.val })}
+                className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
+                  pipe.minorLossCoefficientK === item.val
+                    ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent'
+                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                }`}
+                title={item.title}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
