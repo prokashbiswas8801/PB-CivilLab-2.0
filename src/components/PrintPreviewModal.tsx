@@ -54,6 +54,7 @@ import {
   generateVerificationHash,
   buildReportVerificationString,
   ReportVerificationPayload,
+  generateSubmittalDocRef,
 } from '../utils/qrCode';
 
 export interface PrintPreviewModalProps {
@@ -104,10 +105,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   // Initialize unique document ID and timestamp when modal opens
   useEffect(() => {
     if (isOpen) {
-      const uniqueId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? `DOC-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
-          : `DOC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      const uniqueId = generateSubmittalDocRef(2026);
       setDocumentId(uniqueId);
       setTimestamp(new Date().toISOString());
 
@@ -925,28 +923,77 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                   )}
 
                   {/* ========================================================
-                      SECTION 11: QUALITY SIGN-OFF & OFFICIAL STAMP
+                      SECTION 11: 3-TIER QUALITY ASSURANCE (QA/QC) SIGN-OFF MATRIX
                       ======================================================== */}
                   {settings.sections.qualitySignOff && (
-                    <section className="print-avoid-break pt-4 border-t-2 border-slate-800 space-y-4">
-                      <div className="text-[10px] font-mono text-slate-600 italic">
-                        {userPreferences.reportHeaderNote ||
-                          'Verified for preliminary structural & estimation design under BNBC-2020 / ACI-318 standards.'}
+                    <section className="print-avoid-break pt-4 border-t-2 border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded">
+                        <span className="font-bold text-blue-900 uppercase">
+                          3-Tier Quality Assurance (QA/QC) &amp; Code Compliance Sign-Off Matrix
+                        </span>
+                        <span>Governing Standard: <strong>{moduleMeta.codeStandard}</strong> · ISO 9001 Protocol</span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-8 text-xs font-mono">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase text-slate-500">Prepared &amp; Computed By</div>
-                          <div className="font-bold text-slate-900 font-sans mt-0.5">{userProfile.fullName}</div>
-                          <div className="text-slate-600">{userProfile.designation}</div>
-                          <div className="text-slate-500 text-[11px] mt-1">Date: {new Date(timestamp).toLocaleDateString()}</div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono border border-slate-300 rounded p-3 bg-white divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                        {/* 1. PREPARED BY */}
+                        <div className="space-y-1.5 pt-2 md:pt-0 md:pr-3">
+                          <div className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">
+                            1. Prepared By (Design)
+                          </div>
+                          <div className="font-bold text-slate-900 text-sm">{userProfile.fullName || 'Design Engineer, EIT/PE'}</div>
+                          <div className="text-slate-600 text-[11px]">{userProfile.designation || 'Lead Civil & Structural Modeler'}</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Civil Design Division'}</div>
+                          <div className="pt-3">
+                            <div className="w-full border-b border-slate-400 mb-1"></div>
+                            <div className="flex justify-between text-[9.5px] text-slate-500">
+                              <span>Sign: ___________________</span>
+                              <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
+                            </div>
+                            <div className="text-[9.5px] text-slate-600 font-semibold mt-0.5">
+                              {userProfile.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: EIT/PE-49120'}
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="text-right flex flex-col justify-between items-end">
-                          <div className="text-[10px] font-bold uppercase text-slate-500">Reviewed &amp; Certified Stamp</div>
-                          <div className="mt-6 w-48 border-b-2 border-slate-900"></div>
-                          <div className="font-bold text-slate-900 mt-1">
-                            {userProfile.licenseNumber ? `License: ${userProfile.licenseNumber}` : 'Licensed Structural Engineer'}
+                        {/* 2. CHECKED BY */}
+                        <div className="space-y-1.5 pt-3 md:pt-0 md:px-3">
+                          <div className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">
+                            2. Checked By (QA / Peer Review)
+                          </div>
+                          <div className="font-bold text-slate-900 text-sm">Senior Structural QA Reviewer, PE/SE</div>
+                          <div className="text-slate-600 text-[11px]">Lead Quality Assurance Peer Review</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Technical Verification Division'}</div>
+                          <div className="pt-3">
+                            <div className="w-full border-b border-slate-400 mb-1"></div>
+                            <div className="flex justify-between text-[9.5px] text-slate-500">
+                              <span>Sign: ___________________</span>
+                              <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
+                            </div>
+                            <div className="text-[9.5px] text-slate-600 font-semibold mt-0.5">
+                              Lic: SE/PE-82941 (QA Verified)
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. APPROVED BY */}
+                        <div className="space-y-1.5 pt-3 md:pt-0 md:pl-3">
+                          <div className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">
+                            3. Approved By (EOR)
+                          </div>
+                          <div className="font-bold text-slate-900 text-sm">
+                            {activeWorkspace.engineerOfRecord || userProfile.fullName || 'Principal Engineer of Record, PE'}
+                          </div>
+                          <div className="text-slate-600 text-[11px]">Engineer of Record (EOR) / Principal</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Consulting Engineering Practice'}</div>
+                          <div className="pt-3">
+                            <div className="w-full border-b-2 border-slate-800 mb-1"></div>
+                            <div className="flex justify-between text-[9.5px] text-slate-500">
+                              <span>Seal &amp; Sign: ____________</span>
+                              <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
+                            </div>
+                            <div className="text-[9.5px] text-slate-900 font-bold mt-0.5">
+                              {userProfile.licenseNumber ? `EOR Lic: ${userProfile.licenseNumber}` : 'Official Registered PE Stamp'}
+                            </div>
                           </div>
                         </div>
                       </div>

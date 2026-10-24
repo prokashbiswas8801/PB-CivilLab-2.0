@@ -429,33 +429,45 @@
   }
 }
 
-/* Sunlight / Jobsite High-Contrast Mode (Clear Readability under direct sun) */
+/* Sunlight / Jobsite High-Contrast Mode (Direct Sunlight Glare Readability) */
 .sunlight-mode {
   --md-sys-color-background: #ffffff !important;
   --md-sys-color-on-background: #000000 !important;
   --md-sys-color-surface: #ffffff !important;
-  --md-sys-color-surface-dim: #f8fafc !important;
+  --md-sys-color-surface-dim: #f1f5f9 !important;
   --md-sys-color-surface-container-low: #ffffff !important;
-  --md-sys-color-surface-container: #f1f5f9 !important;
-  --md-sys-color-surface-container-high: #e2e8f0 !important;
-  --md-sys-color-surface-container-highest: #cbd5e1 !important;
+  --md-sys-color-surface-container: #e2e8f0 !important;
+  --md-sys-color-surface-container-high: #cbd5e1 !important;
+  --md-sys-color-surface-container-highest: #94a3b8 !important;
   --md-sys-color-on-surface: #000000 !important;
-  --md-sys-color-on-surface-variant: #0f172a !important;
-  --md-sys-color-outline: #0f172a !important;
-  --md-sys-color-outline-variant: #334155 !important;
-  --md-sys-color-primary: #0040c1 !important;
+  --md-sys-color-on-surface-variant: #000000 !important;
+  --md-sys-color-outline: #000000 !important;
+  --md-sys-color-outline-variant: #1e293b !important;
+  --md-sys-color-primary: #0036a6 !important;
   --md-sys-color-on-primary: #ffffff !important;
-  --md-sys-color-primary-container: #dbeafe !important;
-  --md-sys-color-on-primary-container: #001e66 !important;
+  --md-sys-color-primary-container: #bfdbfe !important;
+  --md-sys-color-on-primary-container: #001040 !important;
   font-weight: 500 !important;
+  -webkit-font-smoothing: antialiased;
 }
 
 .sunlight-mode input,
 .sunlight-mode select,
+.sunlight-mode textarea,
 .sunlight-mode button {
-  border-width: 1.5px !important;
-  border-color: #0f172a !important;
+  border-width: 2px !important;
+  border-color: #000000 !important;
   color: #000000 !important;
+}
+
+.sunlight-mode svg text {
+  fill: #000000 !important;
+  font-weight: 700 !important;
+}
+
+.sunlight-mode .dcr-gauge-track {
+  border: 2px solid #000000 !important;
+  background-color: #e2e8f0 !important;
 }
 
 /* Tactile Micro-Interactions & Haptic-Like Transitions */

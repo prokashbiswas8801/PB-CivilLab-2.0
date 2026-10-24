@@ -116,11 +116,23 @@ export interface GeneratedReportQrResult {
 }
 
 /**
+ * Generates official engineering submittal document reference code (e.g. PBCL-2026-XXXXXX)
+ */
+export function generateSubmittalDocRef(year: number = 2026): string {
+  const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let rand = '';
+  for (let i = 0; i < 6; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `PBCL-${year}-${rand}`;
+}
+
+/**
  * Generate a QR code containing the unique document reference and project metadata.
  * Returns both high-DPI raster DataURL and vector SVG along with metadata payload and tamper-evident hash.
  */
 export async function generateReportQrCode(options: GenerateReportQrOptions): Promise<GeneratedReportQrResult> {
-  const documentId = options.documentId || `DOC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  const documentId = options.documentId || generateSubmittalDocRef(2026);
   const timestamp = options.timestamp || new Date().toISOString();
   const seedString = `${documentId}|${options.projectCode}|${options.moduleId}|${timestamp}`;
   const verificationHash = generateVerificationHash(seedString);
