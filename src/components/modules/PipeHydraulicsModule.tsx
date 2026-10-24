@@ -355,7 +355,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({ re
       </div>
 
       {/* Hydraulic Breakdown Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
         <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-1">
           <div className="font-bold text-[var(--md-sys-color-primary)]">Energy Grade Line (EGL)</div>
           <div className="text-[11px] text-[var(--md-sys-color-on-surface)]">
@@ -370,7 +370,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({ re
         </div>
 
         <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-1">
-          <div className="font-bold text-[var(--md-sys-color-primary)]">Head Loss Breakdown</div>
+          <div className="font-bold text-[var(--md-sys-color-primary)]">Hazen-Williams (HW)</div>
           <div className="text-[11px] text-[var(--md-sys-color-on-surface)]">
             Friction Loss h_f: <strong>{result.frictionHeadLossM} m</strong>
           </div>
@@ -382,8 +382,21 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({ re
           </div>
         </div>
 
+        <div className="p-3 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-1">
+          <div className="font-bold text-sky-600 dark:text-sky-400">Darcy-Weisbach (DW)</div>
+          <div className="text-[11px] text-[var(--md-sys-color-on-surface)]">
+            Friction Factor f: <strong>{result.darcyFrictionFactor}</strong>
+          </div>
+          <div className="text-[11px] text-[var(--md-sys-color-on-surface)]">
+            DW Head Loss h_f: <strong>{result.darcyHeadLossM} m</strong>
+          </div>
+          <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+            Roughness ε = {result.equivalentRoughnessMm} mm (Swamee-Jain)
+          </div>
+        </div>
+
         <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-1">
-          <div className="font-bold text-[var(--md-sys-color-primary)]">Cross-Sectional Properties</div>
+          <div className="font-bold text-[var(--md-sys-color-primary)]">Cross-Section & Discharge</div>
           <div className="text-[11px] text-[var(--md-sys-color-on-surface)]">
             Flow Area A: <strong>{result.flowAreaM2} m²</strong>
           </div>

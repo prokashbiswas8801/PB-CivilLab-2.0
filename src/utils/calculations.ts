@@ -2520,7 +2520,7 @@ export function computePileCapacity(
 }
 
 /* -------------------------------------------------------------
-   MODULE 14: PIPE HYDRAULICS (HAZEN-WILLIAMS FORMULATION)
+   MODULE 14: PIPE HYDRAULICS (HAZEN-WILLIAMS & DARCY-WEISBACH)
 ------------------------------------------------------------- */
 export interface PipeHydraulicsResult {
   pipeMaterial: string;
@@ -2547,6 +2547,11 @@ export interface PipeHydraulicsResult {
   maxVelocityStatus: 'pass' | 'warning' | 'fail';
   utilizationRatio: number;
   status: 'nominal' | 'warning' | 'critical';
+  // Darcy-Weisbach formulation:
+  darcyFrictionFactor: number;
+  darcyHeadLossM: number;
+  darcyTotalHeadLossM: number;
+  equivalentRoughnessMm: number;
 }
 
 export function computePipeHydraulics(
@@ -2593,6 +2598,38 @@ export function computePipeHydraulics(
   } else if (Re <= 4000) {
     flowRegime = 'Transitional';
   }
+
+  // Darcy-Weisbach friction factor f (Swamee-Jain explicit solution approximating Colebrook-White)
+  const roughnessMap: Record<string, number> = {
+    'pvc-hdpe': 0.0015,
+    'ductile-iron': 0.12,
+    'cast-iron': 0.26,
+    'concrete': 0.36,
+    'galvanized-steel': 0.15,
+  };
+  const epsilonMm = roughnessMap[params.pipeMaterial] || 0.045;
+  const epsilonM = epsilonMm / 1000;
+
+  let darcyF: number;
+  if (Re < 2000) {
+    darcyF = Re > 0 ? 64 / Re : 0.032;
+  } else if (Re >= 4000) {
+    const relRoughness = epsilonM / (3.7 * D_m);
+    const reTerm = 5.74 / Math.pow(Re, 0.9);
+    const logArg = relRoughness + reTerm;
+    darcyF = 0.25 / Math.pow(Math.log10(logArg), 2);
+  } else {
+    // Smooth interpolation for transitional flow
+    const f2000 = 64 / 2000;
+    const relRoughness4000 = epsilonM / (3.7 * D_m);
+    const reTerm4000 = 5.74 / Math.pow(4000, 0.9);
+    const f4000 = 0.25 / Math.pow(Math.log10(relRoughness4000 + reTerm4000), 2);
+    const t = (Re - 2000) / 2000;
+    darcyF = f2000 + t * (f4000 - f2000);
+  }
+
+  const darcyHeadLossM = darcyF * (L / D_m) * hv;
+  const darcyTotalHeadLossM = darcyHeadLossM + hm;
 
   // Total Energy Grade Line (EGL) & Pressure Head
   // Head in meters of water: P / (rho * g) = P_kpa * 1000 / (1000 * 9.80665) = P_kpa / 9.80665
@@ -2660,6 +2697,10 @@ export function computePipeHydraulics(
       maxVelocityStatus: maxVelocity,
       utilizationRatio: Number(utilizationRatio.toFixed(3)),
       status,
+      darcyFrictionFactor: Number(darcyF.toFixed(4)),
+      darcyHeadLossM: Number(darcyHeadLossM.toFixed(2)),
+      darcyTotalHeadLossM: Number(darcyTotalHeadLossM.toFixed(2)),
+      equivalentRoughnessMm: epsilonMm,
     },
     issues
   );

@@ -24,6 +24,10 @@ const COMMON_CATEGORY_PAIRS: Record<
     { label: 'm² ⇄ acre', from: 'm2', to: 'acre', title: 'Square Meters ↔ International Acre' },
     { label: 'acre ⇄ decimal', from: 'acre', to: 'decimal', title: 'Acre ↔ Regional Decimal (100 dec/ac)' },
     { label: 'decimal ⇄ katha', from: 'decimal', to: 'katha', title: 'Regional Decimal ↔ Katha (1.65 dec/katha)' },
+    { label: 'cent ⇄ sq ft', from: 'cent', to: 'ft2', title: 'Cent (435.6 sq ft) ↔ Square Feet' },
+    { label: 'guntha ⇄ sq ft', from: 'guntha', to: 'ft2', title: 'Guntha (1,089 sq ft) ↔ Square Feet' },
+    { label: 'ground ⇄ sq ft', from: 'ground', to: 'ft2', title: 'Ground (2,400 sq ft) ↔ Square Feet' },
+    { label: 'kanal ⇄ marla', from: 'kanal', to: 'marla', title: 'Kanal (20 marlas) ↔ Marla' },
     { label: 'hectare ⇄ acre', from: 'hectare', to: 'acre', title: 'Hectare ↔ Acre' },
   ],
   volume: [
@@ -33,7 +37,7 @@ const COMMON_CATEGORY_PAIRS: Record<
   ],
   mass: [
     { label: 'kg ⇄ lb', from: 'kg', to: 'lb', title: 'Kilograms ↔ Imperial Pounds' },
-    { label: 'tonne ⇄ ton', from: 'tonne', to: 'ton', title: 'Metric Tonne (1000 kg) ↔ US Short Ton (2000 lb)' },
+    { label: 'tonne ⇄ ton', from: 'tonne', to: 'ton_us', title: 'Metric Tonne (1000 kg) ↔ US Short Ton (2000 lb)' },
     { label: 'bag (50kg) ⇄ kg', from: 'bag50', to: 'kg', title: 'Cement Bags ↔ Kilograms' },
     { label: 'maund ⇄ kg', from: 'maund', to: 'kg', title: 'Regional Maund (40 seers) ↔ Kilograms' },
   ],

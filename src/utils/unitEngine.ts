@@ -144,19 +144,30 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     sft: 'm2',
     acre: 'hectare',
     hectare: 'acre',
+    decimal: 'sqft',
+    katha: 'decimal',
+    bigha: 'acre',
+    cent: 'sqft',
+    guntha: 'sqft',
+    ground: 'sqft',
+    kanal: 'marla',
+    marla: 'kanal',
     // Volume
     m3: 'cft',
     cft: 'm3',
     cum: 'cft',
     ft3: 'm3',
-    liter: 'gal',
+    liter: 'gal_us',
     gal: 'liter',
+    gal_us: 'liter',
+    gal_uk: 'liter',
     // Mass
     kg: 'lb',
     lb: 'kg',
     tonne: 'ton_us',
     ton_us: 'tonne',
     ton_uk: 'tonne',
+    bag50: 'kg',
     // Force
     kN: 'kip',
     kip: 'kN',
@@ -180,6 +191,7 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     bar: 'psi',
     'N/mm2': 'psi',
     'kgf/cm2': 'psi',
+    atm: 'kPa',
     // Density
     'kg/m3': 'pcf',
     pcf: 'kg/m3',
@@ -195,11 +207,16 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     'ft/s': 'm/s',
     'km/h': 'mph',
     mph: 'km/h',
+    knot: 'm/s',
     // Flow Rate
     'm3/s': 'cfs',
     cfs: 'm3/s',
     'L/s': 'gpm',
     gpm: 'L/s',
+    mgd: 'm3/s',
+    // Length extras
+    rft: 'rm',
+    rm: 'rft',
   };
 
   if (counterpartMap[unitId]) {
@@ -214,7 +231,7 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
 /**
  * Smart Input Parser
  * Parses plain numbers, comma-formatted strings, simple arithmetic ("15 * 2", "250 / 2"),
- * and architectural expressions like "12'-6 1/2\"", "250 mm", "14.5 ft", "18 kN/m3"
+ * and architectural expressions like "12'-6 1/2\"", "12'--4 1/2\"", "12-6 1/2", "250 mm", "14.5 ft", "18 kN/m3"
  */
 export function parseSmartUnitInput(
   rawString: string,
@@ -231,8 +248,15 @@ export function parseSmartUnitInput(
     return { parsedValue: 0, detectedUnitId: currentUnitId, isValid: false, errorMessage: 'Empty input' };
   }
 
-  // 1. If length and contains architectural symbols ' or " or ft/in
-  if (category === 'length' && (/['"]/.test(trimmed) || /\b(?:ft|feet|in|inch|inches)\b/i.test(trimmed))) {
+  // 1. If length and contains architectural symbols ', " or ft/in or architectural hyphen/space format (e.g. 12-6 1/2)
+  if (
+    category === 'length' &&
+    (/['"]/.test(trimmed) ||
+      /\b(?:ft|feet|in|inch|inches)\b/i.test(trimmed) ||
+      /^\d+\s*[-–—]\s*\d+/.test(trimmed) ||
+      /^\d+\s+\d+\s+\d+\/\d+/.test(trimmed) ||
+      /^\d+\/\d+/.test(trimmed))
+  ) {
     const feetInchResult = parseFeetInchString(trimmed);
     if (feetInchResult.isValid) {
       if (currentUnitId === 'm') {
