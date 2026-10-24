@@ -1,3 +1,11 @@
+import React from 'react';
+import {
+  CivilWorkspace,
+  PipeMaterialType,
+  CustomUnitDefinition,
+  UnitCategoryKey,
+} from '../../types/civil';
+import { PipeHydraulicsResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 
 export interface PipeHydraulicsInputsProps {

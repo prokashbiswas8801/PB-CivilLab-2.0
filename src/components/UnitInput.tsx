@@ -55,6 +55,9 @@ export interface UnitInputProps {
   // Usability & Error Prevention Additions
   presets?: UnitInputPreset[];
   tooltip?: UnitInputTooltip | string;
+  standardRef?: string;
+  recommendedRange?: string;
+  designTip?: string;
   validationRule?: UnitInputValidationRule;
   customValidation?: (siVal: number) => { status: 'valid' | 'warning' | 'error'; hint: string } | null;
   showCounterpartToggle?: boolean;
@@ -89,6 +92,9 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   placeholder,
   presets,
   tooltip,
+  standardRef,
+  recommendedRange,
+  designTip,
   validationRule,
   customValidation,
   showCounterpartToggle = true,
@@ -97,6 +103,27 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   const [showTooltip, setShowTooltip] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Synthesize top-level guidance with tooltip object or string
+  const resolvedTooltip: UnitInputTooltip | null = useMemo(() => {
+    if (!tooltip && !standardRef && !recommendedRange && !designTip) {
+      return null;
+    }
+    if (typeof tooltip === 'string') {
+      return {
+        explanation: tooltip,
+        standardRef,
+        recommendedRange,
+        designTip,
+      };
+    }
+    return {
+      explanation: tooltip?.explanation || `Engineering parameter for ${label}.`,
+      standardRef: standardRef || tooltip?.standardRef,
+      recommendedRange: recommendedRange || tooltip?.recommendedRange,
+      designTip: designTip || tooltip?.designTip,
+    };
+  }, [tooltip, standardRef, recommendedRange, designTip, label]);
 
   // Available units for this physical category
   const availableUnits: UnitDefinition[] = useMemo(() => {
@@ -263,7 +290,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           </label>
 
           {/* Interactive Engineering Guidance Tooltip Button */}
-          {tooltip && (
+          {resolvedTooltip && (
             <div ref={tooltipRef} className="relative inline-flex items-center">
               <button
                 type="button"
@@ -292,26 +319,26 @@ export const UnitInput: React.FC<UnitInputProps> = ({
                   </div>
 
                   <p className="text-[11px] leading-relaxed text-[var(--md-sys-color-on-surface)]">
-                    {typeof tooltip === 'string' ? tooltip : tooltip.explanation}
+                    {resolvedTooltip.explanation}
                   </p>
 
-                  {typeof tooltip !== 'string' && (
+                  {(resolvedTooltip.standardRef || resolvedTooltip.recommendedRange || resolvedTooltip.designTip) && (
                     <div className="space-y-1 pt-1 border-t border-[var(--md-sys-color-outline-variant)] text-[10px] font-mono">
-                      {tooltip.standardRef && (
+                      {resolvedTooltip.standardRef && (
                         <div className="flex items-baseline gap-1 text-[var(--md-sys-color-primary)] font-semibold">
                           <span className="opacity-75 font-normal">Standard:</span>
-                          <span>{tooltip.standardRef}</span>
+                          <span>{resolvedTooltip.standardRef}</span>
                         </div>
                       )}
-                      {tooltip.recommendedRange && (
+                      {resolvedTooltip.recommendedRange && (
                         <div className="flex items-baseline gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
                           <span className="opacity-75 font-normal">Typical:</span>
-                          <span>{tooltip.recommendedRange}</span>
+                          <span>{resolvedTooltip.recommendedRange}</span>
                         </div>
                       )}
-                      {tooltip.designTip && (
+                      {resolvedTooltip.designTip && (
                         <div className="text-[var(--md-sys-color-on-surface-variant)] italic pt-0.5">
-                          💡 {tooltip.designTip}
+                          💡 {resolvedTooltip.designTip}
                         </div>
                       )}
                     </div>

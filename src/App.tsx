@@ -15,6 +15,7 @@ import {
   Download,
   Upload,
   RotateCcw,
+  RotateCw,
   Bug,
   Trash2,
   CheckCircle2,
@@ -162,7 +163,8 @@ import { AnalyticalDenseTable } from './components/AnalyticalDenseTable';
 import { DashboardView } from './components/DashboardView';
 import { DcrCapacityGauge, DcrGaugeSuite } from './components/DcrCapacityGauge';
 import { CelebrationToast, ToastMessage } from './components/CelebrationToast';
-import { exportCertifiedEngineeringPdf } from './utils/pdfExport';
+import { exportCertifiedEngineeringPdf, PdfExportProgress } from './utils/pdfExport';
+import { PdfExportProgressModal } from './components/PdfExportProgressModal';
 import { syncAllModulesToBoq } from './utils/boqAutoSync';
 import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
 import {
@@ -171,7 +173,10 @@ import {
   NewWorkspaceModal,
   CustomUnitModal,
   PersistenceInspectorModal,
+  HistoryDrawer,
 } from './components/modals';
+import { FloatingActionBar } from './components/FloatingActionBar';
+import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
 import {
   BoqEstimatorInputs,
   BoqEstimatorTable,
@@ -308,6 +313,9 @@ export default function App() {
   const [appState, setAppState] = useState<CivilLabSchemaV2>(() => loadPersistedState());
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [undoStack, setUndoStack] = useState<CivilWorkspace[]>([]);
+  const [redoStack, setRedoStack] = useState<CivilWorkspace[]>([]);
   const [customUnitModalOpen, setCustomUnitModalOpen] = useState(false);
   const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false);
   const [osDarkPreference, setOsDarkPreference] = useState<boolean>(() =>
@@ -412,24 +420,7 @@ export default function App() {
   const [itemUnit, setItemUnit] = useState<TakeoffUnit>('m3');
   const [itemWastage, setItemWastage] = useState(3.0);
   const [itemUnitRate, setItemUnitRate] = useState(0);
-
-  // Global Keyboard Shortcut: Ctrl + K or Cmd + K or "/" opens Command Palette
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setCommandPaletteOpen(true);
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        handleToggleSidebar();
-      } else if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
-        e.preventDefault();
-        setCommandPaletteOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Keyboard shortcuts managed comprehensively below alongside undo/redo engine
 
   // Resilient Local-First IndexedDB Hydration Fallback:
   // If localStorage was cleared, empty, or storage pressure dropped it, attempt immediate recovery from IndexedDB
@@ -704,6 +695,10 @@ export default function App() {
   }, [activeModule]);
 
   const updateActiveWorkspace = (updater: (ws: CivilWorkspace) => CivilWorkspace) => {
+    // Push current activeWorkspace to undo stack (capped at 25 snapshots)
+    setUndoStack((prev) => [activeWorkspace, ...prev.slice(0, 24)]);
+    setRedoStack([]); // Fresh modification invalidates redo branch
+
     setAppState((prev) => ({
       ...prev,
       workspaces: prev.workspaces.map((ws) =>
@@ -713,6 +708,315 @@ export default function App() {
       ),
     }));
   };
+
+  const handleUndo = () => {
+    if (undoStack.length === 0) {
+      setToastBanner('Undo stack is empty.');
+      return;
+    }
+    const [previousWs, ...remainingUndo] = undoStack;
+    setUndoStack(remainingUndo);
+    setRedoStack((prev) => [activeWorkspace, ...prev.slice(0, 24)]);
+    setAppState((prev) => ({
+      ...prev,
+      workspaces: prev.workspaces.map((ws) =>
+        ws.id === previousWs.id ? previousWs : ws
+      ),
+    }));
+    triggerCelebration('Undid Change', `Restored previous calculation parameters for "${previousWs.name}"`, 'info');
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) {
+      setToastBanner('Redo stack is empty.');
+      return;
+    }
+    const [nextWs, ...remainingRedo] = redoStack;
+    setRedoStack(remainingRedo);
+    setUndoStack((prev) => [activeWorkspace, ...prev.slice(0, 24)]);
+    setAppState((prev) => ({
+      ...prev,
+      workspaces: prev.workspaces.map((ws) =>
+        ws.id === nextWs.id ? nextWs : ws
+      ),
+    }));
+    triggerCelebration('Redid Change', `Re-applied forward parameters for "${nextWs.name}"`, 'info');
+  };
+
+  // Fork a calculation record into an independent project workspace
+  const handleForkRecordToProject = (record: CalculationRecord) => {
+    const newId = `ws-${generateUUID().slice(0, 8)}`;
+    const forkedName = `${activeWorkspace.name} [Fork: ${record.moduleId}]`;
+    const newWorkspace: CivilWorkspace = {
+      ...activeWorkspace,
+      id: newId,
+      name: forkedName,
+      projectCode: `${activeWorkspace.projectCode}-F${Math.floor(Math.random() * 900 + 100)}`,
+      activeModule: record.moduleId,
+      updatedAt: new Date().toISOString(),
+    };
+    if (record.inputsSnapshot && Object.keys(record.inputsSnapshot).length > 0) {
+      const modKey =
+        record.moduleId === 'beam-analysis' ? 'beam' :
+        record.moduleId === 'bearing-capacity' ? 'bearing' :
+        record.moduleId === 'concrete-mix' ? 'concrete' :
+        record.moduleId === 'open-channel' ? 'channel' :
+        record.moduleId === 'rebar-bbs' ? 'rebarBbs' :
+        record.moduleId === 'boq-estimator' ? 'boq' :
+        record.moduleId === 'rate-analysis' ? 'rateAnalysis' :
+        record.moduleId === 'masonry-finishes' ? 'masonry' :
+        record.moduleId === 'earthwork-alignment' ? 'earthwork' :
+        record.moduleId === 'concrete-materials' ? 'concreteMaterials' :
+        record.moduleId === 'continuous-beam' ? 'continuousBeam' :
+        record.moduleId === 'pile-capacity' ? 'pile' :
+        record.moduleId === 'pipe-hydraulics' ? 'pipe' : 'boq';
+      (newWorkspace as any)[modKey] = {
+        ...(newWorkspace as any)[modKey],
+        ...record.inputsSnapshot,
+      };
+    }
+    setAppState((prev) => ({
+      ...prev,
+      workspaces: [...prev.workspaces, newWorkspace],
+      activeWorkspaceId: newId,
+    }));
+    setIsHistoryDrawerOpen(false);
+    setIsDashboardView(false);
+    triggerCelebration('Workspace Forked', `Created new independent project "${forkedName}" from calculation snapshot.`, 'celebrate');
+  };
+
+  // One-Click Feature Cross-Linking: Rebar BBS -> BOQ Schedule
+  const handleTransferBbsToBoq = () => {
+    if (!bbsEnvelope.result) return;
+    const steelKg = Math.round(bbsEnvelope.result.totalSteelWeightKg);
+    updateActiveWorkspace((ws) => {
+      const existingIdx = ws.boq.items.findIndex(
+        (it) => it.itemNo === '4.01' || it.description.toLowerCase().includes('rebar') || it.description.toLowerCase().includes('reinforcement')
+      );
+      let updatedItems = [...ws.boq.items];
+      if (existingIdx >= 0) {
+        updatedItems[existingIdx] = {
+          ...updatedItems[existingIdx],
+          numberOfMembers: 1,
+          lengthM: steelKg,
+          widthM: 1,
+          heightM: 1,
+          unit: 'kg',
+          description: '4.01 - Deformed Reinforcement Steel Bars (Grade 60/500W, W = D²/162.2)',
+        };
+      } else {
+        updatedItems.push({
+          id: `takeoff-${generateUUID().slice(0, 8)}`,
+          itemNo: '4.01',
+          description: 'Deformed Reinforcement Steel Bars (Grade 60/500W, W = D²/162.2)',
+          category: 'superstructure',
+          numberOfMembers: 1,
+          lengthM: steelKg,
+          widthM: 1,
+          heightM: 1,
+          deductionQty: 0,
+          unit: 'kg',
+          wastagePercent: 3.0,
+          unitRate: 110,
+        });
+      }
+      return {
+        ...ws,
+        activeModule: 'boq-estimator',
+        boq: { ...ws.boq, items: updatedItems },
+      };
+    });
+    setIsDashboardView(false);
+    triggerCelebration(
+      'Rebar Takeoff Synced to BOQ',
+      `Transferred ${steelKg.toLocaleString()} kg calculated steel bars into BOQ Item 4.01.`,
+      'success'
+    );
+  };
+
+  // One-Click Feature Cross-Linking: Soil Bearing Capacity -> Footing Rebar BBS & Excavation
+  const handleTransferBearingToFootingAndPit = () => {
+    const b = activeWorkspace.bearing.footingWidthM;
+    const df = activeWorkspace.bearing.embedmentDepthM;
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      rebarBbs: {
+        ...ws.rebarBbs,
+        footingWidthM: b,
+        footingLengthM: b,
+      },
+      earthwork: {
+        ...ws.earthwork,
+        pitWidthM: Math.round((b + 0.6) * 10) / 10,
+        pitLengthM: Math.round((b + 0.6) * 10) / 10,
+        pitDepthM: df,
+      },
+    }));
+    triggerCelebration(
+      'Foundation Geometry Linked',
+      `Synced Footing (${b}m × ${b}m, depth ${df}m) to Rebar BBS & Pit Excavation.`,
+      'success'
+    );
+  };
+
+  // One-Click Feature Cross-Linking: ACI 211 Concrete Mix -> Concrete Materials
+  const handleTransferMixToMaterials = () => {
+    const batchVol = activeWorkspace.concrete.batchVolumeM3;
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      activeModule: 'concrete-materials',
+      concreteMaterials: {
+        ...ws.concreteMaterials,
+        wetVolumeM3: batchVol,
+        cementRatio: 1,
+        sandRatio: 1.5,
+        aggregateRatio: 3.0,
+      },
+    }));
+    setIsDashboardView(false);
+    triggerCelebration(
+      'Mix Volume Transferred',
+      `Pushed ${batchVol} m³ concrete batch into Material Estimator.`,
+      'success'
+    );
+  };
+
+  // One-Click Feature Cross-Linking: Concrete Materials -> BOQ Schedule
+  const handleTransferMaterialsToBoq = () => {
+    const wetVol = activeWorkspace.concreteMaterials.wetVolumeM3;
+    updateActiveWorkspace((ws) => {
+      const existingIdx = ws.boq.items.findIndex(
+        (it) => it.itemNo === '3.01' || it.description.toLowerCase().includes('rcc') || it.description.toLowerCase().includes('casting')
+      );
+      let updatedItems = [...ws.boq.items];
+      if (existingIdx >= 0) {
+        updatedItems[existingIdx] = {
+          ...updatedItems[existingIdx],
+          numberOfMembers: 1,
+          lengthM: wetVol,
+          widthM: 1,
+          heightM: 1,
+          unit: 'm3',
+        };
+      } else {
+        updatedItems.push({
+          id: `takeoff-${generateUUID().slice(0, 8)}`,
+          itemNo: '3.01',
+          description: 'RCC Reinforced Cement Concrete Casting (1:1.5:3 / C25)',
+          category: 'superstructure',
+          numberOfMembers: 1,
+          lengthM: wetVol,
+          widthM: 1,
+          heightM: 1,
+          deductionQty: 0,
+          unit: 'm3',
+          wastagePercent: 2.0,
+          unitRate: 9800,
+        });
+      }
+      return {
+        ...ws,
+        activeModule: 'boq-estimator',
+        boq: { ...ws.boq, items: updatedItems },
+      };
+    });
+    setIsDashboardView(false);
+    triggerCelebration(
+      'Concrete Volume Synced',
+      `Transferred ${wetVol} m³ concrete to BOQ Schedule.`,
+      'success'
+    );
+  };
+
+  // One-Click Feature Cross-Linking: Earthwork Excavation -> BOQ Substructure
+  const handleTransferEarthworkToBoq = () => {
+    if (!earthworkEnvelope.result) return;
+    const bankVol = Math.round(earthworkEnvelope.result.bankVolumeM3);
+    updateActiveWorkspace((ws) => {
+      const existingIdx = ws.boq.items.findIndex(
+        (it) => it.itemNo === '1.01' || it.description.toLowerCase().includes('earthwork') || it.description.toLowerCase().includes('excavation')
+      );
+      let updatedItems = [...ws.boq.items];
+      if (existingIdx >= 0) {
+        updatedItems[existingIdx] = {
+          ...updatedItems[existingIdx],
+          numberOfMembers: 1,
+          lengthM: bankVol,
+          widthM: 1,
+          heightM: 1,
+          unit: 'm3',
+        };
+      } else {
+        updatedItems.push({
+          id: `takeoff-${generateUUID().slice(0, 8)}`,
+          itemNo: '1.01',
+          description: `Earthwork excavation in foundation trenches and pits (${ws.earthwork.soilType})`,
+          category: 'substructure',
+          numberOfMembers: 1,
+          lengthM: bankVol,
+          widthM: 1,
+          heightM: 1,
+          deductionQty: 0,
+          unit: 'm3',
+          wastagePercent: 0,
+          unitRate: 280,
+        });
+      }
+      return {
+        ...ws,
+        activeModule: 'boq-estimator',
+        boq: { ...ws.boq, items: updatedItems },
+      };
+    });
+    setIsDashboardView(false);
+    triggerCelebration(
+      'Earthwork Synced to BOQ',
+      `Transferred ${bankVol.toLocaleString()} m³ excavation to BOQ.`,
+      'success'
+    );
+  };
+
+  // Comprehensive Global Keyboard Shortcuts:
+  // - Ctrl/Cmd + K: Command Palette & Global Search
+  // - Ctrl/Cmd + Z: Global Undo
+  // - Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z: Global Redo
+  // - Ctrl/Cmd + H: Session History Drawer
+  // - Ctrl/Cmd + B: Collapse / Expand Sidebar
+  // - "/": Instant Search shortcut (when outside inputs)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName);
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        handleToggleSidebar();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        setIsHistoryDrawerOpen((prev) => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (!isInput) {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')
+      ) {
+        if (!isInput) {
+          e.preventDefault();
+          handleRedo();
+        }
+      } else if (e.key === '/' && !isInput) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoStack, redoStack, activeWorkspace]);
 
   // Universal Flexible Unit Engine Helper Methods
   const getFieldUnit = (fieldKey: string, category: UnitCategoryKey, fallbackDefault: string): string => {
@@ -1500,8 +1804,10 @@ export default function App() {
     }, 50);
   };
 
-  // Direct Client-Side PDF Generation & Download (jsPDF) - No Print Dialog Required
+  // Direct Client-Side PDF Generation & Download (jsPDF) with Multi-Stage Progress Tracking
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfExportProgress, setPdfExportProgress] = useState<PdfExportProgress | null>(null);
+
   const handleDirectDownloadPdf = async () => {
     if (!currentEnvelope || !currentEnvelope.result) {
       setToastBanner('Cannot export PDF: No calculation result is available for this module.');
@@ -1509,23 +1815,42 @@ export default function App() {
     }
     try {
       setIsExportingPdf(true);
-      setToastBanner('Generating certified A4 engineering PDF...');
+      setPdfExportProgress({
+        percent: 10,
+        stage: 'Initializing certified A4 submittal canvas & geometry...',
+      });
+      setToastBanner('Starting certified A4 engineering PDF generation (10%)...');
+
       await exportCertifiedEngineeringPdf({
         workspace: activeWorkspace,
         activeModule,
         envelope: currentEnvelope,
         userProfile,
+        onProgress: (progress) => {
+          setPdfExportProgress(progress);
+          setToastBanner(`Exporting PDF: ${progress.percent}% · ${progress.stage}`);
+        },
       });
+
+      // Brief completion stage to show 100% completion before dismissal
+      setPdfExportProgress({
+        percent: 100,
+        stage: 'Certified submittal compiled & download triggered!',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 450));
+
       triggerCelebration(
         'Certified Engineering PDF Exported',
-        `Generated cryptographically verified submittal for ${MODULE_META[activeModule].shortLabel}.`,
+        `Generated cryptographically verified submittal for ${MODULE_META[activeModule].shortLabel} (100% complete).`,
         'celebrate'
       );
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error';
       triggerCelebration('PDF Export Failed', errMsg, 'warning');
+      setToastBanner(`PDF Export error: ${errMsg}`);
     } finally {
       setIsExportingPdf(false);
+      setPdfExportProgress(null);
     }
   };
 
@@ -2231,6 +2556,16 @@ export default function App() {
         onOpenPreferences={() => handleOpenProfileModal('preferences')}
         onOpenPresets={() => handleOpenProfileModal('presets')}
         onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
+        onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
+        onQuickPrint={handleQuickPrintA4Report}
+        onExportPdf={handleDirectDownloadPdf}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={undoStack.length > 0}
+        canRedo={redoStack.length > 0}
+        savedCalculations={appState.calculationHistory}
+        boqItems={activeWorkspace.boq.items}
+        onSelectCalculation={handleRestoreCalculation}
       />
 
       {showSplash && <AppSplash onComplete={() => setShowSplash(false)} />}
@@ -2323,6 +2658,55 @@ export default function App() {
 
           {/* Zone 3: Primary Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Undo / Redo Global Header Controls */}
+            <div className="hidden sm:flex items-center gap-1 border-r border-[var(--md-sys-color-outline-variant)] pr-2">
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                className={`touch-target-48 p-2 rounded-lg border border-[var(--md-sys-color-outline)] transition-colors cursor-pointer ${
+                  undoStack.length > 0
+                    ? 'hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+                    : 'opacity-30 cursor-not-allowed text-[var(--md-sys-color-on-surface-variant)]'
+                }`}
+                title="Undo last change (Ctrl+Z)"
+                aria-label="Undo last change"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                className={`touch-target-48 p-2 rounded-lg border border-[var(--md-sys-color-outline)] transition-colors cursor-pointer ${
+                  redoStack.length > 0
+                    ? 'hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+                    : 'opacity-30 cursor-not-allowed text-[var(--md-sys-color-on-surface-variant)]'
+                }`}
+                title="Redo change (Ctrl+Y)"
+                aria-label="Redo change"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* History Drawer Header Button */}
+            <button
+              type="button"
+              onClick={() => setIsHistoryDrawerOpen(true)}
+              className="touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-1.5 cursor-pointer relative"
+              title="Calculation Session History Ledger (Ctrl+H)"
+              aria-label="Open session calculation history ledger"
+            >
+              <History className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+              <span className="hidden lg:inline">History</span>
+              {appState.calculationHistory.length > 0 && (
+                <span className="min-w-4 h-4 px-1 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-[10px] font-mono font-bold flex items-center justify-center">
+                  {appState.calculationHistory.length > 99 ? '99+' : appState.calculationHistory.length}
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setCommandPaletteOpen(true)}
@@ -2956,6 +3340,28 @@ export default function App() {
               />
             </div>
 
+            {/* Seamless One-Click Feature Cross-Linking Continuity Banner */}
+            <div className="px-4 md:px-6 pt-2 shrink-0">
+              <WorkflowCrossLinkBanner
+                activeModule={activeModule}
+                activeWorkspace={activeWorkspace}
+                onTransferBbsToBoq={handleTransferBbsToBoq}
+                onTransferBearingToFootingAndPit={handleTransferBearingToFootingAndPit}
+                onTransferMixToMaterials={handleTransferMixToMaterials}
+                onTransferMaterialsToBoq={handleTransferMaterialsToBoq}
+                onTransferEarthworkToBoq={handleTransferEarthworkToBoq}
+                onApplyRateToBoq={handleApplyRateToBOQ}
+                bbsSteelWeightKg={bbsEnvelope.result?.totalSteelWeightKg}
+                bearingFootingWidthM={activeWorkspace.bearing.footingWidthM}
+                bearingEmbedmentDepthM={activeWorkspace.bearing.embedmentDepthM}
+                mixBatchVolumeM3={activeWorkspace.concrete.batchVolumeM3}
+                matConcreteVolumeM3={activeWorkspace.concreteMaterials.wetVolumeM3}
+                earthworkBankVolumeM3={earthworkEnvelope.result?.bankVolumeM3}
+                rateAnalysisUnitRate={rateAnalysisEnvelope.result?.unitRatePerM3}
+                currencySymbol={getCurrencySymbol(activeWorkspace.currency)}
+              />
+            </div>
+
             {/* Validation Issues Alert Banner (No Silent Coercion) */}
             {currentEnvelope.issues.length > 0 && (
               <div className="mx-4 md:mx-6 mt-4 p-4 rounded-xl border border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/30 text-[var(--md-sys-color-on-surface)] space-y-2">
@@ -3058,6 +3464,7 @@ export default function App() {
                     availableCategoryUnits={availableCategoryUnits}
                     activeFeetInchResult={activeFeetInchResult}
                     onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
+                    conversionResult={activeConversionResult}
                   />
                 )}
 
@@ -3519,6 +3926,27 @@ export default function App() {
                       toUnit={activeWorkspace.converter.toUnit}
                       category={activeWorkspace.converter.category}
                       conversionResult={activeConversionResult}
+                      onSwapUnits={() => {
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          converter: {
+                            ...ws.converter,
+                            fromUnit: ws.converter.toUnit,
+                            toUnit: ws.converter.fromUnit,
+                          },
+                        }));
+                      }}
+                      onSwapWithResult={() => {
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          converter: {
+                            ...ws.converter,
+                            fromUnit: ws.converter.toUnit,
+                            toUnit: ws.converter.fromUnit,
+                            inputValue: parseFloat(activeConversionResult.result.toFixed(6)),
+                          },
+                        }));
+                      }}
                     />
                   )}
 
@@ -3876,6 +4304,46 @@ export default function App() {
             codeStandard: MODULE_META[activeModule].codeStandard,
           }}
           currentEnvelope={currentEnvelope}
+        />
+
+        {/* Persistent Floating Contextual Quick-Action Toolbar */}
+        <FloatingActionBar
+          onQuickPrint={handleQuickPrintA4Report}
+          onExportPdf={handleDirectDownloadPdf}
+          isExportingPdf={isExportingPdf}
+          pdfExportProgress={pdfExportProgress}
+          onLogSnapshot={handleLogCalculationSnapshot}
+          onShareSummary={handleCopyAnalyticalSummary}
+          copiedSummary={copiedSummary}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={undoStack.length > 0}
+          canRedo={redoStack.length > 0}
+          onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
+          historyCount={appState.calculationHistory.length}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          activeModuleName={MODULE_META[activeModule]?.shortLabel}
+        />
+
+        {/* Real-time PDF Export Multi-Stage Progress Modal HUD */}
+        <PdfExportProgressModal
+          progress={pdfExportProgress}
+          moduleName={MODULE_META[activeModule]?.label || 'Certified Engineering Submittal'}
+          projectCode={activeWorkspace.projectCode}
+        />
+
+        {/* Calculation Session History Slide-Over Drawer */}
+        <HistoryDrawer
+          isOpen={isHistoryDrawerOpen}
+          onClose={() => setIsHistoryDrawerOpen(false)}
+          historyRecords={appState.calculationHistory}
+          activeWorkspace={activeWorkspace}
+          onRestoreRecord={handleRestoreCalculation}
+          onForkRecordToProject={handleForkRecordToProject}
+          onDeleteRecord={handleDeleteHistoryItem}
+          onClearHistory={handleClearHistory}
+          onLogCurrentSnapshot={handleLogCalculationSnapshot}
+          activeProjectCode={activeWorkspace.projectCode}
         />
 
         {/* Floating Celebratory Toast Micro-Interactions */}

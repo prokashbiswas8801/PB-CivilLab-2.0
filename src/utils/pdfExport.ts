@@ -14,11 +14,17 @@ import {
 } from './analyticalExport';
 import { BRAND_LOGO_BASE64 } from '../assets/brandLogoData';
 
+export interface PdfExportProgress {
+  stage: string;
+  percent: number;
+}
+
 export interface PdfExportOptions {
   workspace: CivilWorkspace;
   activeModule: EngineeringModuleId;
   envelope: CalculationEnvelope<any>;
   userProfile?: UserProfile;
+  onProgress?: (progress: PdfExportProgress) => void;
 }
 
 /**
@@ -30,11 +36,24 @@ export async function exportCertifiedEngineeringPdf({
   activeModule,
   envelope,
   userProfile,
+  onProgress,
 }: PdfExportOptions): Promise<void> {
   const result = envelope.result;
   if (!result) {
     throw new Error('No analytical results available to generate certified PDF.');
   }
+
+  const reportProgress = async (stage: string, percent: number, delayMs = 70) => {
+    if (onProgress) {
+      onProgress({ stage, percent });
+      if (delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  };
+
+  // Stage 1: Document Initialization
+  await reportProgress('Initializing vector A4 document & page geometry...', 15, 80);
 
   // Create A4 portrait document (210mm x 297mm)
   const doc = new jsPDF({
@@ -60,6 +79,9 @@ export async function exportCertifiedEngineeringPdf({
     minute: '2-digit',
     second: '2-digit',
   });
+
+  // Stage 2: Cryptographic QR Code Generation
+  await reportProgress('Generating cryptographic verification QR code & hash...', 35, 90);
 
   // Generate QR Code data URL containing doc verification payload
   const qrPayload = JSON.stringify({
@@ -96,6 +118,9 @@ export async function exportCertifiedEngineeringPdf({
   const borderColor = [203, 213, 225]; // #cbd5e1 (Slate 300)
 
   let cursorY = margin;
+
+  // Stage 3: Certified Executive Header & Credential Grid
+  await reportProgress('Rendering certified executive header & engineer credentials...', 55, 80);
 
   // 1. Certified Executive Header
   doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
@@ -192,6 +217,9 @@ export async function exportCertifiedEngineeringPdf({
 
   cursorY += 28;
 
+  // Stage 4: Design Parameters Table & Numerical Specifications
+  await reportProgress('Tabulating design input parameters & numerical specifications...', 70, 75);
+
   // 3. Design Parameters Table
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
@@ -277,6 +305,9 @@ export async function exportCertifiedEngineeringPdf({
 
   cursorY += 4;
 
+  // Stage 5: Capacity Utilization & Governing Code Equations
+  await reportProgress('Computing analytical limit states, capacity utilization & governing equations...', 85, 75);
+
   // 5. Demand-Capacity Ratio (DCR) Assessment Box
   const capacityInfo = getCapacityUtilization(activeModule, workspace, envelope);
   if (capacityInfo) {
@@ -345,6 +376,9 @@ export async function exportCertifiedEngineeringPdf({
     cursorY += 18;
   }
 
+  // Stage 6: Official Engineer Seal & Verification Signature Box
+  await reportProgress('Applying official certified seal, verification stamp & running footer...', 95, 75);
+
   // 7. Official Engineer of Record Stamp & Verification Signature Box
   const sigBoxY = Math.max(cursorY, pageHeight - margin - 26);
   doc.setDrawColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
@@ -376,6 +410,9 @@ export async function exportCertifiedEngineeringPdf({
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.text(`PB CivilLab Automated Engine v2.4 · Report Doc Ref: ${docId} · Page 1 of 1`, margin, pageHeight - margin + 4);
   doc.text('CONFIDENTIAL & PROPRIETARY · STRICTLY FOR PROFESSIONAL ENGINEERING USE', pageWidth - margin - 75, pageHeight - margin + 4);
+
+  // Stage 7: Final Vector Compilation & Download Launch
+  await reportProgress('Finalizing vector PDF stream and triggering browser download...', 100, 75);
 
   // Trigger direct browser download
   const sanitizedProject = workspace.projectCode.replace(/[^a-zA-Z0-9_-]/g, '_');
