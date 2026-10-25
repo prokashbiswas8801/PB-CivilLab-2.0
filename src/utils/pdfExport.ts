@@ -687,7 +687,8 @@ function extractModuleInputs(
 
 function extractModuleOutputs(
   moduleId: EngineeringModuleId,
-  result: any
+  result: any,
+  workspace?: CivilWorkspace
 ): { label: string; value: string | number; unit?: string; status?: 'pass' | 'fail' }[] {
   switch (moduleId) {
     case 'boq-estimator':
@@ -804,11 +805,11 @@ function extractModuleOutputs(
 
     case 'concrete-mix':
       return [
-        { label: 'Target Compressive Strength f\'c', value: result.targetMeanStrengthMpa || workspace.concrete.targetStrengthMpa, unit: 'MPa', status: 'pass' },
-        { label: 'Design Water-Cement Ratio', value: result.waterCementRatio || workspace.concrete.waterCementRatio, unit: '—', status: 'pass' },
-        { label: 'Portland Cement Batch Mass', value: result.cementKgM3?.toFixed(1) || '0.0', unit: 'kg/m³', status: 'pass' },
-        { label: 'Fine Aggregate Batch Mass', value: result.fineAggregateKgM3?.toFixed(1) || '0.0', unit: 'kg/m³', status: 'pass' },
-        { label: 'Coarse Aggregate Batch Mass', value: result.coarseAggregateKgM3?.toFixed(1) || '0.0', unit: 'kg/m³', status: 'pass' },
+        { label: "Target Compressive Strength f'c", value: result.targetStrengthMpa || workspace?.concrete.targetStrengthMpa || 25, unit: 'MPa', status: 'pass' },
+        { label: 'Design Water-Cement Ratio', value: result.waterCementRatio || workspace?.concrete.waterCementRatio || 0.45, unit: '—', status: 'pass' },
+        { label: 'Portland Cement Batch Mass', value: (result.cementKgPerM3 || result.batchCementKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
+        { label: 'Fine Aggregate Batch Mass', value: (result.fineAggKgPerM3 || result.batchFineAggKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
+        { label: 'Coarse Aggregate Batch Mass', value: (result.coarseAggKgPerM3 || result.batchCoarseAggKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
       ];
 
     default:

@@ -175,7 +175,7 @@ import {
   PersistenceInspectorModal,
   HistoryDrawer,
 } from './components/modals';
-import { FloatingActionBar } from './components/FloatingActionBar';
+import { SidebarToolbar } from './components/SidebarToolbar';
 import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
 import {
   BoqEstimatorInputs,
@@ -3024,6 +3024,40 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Mobile Sidebar Quick-Action Toolbar */}
+              <div className="shrink-0 -mx-4 border-t border-[var(--md-sys-color-outline-variant)]">
+                <SidebarToolbar
+                  collapsed={false}
+                  onQuickPrint={() => {
+                    setMobileDrawerOpen(false);
+                    handleQuickPrintA4Report();
+                  }}
+                  onExportPdf={() => {
+                    setMobileDrawerOpen(false);
+                    handleDirectDownloadPdf();
+                  }}
+                  isExportingPdf={isExportingPdf}
+                  pdfExportProgress={pdfExportProgress}
+                  onLogSnapshot={handleLogCalculationSnapshot}
+                  onShareSummary={handleCopyAnalyticalSummary}
+                  copiedSummary={copiedSummary}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  canUndo={undoStack.length > 0}
+                  canRedo={redoStack.length > 0}
+                  onOpenHistoryDrawer={() => {
+                    setMobileDrawerOpen(false);
+                    setIsHistoryDrawerOpen(true);
+                  }}
+                  historyCount={appState.calculationHistory.length}
+                  onOpenCommandPalette={() => {
+                    setMobileDrawerOpen(false);
+                    setCommandPaletteOpen(true);
+                  }}
+                  activeModuleName={MODULE_META[activeModule]?.shortLabel}
+                />
+              </div>
+
               <div className="shrink-0 pt-4 border-t border-[var(--md-sys-color-outline-variant)] space-y-2">
                 <button
                   type="button"
@@ -3215,6 +3249,26 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {/* Pinned Engineering Quick Actions Toolbar */}
+            <SidebarToolbar
+              collapsed={appState.sidebarCollapsed}
+              onQuickPrint={handleQuickPrintA4Report}
+              onExportPdf={handleDirectDownloadPdf}
+              isExportingPdf={isExportingPdf}
+              pdfExportProgress={pdfExportProgress}
+              onLogSnapshot={handleLogCalculationSnapshot}
+              onShareSummary={handleCopyAnalyticalSummary}
+              copiedSummary={copiedSummary}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={undoStack.length > 0}
+              canRedo={redoStack.length > 0}
+              onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
+              historyCount={appState.calculationHistory.length}
+              onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+              activeModuleName={MODULE_META[activeModule]?.shortLabel}
+            />
 
             {/* Sidebar Bottom: Pinned Action Controls & Theme Toggle */}
             <div
@@ -4442,24 +4496,6 @@ export default function App() {
           currentEnvelope={currentEnvelope}
         />
 
-        {/* Persistent Floating Contextual Quick-Action Toolbar */}
-        <FloatingActionBar
-          onQuickPrint={handleQuickPrintA4Report}
-          onExportPdf={handleDirectDownloadPdf}
-          isExportingPdf={isExportingPdf}
-          pdfExportProgress={pdfExportProgress}
-          onLogSnapshot={handleLogCalculationSnapshot}
-          onShareSummary={handleCopyAnalyticalSummary}
-          copiedSummary={copiedSummary}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          canUndo={undoStack.length > 0}
-          canRedo={redoStack.length > 0}
-          onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
-          historyCount={appState.calculationHistory.length}
-          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-          activeModuleName={MODULE_META[activeModule]?.shortLabel}
-        />
 
         {/* Real-time PDF Export Multi-Stage Progress Modal HUD */}
         <PdfExportProgressModal

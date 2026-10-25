@@ -7,12 +7,25 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+
+// In AI Studio / Cloud Run container architecture:
+// - Nginx acts as the outer gateway listening on NGINX_PORT (typically 8080).
+// - Nginx reverse-proxies all incoming requests to DEFAULT_APP_PORT (typically 3000).
+// - Therefore, the Node/Express server must bind to DEFAULT_APP_PORT (3000) when Nginx is present.
+// - If running in a direct container without Nginx, it binds directly to process.env.PORT.
+const isBehindNginx = Boolean(process.env.NGINX_PORT || process.env.DEFAULT_APP_PORT);
+const PORT = isBehindNginx
+  ? (Number(process.env.DEFAULT_APP_PORT) || 3000)
+  : (Number(process.env.PORT) || 3000);
 
 app.use(express.json());
 
-// Health check endpoint for Cloud Run and container orchestrators
+// Immediate health check endpoints for Cloud Run startup/liveness probes
 app.get('/health', (_req, res) => {
+  res.status(200).send('OK');
+});
+
+app.get('/healthz', (_req, res) => {
   res.status(200).send('OK');
 });
 
@@ -32,10 +45,31 @@ app.get('*', (_req, res) => {
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(503).send('Application build in progress. Please refresh momentarily.');
+    res.status(200).send(`<!DOCTYPE html>
+<html>
+  <head><title>PB CivilLab</title><meta http-equiv="refresh" content="3"></head>
+  <body style="font-family:sans-serif;text-align:center;padding:50px;">
+    <h2>PB CivilLab</h2>
+    <p>Loading application resources... Please wait.</p>
+  </body>
+</html>`);
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[PB CivilLab] Production server listening on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[PB CivilLab] Production application server listening on 0.0.0.0:${PORT}`);
+});
+
+process.on('SIGTERM', () => {
+  console.log('[PB CivilLab] SIGTERM signal received. Closing HTTP server...');
+  server.close(() => {
+    console.log('[PB CivilLab] HTTP server closed cleanly.');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  server.close(() => {
+    process.exit(0);
+  });
 });
