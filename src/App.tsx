@@ -165,7 +165,7 @@ import { DcrCapacityGauge, DcrGaugeSuite } from './components/DcrCapacityGauge';
 import { CelebrationToast, ToastMessage } from './components/CelebrationToast';
 import { exportCertifiedEngineeringPdf, PdfExportProgress } from './utils/pdfExport';
 import { PdfExportProgressModal } from './components/PdfExportProgressModal';
-import { syncAllModulesToBoq } from './utils/boqAutoSync';
+import { syncAllModulesToBoq, syncRebarBbsToBoq, syncConcreteMixToBoq } from './utils/boqAutoSync';
 import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
 import {
   WorkspaceManagerModal,
@@ -198,6 +198,7 @@ import {
   BearingCapacityMetrics,
   ConcreteMixInputs,
   ConcreteMixMetrics,
+  ConcreteMixVolumeTable,
   OpenChannelInputs,
   OpenChannelMetrics,
   ContinuousBeamInputs,
@@ -785,53 +786,44 @@ export default function App() {
     triggerCelebration('Workspace Forked', `Created new independent project "${forkedName}" from calculation snapshot.`, 'celebrate');
   };
 
-  // One-Click Feature Cross-Linking: Rebar BBS -> BOQ Schedule
+  // One-Click Feature Cross-Linking: Rebar BBS (Tonnes) -> BOQ Schedule (Zero Data Loss)
   const handleTransferBbsToBoq = () => {
     if (!bbsEnvelope.result) return;
-    const steelKg = Math.round(bbsEnvelope.result.totalSteelWeightKg);
-    updateActiveWorkspace((ws) => {
-      const existingIdx = ws.boq.items.findIndex(
-        (it) => it.itemNo === '4.01' || it.description.toLowerCase().includes('rebar') || it.description.toLowerCase().includes('reinforcement')
-      );
-      let updatedItems = [...ws.boq.items];
-      if (existingIdx >= 0) {
-        updatedItems[existingIdx] = {
-          ...updatedItems[existingIdx],
-          numberOfMembers: 1,
-          lengthM: steelKg,
-          widthM: 1,
-          heightM: 1,
-          unit: 'kg',
-          description: '4.01 - Deformed Reinforcement Steel Bars (Grade 60/500W, W = D²/162.2)',
-        };
-      } else {
-        updatedItems.push({
-          id: `takeoff-${generateUUID().slice(0, 8)}`,
-          itemNo: '4.01',
-          description: 'Deformed Reinforcement Steel Bars (Grade 60/500W, W = D²/162.2)',
-          category: 'superstructure',
-          numberOfMembers: 1,
-          lengthM: steelKg,
-          widthM: 1,
-          heightM: 1,
-          deductionQty: 0,
-          unit: 'kg',
-          wastagePercent: 3.0,
-          unitRate: 110,
-        });
-      }
-      return {
-        ...ws,
+    const syncRes = syncRebarBbsToBoq(activeWorkspace, bbsEnvelope);
+    if (syncRes.syncedItemsCount > 0) {
+      updateActiveWorkspace(() => ({
+        ...syncRes.updatedWorkspace,
         activeModule: 'boq-estimator',
-        boq: { ...ws.boq, items: updatedItems },
-      };
-    });
-    setIsDashboardView(false);
-    triggerCelebration(
-      'Rebar Takeoff Synced to BOQ',
-      `Transferred ${steelKg.toLocaleString()} kg calculated steel bars into BOQ Item 4.01.`,
-      'success'
-    );
+      }));
+      setIsDashboardView(false);
+      triggerCelebration(
+        'Rebar Schedule Synced to BOQ',
+        syncRes.message,
+        'celebrate'
+      );
+    } else {
+      triggerCelebration('Rebar Sync Status', syncRes.message, 'info');
+    }
+  };
+
+  // One-Click Feature Cross-Linking: ACI 211 Concrete Mix -> BOQ Schedule (Zero Data Loss)
+  const handleTransferMixToBoq = () => {
+    if (!concreteEnvelope.result) return;
+    const syncRes = syncConcreteMixToBoq(activeWorkspace, concreteEnvelope);
+    if (syncRes.syncedItemsCount > 0) {
+      updateActiveWorkspace(() => ({
+        ...syncRes.updatedWorkspace,
+        activeModule: 'boq-estimator',
+      }));
+      setIsDashboardView(false);
+      triggerCelebration(
+        'Concrete Mix Synced to BOQ',
+        syncRes.message,
+        'celebrate'
+      );
+    } else {
+      triggerCelebration('Concrete Mix Sync Status', syncRes.message, 'info');
+    }
   };
 
   // One-Click Feature Cross-Linking: Soil Bearing Capacity -> Footing Rebar BBS & Excavation
@@ -1987,9 +1979,9 @@ export default function App() {
     const res = syncAllModulesToBoq(activeWorkspace, bbsEnvelope, concreteEnvelope);
     if (res.syncedItemsCount > 0) {
       updateActiveWorkspace(() => res.updatedWorkspace);
-      setToastBanner(res.message);
+      triggerCelebration('Cross-Module Auto-Sync Complete', res.message, 'celebrate');
     } else {
-      setToastBanner(res.message);
+      triggerCelebration('Auto-Sync Status', res.message, 'info');
     }
   };
 
@@ -3531,6 +3523,7 @@ export default function App() {
                 onTransferBearingToFootingAndPit={handleTransferBearingToFootingAndPit}
                 onTransferBearingToPile={handleTransferBearingToPile}
                 onTransferMixToMaterials={handleTransferMixToMaterials}
+                onTransferMixToBoq={handleTransferMixToBoq}
                 onTransferMaterialsToBoq={handleTransferMaterialsToBoq}
                 onTransferEarthworkToBoq={handleTransferEarthworkToBoq}
                 onApplyRateToBoq={handleApplyRateToBOQ}
@@ -3732,6 +3725,7 @@ export default function App() {
                     customUnits={appState.customUnits}
                     getFieldUnit={getFieldUnit}
                     updateFieldUnit={updateFieldUnit}
+                    onSyncToBoq={handleTransferMixToBoq}
                   />
                 )}
 
@@ -4116,6 +4110,8 @@ export default function App() {
                       toUnit={activeWorkspace.converter.toUnit}
                       category={activeWorkspace.converter.category}
                       conversionResult={activeConversionResult}
+                      customUnits={appState.customUnits}
+                      onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
                       onSwapUnits={() => {
                         updateActiveWorkspace((ws) => ({
                           ...ws,
@@ -4204,6 +4200,7 @@ export default function App() {
                       customUnits={appState.customUnits}
                       getOutputUnit={getOutputUnit}
                       updateOutputUnit={updateOutputUnit}
+                      onSyncToBoq={handleTransferMixToBoq}
                     />
                   )}
 
@@ -4235,6 +4232,15 @@ export default function App() {
                   )}
                 </div>
 
+                {/* CONCRETE MIX ACI 211.1 ABSOLUTE VOLUME BREAKDOWN TABLE */}
+                {activeModule === 'concrete-mix' && concreteEnvelope.result && (
+                  <ConcreteMixVolumeTable
+                    result={concreteEnvelope.result}
+                    activeWorkspace={activeWorkspace}
+                    onSyncToBoq={handleTransferMixToBoq}
+                  />
+                )}
+
                 {/* DYNAMIC MEASUREMENT SHEET (L x W x H) & BOQ SPREADSHEET TABLE */}
                 {activeModule === 'boq-estimator' && boqEnvelope.result && (
                   <BoqEstimatorTable
@@ -4246,12 +4252,16 @@ export default function App() {
                     onDuplicateTakeoffItem={handleDuplicateTakeoffItem}
                     onDeleteTakeoffItem={handleDeleteTakeoffItem}
                     onLoadSampleBOQItems={handleLoadSampleBOQItems}
+                    onSyncFromModules={handleSyncAllModulesToBoq}
                   />
                 )}
 
                 {/* RATE ANALYSIS COMPOSITE BREAKDOWN TABLES */}
                 {activeModule === 'rate-analysis' && rateAnalysisEnvelope.result && (
-                  <RateAnalysisTables rateResult={rateAnalysisEnvelope.result} />
+                  <RateAnalysisTables
+                    rateResult={rateAnalysisEnvelope.result}
+                    onApplyRateToBOQ={handleApplyRateToBOQ}
+                  />
                 )}
 
                 {/* Calculation History */}

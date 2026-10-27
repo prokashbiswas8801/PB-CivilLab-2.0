@@ -312,3 +312,145 @@ export function parseSmartUnitInput(
 
   return { parsedValue: 0, detectedUnitId: currentUnitId, isValid: false, errorMessage: 'Invalid number format' };
 }
+
+/**
+ * Metadata definitions for Canonical SI Base Units
+ */
+export const BASE_UNIT_INFO: Record<UnitCategoryKey, { id: string; name: string; symbol: string }> = {
+  length: { id: 'm', name: 'Meter', symbol: 'm' },
+  area: { id: 'm2', name: 'Square Meter', symbol: 'm²' },
+  volume: { id: 'm3', name: 'Cubic Meter', symbol: 'm³' },
+  mass: { id: 'kg', name: 'Kilogram', symbol: 'kg' },
+  force: { id: 'N', name: 'Newton', symbol: 'N' },
+  distributed_load: { id: 'N/m', name: 'Newton per Meter', symbol: 'N/m' },
+  pressure: { id: 'Pa', name: 'Pascal', symbol: 'Pa' },
+  density: { id: 'kN/m3', name: 'Kilonewton per Cubic Meter', symbol: 'kN/m³' },
+  moment: { id: 'N.m', name: 'Newton Meter', symbol: 'N·m' },
+  slope: { id: 'ratio', name: 'Decimal Ratio', symbol: 'm/m' },
+  velocity: { id: 'm/s', name: 'Meter per Second', symbol: 'm/s' },
+  flow_rate: { id: 'm3/s', name: 'Cubic Meter per Second', symbol: 'm³/s' },
+};
+
+export interface ConversionFactorDetails {
+  unitId: string;
+  unitName: string;
+  unitSymbol: string;
+  category: UnitCategoryKey;
+  baseUnitId: string;
+  baseUnitSymbol: string;
+  baseUnitName: string;
+  toBaseFactor: number;
+  isBaseUnit: boolean;
+  factorFormula: string;
+  inverseFormula: string;
+  scientificExponent?: string;
+  tooltip: string;
+}
+
+/**
+ * Computes high-precision conversion factor details and formatted engineering tooltips
+ * for any selected unit relative to its canonical Base SI unit.
+ */
+export function getConversionFactorDetails(
+  unitId: string,
+  category: UnitCategoryKey,
+  customUnits: CustomUnitDefinition[] = []
+): ConversionFactorDetails {
+  const unit = getUnitDefinition(unitId, category, customUnits);
+  const baseInfo = BASE_UNIT_INFO[category] || {
+    id: BASE_UNITS[category] || 'm',
+    name: 'SI Base Unit',
+    symbol: BASE_UNITS[category] || 'm',
+  };
+
+  if (!unit) {
+    return {
+      unitId,
+      unitName: unitId,
+      unitSymbol: unitId,
+      category,
+      baseUnitId: baseInfo.id,
+      baseUnitSymbol: baseInfo.symbol,
+      baseUnitName: baseInfo.name,
+      toBaseFactor: 1,
+      isBaseUnit: true,
+      factorFormula: `1 ${unitId} = 1 ${baseInfo.symbol}`,
+      inverseFormula: `1 ${baseInfo.symbol} = 1 ${unitId}`,
+      tooltip: `${unitId} (Canonical Base SI Unit for ${category})`,
+    };
+  }
+
+  const factor = unit.toBaseFactor;
+  const isBase = unit.id === baseInfo.id || factor === 1.0;
+
+  // Clean superscripts for powers of 10
+  let expStr: string | undefined = undefined;
+  if (factor > 0) {
+    const log10 = Math.log10(factor);
+    const roundLog = Math.round(log10);
+    if (Math.abs(log10 - roundLog) < 1e-6 && roundLog !== 0) {
+      const superscripts: Record<string, string> = {
+        '-': '⁻',
+        '0': '⁰',
+        '1': '¹',
+        '2': '²',
+        '3': '³',
+        '4': '⁴',
+        '5': '⁵',
+        '6': '⁶',
+        '7': '⁷',
+        '8': '⁸',
+        '9': '⁹',
+      };
+      expStr = '10' + String(roundLog).split('').map((c) => superscripts[c] || c).join('');
+    }
+  }
+
+  const formatNum = (num: number) => {
+    if (num >= 1000) {
+      return Number.isInteger(num)
+        ? num.toLocaleString('en-US')
+        : parseFloat(num.toFixed(4)).toLocaleString('en-US');
+    }
+    if (num >= 1) {
+      return parseFloat(num.toFixed(6)).toString();
+    }
+    if (num >= 0.0001) {
+      return parseFloat(num.toFixed(6)).toString();
+    }
+    return num.toExponential(4);
+  };
+
+  const factorStr = formatNum(factor);
+  const inverseVal = factor !== 0 ? 1 / factor : 0;
+  const inverseStr = formatNum(inverseVal);
+
+  const factorFormula = isBase
+    ? `1 ${unit.symbol} = 1 ${baseInfo.symbol} (Base SI Unit)`
+    : `1 ${unit.symbol} = ${factorStr} ${baseInfo.symbol}${expStr ? ` (${expStr})` : ''}`;
+
+  const inverseFormula = isBase
+    ? `1 ${baseInfo.symbol} = 1 ${unit.symbol}`
+    : `1 ${baseInfo.symbol} ≈ ${inverseStr} ${unit.symbol}`;
+
+  const tooltip = isBase
+    ? `${unit.name} (${unit.symbol}) is the canonical Base SI unit for ${category.replace('_', ' ')} (Conversion factor: 1.0).`
+    : `Conversion factor relative to Base SI (${baseInfo.name} [${baseInfo.symbol}]):\n• 1 ${unit.symbol} = ${factorStr} ${baseInfo.symbol}${expStr ? ` (${expStr})` : ''}\n• ${inverseFormula}\n• Multiplier: ×${factorStr}`;
+
+  return {
+    unitId: unit.id,
+    unitName: unit.name,
+    unitSymbol: unit.symbol,
+    category,
+    baseUnitId: baseInfo.id,
+    baseUnitSymbol: baseInfo.symbol,
+    baseUnitName: baseInfo.name,
+    toBaseFactor: factor,
+    isBaseUnit: isBase,
+    factorFormula,
+    inverseFormula,
+    scientificExponent: expStr,
+    tooltip,
+  };
+}
+

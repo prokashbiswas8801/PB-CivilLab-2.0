@@ -967,7 +967,9 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <td className={`${cellPadding} text-right font-mono font-black text-rose-600 dark:text-rose-400`}>
                       {pileRes.appliedLoadKn.toFixed(1)} kN
                     </td>
-                    <td className={`${cellPadding} text-center`}>Settlement: {pileRes.elasticSettlementMm.toFixed(2)} mm (Allowable &le; 25mm)</td>
+                    <td className={`${cellPadding} text-center`}>
+                      Settlement: {pileRes.totalSettlementMm ? pileRes.totalSettlementMm.toFixed(2) : pileRes.elasticSettlementMm.toFixed(2)} mm (Se: {pileRes.elasticSettlementMm.toFixed(1)} + Sc: {(pileRes.consolidationSettlementMm || 0).toFixed(1)} mm ≤ {pileRes.permissibleSettlementMm}mm)
+                    </td>
                     <td className={`${cellPadding} text-center font-black text-[var(--md-sys-color-primary)]`}>
                       DCR = {(pileRes.utilizationRatio * 100).toFixed(1)}%
                     </td>
@@ -975,6 +977,25 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                       {renderStatusBadge(pileRes.utilizationRatio <= 1.0 ? 'nominal' : 'critical')}
                     </td>
                   </tr>
+                  {pileRes.pileGroupSummary && pileRes.pileGroupSummary.totalPiles > 1 && (
+                    <tr className="bg-[var(--md-sys-color-surface-container)] font-bold">
+                      <td className={cellPadding}>
+                        Pile Group ({pileRes.pileGroupSummary.rows}×{pileRes.pileGroupSummary.cols} = {pileRes.pileGroupSummary.totalPiles} Piles @ {pileRes.pileGroupSummary.spacingM}m c/c)
+                      </td>
+                      <td className={`${cellPadding} text-right font-mono font-black text-emerald-600 dark:text-emerald-400`}>
+                        {pileRes.pileGroupSummary.groupAllowableCapacityKn.toFixed(0)} kN
+                      </td>
+                      <td className={`${cellPadding} text-center font-mono`}>
+                        Converse-Labarre η = {(pileRes.pileGroupSummary.groupEfficiency * 100).toFixed(1)}%
+                      </td>
+                      <td className={`${cellPadding} text-center font-mono font-bold text-sky-600 dark:text-sky-400`}>
+                        Group DCR = {(pileRes.pileGroupSummary.groupDcr * 100).toFixed(1)}%
+                      </td>
+                      <td className={`${cellPadding} text-center`}>
+                        {renderStatusBadge(pileRes.pileGroupSummary.groupDcr <= 1.0 ? 'nominal' : 'critical')}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

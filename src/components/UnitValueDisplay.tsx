@@ -6,6 +6,7 @@ import {
   getUnitDefinition,
   UnitDefinition,
   CANONICAL_BASE_UNITS,
+  getConversionFactorDetails,
 } from '../utils/unitEngine';
 import { ChevronDown, Check } from 'lucide-react';
 
@@ -51,6 +52,12 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
   const activeUnitInfo = useMemo(() => {
     return getUnitDefinition(currentUnitId, category, customUnits) || availableUnits[0];
   }, [currentUnitId, category, customUnits, availableUnits]);
+
+  // High-precision conversion factor relative to base SI unit
+  const [isUnitHovered, setIsUnitHovered] = useState(false);
+  const conversionFactorDetails = useMemo(() => {
+    return getConversionFactorDetails(activeUnitInfo.id, category, customUnits);
+  }, [activeUnitInfo.id, category, customUnits]);
 
   const convertedValue = useMemo(() => {
     if (isNaN(siValue)) return 0;
@@ -131,9 +138,17 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
         <div ref={dropdownRef} className="relative shrink-0">
           <button
             type="button"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+            onClick={() => {
+              setDropdownOpen(!dropdownOpen);
+              setIsUnitHovered(false);
+            }}
+            onMouseEnter={() => setIsUnitHovered(true)}
+            onMouseLeave={() => setIsUnitHovered(false)}
+            onFocus={() => setIsUnitHovered(true)}
+            onBlur={() => setIsUnitHovered(false)}
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-mono font-bold text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-            title={`Display Unit: ${activeUnitInfo.name}. Click to change.`}
+            title={conversionFactorDetails.tooltip}
+            aria-label={`Unit: ${activeUnitInfo.name}. ${conversionFactorDetails.factorFormula}. Click to change.`}
           >
             <span className={`transition-all duration-300 ease-out inline-block ${
               isUnitFading ? 'opacity-25 scale-90 text-[var(--md-sys-color-primary)]' : 'opacity-100 scale-100'
@@ -143,13 +158,57 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
             <ChevronDown className={`w-3 h-3 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
+          {/* Interactive Floating Hover Card: Conversion Factor to Canonical Base SI */}
+          {isUnitHovered && !dropdownOpen && (
+            <div
+              className="absolute right-0 bottom-full mb-2 z-50 w-64 p-3 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl backdrop-blur-md text-xs pointer-events-none animate-in fade-in zoom-in-95 duration-150"
+              role="tooltip"
+            >
+              <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[var(--md-sys-color-outline-variant)]">
+                <span className="font-bold text-[var(--md-sys-color-on-surface)] text-xs truncate">
+                  {conversionFactorDetails.unitName} ({conversionFactorDetails.unitSymbol})
+                </span>
+                <span
+                  className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                    conversionFactorDetails.isBaseUnit
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
+                      : 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]'
+                  }`}
+                >
+                  {conversionFactorDetails.isBaseUnit ? 'Base SI Unit' : 'SI Factor'}
+                </span>
+              </div>
+
+              <div className="space-y-1.5 font-mono text-[11px]">
+                <div className="text-[var(--md-sys-color-primary)] font-bold flex items-center justify-between">
+                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider">Factor:</span>
+                  <span className="text-right">{conversionFactorDetails.factorFormula}</span>
+                </div>
+                {!conversionFactorDetails.isBaseUnit && (
+                  <div className="text-[var(--md-sys-color-on-surface-variant)] text-[10px] flex items-center justify-between">
+                    <span className="uppercase tracking-wider">Inverse:</span>
+                    <span className="text-right">{conversionFactorDetails.inverseFormula}</span>
+                  </div>
+                )}
+                <div className="text-[10px] pt-1.5 border-t border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-between">
+                  <span className="uppercase tracking-wider">Base SI:</span>
+                  <span className="font-semibold text-[var(--md-sys-color-on-surface)]">
+                    {conversionFactorDetails.baseUnitName} ({conversionFactorDetails.baseUnitSymbol})
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-1 z-50 w-48 max-h-60 overflow-y-auto rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-1 shadow-xl backdrop-blur-md">
-              <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)] mb-1">
-                Display Unit
+            <div className="absolute right-0 top-full mt-1 z-50 w-64 max-h-60 overflow-y-auto rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-1.5 shadow-xl backdrop-blur-md">
+              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)] mb-1 flex items-center justify-between">
+                <span>Display Unit</span>
+                <span className="text-[9px] font-mono opacity-70">Base: {conversionFactorDetails.baseUnitSymbol}</span>
               </div>
               {availableUnits.map((u) => {
                 const isSelected = u.id === activeUnitInfo.id;
+                const uDetails = getConversionFactorDetails(u.id, category, customUnits);
                 return (
                   <button
                     key={u.id}
@@ -158,14 +217,28 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
                       onUnitChange(u.id);
                       setDropdownOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-mono text-left transition-colors cursor-pointer ${
+                    title={uDetails.tooltip}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-mono text-left transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
                         : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
                     }`}
                   >
-                    <span className="truncate">{u.name} ({u.symbol})</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0 text-[var(--md-sys-color-primary)]" />}
+                    <div className="truncate pr-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold">{u.symbol}</span>
+                        <span className="opacity-75 text-[11px] truncate">({u.name})</span>
+                        {uDetails.isBaseUnit && (
+                          <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold uppercase">
+                            SI Base
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] opacity-90 mt-0.5 truncate">
+                        {uDetails.factorFormula}
+                      </div>
+                    </div>
+                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0 text-[var(--md-sys-color-primary)] ml-1" />}
                   </button>
                 );
               })}

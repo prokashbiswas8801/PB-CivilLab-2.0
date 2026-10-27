@@ -8,6 +8,7 @@ import {
 import { BeamAnalysisResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
+import { HelpCircle } from 'lucide-react';
 
 export interface BeamAnalysisInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -308,7 +309,16 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
               designTip="Steel modulus is constant at 200 GPa (29,000 ksi). For concrete, Ec = 4700 √f'c (MPa) under ACI 318."
             />
             <div>
-              <label className="block text-xs font-semibold mb-1">Moment of Inertia I (cm⁴)</label>
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <label className="block text-xs font-semibold">Moment of Inertia I</label>
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[var(--md-sys-color-primary)] px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] cursor-help"
+                  title="Conversion Factor relative to Base SI (m⁴):&#10;• 1 cm⁴ = 10⁻⁸ m⁴ (0.00000001 m⁴)&#10;• 1 m⁴ = 10⁸ cm⁴ (100,000,000 cm⁴)&#10;• 1 in⁴ ≈ 41.6231 cm⁴ (4.16231 × 10⁻⁷ m⁴)"
+                >
+                  <span>cm⁴ (10⁻⁸ m⁴)</span>
+                  <HelpCircle className="w-3 h-3 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
+                </span>
+              </div>
               <input
                 type="number"
                 step="100"
@@ -322,6 +332,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   }));
                 }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                title="Moment of inertia in cm⁴ (1 cm⁴ = 10⁻⁸ m⁴ in base SI units)"
               />
               <div className="flex items-center gap-1 mt-1 overflow-x-auto">
                 <button

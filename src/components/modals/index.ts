@@ -3,4 +3,5 @@ export * from './EditWorkspaceModal';
 export * from './NewWorkspaceModal';
 export * from './CustomUnitModal';
 export * from './PersistenceInspectorModal';
+export * from './ExplainConversionModal';
 export * from './HistoryDrawer';

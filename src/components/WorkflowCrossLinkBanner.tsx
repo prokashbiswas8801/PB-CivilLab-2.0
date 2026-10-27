@@ -20,6 +20,7 @@ interface WorkflowCrossLinkBannerProps {
   onTransferBearingToFootingAndPit: () => void;
   onTransferBearingToPile?: () => void;
   onTransferMixToMaterials: () => void;
+  onTransferMixToBoq?: () => void;
   onTransferMaterialsToBoq: () => void;
   onTransferEarthworkToBoq: () => void;
   onApplyRateToBoq: () => void;
@@ -47,6 +48,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   onTransferBearingToFootingAndPit,
   onTransferBearingToPile,
   onTransferMixToMaterials,
+  onTransferMixToBoq,
   onTransferMaterialsToBoq,
   onTransferEarthworkToBoq,
   onApplyRateToBoq,
@@ -148,7 +150,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
     );
   }
 
-  // 3. ACI 211 Mix -> Concrete Materials
+  // 3. ACI 211 Mix -> Concrete Materials & BOQ
   if (activeModule === 'concrete-mix' && mixBatchVolumeM3 && mixBatchVolumeM3 > 0) {
     return (
       <div className="bg-gradient-to-r from-teal-900/10 via-emerald-900/10 to-transparent border border-teal-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -158,26 +160,38 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
           </div>
           <div>
             <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
-              <span>One-Click Cross-Link: ACI 211 Mix → Material Estimator</span>
+              <span>One-Click Cross-Link: ACI 211 Mix Proportions → BOQ Takeoff Schedule</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded">
-                Batch Transfer
+                Auto-Sync
               </span>
             </div>
             <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-              Transfer <strong>{mixBatchVolumeM3} m³</strong> batch volume and calculated mix proportions to Concrete Technology module.
+              Sync <strong>{mixBatchVolumeM3} m³</strong> concrete, cement bags, fine sand, coarse stone, and admixtures directly into BOQ Takeoff.
             </div>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onTransferMixToMaterials}
-          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
-        >
-          <Boxes className="w-3.5 h-3.5" />
-          <span>Send to Materials</span>
-          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {onTransferMixToBoq && (
+            <button
+              type="button"
+              onClick={onTransferMixToBoq}
+              className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Auto-Sync to BOQ</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onTransferMixToMaterials}
+            className="touch-target-48 px-3 py-1.5 rounded-lg border border-teal-500/40 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:bg-teal-500/10 font-semibold cursor-pointer flex items-center gap-1.5 transition-transform active:scale-95"
+          >
+            <Boxes className="w-3.5 h-3.5 text-teal-500" />
+            <span>Send to Materials</span>
+          </button>
+        </div>
       </div>
     );
   }

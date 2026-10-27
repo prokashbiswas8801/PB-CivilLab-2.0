@@ -383,28 +383,41 @@ export function getGoverningEquations(moduleId: EngineeringModuleId): GoverningE
             variables: ['p = Perimeter = π·D (m)', 'A_p = Base area = π·D²/4 (m²)', 'f_s = Unit skin friction (kPa)', 'q_p = Unit end bearing (kPa)'],
           },
           {
-            name: 'Tomlinson α-Method for Cohesive Strata (Clay)',
-            formula: 'f_s = α · c_u',
-            description: 'Shaft friction in clays based on empirical adhesion factor α as a function of undrained shear strength c_u.',
-            variables: ['α = Adhesion factor (0.35 to 1.0)', 'c_u = Undrained cohesion (kPa)'],
+            name: 'Tomlinson α-Method & Burland β-Method (BNBC-2020)',
+            formula: 'Clay: f_s = α · c_u | Sand: f_s = β · σ\'_v = K_s · tan(δ) · σ\'_v',
+            description: 'Shaft friction combining empirical clay adhesion (α) and effective overburden stress friction (β).',
+            variables: ['α = Adhesion factor (0.35 to 1.0)', 'c_u = Undrained cohesion (kPa)', 'β = Effective friction factor', 'σ\'_v = Effective vertical stress (kPa)'],
           },
           {
-            name: 'Meyerhof Deep Bearing Capacity for Cohesionless Soils (Sand)',
-            formula: 'q_p = σ\'_v · N_q ≤ q_{p,max}',
+            name: 'Meyerhof & Terzaghi Deep End Bearing',
+            formula: 'Meyerhof: q_p = σ\'_v · N_q ≤ 400·N_60 (kPa) | Terzaghi: q_p = c·N_c + σ\'_v·N_q',
             description: 'Base resistance derived from effective overburden stress at tip and deep foundation bearing factor N_q.',
-            variables: ['σ\'_v = Effective vertical overburden stress at tip (kPa)', 'N_q = Bearing capacity factor', 'q_{p,max} = 11,000 kPa limit'],
+            variables: ['σ\'_v = Effective vertical overburden stress at tip (kPa)', 'N_q = Bearing capacity factor', 'N_60 = SPT blow count at tip'],
           },
           {
-            name: 'Allowable Working Axial Load',
-            formula: 'Q_{all} = Q_{ult} / FS (FS = 2.5 per BNBC 2020)',
-            description: 'Safe allowable axial working capacity applied with design factor of safety.',
-            variables: ['FS = Factor of safety (2.5 for bored cast-in-situ, 2.5-3.0 for driven)'],
+            name: 'Vesic 3-Component Pile Elastic Settlement',
+            formula: 'S_e = S_s + S_b + S_{bs} = (Q_wp + ξ·Q_ws)·L / (A_p·E_p) + C_p·Q_wp / (D·q_p) + C_s·Q_ws / (L·q_p)',
+            description: '3-component elastic head settlement combining shaft elastic strain (S_s), point load soil deformation (S_b), and shaft interaction (S_bs).',
+            variables: ['E_p = Pile elastic modulus (GPa)', 'L = Pile length (m)', 'D = Pile diameter (m)', 'C_p, C_s = Empirical coefficients'],
+          },
+          {
+            name: 'Primary Consolidation Settlement (Equivalent Raft at 2/3L)',
+            formula: 'S_c = ∑ [ (C_c · H_i) / (1 + e_0) · log10( (σ\'_{v0} + Δσ) / σ\'_{v0} ) ]',
+            description: '1D Terzaghi consolidation evaluated below equivalent raft located at 2/3 depth with 2:1 stress dispersion.',
+            variables: ['C_c = Compression index', 'e_0 = Initial void ratio', 'Δσ = Stress increase from 2:1 dispersion'],
+          },
+          {
+            name: 'Converse-Labarre Pile Group Efficiency',
+            formula: 'η = 1 - (θ / 90°) · [ ((n - 1)·m + (m - 1)·n) / (m · n) ]',
+            description: 'Efficiency factor reducing single-pile capacity when piles are closely spaced in a group cap.',
+            variables: ['m, n = Rows and columns of pile group', 'θ = arctan(D / s) in degrees', 's = Center-to-center pile spacing (m)'],
           },
         ],
         assumptions: [
-          'Static axial compressive loading on isolated single vertical pile.',
+          'Static axial compressive loading on bored cast-in-situ, driven precast RCC, or driven steel pipe piles.',
           'Overburden stress corrected for buoyant unit weight below groundwater table.',
           'Critical depth limit for skin friction and base resistance enforced at 15D.',
+          'BNBC-2020 minimum factor of safety FoS ≥ 2.50 for gravity design load combinations.',
         ],
       };
 
@@ -887,16 +900,16 @@ export function getAllCapacityUtilizations(
         referenceLimit: `Max Hogging: -${maxHog.toFixed(1)} kN·m`,
       });
 
-      const shearDemand = Math.abs(cbRes.maxShearKn || 0);
-      const estShearCap = (workspace.continuousBeam?.allowableStressMpa || 250) * 0.4 * 50;
-      const shearDcr = shearDemand / estShearCap;
+      const shearDemand = Math.abs(cbRes.criticalShearKn || cbRes.maxShearKn || 0);
+      const shearCap = cbRes.concreteShearCapacityVcKn || 100;
+      const shearDcr = cbRes.shearDcr || (shearDemand / shearCap);
       gauges.push({
-        metricLabel: 'Continuous Web Shear Capacity DCR',
+        metricLabel: 'Continuous Web Shear Capacity DCR (V_u / φ·V_c)',
         formattedValue: `${(shearDcr * 100).toFixed(1)}%`,
         percentage: Math.min(100, Math.max(4, Math.round(shearDcr * 100))),
         status: shearDcr <= 0.85 ? 'safe' : shearDcr <= 1.0 ? 'warning' : 'critical',
-        description: `Critical shear force developing adjacent to intermediate continuous supports.`,
-        referenceLimit: `Critical Shear: ${shearDemand.toFixed(1)} kN`,
+        description: `Critical shear force evaluated at distance d from support face (ACI 318 / BNBC 2020).`,
+        referenceLimit: `φ·V_c = ${shearCap.toFixed(1)} kN (V_u = ${shearDemand.toFixed(1)} kN)`,
       });
       break;
     }
@@ -1156,9 +1169,40 @@ export function exportAnalyticalScheduleCsv(
         const qty = item.numberOfMembers * item.lengthM * item.widthM * item.heightM;
         lines.push(`"${item.itemNo}","${item.description.replace(/"/g, '""')}","${item.category}","${item.unit}",${qty.toFixed(2)},${item.unitRate},${(qty * item.unitRate).toFixed(2)}`);
       });
-      lines.push(``);
       lines.push(`"SUBTOTAL DIRECT WORKS","—","—","—","—","—","${r.subtotalAmount.toFixed(2)} ${workspace.currency}"`);
       lines.push(`"GRAND TOTAL ESTIMATED AMOUNT","—","—","—","—","—","${r.grandTotalAmount.toFixed(2)} ${workspace.currency}"`);
+      break;
+    }
+
+    case 'continuous-beam': {
+      const r = result as ContinuousBeamResult;
+      lines.push(`"CONTINUOUS BEAM MULTI-SPAN ANALYSIS & CAPACITY SCHEDULE"`);
+      lines.push(`"Total Spans",${r.spanCount},"Total Beam Length (m)",${r.totalLengthM}`);
+      lines.push(`"Governing Code","${r.codeChecks.governingCode}","Safety Status","${r.safetyStatus}","DCR (%)",${(r.utilizationRatio * 100).toFixed(1)}`);
+      lines.push(`"Max Sagging Moment (kN·m)",${r.maxSaggingMomentKnm},"Location (m)",${r.maxSaggingLocationM}`);
+      lines.push(`"Max Hogging Moment (kN·m)",-${r.maxHoggingMomentKnm},"Support Index",${r.maxHoggingSupportIndex}`);
+      lines.push(`"Max Shear Force (kN)",${r.maxShearKn},"Concrete Capacity φ·Vc (kN)",${r.concreteShearCapacityVcKn}`);
+      lines.push(`"Extreme Bending Stress (MPa)",${r.bendingStressMpa},"Allowable Stress (MPa)",${r.allowableStressMpa}`);
+      lines.push(``);
+      lines.push(`"SPAN SCHEDULE"`);
+      lines.push(`"SPAN NO.","LENGTH (m)","R_LEFT (kN)","R_RIGHT (kN)","MAX +M (kN·m)","+M LOC (m)","MAX SHEAR (kN)","V_CRITICAL (kN)","INFLECTION POINTS (m)"`);
+      r.spans.forEach((sp) => {
+        lines.push(`"Span ${sp.spanIndex + 1}",${sp.lengthM},${sp.leftReactionKn},${sp.rightReactionKn},${sp.maxPositiveMomentKnm},${sp.maxPositiveMomentLocationM},${sp.maxShearKn},${sp.criticalShearAtDKn},"${sp.inflectionPointsTotalM.join('; ')}"`);
+      });
+      lines.push(``);
+      lines.push(`"SUPPORT MOMENTS & REACTIONS"`);
+      lines.push(`"SUPPORT INDEX","CLAPEYRON MOMENT (kN·m)","HARDY CROSS MOMENT (kN·m)","REACTION (kN)"`);
+      r.supportMomentsKnm.forEach((m, idx) => {
+        const hc = r.momentDistributionMomentsKnm[idx] || m;
+        const rx = r.supportReactionsKn[idx] || 0;
+        lines.push(`"Support ${idx}",${m},${hc},${rx}`);
+      });
+      lines.push(``);
+      lines.push(`"CRITICAL COORDINATES SCHEDULE"`);
+      lines.push(`"ID","SPAN","X_SPAN (m)","X_TOTAL (m)","TYPE","SHEAR (kN)","MOMENT (kN·m)","DESCRIPTION"`);
+      r.criticalCoordinates.forEach((cp) => {
+        lines.push(`"${cp.label}","Span ${cp.spanIndex + 1}",${cp.xSpanM},${cp.xTotalM},"${cp.type}",${cp.shearKn},${cp.momentKnm},"${cp.significance.replace(/"/g, '""')}"`);
+      });
       break;
     }
 

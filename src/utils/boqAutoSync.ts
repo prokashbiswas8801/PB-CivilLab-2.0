@@ -113,9 +113,10 @@ export function syncConcreteMixToBoq(
   }
 
   const vol = Number(result.batchVolumeM3.toFixed(2));
-  const cementBags = Number(result.cementBags.toFixed(1));
+  const cementBags = Math.ceil(result.cementBags50Kg || result.cementBags);
   const sandM3 = Number(result.fineAggM3.toFixed(2));
   const stoneM3 = Number(result.coarseAggM3.toFixed(2));
+  const admixKg = Number((result.batchAdmixtureKg || 0).toFixed(1));
   const targetMpa = result.estimated28DayMpa.toFixed(0);
 
   const existingItems = [...workspace.boq.items];
@@ -125,7 +126,7 @@ export function syncConcreteMixToBoq(
     key: string;
     description: string;
     category: 'superstructure' | 'substructure';
-    unit: 'm3' | 'bags';
+    unit: 'm3' | 'bags' | 'kg';
     qty: number;
     defaultRate: number;
   }[] = [
@@ -147,7 +148,7 @@ export function syncConcreteMixToBoq(
     },
     {
       key: 'coarse-sand',
-      description: `Coarse Sand / Fine Aggregate (FM 2.5) — Auto-Synced from Mix Design`,
+      description: `Coarse Sand / Fine Aggregate (FM 2.7) — Auto-Synced from Mix Design`,
       category: 'substructure',
       unit: 'm3',
       qty: sandM3,
@@ -162,6 +163,17 @@ export function syncConcreteMixToBoq(
       defaultRate: 6200,
     },
   ];
+
+  if (admixKg > 0) {
+    syncEntries.push({
+      key: 'chemical-admixture',
+      description: `Chemical Water-Reducing Admixture (Superplasticizer) — Auto-Synced from Mix Design`,
+      category: 'substructure',
+      unit: 'kg',
+      qty: admixKg,
+      defaultRate: 250,
+    });
+  }
 
   let currentItems = [...existingItems];
 
@@ -179,6 +191,8 @@ export function syncConcreteMixToBoq(
               widthM: 1,
               heightM: 1,
               deductionQty: 0,
+              // Strictly preserve custom user rate if already entered, otherwise fallback to default
+              unitRate: it.unitRate > 0 ? it.unitRate : entry.defaultRate,
             }
           : it
       );

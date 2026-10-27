@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Settings, ArrowRightLeft, RefreshCw, Check } from 'lucide-react';
+import { Settings, ArrowRightLeft, RefreshCw, Check, HelpCircle } from 'lucide-react';
 import {
   CivilWorkspace,
   UnitCategoryKey,
@@ -7,6 +7,9 @@ import {
 } from '../../types/civil';
 import { STANDARD_UNITS, BASE_UNITS, convertDirect } from '../../utils/unitConverter';
 import { parseSmartUnitInput } from '../../utils/unitEngine';
+import { ExplainConversionModal } from '../modals/ExplainConversionModal';
+
+export { ExplainConversionModal };
 
 // Common paired units for quick single-click selection per engineering category
 const COMMON_CATEGORY_PAIRS: Record<
@@ -112,6 +115,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
 }) => {
   const [isSwapping, setIsSwapping] = useState(false);
   const [lastSwapNotice, setLastSwapNotice] = useState<string | null>(null);
+  const [isExplainModalOpen, setIsExplainModalOpen] = useState(false);
 
   const converter = activeWorkspace.converter;
   const currentCategory = converter.category;
@@ -202,14 +206,25 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
           <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
             Measurement Discipline Category
           </label>
-          <button
-            type="button"
-            onClick={onOpenCustomUnitsModal}
-            className="text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center gap-1 cursor-pointer hover:underline"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span>Custom Units ({customUnits.length})</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsExplainModalOpen(true)}
+              className="text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center gap-1.5 cursor-pointer hover:underline px-2.5 py-1 rounded-lg bg-[var(--md-sys-color-primary-container)]/70 hover:bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] transition-all shadow-xs"
+              title="Explain step-by-step conversion logic using stored custom unit factors"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Explain Conversion</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenCustomUnitsModal}
+              className="text-xs font-bold text-[var(--md-sys-color-primary)] flex items-center gap-1 cursor-pointer hover:underline"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>Custom Units ({customUnits.length})</span>
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-1.5 p-1 rounded-xl bg-[var(--md-sys-color-surface-container)]">
           {(
@@ -371,7 +386,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
           </div>
         </div>
 
-        {/* Swap Feedback Badge & Swap-with-Value Action */}
+        {/* Swap Feedback Badge & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 text-xs font-mono">
           <div className="flex items-center gap-1.5 text-[var(--md-sys-color-on-surface-variant)] text-[11px]">
             {lastSwapNotice ? (
@@ -386,18 +401,30 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
             )}
           </div>
 
-          {/* Smart Swap & Carry Converted Value */}
-          {currentConvertedValue !== null && (
+          {/* Action Buttons: Explain Conversion & Smart Swap */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => handleSwapUnits(true)}
-              className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono font-bold rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer inline-flex items-center gap-1 btn-tactile"
-              title="Swap units AND set the converted result as the new input value for reverse calculation"
+              onClick={() => setIsExplainModalOpen(true)}
+              className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono font-bold rounded-md border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/50 hover:bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer inline-flex items-center gap-1.5 btn-tactile shadow-xs"
+              title="Open step-by-step mathematical conversion logic and custom unit factors"
             >
-              <RefreshCw className="w-3 h-3 shrink-0" />
-              <span>Swap with Converted Value ({parseFloat(currentConvertedValue.toFixed(4))} {toUnitObj?.symbol || converter.toUnit})</span>
+              <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>Explain Conversion</span>
             </button>
-          )}
+
+            {currentConvertedValue !== null && (
+              <button
+                type="button"
+                onClick={() => handleSwapUnits(true)}
+                className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono font-bold rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer inline-flex items-center gap-1 btn-tactile"
+                title="Swap units AND set the converted result as the new input value for reverse calculation"
+              >
+                <RefreshCw className="w-3 h-3 shrink-0" />
+                <span>Swap with Converted Value ({parseFloat(currentConvertedValue.toFixed(4))} {toUnitObj?.symbol || converter.toUnit})</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -496,6 +523,19 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
           </div>
         )}
       </div>
+
+      {/* Step-by-Step Conversion Logic & Custom Unit Factor Proof Modal */}
+      <ExplainConversionModal
+        isOpen={isExplainModalOpen}
+        onClose={() => setIsExplainModalOpen(false)}
+        inputValue={converter.inputValue}
+        fromUnitId={converter.fromUnit}
+        toUnitId={converter.toUnit}
+        category={converter.category}
+        customUnits={customUnits}
+        onSwapUnits={() => handleSwapUnits(false)}
+        onOpenCustomUnitsModal={onOpenCustomUnitsModal}
+      />
     </div>
   );
 };
@@ -509,8 +549,10 @@ export interface UnitConverterMetricsProps {
     result: number;
     formula: string;
   };
+  customUnits?: CustomUnitDefinition[];
   onSwapUnits?: () => void;
   onSwapWithResult?: () => void;
+  onOpenCustomUnitsModal?: () => void;
 }
 
 export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
@@ -519,9 +561,13 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
   toUnit,
   category,
   conversionResult,
+  customUnits = [],
   onSwapUnits,
   onSwapWithResult,
+  onOpenCustomUnitsModal,
 }) => {
+  const [isExplainModalOpen, setIsExplainModalOpen] = useState(false);
+
   return (
     <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -536,7 +582,18 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
           </div>
         </div>
         <div>
-          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Conversion Formula</div>
+          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-between">
+            <span>Conversion Formula</span>
+            <button
+              type="button"
+              onClick={() => setIsExplainModalOpen(true)}
+              className="text-[10px] font-bold text-[var(--md-sys-color-primary)] hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+              title="Explain step-by-step conversion logic using stored custom unit factors"
+            >
+              <HelpCircle className="w-3 h-3" />
+              <span>Explain</span>
+            </button>
+          </div>
           <div className="text-xs font-mono mt-1 opacity-90 truncate">{conversionResult.formula}</div>
         </div>
         <div>
@@ -545,13 +602,22 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
         </div>
       </div>
 
-      {/* Quick Swap Action Bar in Analytical Stage */}
-      {onSwapUnits && (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]/50 no-print">
-          <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-            Reverse Calculation Shortcut:
-          </div>
-          <div className="flex items-center gap-2">
+      {/* Quick Swap & Explain Conversion Action Bar in Analytical Stage */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]/50 no-print">
+        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+          Audit & Reverse Calculations:
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsExplainModalOpen(true)}
+            className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-white transition-all cursor-pointer flex items-center gap-1.5 btn-tactile font-bold shadow-xs"
+            title="Explain step-by-step conversion logic using stored custom unit factors"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>Explain Conversion</span>
+          </button>
+          {onSwapUnits && (
             <button
               type="button"
               onClick={onSwapUnits}
@@ -559,22 +625,35 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
               title={`Swap ${fromUnit} ⇄ ${toUnit}`}
             >
               <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-              <span>Swap Units ({toUnit} ⇄ {fromUnit})</span>
+              <span>Swap ({toUnit} ⇄ {fromUnit})</span>
             </button>
-            {onSwapWithResult && (
-              <button
-                type="button"
-                onClick={onSwapWithResult}
-                className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-white transition-all cursor-pointer flex items-center gap-1.5 btn-tactile font-bold"
-                title="Swap units and set input to current converted result"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Swap & Invert ({Number(conversionResult.result.toFixed(2))} {toUnit})</span>
-              </button>
-            )}
-          </div>
+          )}
+          {onSwapWithResult && (
+            <button
+              type="button"
+              onClick={onSwapWithResult}
+              className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-all cursor-pointer flex items-center gap-1.5 btn-tactile"
+              title="Swap units and set input to current converted result"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Swap & Invert ({Number(conversionResult.result.toFixed(2))} {toUnit})</span>
+            </button>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Step-by-Step Conversion Logic & Custom Unit Factor Proof Modal */}
+      <ExplainConversionModal
+        isOpen={isExplainModalOpen}
+        onClose={() => setIsExplainModalOpen(false)}
+        inputValue={inputValue}
+        fromUnitId={fromUnit}
+        toUnitId={toUnit}
+        category={category}
+        customUnits={customUnits}
+        onSwapUnits={onSwapUnits}
+        onOpenCustomUnitsModal={onOpenCustomUnitsModal}
+      />
     </div>
   );
 };

@@ -456,6 +456,7 @@ export interface BoqEstimatorTableProps {
   onDuplicateTakeoffItem: (item: ComputedTakeoffItem) => void;
   onDeleteTakeoffItem: (id: string) => void;
   onLoadSampleBOQItems: () => void;
+  onSyncFromModules?: () => void;
 }
 
 export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
@@ -467,6 +468,7 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
   onDuplicateTakeoffItem,
   onDeleteTakeoffItem,
   onLoadSampleBOQItems,
+  onSyncFromModules,
 }) => {
   return (
     <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 space-y-4">
@@ -476,9 +478,22 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
             <FileSpreadsheet className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
             <span>Dynamic Measurement Sheet (L × W × H)</span>
           </h2>
-          <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-            Itemized Takeoff & Cost Quantification ({boqResult.items.length} Lines)
-          </span>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+              Itemized Takeoff & Cost Quantification ({boqResult.items.length} Lines)
+            </span>
+            {onSyncFromModules && (
+              <button
+                type="button"
+                onClick={onSyncFromModules}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer transition-colors"
+                title="Auto-sync BBS rebar tonnage and Concrete Mix batch volumes into this takeoff sheet"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Auto-Sync BBS &amp; Mix</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Category Filter Pills */}

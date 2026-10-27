@@ -3,10 +3,21 @@ import {
   CivilWorkspace,
   CustomUnitDefinition,
   UnitCategoryKey,
+  SoilLayer,
 } from '../../types/civil';
 import { BearingAnalysisResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
+import {
+  Layers,
+  ShieldCheck,
+  Plus,
+  Trash2,
+  BarChart3,
+  Copy,
+  Check,
+  Info,
+} from 'lucide-react';
 
 export interface BearingCapacityInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -23,7 +34,10 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
   getFieldUnit,
   updateFieldUnit,
 }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'geometry' | 'strata' | 'loads'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'geometry' | 'strata' | 'loads' | 'settlement'>('all');
+  const [showMultiLayer, setShowMultiLayer] = useState<boolean>(
+    Boolean(activeWorkspace.bearing.layers && activeWorkspace.bearing.layers.length > 0)
+  );
 
   const applyGeotechPreset = (
     width: number,
@@ -51,15 +65,88 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
     }));
   };
 
+  const layers = activeWorkspace.bearing.layers || [
+    {
+      id: 'b-l1',
+      name: 'Upper Footing Foundation Strata',
+      thicknessM: activeWorkspace.bearing.embedmentDepthM + 1.0,
+      soilType: 'sand',
+      cohesionKpa: activeWorkspace.bearing.soilCohesionKpa,
+      frictionAngleDeg: activeWorkspace.bearing.frictionAngleDeg,
+      unitWeightKnPerM3: activeWorkspace.bearing.unitWeightKnPerM3,
+      sptN: activeWorkspace.bearing.sptN60 || 15,
+      elasticModulusEsMpa: activeWorkspace.bearing.elasticModulusEsMpa || 25,
+      compressionIndexCc: activeWorkspace.bearing.compressionIndexCc || 0.25,
+      recompressionIndexCr: activeWorkspace.bearing.recompressionIndexCr || 0.04,
+      initialVoidRatioE0: activeWorkspace.bearing.initialVoidRatioE0 || 0.75,
+      overconsolidationRatioOcr: activeWorkspace.bearing.overconsolidationRatioOcr || 1.0,
+    },
+    {
+      id: 'b-l2',
+      name: 'Lower Influence Zone Subgrade',
+      thicknessM: activeWorkspace.bearing.footingWidthM * 2,
+      soilType: 'clay',
+      cohesionKpa: Math.max(20, activeWorkspace.bearing.soilCohesionKpa * 1.2),
+      frictionAngleDeg: Math.max(0, activeWorkspace.bearing.frictionAngleDeg - 10),
+      unitWeightKnPerM3: activeWorkspace.bearing.unitWeightKnPerM3,
+      sptN: Math.max(4, Math.round((activeWorkspace.bearing.sptN60 || 15) * 0.8)),
+      elasticModulusEsMpa: Math.max(10, Math.round((activeWorkspace.bearing.elasticModulusEsMpa || 25) * 0.7)),
+      compressionIndexCc: 0.30,
+      recompressionIndexCr: 0.05,
+      initialVoidRatioE0: 0.85,
+      overconsolidationRatioOcr: 1.2,
+    },
+  ];
+
+  const updateLayers = (newLayers: SoilLayer[]) => {
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      bearing: {
+        ...ws.bearing,
+        layers: newLayers,
+      },
+    }));
+  };
+
+  const addLayer = () => {
+    const newL: SoilLayer = {
+      id: `layer-${Date.now()}`,
+      name: `Strata Layer ${layers.length + 1}`,
+      thicknessM: 2.0,
+      soilType: 'sand',
+      cohesionKpa: 0,
+      frictionAngleDeg: 30,
+      unitWeightKnPerM3: 18.5,
+      sptN: 16,
+      elasticModulusEsMpa: 30,
+      compressionIndexCc: 0.20,
+      recompressionIndexCr: 0.03,
+      initialVoidRatioE0: 0.70,
+      overconsolidationRatioOcr: 1.0,
+    };
+    updateLayers([...layers, newL]);
+  };
+
+  const updateSingleLayer = (idx: number, patch: Partial<SoilLayer>) => {
+    const updated = layers.map((ly, i) => (i === idx ? { ...ly, ...patch } : ly));
+    updateLayers(updated);
+  };
+
+  const removeLayer = (idx: number) => {
+    if (layers.length <= 1) return;
+    updateLayers(layers.filter((_, i) => i !== idx));
+  };
+
   return (
     <div className="space-y-3.5">
       {/* Progressive Disclosure Ergonomic Tabs */}
       <div className="flex items-center gap-1 p-1 bg-[var(--md-sys-color-surface-container)] rounded-xl overflow-x-auto text-xs font-medium">
         {[
           { id: 'all', label: 'All Inputs' },
-          { id: 'geometry', label: 'Pad Geometry' },
+          { id: 'geometry', label: 'Pad Geometry & Solver' },
           { id: 'strata', label: 'Soil Strata & GWT' },
           { id: 'loads', label: 'Load & Safety FS' },
+          { id: 'settlement', label: 'Settlement & OCR' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -104,13 +191,31 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
         </button>
       </div>
 
-      {/* Tab Group 1: Footing Geometry */}
+      {/* Tab Group 1: Footing Geometry & Solver Method */}
       {(activeTab === 'all' || activeTab === 'geometry') && (
         <div className="space-y-2.5 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
           <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
-            Foundation Geometry & Shape
+            Foundation Geometry &amp; Governing Solver Formulation
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label className="block text-xs font-semibold mb-1">Solver Formulation</label>
+              <select
+                value={activeWorkspace.bearing.shallowSolverMethod || 'meyerhof'}
+                onChange={(e) => {
+                  const solver = e.target.value as 'meyerhof' | 'terzaghi' | 'hansen';
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, shallowSolverMethod: solver },
+                  }));
+                }}
+                className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              >
+                <option value="meyerhof">Meyerhof (1963) - BNBC Standard</option>
+                <option value="terzaghi">Terzaghi (1943) - Classical Theory</option>
+                <option value="hansen">Hansen (1970) - High Precision</option>
+              </select>
+            </div>
             <div>
               <label className="block text-xs font-semibold mb-1">Footing Shape</label>
               <select
@@ -197,10 +302,158 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
 
       {/* Tab Group 2: Soil Strata & Water Table */}
       {(activeTab === 'all' || activeTab === 'strata') && (
-        <div className="space-y-2.5 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
-          <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-tertiary)] tracking-wider">
-            Subgrade Soil Parameters & Water Table
+        <div className="space-y-3 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-tertiary)] tracking-wider">
+              Subgrade Soil Parameters &amp; Water Table
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Stratigraphy Profile:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const toggled = !showMultiLayer;
+                  setShowMultiLayer(toggled);
+                  if (toggled && (!activeWorkspace.bearing.layers || activeWorkspace.bearing.layers.length === 0)) {
+                    updateLayers(layers);
+                  }
+                }}
+                className={`px-2 py-0.5 rounded text-xs font-mono font-semibold cursor-pointer border ${showMultiLayer ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent' : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline)]'}`}
+              >
+                {showMultiLayer ? 'Multi-Strata Active' : 'Single Layer'}
+              </button>
+            </div>
           </div>
+
+          {/* If Multi-Strata is Active, render Stratigraphy Table */}
+          {showMultiLayer ? (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-mono text-[var(--md-sys-color-on-surface)] font-semibold flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                  <span>Subgrade Strata Table (Influence Zone: Df to Df + 2B)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={addLayer}
+                  className="px-2 py-1 rounded bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Stratum</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs font-mono">
+                  <thead>
+                    <tr className="border-b border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] text-left">
+                      <th className="py-1 px-2">Stratum</th>
+                      <th className="py-1 px-2">Thickness (m)</th>
+                      <th className="py-1 px-2">Type</th>
+                      <th className="py-1 px-2">SPT N60</th>
+                      <th className="py-1 px-2">cu (kPa)</th>
+                      <th className="py-1 px-2">φ (°)</th>
+                      <th className="py-1 px-2">γ (kN/m³)</th>
+                      <th className="py-1 px-2">Es (MPa)</th>
+                      <th className="py-1 px-2 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {layers.map((layer, idx) => (
+                      <tr key={layer.id} className="border-b border-[var(--md-sys-color-outline-variant)]/40 hover:bg-[var(--md-sys-color-surface-container)]">
+                        <td className="py-1.5 px-2 min-w-[130px]">
+                          <input
+                            type="text"
+                            value={layer.name}
+                            onChange={(e) => updateSingleLayer(idx, { name: e.target.value })}
+                            className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 w-18">
+                          <input
+                            type="number"
+                            value={layer.thicknessM}
+                            onChange={(e) => updateSingleLayer(idx, { thicknessM: Math.max(0.5, Number(e.target.value) || 1) })}
+                            className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                            step="0.5"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 w-20">
+                          <select
+                            value={layer.soilType}
+                            onChange={(e) => updateSingleLayer(idx, { soilType: e.target.value as any })}
+                            className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                          >
+                            <option value="clay">Clay</option>
+                            <option value="sand">Sand</option>
+                            <option value="silt">Silt</option>
+                            <option value="gravel">Gravel</option>
+                          </select>
+                        </td>
+                        <td className="py-1.5 px-2 w-16">
+                          <input
+                            type="number"
+                            value={layer.sptN ?? 15}
+                            onChange={(e) => updateSingleLayer(idx, { sptN: Math.max(1, Number(e.target.value) || 15) })}
+                            className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                            step="1"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 w-18">
+                          <input
+                            type="number"
+                            value={layer.cohesionKpa}
+                            onChange={(e) => updateSingleLayer(idx, { cohesionKpa: Math.max(0, Number(e.target.value) || 0) })}
+                            className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                            step="5"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 w-16">
+                          <input
+                            type="number"
+                            value={layer.frictionAngleDeg}
+                            onChange={(e) => updateSingleLayer(idx, { frictionAngleDeg: Math.max(0, Number(e.target.value) || 0) })}
+                            className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                            step="1"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 w-18">
+                          <input
+                            type="number"
+                            value={layer.unitWeightKnPerM3}
+                            onChange={(e) => updateSingleLayer(idx, { unitWeightKnPerM3: Math.max(10, Number(e.target.value) || 18) })}
+                            className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                            step="0.5"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 w-18">
+                          <input
+                            type="number"
+                            value={layer.elasticModulusEsMpa ?? 25}
+                            onChange={(e) => updateSingleLayer(idx, { elasticModulusEsMpa: Math.max(5, Number(e.target.value) || 25) })}
+                            className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                            step="5"
+                          />
+                        </td>
+                        <td className="py-1.5 px-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeLayer(idx)}
+                            disabled={layers.length <= 1}
+                            className="p-1 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-30"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Primary Soil Properties & GWT */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <UnitInput
               label="Soil Cohesion c"
@@ -331,7 +584,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
       {(activeTab === 'all' || activeTab === 'loads') && (
         <div className="space-y-2.5 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
           <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-secondary)] tracking-wider">
-            Superstructure Load & Factor of Safety
+            Superstructure Load &amp; Factor of Safety
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <UnitInput
@@ -405,6 +658,169 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Tab Group 4: Automated Settlement & OCR Parameters */}
+      {(activeTab === 'all' || activeTab === 'settlement') && (
+        <div className="space-y-2.5 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
+          <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+            Settlement Parameters &amp; Overconsolidation (BNBC-2020 Clause 3.8 / Bowles)
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label className="block text-xs font-semibold mb-1">Standard Code</label>
+              <select
+                value={activeWorkspace.bearing.codeStandard || 'BNBC-2020'}
+                onChange={(e) => {
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, codeStandard: e.target.value as any },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              >
+                <option value="BNBC-2020">BNBC-2020 (Bangladesh)</option>
+                <option value="ACI-318">ACI 318 / ASCE 7</option>
+                <option value="IS-456">IS 1904 / IS 456</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">SPT N60 Value</label>
+              <input
+                type="number"
+                min="2"
+                max="60"
+                value={activeWorkspace.bearing.sptN60 || 15}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, sptN60: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Modulus Es (MPa)</label>
+              <input
+                type="number"
+                step="1"
+                min="5"
+                max="200"
+                value={activeWorkspace.bearing.elasticModulusEsMpa || 25}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, elasticModulusEsMpa: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Poisson's Ratio (μ)</label>
+              <input
+                type="number"
+                step="0.05"
+                min="0.15"
+                max="0.49"
+                value={activeWorkspace.bearing.poissonRatio ?? 0.30}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, poissonRatio: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Clay Layer Hc (m)</label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                max="20"
+                value={activeWorkspace.bearing.clayLayerThicknessM ?? 4.0}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, clayLayerThicknessM: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Overconsolidation (OCR)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="1.0"
+                max="10.0"
+                value={activeWorkspace.bearing.overconsolidationRatioOcr ?? 1.0}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, overconsolidationRatioOcr: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+                {(activeWorkspace.bearing.overconsolidationRatioOcr ?? 1.0) <= 1.0 ? 'Normally Consolidated' : 'Overconsolidated (Cr applies)'}
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Compression Index Cc</label>
+              <input
+                type="number"
+                step="0.02"
+                min="0.05"
+                max="0.8"
+                value={activeWorkspace.bearing.compressionIndexCc ?? 0.25}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, compressionIndexCc: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Permissible S_all (mm)</label>
+              <input
+                type="number"
+                step="5"
+                min="10"
+                max="100"
+                value={activeWorkspace.bearing.permissibleSettlementMm || 25}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, permissibleSettlementMm: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -422,40 +838,148 @@ export const BearingCapacityMetrics: React.FC<BearingCapacityMetricsProps> = ({
   getOutputUnit,
   updateOutputUnit,
 }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyBreakdown = () => {
+    const text = [
+      `=== PB CivilLab Shallow Foundation Geotechnical Analysis ===`,
+      `Governing Standard: BNBC-2020 Part 6 / ACI 318`,
+      `Active Solver: ${result.solverMethodUsed ? result.solverMethodUsed.toUpperCase() : 'MEYERHOF (1963)'}`,
+      `Effective Overburden (q0): ${result.effectiveOverburdenKpa.toFixed(1)} kPa`,
+      `Ultimate Bearing (q_ult): ${result.ultimateBearingKpa.toFixed(1)} kPa`,
+      `Allowable Bearing (q_all): ${result.allowableBearingKpa.toFixed(1)} kPa (FS = ${result.factorOfSafety})`,
+      `Applied Contact Pressure (q_contact): ${result.appliedPressureKpa.toFixed(1)} kPa`,
+      `Bearing Utilization DCR: ${(result.utilizationRatio * 100).toFixed(1)}%`,
+      `Immediate Elastic Settlement (Se): ${result.immediateSettlementMm.toFixed(1)} mm`,
+      `Consolidation Settlement (Sc): ${result.consolidationSettlementMm.toFixed(1)} mm`,
+      `Total Estimated Settlement (St): ${result.totalSettlementMm.toFixed(1)} mm <= ${result.permissibleSettlementMm} mm (${result.settlementPass ? 'PASS' : 'EXCEEDED'})`,
+      result.methodComparison ? `Method Comparison -> Meyerhof: ${result.methodComparison.meyerhofKpa} kPa | Terzaghi: ${result.methodComparison.terzaghiKpa} kPa | Hansen: ${result.methodComparison.hansenKpa} kPa` : '',
+      ``,
+      `--- Step-by-Step Code Clauses ---`,
+      ...result.calculationsBreakdown.map((s) => `${s.step} [${s.clauseRef}]: ${s.result}`),
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-      <UnitValueDisplay
-        label="Allowable Pressure (qall)"
-        category="pressure"
-        siValue={result.allowableBearingKpa * 1000}
-        currentUnitId={getOutputUnit('bearing.out.qall', 'pressure', 'kPa')}
-        onUnitChange={(u) => updateOutputUnit('bearing.out.qall', u)}
-        customUnits={customUnits}
-        highlight={true}
-      />
-      <UnitValueDisplay
-        label="Ultimate Bearing (qult)"
-        category="pressure"
-        siValue={result.ultimateBearingKpa * 1000}
-        currentUnitId={getOutputUnit('bearing.out.qult', 'pressure', 'kPa')}
-        onUnitChange={(u) => updateOutputUnit('bearing.out.qult', u)}
-        customUnits={customUnits}
-      />
-      <UnitValueDisplay
-        label="Applied Pressure (qapp)"
-        category="pressure"
-        siValue={result.appliedPressureKpa * 1000}
-        currentUnitId={getOutputUnit('bearing.out.qapp', 'pressure', 'kPa')}
-        onUnitChange={(u) => updateOutputUnit('bearing.out.qapp', u)}
-        customUnits={customUnits}
-      />
-      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
-        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Safety Factor</div>
-        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
-          FS = {result.effectiveSafetyFactor.toFixed(2)}
+    <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      {/* 4 Main Output Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <UnitValueDisplay
+          label="Allowable Bearing (q_all)"
+          category="pressure"
+          siValue={result.allowableBearingKpa * 1000}
+          currentUnitId={getOutputUnit('bearing.out.qall', 'pressure', 'kPa')}
+          onUnitChange={(u) => updateOutputUnit('bearing.out.qall', u)}
+          customUnits={customUnits}
+          highlight={true}
+        />
+        <UnitValueDisplay
+          label="Ultimate Bearing (q_ult)"
+          category="pressure"
+          siValue={result.ultimateBearingKpa * 1000}
+          currentUnitId={getOutputUnit('bearing.out.qult', 'pressure', 'kPa')}
+          onUnitChange={(u) => updateOutputUnit('bearing.out.qult', u)}
+          customUnits={customUnits}
+        />
+        <UnitValueDisplay
+          label="Applied Pressure (q_contact)"
+          category="pressure"
+          siValue={result.appliedPressureKpa * 1000}
+          currentUnitId={getOutputUnit('bearing.out.qapp', 'pressure', 'kPa')}
+          onUnitChange={(u) => updateOutputUnit('bearing.out.qapp', u)}
+          customUnits={customUnits}
+        />
+        <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
+          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Total Settlement (St)</div>
+          <div className={`text-xl font-bold font-mono mt-0.5 ${result.settlementPass ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>
+            {result.totalSettlementMm.toFixed(1)} <span className="text-xs font-normal">mm</span>
+          </div>
+          <div className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
+            Se: {result.immediateSettlementMm.toFixed(1)}mm · Sc: {result.consolidationSettlementMm.toFixed(1)}mm
+          </div>
         </div>
-        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-          Footing Area: {result.footingAreaM2.toFixed(2)} m²
+      </div>
+
+      {/* Side-by-Side Solver Comparison Card */}
+      {result.methodComparison && (
+        <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Shallow Bearing Solvers Comparison (Meyerhof vs Terzaghi vs Hansen)</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyBreakdown}
+              className="px-2 py-0.5 rounded text-xs border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] inline-flex items-center gap-1 cursor-pointer"
+            >
+              {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+              <span>{copied ? 'Copied' : 'Export Audit'}</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs font-mono">
+              <thead>
+                <tr className="border-b border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] text-left">
+                  <th className="py-1 px-2">Solver Formulation</th>
+                  <th className="py-1 px-2">Allowable Bearing (q_all)</th>
+                  <th className="py-1 px-2">Ultimate Bearing (q_ult)</th>
+                  <th className="py-1 px-2 text-right">Governing Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className={`border-b border-[var(--md-sys-color-outline-variant)]/40 ${result.solverMethodUsed === 'meyerhof' || !result.solverMethodUsed ? 'bg-[var(--md-sys-color-surface-container)] font-bold' : ''}`}>
+                  <td className="py-1.5 px-2">Meyerhof (1963) - General Equation</td>
+                  <td className="py-1.5 px-2 text-emerald-600 dark:text-emerald-400">{result.methodComparison.meyerhofKpa} kPa</td>
+                  <td className="py-1.5 px-2">{(result.methodComparison.meyerhofKpa * result.factorOfSafety).toFixed(1)} kPa</td>
+                  <td className="py-1.5 px-2 text-right text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                    {result.solverMethodUsed === 'meyerhof' || !result.solverMethodUsed ? 'ACTIVE' : 'Analytical'}
+                  </td>
+                </tr>
+                <tr className={`border-b border-[var(--md-sys-color-outline-variant)]/40 ${result.solverMethodUsed === 'terzaghi' ? 'bg-[var(--md-sys-color-surface-container)] font-bold' : ''}`}>
+                  <td className="py-1.5 px-2">Terzaghi (1943) - Classical Theory</td>
+                  <td className="py-1.5 px-2 text-sky-600 dark:text-sky-400">{result.methodComparison.terzaghiKpa} kPa</td>
+                  <td className="py-1.5 px-2">{(result.methodComparison.terzaghiKpa * result.factorOfSafety).toFixed(1)} kPa</td>
+                  <td className="py-1.5 px-2 text-right text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                    {result.solverMethodUsed === 'terzaghi' ? 'ACTIVE' : 'Classical'}
+                  </td>
+                </tr>
+                <tr className={`${result.solverMethodUsed === 'hansen' ? 'bg-[var(--md-sys-color-surface-container)] font-bold' : ''}`}>
+                  <td className="py-1.5 px-2">Hansen (1970) - Inclination &amp; Depth Factors</td>
+                  <td className="py-1.5 px-2 text-purple-600 dark:text-purple-400">{result.methodComparison.hansenKpa} kPa</td>
+                  <td className="py-1.5 px-2">{(result.methodComparison.hansenKpa * result.factorOfSafety).toFixed(1)} kPa</td>
+                  <td className="py-1.5 px-2 text-right text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                    {result.solverMethodUsed === 'hansen' ? 'ACTIVE' : 'Comprehensive'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Safety & DCR Verification Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-[var(--md-sys-color-on-surface)]">
+            Effective FS: <strong className="font-bold text-[var(--md-sys-color-primary)]">{result.effectiveSafetyFactor.toFixed(2)}</strong> (Target ≥ 2.5)
+          </span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">
+            Bearing DCR: {(result.utilizationRatio * 100).toFixed(1)}%
+          </span>
+          <span className="text-[var(--md-sys-color-on-surface-variant)]">
+            Settlement DCR: {(result.settlementUtilizationRatio * 100).toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${result.status === 'nominal' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30' : result.status === 'warning' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/30' : 'bg-rose-500/10 text-rose-600 border border-rose-500/30'}`}>
+            {result.status === 'nominal' ? 'PASS (BNBC-2020 / ACI Compliant)' : result.status === 'warning' ? 'WARNING (Near Limit)' : 'CRITICAL (Exceeds Capacity)'}
+          </span>
         </div>
       </div>
     </div>

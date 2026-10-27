@@ -193,6 +193,11 @@ export interface RateAnalysisParameters {
   // Charges & Margins:
   waterElectricityPercent: number;
   contractorProfitPercent: number;
+  // Local Material Cost Index & Regional Multipliers:
+  localCostIndex?: number; // Base 1.00, adjustable local market price escalation index
+  materialCostIndex?: number; // Material component escalation factor (default 1.00)
+  laborCostIndex?: number; // Labor wage escalation factor (default 1.00)
+  equipmentCostIndex?: number; // Equipment & machinery hire factor (default 1.00)
 }
 
 /* Module 1: Beam Analysis */
@@ -220,6 +225,19 @@ export interface BearingParameters {
   waterTableDepthM: number;
   factorOfSafety: number;
   appliedColumnLoadKn: number;
+  // Advanced Geotechnical & Settlement Parameters (BNBC-2020 / ACI / Bowles)
+  codeStandard?: BuildingCode;
+  shallowSolverMethod?: 'meyerhof' | 'terzaghi' | 'hansen';
+  sptN60?: number;
+  elasticModulusEsMpa?: number;
+  poissonRatio?: number;
+  clayLayerThicknessM?: number;
+  compressionIndexCc?: number;
+  recompressionIndexCr?: number;
+  initialVoidRatioE0?: number;
+  overconsolidationRatioOcr?: number;
+  permissibleSettlementMm?: number;
+  layers?: SoilLayer[];
 }
 
 export type EnvironmentalExposureClass =
@@ -247,19 +265,37 @@ export interface ConcreteMixParameters {
   airEntrainmentPercent: number;
   batchVolumeM3: number;
   exposureClass?: EnvironmentalExposureClass;
+  // ACI 211.1 Advanced Aggregates & Moisture Correction Parameters:
+  sandFinenessModulus?: number; // FM e.g. 2.4 - 3.0 (standard default 2.7)
+  coarseAggDryRoddedDensityKgPerM3?: number; // DRUW in kg/m³ (standard default 1600 kg/m³)
+  fineAggAbsorptionPercent?: number; // Fine aggregate absorption % (ASTM C128, default 1.2%)
+  fineAggMoisturePercent?: number; // Fine aggregate field total moisture % (ASTM C70, default 4.0%)
+  coarseAggAbsorptionPercent?: number; // Coarse aggregate absorption % (ASTM C127, default 0.8%)
+  coarseAggMoisturePercent?: number; // Coarse aggregate field total moisture % (ASTM C566, default 2.0%)
+  admixtureDosePercent?: number; // Superplasticizer / water reducer % by weight of cement (default 1.0%)
+  admixtureSpecificGravity?: number; // Specific gravity of chemical admixture (default 1.15)
+  admixtureWaterReductionPercent?: number; // Water reduction efficiency % (default 15%)
 }
 
 /* Module 4: Open Channel Hydraulics */
+export type ChannelShapeType = 'trapezoidal' | 'rectangular' | 'circular';
+
 export interface ChannelParameters {
+  shape?: ChannelShapeType;
   bottomWidthM: number;
   sideSlopeZ: number;
   flowDepthM: number;
   bedSlope: number;
   manningN: number;
   freeboardRequirementM: number;
+  diameterM?: number; // Internal diameter for circular conduit / storm sewer open channel
+  channelLengthM?: number; // Longitudinal reach length for EGL/HGL profile plotting
+  materialId?: string;
 }
 
 /* Module 12: Continuous Beam Multi-Span Analysis */
+export type TriangularLoadPattern = 'increasing' | 'decreasing' | 'symmetric';
+
 export interface ContinuousBeamSpan {
   id: string;
   spanIndex: number;
@@ -269,6 +305,8 @@ export interface ContinuousBeamSpan {
   udlKnPerM: number;
   pointLoadKn: number;
   pointLoadPositionM: number;
+  triangularLoadKnPerM?: number;
+  triangularLoadPattern?: TriangularLoadPattern;
 }
 
 export interface ContinuousBeamParameters {
@@ -278,6 +316,10 @@ export interface ContinuousBeamParameters {
   rightSupport: 'pin' | 'fixed';
   allowableStressMpa: number;
   sectionDepthMm: number;
+  sectionWidthMm?: number;
+  concreteGradeFckMpa?: number;
+  steelGradeFyMpa?: number;
+  codeStandard?: BuildingCode;
 }
 
 /* Module 13: Pile Foundation Bearing Capacity (Deep Foundation) */
@@ -285,16 +327,25 @@ export interface SoilLayer {
   id: string;
   name: string;
   thicknessM: number;
-  soilType: 'clay' | 'sand';
+  soilType: 'clay' | 'sand' | 'silt' | 'gravel';
   cohesionKpa: number;
   frictionAngleDeg: number;
   unitWeightKnPerM3: number;
+  sptN?: number; // Standard Penetration Test blow count N60
+  elasticModulusEsMpa?: number; // Soil stiffness Es in MPa
+  poissonRatio?: number;
+  compressionIndexCc?: number;
+  recompressionIndexCr?: number;
+  initialVoidRatioE0?: number;
+  overconsolidationRatioOcr?: number;
 }
 
 export type PileType = 'bored-cast-in-situ' | 'driven-precast' | 'driven-steel-pipe';
+export type PileAnalysisMethod = 'alpha-beta' | 'meyerhof-spt' | 'terzaghi-bowles' | 'combined-bnbc';
 
 export interface PileCapacityParameters {
   pileType: PileType;
+  method?: PileAnalysisMethod;
   diameterM: number;
   lengthM: number;
   groundwaterDepthM: number;
@@ -304,19 +355,36 @@ export interface PileCapacityParameters {
   tipBearingCohesionKpa: number;
   tipBearingFrictionDeg: number;
   tipBearingUnitWeightKnPerM3: number;
+  tipSptN?: number;
+  codeStandard?: BuildingCode;
+  elasticModulusPileGpa?: number;
+  permissibleSettlementMm?: number;
+  pileConcreteFckMpa?: number;
+  steelYieldFyMpa?: number;
+  pipeWallThicknessMm?: number;
+  pileGroupRows?: number;
+  pileGroupCols?: number;
+  pileSpacingM?: number;
 }
 
 /* Module 14: Pipe Hydraulics (Hazen-Williams Pressure & Storm Flow) */
 export type PipeMaterialType =
   | 'pvc-hdpe'
+  | 'pvc'
+  | 'hdpe'
   | 'ductile-iron'
   | 'cast-iron'
   | 'concrete'
-  | 'galvanized-steel';
+  | 'galvanized-steel'
+  | 'corrugated-steel';
+
+export type PipeServiceType = 'pressure' | 'gravity-storm';
 
 export interface PipeHydraulicsParameters {
+  serviceType?: PipeServiceType;
   pipeMaterial: PipeMaterialType;
   hazenWilliamsC: number;
+  manningN?: number;
   internalDiameterMm: number;
   lengthM: number;
   flowRateLps: number;
@@ -325,6 +393,7 @@ export interface PipeHydraulicsParameters {
   inletPressureKpa: number;
   minorLossCoefficientK: number;
   waterTempC: number;
+  stormFillingRatio?: number;
 }
 
 export interface ConcreteMemberItem {
