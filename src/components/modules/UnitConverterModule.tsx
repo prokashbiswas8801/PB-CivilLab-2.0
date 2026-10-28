@@ -1,11 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Settings, ArrowRightLeft, RefreshCw, Check, HelpCircle } from 'lucide-react';
 import {
   CivilWorkspace,
   UnitCategoryKey,
   CustomUnitDefinition,
 } from '../../types/civil';
-import { STANDARD_UNITS, BASE_UNITS, convertDirect } from '../../utils/unitConverter';
+import {
+  STANDARD_UNITS,
+  BASE_UNITS,
+  convertDirect,
+  computeRegionalLandBreakdown,
+  FeetInchParseResult,
+  formatSmartNumber,
+  formatNumberWhileTyping,
+} from '../../utils/unitConverter';
 import { parseSmartUnitInput } from '../../utils/unitEngine';
 import { ExplainConversionModal } from '../modals/ExplainConversionModal';
 
@@ -27,6 +35,8 @@ const COMMON_CATEGORY_PAIRS: Record<
     { label: 'm² ⇄ acre', from: 'm2', to: 'acre', title: 'Square Meters ↔ International Acre' },
     { label: 'acre ⇄ decimal', from: 'acre', to: 'decimal', title: 'Acre ↔ Regional Decimal (100 dec/ac)' },
     { label: 'decimal ⇄ katha', from: 'decimal', to: 'katha', title: 'Regional Decimal ↔ Katha (1.65 dec/katha)' },
+    { label: 'katha ⇄ bigha', from: 'katha', to: 'bigha', title: 'Katha (20 katha/bigha) ↔ Bigha' },
+    { label: 'bigha ⇄ acre', from: 'bigha', to: 'acre', title: 'Bigha (3.025 bigha/ac) ↔ Acre' },
     { label: 'cent ⇄ sq ft', from: 'cent', to: 'ft2', title: 'Cent (435.6 sq ft) ↔ Square Feet' },
     { label: 'guntha ⇄ sq ft', from: 'guntha', to: 'ft2', title: 'Guntha (1,089 sq ft) ↔ Square Feet' },
     { label: 'ground ⇄ sq ft', from: 'ground', to: 'ft2', title: 'Ground (2,400 sq ft) ↔ Square Feet' },
@@ -90,13 +100,7 @@ export interface UnitConverterInputsProps {
   updateActiveWorkspace: (updater: (ws: CivilWorkspace) => CivilWorkspace) => void;
   customUnits: CustomUnitDefinition[];
   availableCategoryUnits: Array<{ id: string; name: string; symbol: string; isRegional?: boolean }>;
-  activeFeetInchResult: {
-    isValid: boolean;
-    totalFeet: number;
-    totalInches: number;
-    totalMeters: number;
-    totalMm: number;
-  };
+  activeFeetInchResult: FeetInchParseResult;
   onOpenCustomUnitsModal: () => void;
   conversionResult?: {
     result: number;
@@ -120,6 +124,21 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   const converter = activeWorkspace.converter;
   const currentCategory = converter.category;
 
+  // Local state for freeform text typing with clean comma auto-formatting
+  const [displayInputString, setDisplayInputString] = useState<string>(() =>
+    converter.inputValue !== undefined && converter.inputValue !== null
+      ? formatNumberWhileTyping(String(converter.inputValue)).formatted
+      : ''
+  );
+
+  // Sync internal display when external workspace inputValue changes
+  useEffect(() => {
+    const numericFromDisplay = parseFloat(displayInputString.replace(/,/g, ''));
+    if (!isNaN(converter.inputValue) && numericFromDisplay !== converter.inputValue) {
+      setDisplayInputString(formatNumberWhileTyping(String(converter.inputValue)).formatted);
+    }
+  }, [converter.inputValue]);
+
   // Calculate live conversion result if not passed
   const currentConvertedValue = useMemo(() => {
     if (conversionResult) return conversionResult.result;
@@ -137,6 +156,12 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     }
   }, [conversionResult, converter.inputValue, converter.fromUnit, converter.toUnit, converter.category, customUnits]);
 
+  // Exhaustive regional land breakdown matrix when discipline is 'area'
+  const landBreakdown = useMemo(() => {
+    if (currentCategory !== 'area') return null;
+    return computeRegionalLandBreakdown(converter.inputValue, converter.fromUnit, customUnits);
+  }, [currentCategory, converter.inputValue, converter.fromUnit, customUnits]);
+
   // Instant Swap handler with rotation animation and haptic visual feedback
   const handleSwapUnits = (withValueCarry: boolean = false) => {
     setIsSwapping(true);
@@ -147,8 +172,8 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
 
     let nextValue = converter.inputValue;
     if (withValueCarry && currentConvertedValue !== null) {
-      // Clean precision up to 6 decimal places without floating noise
       nextValue = parseFloat(currentConvertedValue.toFixed(6));
+      setDisplayInputString(formatNumberWhileTyping(String(nextValue)).formatted);
     }
 
     updateActiveWorkspace((ws) => ({
@@ -170,7 +195,6 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   };
 
   const handleApplyQuickPair = (pair: { from: string; to: string }) => {
-    // If user clicks a pair that is already active, invert/swap it!
     const isAlreadyActive =
       converter.fromUnit === pair.from && converter.toUnit === pair.to;
 
@@ -191,6 +215,34 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
 
     setLastSwapNotice(`Set ${newFrom} ⇄ ${newTo}`);
     setTimeout(() => setLastSwapNotice(null), 2000);
+  };
+
+  const handleNumericInputChange = (raw: string) => {
+    const typingResult = formatNumberWhileTyping(raw);
+    const formatted = typingResult.formatted;
+    setDisplayInputString(formatted);
+
+    // Support mathematical expressions and smart parsing (e.g. "250 / 2", "12500", "12'-6\"")
+    const parsed = parseSmartUnitInput(formatted, converter.fromUnit, converter.category);
+    if (parsed.isValid && !isNaN(parsed.parsedValue)) {
+      updateActiveWorkspace((ws) => ({
+        ...ws,
+        converter: { ...ws.converter, inputValue: parsed.parsedValue },
+      }));
+    } else if (typingResult.cleanNumeric !== undefined && !isNaN(typingResult.cleanNumeric)) {
+      updateActiveWorkspace((ws) => ({
+        ...ws,
+        converter: { ...ws.converter, inputValue: typingResult.cleanNumeric! },
+      }));
+    } else {
+      const fallbackNum = parseFloat(formatted.replace(/,/g, ''));
+      if (!isNaN(fallbackNum)) {
+        updateActiveWorkspace((ws) => ({
+          ...ws,
+          converter: { ...ws.converter, inputValue: fallbackNum },
+        }));
+      }
+    }
   };
 
   const fromUnitObj = availableCategoryUnits.find((u) => u.id === converter.fromUnit);
@@ -421,14 +473,14 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 title="Swap units AND set the converted result as the new input value for reverse calculation"
               >
                 <RefreshCw className="w-3 h-3 shrink-0" />
-                <span>Swap with Converted Value ({parseFloat(currentConvertedValue.toFixed(4))} {toUnitObj?.symbol || converter.toUnit})</span>
+                <span>Swap with Converted Value ({formatSmartNumber(currentConvertedValue, 4)} {toUnitObj?.symbol || converter.toUnit})</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Input Numeric Value with Quick Value Chips */}
+      {/* Input Numeric Value with Quick Value Chips & Real-time Auto-formatting */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
           <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
@@ -444,6 +496,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 key={num}
                 type="button"
                 onClick={() => {
+                  setDisplayInputString(formatNumberWhileTyping(String(num)).formatted);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     converter: { ...ws.converter, inputValue: num },
@@ -463,64 +516,416 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
 
         <input
           type="text"
-          value={converter.inputValue}
-          onChange={(e) => {
-            const raw = e.target.value;
-            // Use smart unit parser to support expressions like "25 * 2", "150 / 3", or "1,250"
-            const parseRes = parseSmartUnitInput(raw, converter.fromUnit, converter.category);
-            const val = parseRes.isValid ? parseRes.parsedValue : Number(raw) || 0;
-            updateActiveWorkspace((ws) => ({
-              ...ws,
-              converter: { ...ws.converter, inputValue: val },
-            }));
-          }}
-          placeholder="Enter numeric value or arithmetic expression (e.g. 250 / 2)"
+          inputMode="decimal"
+          value={displayInputString}
+          onChange={(e) => handleNumericInputChange(e.target.value)}
+          placeholder="Enter numeric value or arithmetic expression (e.g. 2,500.50 or 250 / 2)"
           className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-base bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
         />
+        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 flex items-center justify-between">
+          <span>Real-time thousand separators active. Mathematical expressions supported.</span>
+          <span>SI Base: <strong>{BASE_UNITS[currentCategory]}</strong></span>
+        </div>
       </div>
 
-      {/* Architectural Feet-Inch String Parser Card */}
-      <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-            Architectural Feet-Inch Parser
-          </label>
-          <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-            e.g. 12&apos;-4 1/2&quot;
-          </span>
-        </div>
-        <input
-          type="text"
-          placeholder="e.g. 14'-6 3/4&quot; or 25.5'"
-          value={converter.feetInchRawString}
-          onChange={(e) => {
-            const str = e.target.value;
-            updateActiveWorkspace((ws) => ({
-              ...ws,
-              converter: { ...ws.converter, feetInchRawString: str },
-            }));
-          }}
-          className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)]"
-        />
-        {activeFeetInchResult.isValid && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs font-mono">
-            <div>
-              <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Decimal Feet</span>
-              <strong>{activeFeetInchResult.totalFeet.toFixed(3)} ft</strong>
+      {/* Regional Land Measurement Multi-Unit Matrix (Active when category === 'area') */}
+      {currentCategory === 'area' && landBreakdown && (
+        <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📐</span>
+              <label className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                South Asian & Regional Land Equivalence Matrix
+              </label>
             </div>
-            <div>
-              <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Decimal Inches</span>
-              <strong>{activeFeetInchResult.totalInches.toFixed(2)} in</strong>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold">
+              100 Decimals = 1 Acre = 43,560 sq ft
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-xs font-mono">
+            {/* Decimal */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'decimal' },
+                }));
+              }}
+              className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                converter.toUnit === 'decimal' || converter.fromUnit === 'decimal'
+                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 font-bold ring-1 ring-emerald-500'
+                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400'
+              }`}
+              title="Click to set Decimal as target unit (1 Decimal = 435.6 sq ft = 40.469 m²)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Decimal / Shatak</span>
+                <span className="text-[9px] uppercase opacity-75">1/100 Ac</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-emerald-700 dark:text-emerald-300 truncate">
+                {formatSmartNumber(landBreakdown.decimals, 4)} <span className="text-[10px] font-normal">dec</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Metric (m)</span>
-              <strong>{activeFeetInchResult.totalMeters.toFixed(3)} m</strong>
+
+            {/* Katha */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'katha' },
+                }));
+              }}
+              className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                converter.toUnit === 'katha' || converter.fromUnit === 'katha'
+                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 font-bold ring-1 ring-emerald-500'
+                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400'
+              }`}
+              title="Click to set Katha as target unit (1 Katha = 720 sq ft = 1.65289 Decimals = 66.89 m²)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Katha (Bengal)</span>
+                <span className="text-[9px] uppercase opacity-75">720 sq ft</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-emerald-700 dark:text-emerald-300 truncate">
+                {formatSmartNumber(landBreakdown.katha, 4)} <span className="text-[10px] font-normal">katha</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">Millimeters</span>
-              <strong>{activeFeetInchResult.totalMm.toFixed(1)} mm</strong>
+
+            {/* Bigha */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'bigha' },
+                }));
+              }}
+              className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                converter.toUnit === 'bigha' || converter.fromUnit === 'bigha'
+                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 font-bold ring-1 ring-emerald-500'
+                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400'
+              }`}
+              title="Click to set Bigha as target unit (1 Bigha = 20 Katha = 14,400 sq ft = 33.058 Decimals)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Bigha (Standard)</span>
+                <span className="text-[9px] uppercase opacity-75">20 Katha</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-emerald-700 dark:text-emerald-300 truncate">
+                {formatSmartNumber(landBreakdown.bigha, 4)} <span className="text-[10px] font-normal">bigha</span>
+              </div>
+            </div>
+
+            {/* Acre */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'acre' },
+                }));
+              }}
+              className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                converter.toUnit === 'acre' || converter.fromUnit === 'acre'
+                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 font-bold ring-1 ring-emerald-500'
+                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400'
+              }`}
+              title="Click to set Acre as target unit (1 Acre = 43,560 sq ft = 100 Decimals = 60.5 Katha)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>International Acre</span>
+                <span className="text-[9px] uppercase opacity-75">43,560 sq ft</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-emerald-700 dark:text-emerald-300 truncate">
+                {formatSmartNumber(landBreakdown.acres, 5)} <span className="text-[10px] font-normal">acre</span>
+              </div>
+            </div>
+
+            {/* Hectare */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'hectare' },
+                }));
+              }}
+              className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                converter.toUnit === 'hectare' || converter.fromUnit === 'hectare'
+                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 font-bold ring-1 ring-emerald-500'
+                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400'
+              }`}
+              title="Click to set Hectare as target unit (1 Hectare = 10,000 m² = 2.471 Acres)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Hectare (Metric)</span>
+                <span className="text-[9px] uppercase opacity-75">10,000 m²</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-emerald-700 dark:text-emerald-300 truncate">
+                {formatSmartNumber(landBreakdown.hectares, 5)} <span className="text-[10px] font-normal">ha</span>
+              </div>
+            </div>
+
+            {/* Cent */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'cent' },
+                }));
+              }}
+              className="p-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400 transition-all cursor-pointer"
+              title="Click to set Cent as target unit (South India, 435.6 sq ft = 1 Decimal)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Cent (South India)</span>
+                <span className="text-[9px] uppercase opacity-75">435.6 sq ft</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-[var(--md-sys-color-on-surface)] truncate">
+                {formatSmartNumber(landBreakdown.cents, 4)} <span className="text-[10px] font-normal">cent</span>
+              </div>
+            </div>
+
+            {/* Guntha */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'guntha' },
+                }));
+              }}
+              className="p-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400 transition-all cursor-pointer"
+              title="Click to set Guntha as target unit (Maharashtra/Gujarat, 1,089 sq ft = 33 ft × 33 ft)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Guntha (West)</span>
+                <span className="text-[9px] uppercase opacity-75">1,089 sq ft</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-[var(--md-sys-color-on-surface)] truncate">
+                {formatSmartNumber(landBreakdown.gunthas, 4)} <span className="text-[10px] font-normal">guntha</span>
+              </div>
+            </div>
+
+            {/* Ground */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'ground' },
+                }));
+              }}
+              className="p-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400 transition-all cursor-pointer"
+              title="Click to set Ground as target unit (Tamil Nadu, 2,400 sq ft)"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Ground (Chennai)</span>
+                <span className="text-[9px] uppercase opacity-75">2,400 sq ft</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-[var(--md-sys-color-on-surface)] truncate">
+                {formatSmartNumber(landBreakdown.grounds, 4)} <span className="text-[10px] font-normal">ground</span>
+              </div>
+            </div>
+
+            {/* Square Feet */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'ft2' },
+                }));
+              }}
+              className="p-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400 transition-all cursor-pointer"
+              title="Click to set Square Feet as target unit"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Square Feet (SFT)</span>
+                <span className="text-[9px] uppercase opacity-75">ft²</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-[var(--md-sys-color-on-surface)] truncate">
+                {formatSmartNumber(landBreakdown.squareFeet, 2)} <span className="text-[10px] font-normal">sft</span>
+              </div>
+            </div>
+
+            {/* Square Meters */}
+            <div
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, toUnit: 'm2' },
+                }));
+              }}
+              className="p-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400 transition-all cursor-pointer"
+              title="Click to set Square Meters as target unit"
+            >
+              <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                <span>Square Meters</span>
+                <span className="text-[9px] uppercase opacity-75">SI m²</span>
+              </div>
+              <div className="text-sm font-bold mt-0.5 text-[var(--md-sys-color-on-surface)] truncate">
+                {formatSmartNumber(landBreakdown.squareMeters, 3)} <span className="text-[10px] font-normal">m²</span>
+              </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Architectural Feet-Inch String Parser Card */}
+      <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">📏</span>
+            <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+              Architectural Feet-Inch & Fraction Parser
+            </label>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mr-1">
+              Presets:
+            </span>
+            {[
+              { label: "12'-6 1/2\"", val: "12'-6 1/2\"" },
+              { label: "25'-0\"", val: "25'-0\"" },
+              { label: "9'-4 3/4\"", val: "9'-4 3/4\"" },
+              { label: '3500mm', val: '3500mm' },
+              { label: '2.45m', val: '2.45m' },
+            ].map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => {
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    converter: { ...ws.converter, feetInchRawString: p.val },
+                  }));
+                }}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="e.g. 14'-6 3/4&quot;, 12 ft 4 in, 3/4&quot;, 3810mm, or 3.81m"
+            value={converter.feetInchRawString}
+            onChange={(e) => {
+              const str = e.target.value;
+              updateActiveWorkspace((ws) => ({
+                ...ws,
+                converter: { ...ws.converter, feetInchRawString: str },
+              }));
+            }}
+            className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+          />
+          {converter.feetInchRawString && (
+            <button
+              type="button"
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  converter: { ...ws.converter, feetInchRawString: '' },
+                }));
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {activeFeetInchResult.isValid ? (
+          <div className="space-y-2 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                  Architectural Standard
+                </span>
+                <strong className="text-sm text-[var(--md-sys-color-primary)] truncate block">
+                  {activeFeetInchResult.fractionString || activeFeetInchResult.normalizedString}
+                </strong>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                  Decimal Feet
+                </span>
+                <strong className="text-sm truncate block">
+                  {formatSmartNumber(activeFeetInchResult.totalFeet, 4)} ft
+                </strong>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                  Metric (Meters)
+                </span>
+                <strong className="text-sm text-emerald-600 dark:text-emerald-400 truncate block">
+                  {formatSmartNumber(activeFeetInchResult.totalMeters, 4)} m
+                </strong>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                  Millimeters (mm)
+                </span>
+                <strong className="text-sm truncate block">
+                  {formatSmartNumber(activeFeetInchResult.totalMm, 1)} mm
+                </strong>
+              </div>
+            </div>
+
+            {/* Transfer to Main Converter Input Button */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                Fraction: {activeFeetInchResult.fractionString || `${activeFeetInchResult.totalInches.toFixed(2)}"`}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const feetVal = parseFloat(activeFeetInchResult.totalFeet.toFixed(4));
+                    setDisplayInputString(formatNumberWhileTyping(String(feetVal)).formatted);
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      converter: {
+                        ...ws.converter,
+                        category: 'length',
+                        fromUnit: 'ft',
+                        inputValue: feetVal,
+                      },
+                    }));
+                  }}
+                  className="px-2 py-1 text-[11px] font-mono rounded bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-primary)] cursor-pointer font-bold"
+                  title="Load parsed feet into main converter input"
+                >
+                  Apply {activeFeetInchResult.totalFeet.toFixed(3)} ft to Input
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const metersVal = parseFloat(activeFeetInchResult.totalMeters.toFixed(4));
+                    setDisplayInputString(formatNumberWhileTyping(String(metersVal)).formatted);
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      converter: {
+                        ...ws.converter,
+                        category: 'length',
+                        fromUnit: 'm',
+                        inputValue: metersVal,
+                      },
+                    }));
+                  }}
+                  className="px-2 py-1 text-[11px] font-mono rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-white transition-colors cursor-pointer font-bold"
+                  title="Load parsed meters into main converter input"
+                >
+                  Apply {activeFeetInchResult.totalMeters.toFixed(3)} m to Input
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          converter.feetInchRawString && (
+            <div className="text-xs font-mono text-amber-600 dark:text-amber-400 pt-0.5">
+              ⚠️ {activeFeetInchResult.errorMessage || 'Unable to parse architectural string. Try format: 12\'-6 1/2" or 3500mm'}
+            </div>
+          )
         )}
       </div>
 
@@ -573,12 +978,14 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div>
           <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Source Value</div>
-          <div className="text-xl font-bold font-mono mt-0.5">{inputValue} {fromUnit}</div>
+          <div className="text-xl font-bold font-mono mt-0.5">
+            {formatSmartNumber(inputValue)} <span className="text-xs font-normal">{fromUnit}</span>
+          </div>
         </div>
         <div>
           <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Converted Value</div>
           <div className="text-xl font-bold font-mono mt-0.5 text-[var(--md-sys-color-primary)]">
-            {Number(conversionResult.result.toFixed(4))} <span className="text-xs font-normal">{toUnit}</span>
+            {formatSmartNumber(conversionResult.result, 6)} <span className="text-xs font-normal">{toUnit}</span>
           </div>
         </div>
         <div>
@@ -636,7 +1043,7 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
               title="Swap units and set input to current converted result"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Swap & Invert ({Number(conversionResult.result.toFixed(2))} {toUnit})</span>
+              <span>Swap & Invert ({formatSmartNumber(conversionResult.result, 4)} {toUnit})</span>
             </button>
           )}
         </div>

@@ -9,12 +9,27 @@ import {
   parseFeetInchString,
   FeetInchParseResult,
   EXACT_CONVERSION,
+  RegionalLandBreakdown,
+  computeRegionalLandBreakdown,
+  FormatNumberOptions,
+  formatSmartNumber,
+  formatNumberWhileTyping,
 } from './unitConverter';
 
 export type UnitDefinition = UnitInfo;
 
 export const CANONICAL_BASE_UNITS = BASE_UNITS;
 export const ALL_UNITS = STANDARD_UNITS;
+
+// Re-export metrology types and core utilities
+export {
+  EXACT_CONVERSION,
+  parseFeetInchString,
+  computeRegionalLandBreakdown,
+  formatSmartNumber,
+  formatNumberWhileTyping,
+};
+export type { FeetInchParseResult, RegionalLandBreakdown, FormatNumberOptions };
 
 /**
  * System Presets Default Units
@@ -56,7 +71,7 @@ export const SYSTEM_PRESET_UNITS: Record<'metric' | 'imperial' | 'regional', Rec
     force: 'kN',
     distributed_load: 'kN/m',
     pressure: 'MPa',
-    density: 'kg/m3',
+    density: 'kN/m3',
     moment: 'kN.m',
     slope: 'percent',
     velocity: 'm/s',
@@ -120,9 +135,6 @@ export function getUnitDefinition(
 }
 
 /**
- * Smart Input Parser
- * Parses both plain numbers and expressions like "12'-6 1/2\"", "250 mm", "14.5 ft", "18 kN/m3"
-/**
  * Gets the primary Metric/Imperial counterpart unit ID for rapid 1-click toggling
  */
 export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey): string {
@@ -135,16 +147,34 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     cm: 'in',
     km: 'mile',
     mile: 'km',
-    yard: 'm',
+    mi: 'km',
+    yd: 'm',
+    rft: 'rm',
+    rm: 'rft',
+    'ft-in': 'm',
+    chain: 'm',
+    link: 'cm',
+    fathom: 'm',
+    rod: 'm',
+
     // Area
     m2: 'ft2',
     ft2: 'm2',
     sqm: 'ft2',
     sqft: 'm2',
     sft: 'm2',
+    in2: 'cm2',
+    cm2: 'in2',
+    mm2: 'in2',
+    yd2: 'm2',
+    sqyd: 'm2',
     acre: 'hectare',
     hectare: 'acre',
-    decimal: 'sqft',
+    ha: 'acre',
+    are: 'acre',
+    sqmi: 'km2',
+    km2: 'sqmi',
+    decimal: 'sft',
     katha: 'decimal',
     bigha: 'acre',
     cent: 'sqft',
@@ -152,35 +182,60 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     ground: 'sqft',
     kanal: 'marla',
     marla: 'kanal',
+    ganda: 'sft',
+    chhatak: 'sft',
+    kara: 'sft',
+
     // Volume
     m3: 'cft',
     cft: 'm3',
     cum: 'cft',
     ft3: 'm3',
+    in3: 'cm3',
+    yd3: 'm3',
     liter: 'gal_us',
-    gal: 'liter',
+    L: 'gal_us',
+    ml: 'fl_oz',
     gal_us: 'liter',
     gal_uk: 'liter',
+    bbl: 'm3',
+    fl_oz: 'ml',
+
     // Mass
     kg: 'lb',
     lb: 'kg',
     tonne: 'ton_us',
+    MT: 'ton_us',
     ton_us: 'tonne',
     ton_uk: 'tonne',
     bag50: 'kg',
+    g: 'oz',
+    oz: 'g',
+    mg: 'g',
+    quintal: 'ton_us',
+    maund: 'kg',
+    seer: 'kg',
+    tola: 'g',
+
     // Force
     kN: 'kip',
     kip: 'kN',
     N: 'lbf',
     lbf: 'N',
+    MN: 'kip',
     kgf: 'lbf',
     tonf: 'kip',
+    dyn: 'N',
+
     // Distributed Load
     'kN/m': 'kip/ft',
     'kip/ft': 'kN/m',
     'N/m': 'lbf/ft',
     'lbf/ft': 'N/m',
     'kgf/m': 'kip/ft',
+    plf: 'kN/m',
+    klf: 'kN/m',
+
     // Pressure / Stress
     MPa: 'psi',
     psi: 'MPa',
@@ -189,34 +244,57 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     GPa: 'ksi',
     ksi: 'GPa',
     bar: 'psi',
+    mbar: 'psi',
     'N/mm2': 'psi',
     'kgf/cm2': 'psi',
     atm: 'kPa',
+    tsf: 'kPa',
+    mmHg: 'kPa',
+    mmH2O: 'kPa',
+
     // Density
-    'kg/m3': 'pcf',
-    pcf: 'kg/m3',
     'kN/m3': 'pcf',
+    pcf: 'kN/m3',
+    'kg/m3': 'pcf',
     'g/cm3': 'pcf',
+    'N/m3': 'pcf',
+    'tonne/m3': 'pcf',
+    'lb/in3': 'kN/m3',
+
     // Moment
     'kN.m': 'kip.ft',
     'kip.ft': 'kN.m',
     'N.m': 'lbf.ft',
     'lbf.ft': 'N.m',
+    'kip.in': 'kN.m',
+    'lbf.in': 'N.m',
+
+    // Slope
+    ratio: 'percent',
+    percent: 'ratio',
+    degree: 'percent',
+    permille: 'percent',
+    in_per_ft: 'percent',
+
     // Velocity
     'm/s': 'ft/s',
     'ft/s': 'm/s',
     'km/h': 'mph',
     mph: 'km/h',
     knot: 'm/s',
+    'mm/s': 'in/s',
+    'in/s': 'mm/s',
+
     // Flow Rate
     'm3/s': 'cfs',
     cfs: 'm3/s',
     'L/s': 'gpm',
     gpm: 'L/s',
+    'L/min': 'gpm',
+    'm3/hr': 'cfs',
+    gpm_uk: 'L/s',
     mgd: 'm3/s',
-    // Length extras
-    rft: 'rm',
-    rm: 'rft',
+    'ML/day': 'm3/s',
   };
 
   if (counterpartMap[unitId]) {
@@ -231,19 +309,22 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
 /**
  * Smart Input Parser
  * Parses plain numbers, comma-formatted strings, simple arithmetic ("15 * 2", "250 / 2"),
- * and architectural expressions like "12'-6 1/2\"", "12'--4 1/2\"", "12-6 1/2", "250 mm", "14.5 ft", "18 kN/m3"
+ * regional land notations, and architectural expressions like:
+ * "12'-6 1/2\"", "12-6 1/2", "250 mm", "14.5 ft", "18 kN/m3", "5.5 decimal", "2 katha"
  */
 export function parseSmartUnitInput(
   rawString: string,
   currentUnitId: string,
-  category: UnitCategoryKey
+  category: UnitCategoryKey,
+  customUnits: CustomUnitDefinition[] = []
 ): {
   parsedValue: number;
   detectedUnitId: string;
   isValid: boolean;
+  architecturalResult?: FeetInchParseResult;
   errorMessage?: string;
 } {
-  let trimmed = rawString.trim();
+  const trimmed = rawString.trim();
   if (!trimmed) {
     return { parsedValue: 0, detectedUnitId: currentUnitId, isValid: false, errorMessage: 'Empty input' };
   }
@@ -260,21 +341,45 @@ export function parseSmartUnitInput(
     const feetInchResult = parseFeetInchString(trimmed);
     if (feetInchResult.isValid) {
       if (currentUnitId === 'm') {
-        return { parsedValue: feetInchResult.totalMeters, detectedUnitId: 'm', isValid: true };
+        return {
+          parsedValue: feetInchResult.totalMeters,
+          detectedUnitId: 'm',
+          isValid: true,
+          architecturalResult: feetInchResult,
+        };
       }
       if (currentUnitId === 'mm') {
-        return { parsedValue: feetInchResult.totalMm, detectedUnitId: 'mm', isValid: true };
+        return {
+          parsedValue: feetInchResult.totalMm,
+          detectedUnitId: 'mm',
+          isValid: true,
+          architecturalResult: feetInchResult,
+        };
       }
       if (currentUnitId === 'in') {
-        return { parsedValue: feetInchResult.totalInches, detectedUnitId: 'in', isValid: true };
+        return {
+          parsedValue: feetInchResult.totalInches,
+          detectedUnitId: 'in',
+          isValid: true,
+          architecturalResult: feetInchResult,
+        };
       }
-      return { parsedValue: feetInchResult.totalFeet, detectedUnitId: 'ft', isValid: true };
+      return {
+        parsedValue: feetInchResult.totalFeet,
+        detectedUnitId: 'ft',
+        isValid: true,
+        architecturalResult: feetInchResult,
+      };
     }
   }
 
-  // 2. Check for explicit unit suffix in the string: e.g. "250 mm", "15 cft", "500 psi", "18 kN/m3"
-  const unitsInCat = STANDARD_UNITS[category] || [];
-  for (const u of unitsInCat) {
+  // 2. Check for explicit unit suffix in the string: e.g. "250 mm", "15 cft", "500 psi", "18 kN/m3", "5 decimal"
+  const allUnitsInCat = [
+    ...(STANDARD_UNITS[category] || []),
+    ...customUnits.filter((u) => u.category === category),
+  ];
+
+  for (const u of allUnitsInCat) {
     const escapedSymbol = u.symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const escapedId = u.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`^([+-]?[0-9,]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\\s*(?:${escapedSymbol}|${escapedId})$`, 'i');
@@ -407,18 +512,7 @@ export function getConversionFactorDetails(
   }
 
   const formatNum = (num: number) => {
-    if (num >= 1000) {
-      return Number.isInteger(num)
-        ? num.toLocaleString('en-US')
-        : parseFloat(num.toFixed(4)).toLocaleString('en-US');
-    }
-    if (num >= 1) {
-      return parseFloat(num.toFixed(6)).toString();
-    }
-    if (num >= 0.0001) {
-      return parseFloat(num.toFixed(6)).toString();
-    }
-    return num.toExponential(4);
+    return formatSmartNumber(num, { maxDecimals: 6, useGrouping: true });
   };
 
   const factorStr = formatNum(factor);
@@ -453,4 +547,3 @@ export function getConversionFactorDetails(
     tooltip,
   };
 }
-

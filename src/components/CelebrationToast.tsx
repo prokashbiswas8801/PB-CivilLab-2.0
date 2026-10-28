@@ -54,7 +54,7 @@ export const CelebrationToast: React.FC<CelebrationToastProps> = ({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.2 } }}
         transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-        className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-50 max-w-sm sm:max-w-md w-full shadow-2xl rounded-2xl overflow-hidden border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]/95 backdrop-blur-xl pointer-events-auto"
+        className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-50 max-w-sm sm:max-w-md w-full shadow-2xl rounded-3xl overflow-hidden border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]/95 backdrop-blur-xl pointer-events-auto"
         role="alert"
         aria-live="assertive"
       >
@@ -66,7 +66,7 @@ export const CelebrationToast: React.FC<CelebrationToastProps> = ({
           <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
         )}
 
-        <div className="p-3.5 sm:p-4 flex items-start gap-3 relative z-10">
+        <div className="p-4 sm:p-4.5 flex items-start gap-3.5 relative z-10">
           {/* Animated Status Icon */}
           <div className="shrink-0 mt-0.5">
             {toast.type === 'celebrate' ? (
@@ -81,8 +81,15 @@ export const CelebrationToast: React.FC<CelebrationToastProps> = ({
                 <div className="absolute inset-0 rounded-full border border-emerald-500/40 animate-ping opacity-30" />
               </div>
             ) : toast.type === 'success' ? (
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <motion.div
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: [0, 1.25, 1], rotate: [-45, 10, 0] }}
+                  transition={{ type: 'spring', stiffness: 550, damping: 22 }}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                </motion.div>
+                <div className="absolute inset-0 rounded-full border border-emerald-500/30 animate-ping opacity-25" />
               </div>
             ) : toast.type === 'warning' ? (
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">

@@ -24,6 +24,7 @@ import {
   PipeHydraulicsParameters,
 } from '../types/civil';
 import { EXACT_CONVERSION } from './unitConverter';
+import { STANDARD_WBS_SECTIONS } from './costLibraries';
 import {
   calculateChannelGeometry,
   solveCriticalDepth,
@@ -2041,6 +2042,9 @@ export interface ComputedTakeoffItem {
   itemNo: string;
   description: string;
   category: TakeoffCategory;
+  wbsSectionId?: string;
+  wbsSectionTitle?: string;
+  wbsCode?: string;
   numberOfMembers: number;
   lengthM: number;
   widthM: number;
@@ -2054,10 +2058,23 @@ export interface ComputedTakeoffItem {
   totalBillableQty: number;
   unitRate: number;
   itemTotalAmount: number;
+  startMonth?: number;
+  durationMonths?: number;
+  curveDistribution?: 's-curve' | 'linear' | 'early-peak' | 'late-peak';
+  vendorSource?: string;
 }
 
 export interface BOQCategorySummary {
   category: TakeoffCategory;
+  itemCount: number;
+  subtotal: number;
+  percentageOfSubtotal: number;
+}
+
+export interface BOQWbsSectionSummary {
+  wbsSectionId: string;
+  code: string;
+  title: string;
   itemCount: number;
   subtotal: number;
   percentageOfSubtotal: number;
@@ -2076,6 +2093,7 @@ export interface BOQResult {
   vatTaxAmount: number;
   grandTotalAmount: number;
   categorySummaries: BOQCategorySummary[];
+  wbsSectionSummaries?: BOQWbsSectionSummary[];
   totalItemCount: number;
   status: 'nominal' | 'warning' | 'critical';
 }
@@ -2177,11 +2195,31 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       });
     }
 
+    let sectionId = item.wbsSectionId;
+    if (!sectionId) {
+      switch (item.category) {
+        case 'misc': sectionId = 'sec-100'; break;
+        case 'earthwork': sectionId = 'sec-200'; break;
+        case 'substructure': sectionId = 'sec-300'; break;
+        case 'superstructure': sectionId = 'sec-400'; break;
+        case 'rebar': sectionId = 'sec-500'; break;
+        case 'masonry': sectionId = 'sec-600'; break;
+        case 'finishing': sectionId = 'sec-700'; break;
+        case 'plumbing': sectionId = 'sec-800'; break;
+        case 'electrical': sectionId = 'sec-900'; break;
+        default: sectionId = 'sec-100'; break;
+      }
+    }
+    const matchedSec = STANDARD_WBS_SECTIONS.find((s) => s.id === sectionId) || STANDARD_WBS_SECTIONS[0];
+
     return {
       id: item.id,
-      itemNo: item.itemNo || `${idx + 1}`,
+      itemNo: item.itemNo || `${matchedSec.code}.${String(idx + 1).padStart(2, '0')}`,
       description: item.description || `Item #${idx + 1}`,
-      category: item.category || 'misc',
+      category: item.category || matchedSec.category || 'misc',
+      wbsSectionId: sectionId,
+      wbsSectionTitle: matchedSec.title,
+      wbsCode: matchedSec.code,
       numberOfMembers: nos,
       lengthM: l,
       widthM: w,
@@ -2195,6 +2233,10 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       totalBillableQty: Number(billableQty.toFixed(3)),
       unitRate: rate,
       itemTotalAmount: Number(itemTotal.toFixed(2)),
+      startMonth: item.startMonth,
+      durationMonths: item.durationMonths,
+      curveDistribution: item.curveDistribution,
+      vendorSource: item.vendorSource,
     };
   });
 
@@ -2237,6 +2279,33 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
     }))
     .sort((a, b) => b.subtotal - a.subtotal);
 
+  // WBS Section summary map
+  const wbsMap: Record<string, { code: string; title: string; count: number; subtotal: number }> = {};
+  STANDARD_WBS_SECTIONS.forEach((sec) => {
+    wbsMap[sec.id] = { code: sec.code, title: sec.title, count: 0, subtotal: 0 };
+  });
+
+  computedItems.forEach((it) => {
+    const secId = it.wbsSectionId || 'sec-100';
+    if (wbsMap[secId]) {
+      wbsMap[secId].count += 1;
+      wbsMap[secId].subtotal += it.itemTotalAmount;
+    }
+  });
+
+  const wbsSectionSummaries: BOQWbsSectionSummary[] = Object.keys(wbsMap)
+    .filter((secId) => wbsMap[secId].count > 0)
+    .map((secId) => ({
+      wbsSectionId: secId,
+      code: wbsMap[secId].code,
+      title: wbsMap[secId].title,
+      itemCount: wbsMap[secId].count,
+      subtotal: Number(wbsMap[secId].subtotal.toFixed(2)),
+      percentageOfSubtotal:
+        subtotal > 0 ? Number(((wbsMap[secId].subtotal / subtotal) * 100).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => Number(a.code) - Number(b.code));
+
   return createEnvelope<BOQResult>(
     {
       currency: params.currency || 'USD',
@@ -2251,6 +2320,7 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       vatTaxAmount: Number(vatTaxAmt.toFixed(2)),
       grandTotalAmount: Number(grandTotal.toFixed(2)),
       categorySummaries,
+      wbsSectionSummaries,
       totalItemCount: computedItems.length,
       status: 'nominal',
     },

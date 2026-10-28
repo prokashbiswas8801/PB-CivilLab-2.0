@@ -177,6 +177,14 @@ import {
 } from './components/modals';
 import { SidebarToolbar } from './components/SidebarToolbar';
 import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
+import { ReportVerificationView } from './components/ReportVerificationView';
+import { VerifySubmittalModal } from './components/VerifySubmittalModal';
+import {
+  PublicEngineeringReportRecord,
+  decodeVerificationToken,
+  getVerifiedReportById,
+  saveVerifiedReport,
+} from './utils/verificationEngine';
 import {
   BoqEstimatorInputs,
   BoqEstimatorTable,
@@ -395,6 +403,8 @@ export default function App() {
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [isDashboardView, setIsDashboardView] = useState(true);
   const [activeReportQr, setActiveReportQr] = useState<GeneratedReportQrResult | null>(null);
+  const [verifiedReportRecord, setVerifiedReportRecord] = useState<PublicEngineeringReportRecord | null>(null);
+  const [verifySubmittalModalOpen, setVerifySubmittalModalOpen] = useState(false);
 
   // File Inputs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -435,6 +445,38 @@ export default function App() {
           setToastBanner('Restored local-first workspace state from IndexedDB backup.');
         }
       });
+    }
+  }, []);
+
+  // Automated Public Report Verification Engine: Parse URL on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const search = window.location.search;
+      if (!search) return;
+      const urlParams = new URLSearchParams(search);
+      const verifyDocId = urlParams.get('verify');
+      const tokenParam = urlParams.get('token');
+
+      if (tokenParam) {
+        const decoded = decodeVerificationToken(tokenParam);
+        if (decoded) {
+          setVerifiedReportRecord(decoded);
+          setShowSplash(false);
+          return;
+        }
+      }
+
+      if (verifyDocId) {
+        const found = getVerifiedReportById(verifyDocId);
+        if (found) {
+          setVerifiedReportRecord(found);
+          setShowSplash(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Error reading verification parameters:', err);
     }
   }, []);
 
@@ -2031,6 +2073,60 @@ export default function App() {
     };
   }, [activeModule, activeWorkspace, currentEnvelope, userProfile]);
 
+  // Global Keyboard Shortcuts (Ctrl+K, /, Ctrl+Z, Ctrl+Y, Ctrl+H)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+
+      // Global Command Palette: Ctrl+K / Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
+      // Quick Slash search '/' when not actively focused in an input field
+      if (e.key === '/' && !isInput && !commandPaletteOpen) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+
+      // Global Undo: Ctrl+Z / Cmd+Z (when not in an input element)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !isInput) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Global Redo: Ctrl+Y / Cmd+Y or Ctrl+Shift+Z
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !isInput) ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z' && !isInput)
+      ) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Global History Ledger: Ctrl+H / Cmd+H
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h' && !isInput) {
+        e.preventDefault();
+        setIsHistoryDrawerOpen((prev) => !prev);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [commandPaletteOpen, undoStack, redoStack, activeWorkspace]);
+
   // Log calculation record
   const handleLogCalculationSnapshot = () => {
     if (currentEnvelope.status === 'invalid') {
@@ -2679,6 +2775,7 @@ export default function App() {
         onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
         onQuickPrint={handleQuickPrintA4Report}
         onExportPdf={handleDirectDownloadPdf}
+        onOpenVerification={() => setVerifySubmittalModalOpen(true)}
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={undoStack.length > 0}
@@ -2688,9 +2785,32 @@ export default function App() {
         onSelectCalculation={handleRestoreCalculation}
       />
 
-      {showSplash && <AppSplash onComplete={() => setShowSplash(false)} />}
+      {showSplash && !verifiedReportRecord && <AppSplash onComplete={() => setShowSplash(false)} />}
 
-      <div className="screen-app-container h-screen h-[100dvh] flex flex-col bg-[var(--md-sys-color-background)] text-[var(--md-sys-color-on-background)] overflow-hidden print:hidden">
+      {verifiedReportRecord ? (
+        <ReportVerificationView
+          record={verifiedReportRecord}
+          onClose={() => {
+            setVerifiedReportRecord(null);
+            if (typeof window !== 'undefined' && window.history) {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('verify');
+              url.searchParams.delete('token');
+              url.searchParams.delete('project');
+              url.searchParams.delete('mod');
+              window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+            }
+          }}
+          onOpenWorkbench={(rec) => {
+            if (rec.module?.id) {
+              handleSetModule(rec.module.id);
+            }
+            setVerifiedReportRecord(null);
+          }}
+          activeWorkspace={activeWorkspace}
+        />
+      ) : (
+        <div className="screen-app-container h-screen h-[100dvh] flex flex-col bg-[var(--md-sys-color-background)] text-[var(--md-sys-color-on-background)] overflow-hidden print:hidden">
         {/* Top Bar Contract: 3 Zones */}
         <header className="shrink-0 z-30 flex items-center justify-between gap-4 md:gap-8 px-4 md:px-6 h-16 bg-[var(--md-sys-color-surface)] border-b border-[var(--md-sys-color-outline-variant)]">
           {/* Zone 1: Brand & Project Switcher */}
@@ -2854,6 +2974,17 @@ export default function App() {
             >
               <Printer className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
               <span className="hidden xl:inline">Print / PDF</span>
+            </button>
+
+            {/* Verify Engineering Submittal Button */}
+            <button
+              type="button"
+              onClick={() => setVerifySubmittalModalOpen(true)}
+              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 items-center gap-1.5 cursor-pointer btn-tactile"
+              title="Verify Engineering Submittal via Reference ID or QR Code"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="hidden xl:inline">Verify</span>
             </button>
 
             {/* Sunlight High-Contrast Mode Toggle */}
@@ -4253,6 +4384,9 @@ export default function App() {
                     onDeleteTakeoffItem={handleDeleteTakeoffItem}
                     onLoadSampleBOQItems={handleLoadSampleBOQItems}
                     onSyncFromModules={handleSyncAllModulesToBoq}
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    userProfile={userProfile}
                   />
                 )}
 
@@ -4514,6 +4648,15 @@ export default function App() {
           projectCode={activeWorkspace.projectCode}
         />
 
+        {/* Engineering Submittal Verification Modal */}
+        <VerifySubmittalModal
+          isOpen={verifySubmittalModalOpen}
+          onClose={() => setVerifySubmittalModalOpen(false)}
+          onSelectRecord={(rec) => {
+            setVerifiedReportRecord(rec);
+          }}
+        />
+
         {/* Calculation Session History Slide-Over Drawer */}
         <HistoryDrawer
           isOpen={isHistoryDrawerOpen}
@@ -4534,6 +4677,7 @@ export default function App() {
           onDismiss={() => setCelebrationToast(null)}
         />
       </div>
+      )}
 
       {/* Isolated root-level container for pristine vector print / PDF execution (never clipped by screen layout) */}
       <div id="pb-printable-report" className="hidden print:block bg-white text-slate-900 m-0 p-0 font-sans"></div>

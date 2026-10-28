@@ -14,6 +14,11 @@ import {
 } from './analyticalExport';
 import { BRAND_LOGO_BASE64 } from '../assets/brandLogoData';
 import { generateSubmittalDocRef } from './qrCode';
+import {
+  createVerifiedReportRecord,
+  saveVerifiedReport,
+  PublicEngineeringReportRecord,
+} from './verificationEngine';
 
 export interface PdfExportProgress {
   stage: string;
@@ -38,7 +43,7 @@ export async function exportCertifiedEngineeringPdf({
   envelope,
   userProfile,
   onProgress,
-}: PdfExportOptions): Promise<void> {
+}: PdfExportOptions): Promise<PublicEngineeringReportRecord> {
   const result = envelope.result;
   if (!result) {
     throw new Error('No analytical results available to generate certified PDF.');
@@ -82,26 +87,27 @@ export async function exportCertifiedEngineeringPdf({
     second: '2-digit',
   });
 
-  // Stage 2: Cryptographic QR Code Generation
-  await reportProgress('Generating cryptographic verification QR code & hash...', 35, 90);
+  // Stage 2: Cryptographic QR Code Generation & Registry Sync
+  await reportProgress('Generating cryptographic verification QR code & registry record...', 35, 90);
 
-  // Generate dynamic scannable verification URL & payload
-  const verificationUrl = typeof window !== 'undefined' && window.location?.origin
-    ? `${window.location.origin}/?verify=${encodeURIComponent(docId)}&project=${encodeURIComponent(workspace.projectCode)}&mod=${encodeURIComponent(activeModule)}`
-    : `https://pbcivillab.app/verify/${docId}`;
+  const origin = typeof window !== 'undefined' && window.location?.origin
+    ? window.location.origin
+    : 'https://ais-dev-c54uoao5og26sxud7v2lhx-26469248367.asia-southeast1.run.app';
 
-  const qrPayload = JSON.stringify({
-    app: 'PB CivilLab',
-    docId,
-    project: workspace.name,
-    projectCode: workspace.projectCode,
-    module: activeModule,
-    code: workspace.governingCode,
-    engineer: userProfile?.fullName || workspace.engineerOfRecord || 'Licensed Engineer',
-    timestamp: now.toISOString(),
-    status: envelope.status.toUpperCase(),
-    url: verificationUrl,
-  });
+  // Build the complete tamper-evident verified submittal record
+  const verifiedRecord = createVerifiedReportRecord(
+    workspace,
+    activeModule,
+    envelope,
+    userProfile,
+    docId
+  );
+
+  // Automatically persist to the client-local verification registry
+  saveVerifiedReport(verifiedRecord);
+
+  // Dynamic self-contained public verification URL containing docId & base64url payload
+  const verificationUrl = verifiedRecord.verificationUrl;
 
   let qrDataUrl = '';
   try {
@@ -539,6 +545,8 @@ export async function exportCertifiedEngineeringPdf({
   // Trigger direct browser download
   const sanitizedProject = workspace.projectCode.replace(/[^a-zA-Z0-9_-]/g, '_');
   doc.save(`${sanitizedProject}_${activeModule}_${docId}.pdf`);
+
+  return verifiedRecord;
 }
 
 function extractModuleInputs(

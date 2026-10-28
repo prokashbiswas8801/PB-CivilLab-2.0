@@ -12,8 +12,12 @@ import {
   getCounterpartUnitId,
   getConversionFactorDetails,
   UnitDefinition,
+  formatSmartNumber,
+  formatNumberWhileTyping,
+  computeRegionalLandBreakdown,
+  FeetInchParseResult,
 } from '../utils/unitEngine';
-import { ChevronDown, Check, ArrowRightLeft, HelpCircle, AlertCircle, X, Info } from 'lucide-react';
+import { ChevronDown, Check, ArrowRightLeft, HelpCircle, AlertCircle, X, Info, Compass, MapPin } from 'lucide-react';
 
 export interface UnitInputPreset {
   label: string;
@@ -65,15 +69,7 @@ export interface UnitInputProps {
 }
 
 function formatNumberWithSeparators(val: number): string {
-  if (isNaN(val) || !isFinite(val)) return '';
-  if (Number.isInteger(val)) {
-    return val.toLocaleString('en-US');
-  }
-  // Decimal: limit precision up to 4 decimals without noisy trailing zeros
-  const rounded = parseFloat(val.toFixed(4));
-  const parts = rounded.toString().split('.');
-  const intPart = parseInt(parts[0], 10).toLocaleString('en-US');
-  return parts.length > 1 ? `${intPart}.${parts[1]}` : intPart;
+  return formatSmartNumber(val, { maxDecimals: 4, useGrouping: true });
 }
 
 export const UnitInput: React.FC<UnitInputProps> = ({
@@ -170,6 +166,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   }, [siValue, convertedNumericValue]);
 
   const [rawText, setRawText] = useState<string>(formattedDisplayValue);
+  const [architecturalPreview, setArchitecturalPreview] = useState<FeetInchParseResult | null>(null);
   const isFocusedRef = useRef(false);
 
   // Smooth fade transition tracking when unit changes
@@ -210,15 +207,27 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const valStr = e.target.value;
-    setRawText(valStr);
 
-    const parsed = parseSmartUnitInput(valStr, activeUnitInfo.id, category);
+    // Metrological typing formatter: formats thousands commas while typing without cursor jumps
+    const typingResult = formatNumberWhileTyping(valStr);
+    const textToSet = typingResult.isArchitectural ? valStr : typingResult.formatted;
+    setRawText(textToSet);
+
+    const parsed = parseSmartUnitInput(valStr, activeUnitInfo.id, category, customUnits);
     if (parsed.isValid) {
+      if (parsed.architecturalResult) {
+        setArchitecturalPreview(parsed.architecturalResult);
+      } else {
+        setArchitecturalPreview(null);
+      }
+
       if (parsed.detectedUnitId !== activeUnitInfo.id) {
         onUnitChange(parsed.detectedUnitId);
       }
       const newSI = normalizeToBase(parsed.parsedValue, parsed.detectedUnitId, category, customUnits);
       onChangeSI(newSI);
+    } else {
+      setArchitecturalPreview(null);
     }
   };
 
@@ -229,12 +238,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
   const handleFocus = () => {
     isFocusedRef.current = true;
-    // On focus, switch to clean editable numeric value without thousand commas
-    if (Number.isInteger(convertedNumericValue)) {
-      setRawText(convertedNumericValue.toString());
-    } else {
-      setRawText(parseFloat(convertedNumericValue.toPrecision(8)).toString());
-    }
+    setRawText(formattedDisplayValue);
   };
 
   const handleSelectUnit = (unit: UnitDefinition) => {
@@ -384,13 +388,11 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         }`}
       >
         <input
-          type={category === 'length' ? 'text' : 'number'}
-          step={step}
-          min={min}
-          max={max}
+          type="text"
+          inputMode="decimal"
           disabled={disabled}
           value={rawText}
-          placeholder={placeholder || (category === 'length' ? `e.g. 12'-6" or 3.8` : '0')}
+          placeholder={placeholder || (category === 'length' ? `e.g. 12'-6 1/2" or 3.8m` : category === 'area' ? 'e.g. 5 katha or 2.5 dec' : '0')}
           onChange={handleInputChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
@@ -515,6 +517,28 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           )}
         </div>
       </div>
+
+      {/* Real-time Architectural Feet-Inch Preview Chip */}
+      {category === 'length' && architecturalPreview && (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--md-sys-color-primary-container)]/50 text-[var(--md-sys-color-on-primary-container)] text-[11px] font-mono border border-[var(--md-sys-color-primary)]/30 animate-fadeIn">
+          <Compass className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+          <span className="font-bold">{architecturalPreview.fractionString}</span>
+          <span className="opacity-60">≈</span>
+          <span>{architecturalPreview.metricString}</span>
+          <span className="opacity-40">|</span>
+          <span>{architecturalPreview.decimalFeetString}</span>
+          <span className="opacity-40">|</span>
+          <span>{architecturalPreview.totalMm.toFixed(1)} mm</span>
+        </div>
+      )}
+
+      {/* Real-time Regional Land Equivalence Chip */}
+      {category === 'area' && activeUnitInfo.isRegional && siValue > 0 && (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-[11px] font-mono border border-emerald-500/30 animate-fadeIn">
+          <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span className="font-semibold">{computeRegionalLandBreakdown(convertedNumericValue, activeUnitInfo.id, customUnits).formattedSummary}</span>
+        </div>
+      )}
 
       {/* Quick Engineering Preset Chips */}
       {presets && presets.length > 0 && (

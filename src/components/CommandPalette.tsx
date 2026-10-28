@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   SlidersHorizontal,
@@ -47,6 +48,7 @@ interface CommandPaletteProps {
   onOpenHistoryDrawer?: () => void;
   onQuickPrint?: () => void;
   onExportPdf?: () => void;
+  onOpenVerification?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
@@ -69,6 +71,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenHistoryDrawer,
   onQuickPrint,
   onExportPdf,
+  onOpenVerification,
   onUndo,
   onRedo,
   canUndo = false,
@@ -379,6 +382,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         keywords: ['print', 'pdf', 'preview', 'export', 'submittal', 'qr', 'stamp', 'vector', 'report', 'sheet'],
         action: onOpenPrintPreview,
       },
+      {
+        id: 'action-verify-submittal',
+        title: 'Verify Engineering Submittal (Scan / Reference ID)',
+        category: 'Actions',
+        description: 'Verify official PDF calculation reports using document reference (PBCL-2026-XXXXXX) or QR code link',
+        keywords: ['verify', 'verification', 'qr', 'scan', 'docid', 'submittal', 'certificate', 'iso9001', 'audit', 'check'],
+        action: onOpenVerification,
+      },
     ];
 
     // Inject active BOQ items for instant discovery
@@ -429,6 +440,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     onOpenPreferences,
     onOpenPresets,
     onOpenPrintPreview,
+    onOpenVerification,
     boqItems,
     savedCalculations,
     onSelectCalculation,
@@ -488,120 +500,132 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Engineering Command Palette and Search"
-      className="fixed inset-0 z-50 flex items-start justify-center pt-16 md:pt-24 px-4 bg-black/60 backdrop-blur-xs"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Search Input Field */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
-          <Search className="w-5 h-5 text-[var(--md-sys-color-primary)] shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedIndex(0);
-            }}
-            placeholder="Type a command, module, calculation, BOQ item, or formula..."
-            className="w-full bg-transparent border-0 outline-hidden font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]"
-          />
-          <div className="flex items-center gap-1.5 shrink-0">
-            <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)]">
-              ESC
-            </kbd>
-          </div>
-        </div>
-
-        {/* Recent Search Queries Strip (if any) */}
-        {recentQueries.length > 0 && !query && (
-          <div className="px-4 py-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-2 overflow-x-auto text-xs font-mono">
-            <Clock className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
-            <span className="text-[var(--md-sys-color-on-surface-variant)] shrink-0">Recent:</span>
-            {recentQueries.slice(0, 5).map((q, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setQuery(q)}
-                className="px-2 py-0.5 rounded bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:text-[var(--md-sys-color-primary)] whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Results List */}
-        <div ref={listRef} className="overflow-y-auto p-2 divide-y divide-[var(--md-sys-color-outline-variant)]">
-          {filteredItems.length === 0 ? (
-            <div className="py-12 text-center text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-              No matching calculators, units, saved records, or equations found for &quot;{query}&quot;.
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Engineering Command Palette and Search"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-start justify-center pt-14 md:pt-20 px-4 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -16 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 380 }}
+            className="w-full max-w-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Search Input Field */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+              <Search className="w-5 h-5 text-[var(--md-sys-color-primary)] shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setSelectedIndex(0);
+                }}
+                placeholder="Type a command, module, calculation, BOQ item, or formula..."
+                className="w-full bg-transparent border-0 outline-hidden font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]"
+              />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <kbd className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] shadow-2xs">
+                  ESC
+                </kbd>
+              </div>
             </div>
-          ) : (
-            filteredItems.map((item, index) => {
-              const isSelected = index === selectedIndex;
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => executeItem(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                  className={`px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]'
-                      : 'hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold uppercase opacity-80 px-1 py-0.2 rounded bg-black/5 dark:bg-white/10">
-                        {item.category}
-                      </span>
-                      <span className="text-xs font-bold truncate">{item.title}</span>
-                    </div>
-                    <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] truncate mt-0.5">
-                      {item.description}
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {item.shortcut && (
-                      <kbd className="px-1.5 py-0.5 text-[9.5px] font-mono rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]">
-                        {item.shortcut}
-                      </kbd>
-                    )}
-                    {isSelected && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold opacity-90">
-                        <span>Select</span>
-                        <CornerDownLeft className="w-3.5 h-3.5" />
-                      </span>
-                    )}
-                  </div>
+            {/* Recent Search Queries Strip (if any) */}
+            {recentQueries.length > 0 && !query && (
+              <div className="px-5 py-2.5 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex items-center gap-2 overflow-x-auto text-xs font-mono">
+                <Clock className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
+                <span className="text-[var(--md-sys-color-on-surface-variant)] shrink-0 font-semibold">Recent:</span>
+                {recentQueries.slice(0, 5).map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setQuery(q)}
+                    className="px-2.5 py-1 rounded-lg bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:text-[var(--md-sys-color-primary)] hover:border-[var(--md-sys-color-outline)] border border-transparent whitespace-nowrap shrink-0 cursor-pointer transition-all btn-tactile text-[11px]"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Results List */}
+            <div ref={listRef} className="overflow-y-auto p-3 divide-y divide-[var(--md-sys-color-outline-variant)]/60 custom-scrollbar">
+              {filteredItems.length === 0 ? (
+                <div className="py-14 text-center text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                  No matching calculators, units, saved records, or equations found for &quot;{query}&quot;.
                 </div>
-              );
-            })
-          )}
-        </div>
+              ) : (
+                filteredItems.map((item, index) => {
+                  const isSelected = index === selectedIndex;
+                  return (
+                    <motion.div
+                      key={item.id}
+                      onClick={() => executeItem(item)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      whileHover={{ scale: 1.005 }}
+                      whileTap={{ scale: 0.99 }}
+                      className={`px-3.5 py-3 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-xs font-medium'
+                          : 'hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold uppercase opacity-85 px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/10">
+                            {item.category}
+                          </span>
+                          <span className="text-xs font-bold truncate">{item.title}</span>
+                        </div>
+                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] truncate mt-1">
+                          {item.description}
+                        </div>
+                      </div>
 
-        {/* Footer shortcuts */}
-        <div className="px-4 py-2 bg-[var(--md-sys-color-surface-container)] border-t border-[var(--md-sys-color-outline-variant)] flex items-center justify-between text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          <div className="flex items-center gap-3">
-            <span>↑↓ Navigate</span>
-            <span>↵ Select</span>
-            <span>Esc Close</span>
-          </div>
-          <span>Indexed {allItems.length} Commands, Calculations &amp; Modules</span>
-        </div>
-      </div>
-    </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.shortcut && (
+                          <kbd className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline)]/40 shadow-2xs">
+                            {item.shortcut}
+                          </kbd>
+                        )}
+                        {isSelected && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold opacity-95 text-[var(--md-sys-color-primary)]">
+                            <span>Open</span>
+                            <CornerDownLeft className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer shortcuts */}
+            <div className="px-5 py-3 bg-[var(--md-sys-color-surface-container)] border-t border-[var(--md-sys-color-outline-variant)] flex items-center justify-between text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+              <div className="flex items-center gap-3">
+                <span>↑↓ Navigate</span>
+                <span>↵ Select</span>
+                <span>Esc Close</span>
+              </div>
+              <span className="font-semibold">Indexed {allItems.length} Commands, Solvers &amp; Modules</span>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

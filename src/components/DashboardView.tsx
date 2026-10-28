@@ -239,23 +239,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-              <span className="px-2.5 py-0.5 rounded-full font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
-                Active Project
-              </span>
               <span className="font-bold text-[var(--md-sys-color-primary)]">[{activeWorkspace.projectCode}]</span>
-              <span className="opacity-50">·</span>
+              <span className="text-[var(--md-sys-color-on-surface-variant)] opacity-50">·</span>
               <span className="text-[var(--md-sys-color-on-surface-variant)]">{activeWorkspace.siteLocation}</span>
-              <span className="opacity-50">·</span>
+              <span className="text-[var(--md-sys-color-on-surface-variant)] opacity-50">·</span>
               <span className="text-[var(--md-sys-color-on-surface-variant)]">Code: {activeWorkspace.governingCode}</span>
-              <span className="opacity-50">·</span>
-              <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+              <span className="text-[var(--md-sys-color-on-surface-variant)] opacity-50">·</span>
+              <span className={`font-bold text-[10px] uppercase tracking-wider ${
                 projectStatus === 'critical'
-                  ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                  ? 'text-rose-600 dark:text-rose-400'
                   : projectStatus === 'warning'
-                  ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
-                  : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-emerald-600 dark:text-emerald-400'
               }`}>
-                {projectStatus === 'critical' ? 'LIMIT EXCEEDED' : projectStatus === 'warning' ? 'CHECK LIMIT' : 'LIMITS VERIFIED'}
+                {projectStatus === 'critical' ? 'Limit Exceeded' : projectStatus === 'warning' ? 'Check Limit' : 'Limits Verified'}
               </span>
             </div>
 
@@ -308,7 +305,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onDirectDownloadPdf}
-              className="touch-target-48 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-2 cursor-pointer shadow-xs transition-colors"
+              className="touch-target-48 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-2 cursor-pointer shadow-xs transition-all btn-tactile"
               title="Download Certified PDF Submittal Report (jsPDF)"
             >
               <Download className="w-4 h-4 shrink-0" />
@@ -318,7 +315,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onOpenPrintPreview}
-              className="touch-target-48 px-4 py-2.5 rounded-2xl bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] text-xs font-semibold inline-flex items-center gap-2 cursor-pointer shadow-xs transition-opacity"
+              className="touch-target-48 px-4 py-2.5 rounded-2xl bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] text-xs font-semibold inline-flex items-center gap-2 cursor-pointer shadow-xs transition-all btn-tactile"
               title="Print Preview Modal with QR & Official Stamp"
             >
               <Printer className="w-4 h-4 shrink-0" />
@@ -328,7 +325,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onOpenWorkspaceManager}
-              className="touch-target-48 px-3.5 py-2.5 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="touch-target-48 px-3.5 py-2.5 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all btn-tactile"
               title="Switch or Manage Project Workspaces"
             >
               <FolderArchive className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
@@ -338,7 +335,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onOpenNewWorkspace}
-              className="touch-target-48 px-3.5 py-2.5 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="touch-target-48 px-3.5 py-2.5 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all btn-tactile"
               title="Create New Project Workspace"
             >
               <Plus className="w-4 h-4 shrink-0" />
@@ -577,13 +574,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <Icon className="w-5 h-5" />
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${catColor.bg} ${catColor.text} ${catColor.border}`}>
-                        {cat}
-                      </span>
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
-                        {meta.shortLabel}
-                      </span>
+                    <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5 uppercase font-semibold">
+                      <span className={catColor.text}>{cat}</span>
+                      <span className="opacity-40">·</span>
+                      <span>{meta.shortLabel}</span>
                     </div>
                   </div>
 

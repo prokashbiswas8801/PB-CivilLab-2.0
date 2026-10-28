@@ -132,11 +132,46 @@ export type TakeoffCategory =
   | 'electrical'
   | 'misc';
 
+export interface WBSSection {
+  id: string; // e.g. 'sec-100'
+  code: string; // e.g. '100'
+  title: string; // e.g. 'Section 100: General & Site Preliminaries'
+  category: TakeoffCategory;
+  description?: string;
+}
+
+export interface VendorBidQuote {
+  vendorName: string;
+  unitRate: number;
+  notes?: string;
+}
+
+export interface BidTabulationItem {
+  id: string;
+  itemId?: string;
+  itemDescription: string;
+  category: TakeoffCategory;
+  unit: TakeoffUnit;
+  quantity: number;
+  engineersEstimateRate: number;
+  vendor1: VendorBidQuote;
+  vendor2: VendorBidQuote;
+  vendor3: VendorBidQuote;
+}
+
+export interface BidTabulationData {
+  vendor1Name: string;
+  vendor2Name: string;
+  vendor3Name: string;
+  items: BidTabulationItem[];
+}
+
 export interface TakeoffLineItem {
   id: string;
   itemNo: string;
   description: string;
   category: TakeoffCategory;
+  wbsSectionId?: string; // e.g. 'sec-100', 'sec-200'
   numberOfMembers: number; // Multiplier / Nos (>= 1)
   lengthM: number;
   widthM: number;
@@ -145,6 +180,11 @@ export interface TakeoffLineItem {
   unit: TakeoffUnit;
   wastagePercent: number; // e.g. 3-5%
   unitRate: number; // price per unit in workspace currency
+  // Scheduling & Cash Flow S-Curve Linkage:
+  startMonth?: number; // 1-indexed project month
+  durationMonths?: number; // Month duration
+  curveDistribution?: 's-curve' | 'linear' | 'early-peak' | 'late-peak';
+  vendorSource?: string;
 }
 
 export interface BOQParameters {
@@ -153,6 +193,13 @@ export interface BOQParameters {
   contractorOverheadPercent: number; // CP&OH e.g. 10%
   vatTaxPercent: number; // e.g. 7.5% or 15%
   items: TakeoffLineItem[];
+  // Advanced QS & Tender Management:
+  rateLibraryId?: 'pwd-2024' | 'pwd-2025' | 'lged-2024' | 'commercial' | 'custom';
+  regionalDistrictId?: string; // e.g. 'dhaka', 'chittagong', 'sylhet', etc.
+  regionalMultiplier?: number; // e.g. 1.00, 1.05
+  projectDurationMonths?: number; // Total construction duration (e.g. 12 months)
+  retainagePercent?: number; // Retention money withheld e.g. 5% or 10%
+  bidTabulation?: BidTabulationData;
 }
 
 /* -------------------------------------------------------------

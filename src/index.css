@@ -10,6 +10,8 @@
     --md-sys-color-on-background: #0f172a;
     --md-sys-color-surface: #ffffff;
     --md-sys-color-surface-dim: #f1f5f9;
+    --md-sys-color-surface-bright: #ffffff;
+    --md-sys-color-surface-container-lowest: #ffffff;
     --md-sys-color-surface-container-low: #f8fafc;
     --md-sys-color-surface-container: #f1f5f9;
     --md-sys-color-surface-container-high: #e2e8f0;
@@ -46,22 +48,24 @@
 
   .dark {
     /* Material 3 Design Tokens — Dark Theme (High-Contrast Jobsite Obsidian) */
-    --md-sys-color-background: #090d16;
-    --md-sys-color-on-background: #f1f5f9;
-    --md-sys-color-surface: #0f172a;
-    --md-sys-color-surface-dim: #090d16;
-    --md-sys-color-surface-container-low: #111827;
-    --md-sys-color-surface-container: #1e293b;
-    --md-sys-color-surface-container-high: #334155;
-    --md-sys-color-surface-container-highest: #475569;
+    --md-sys-color-background: #050811;
+    --md-sys-color-on-background: #f8fafc;
+    --md-sys-color-surface: #0c1220;
+    --md-sys-color-surface-dim: #050811;
+    --md-sys-color-surface-bright: #162035;
+    --md-sys-color-surface-container-lowest: #070b16;
+    --md-sys-color-surface-container-low: #0f172a;
+    --md-sys-color-surface-container: #182236;
+    --md-sys-color-surface-container-high: #24324d;
+    --md-sys-color-surface-container-highest: #334363;
     --md-sys-color-on-surface: #f8fafc;
     --md-sys-color-on-surface-variant: #94a3b8;
-    --md-sys-color-outline: #334155;
-    --md-sys-color-outline-variant: #1e293b;
+    --md-sys-color-outline: #2d3c56;
+    --md-sys-color-outline-variant: #19253c;
 
     --md-sys-color-primary: #38bdf8;
     --md-sys-color-on-primary: #082f49;
-    --md-sys-color-primary-container: #0c4a6e;
+    --md-sys-color-primary-container: #075985;
     --md-sys-color-on-primary-container: #e0f2fe;
 
     --md-sys-color-secondary: #60a5fa;
@@ -434,19 +438,22 @@
   --md-sys-color-background: #ffffff !important;
   --md-sys-color-on-background: #000000 !important;
   --md-sys-color-surface: #ffffff !important;
-  --md-sys-color-surface-dim: #f1f5f9 !important;
+  --md-sys-color-surface-dim: #f8fafc !important;
   --md-sys-color-surface-container-low: #ffffff !important;
-  --md-sys-color-surface-container: #e2e8f0 !important;
-  --md-sys-color-surface-container-high: #cbd5e1 !important;
-  --md-sys-color-surface-container-highest: #94a3b8 !important;
+  --md-sys-color-surface-container: #f1f5f9 !important;
+  --md-sys-color-surface-container-high: #e2e8f0 !important;
+  --md-sys-color-surface-container-highest: #cbd5e1 !important;
   --md-sys-color-on-surface: #000000 !important;
   --md-sys-color-on-surface-variant: #000000 !important;
   --md-sys-color-outline: #000000 !important;
-  --md-sys-color-outline-variant: #1e293b !important;
-  --md-sys-color-primary: #0036a6 !important;
+  --md-sys-color-outline-variant: #000000 !important;
+  --md-sys-color-primary: #002b80 !important;
   --md-sys-color-on-primary: #ffffff !important;
-  --md-sys-color-primary-container: #bfdbfe !important;
+  --md-sys-color-primary-container: #dbeafe !important;
   --md-sys-color-on-primary-container: #001040 !important;
+  --md-sys-color-tertiary: #b45309 !important;
+  --md-sys-color-tertiary-container: #fef3c7 !important;
+  --md-sys-color-on-tertiary-container: #451a03 !important;
   font-weight: 500 !important;
   -webkit-font-smoothing: antialiased;
 }
@@ -468,6 +475,37 @@
 .sunlight-mode .dcr-gauge-track {
   border: 2px solid #000000 !important;
   background-color: #e2e8f0 !important;
+}
+
+/* Material 3 (Material You) Card & Container Standards */
+.m3-card {
+  border-radius: 1.25rem; /* rounded-2xl */
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 1024px) {
+  .m3-card {
+    border-radius: 1.5rem; /* rounded-3xl */
+  }
+}
+
+.m3-card-interactive {
+  cursor: pointer;
+  user-select: none;
+}
+.m3-card-interactive:hover {
+  border-color: var(--md-sys-color-outline);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+.dark .m3-card-interactive:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+}
+.m3-card-interactive:active {
+  transform: scale(0.985) translateY(0);
 }
 
 /* Tactile Micro-Interactions & Haptic-Like Transitions */
@@ -492,14 +530,24 @@
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
 }
 
-/* Celebration Sparkle Pulse Animation */
+/* Celebration Sparkle & Checkmark Pulse Animation */
 @keyframes celebrate-pulse {
-  0% { transform: scale(0.92); opacity: 0.8; }
-  50% { transform: scale(1.04); opacity: 1; }
+  0% { transform: scale(0.85); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
 
 .animate-celebrate {
-  animation: celebrate-pulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: celebrate-pulse 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes checkmark-spring {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  70% { transform: scale(1.15) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.animate-checkmark-spring {
+  animation: checkmark-spring 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
