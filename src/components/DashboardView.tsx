@@ -118,6 +118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     'continuous-beam': 'structural',
     'pile-capacity': 'geotech',
     'pipe-hydraulics': 'hydraulics',
+    'surveying-suite': 'geotech',
   };
 
   // Engineering formulas and methods associated with each solver module
@@ -136,6 +137,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     'continuous-beam': ['Clapeyron Three-Moment Equation', 'Multi-Span Moment Redistribution', 'Bending Envelope', 'Support Reactions'],
     'pile-capacity': ['Static Pile Bearing', 'Alpha Method (Cohesion)', 'Beta Method (Friction)', 'Total Ultimate Q_ult'],
     'pipe-hydraulics': ['Darcy-Weisbach Head Loss', 'Hazen-Williams Equation', 'Colebrook-White Friction f', 'Reynolds Number Re'],
+    'surveying-suite': ["Heron's Formula", 'Shoelace Algorithm', 'Rise & Fall Leveling', 'Height of Instrument (HI)', 'Decimal / Katha / Acre'],
   };
 
   // Filter modules based on search, formulas, and category

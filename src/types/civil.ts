@@ -22,7 +22,8 @@ export type EngineeringModuleId =
   | 'open-channel'
   | 'continuous-beam'
   | 'pile-capacity'
-  | 'pipe-hydraulics';
+  | 'pipe-hydraulics'
+  | 'surveying-suite';
 
 export type BuildingCode = 'BNBC-2020' | 'ACI-318' | 'IS-456';
 

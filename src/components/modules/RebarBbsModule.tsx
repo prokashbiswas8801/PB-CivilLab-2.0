@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
   CivilWorkspace,
   StructuralElementType,
@@ -7,7 +8,10 @@ import {
 import { RebarBBSResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
-import { FileSpreadsheet, FileDown } from 'lucide-react';
+import { FileSpreadsheet, FileDown, Layers, TableProperties } from 'lucide-react';
+import { BBSGenerator } from '../calculators/civil/BBSGenerator';
+
+export { BBSGenerator };
 
 export interface RebarBbsInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -24,6 +28,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
   getFieldUnit,
   updateFieldUnit,
 }) => {
+  const [bbsMode, setBbsMode] = useState<'element' | 'workbench'>('workbench');
   const bbs = activeWorkspace.rebarBbs;
 
   const updateBBS = (patch: Partial<typeof bbs>) => {
@@ -37,8 +42,40 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* RCC Element Type Switcher */}
-      <div>
+      {/* Workbench vs Single Element Mode Switcher */}
+      <div className="flex items-center justify-between p-1.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
+        <button
+          type="button"
+          onClick={() => setBbsMode('workbench')}
+          className={`flex-1 min-h-[44px] touch-target-48 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+            bbsMode === 'workbench'
+              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
+              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+          }`}
+        >
+          <TableProperties className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+          <span>Multi-Row Bar Bending Schedule (BBS Workbench)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setBbsMode('element')}
+          className={`flex-1 min-h-[44px] touch-target-48 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+            bbsMode === 'element'
+              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
+              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-[var(--md-sys-color-secondary)]" />
+          <span>Single RCC Element Sizer (Slab, Col, Footing)</span>
+        </button>
+      </div>
+
+      {bbsMode === 'workbench' ? (
+        <BBSGenerator />
+      ) : (
+        <>
+          {/* RCC Element Type Switcher */}
+          <div>
         <label className="block text-xs font-semibold mb-1.5 text-[var(--md-sys-color-on-surface)]">
           RCC Structural Element
         </label>
@@ -672,6 +709,8 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             />
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -107,6 +107,7 @@ export const SIDEBAR_CATEGORIES: SidebarCategory[] = [
       { id: 'concrete-mix-design', name: 'Concrete Mix Design', subtitle: 'ACI 211.1 Absolute Volume', moduleId: 'concrete-mix', actionType: 'module' },
       { id: 'materials-takeoff', name: 'Brickwork, Plaster & Tiles', subtitle: 'Opening Deductions & Mortar', moduleId: 'masonry-finishes', actionType: 'module' },
       { id: 'rebar-bbs-generator', name: 'Bar Bending Schedule (BBS)', subtitle: 'Exact Bar Cutting & Tonnage', moduleId: 'rebar-bbs', actionType: 'module' },
+      { id: 'surveying-land-suite', name: 'Surveying & Land Suite', subtitle: 'Irregular Land & Leveling Book', moduleId: 'surveying-suite', actionType: 'module', badge: 'Survey' },
       { id: 'site-qc-checklists', name: 'Site QA/QC Checklists', subtitle: 'Pre-pour & Compaction Audits', actionType: 'site-qc', badge: 'Field' },
       { id: 'boq-master-schedule', name: 'BOQ Estimator & Takeoff', subtitle: 'L×W×H Multi-Currency Sheet', moduleId: 'boq-estimator', actionType: 'module' },
       { id: 'rate-analysis-trades', name: 'Granular Unit Rate Analysis', subtitle: '1 m³ RCC & Composite Trades', moduleId: 'rate-analysis', actionType: 'module' },

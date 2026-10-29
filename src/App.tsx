@@ -56,6 +56,7 @@ import {
   LayoutDashboard,
   Loader2,
   FileDown,
+  Compass,
 } from 'lucide-react';
 import {
   exportAnalyticalScheduleCsv,
@@ -228,6 +229,7 @@ import {
   PipeHydraulicsMetrics,
   CalculationHistoryLedger,
 } from './components/modules';
+import { BBSGenerator, SurveyingSuite } from './components/calculators/civil';
 import { SYSTEM_PRESET_UNITS } from './utils/unitEngine';
 
 const MODULE_META: Record<
@@ -317,6 +319,12 @@ const MODULE_META: Record<
     shortLabel: 'Pipe Hydraulics',
     codeStandard: 'Hazen-Williams / Reynolds',
     icon: Waves,
+  },
+  'surveying-suite': {
+    label: 'Surveying & Land Measurement Suite',
+    shortLabel: 'Surveying Suite',
+    codeStandard: 'Heron / Shoelace / Differential Leveling',
+    icon: Compass,
   },
 };
 
@@ -719,6 +727,16 @@ export default function App() {
       case 'continuous-beam': return continuousBeamEnvelope;
       case 'pile-capacity': return pileEnvelope;
       case 'pipe-hydraulics': return pipeEnvelope;
+      case 'surveying-suite':
+        return {
+          status: 'valid' as const,
+          issues: [],
+          result: {
+            title: 'Surveying Field Leveling & Land Area',
+            summary: 'Differential Leveling Arithmetic Check & Irregular Area Computations',
+            status: 'valid',
+          },
+        };
       default: return boqEnvelope;
     }
   }, [
@@ -3020,8 +3038,13 @@ export default function App() {
               </div>
             )}
 
-            {/* Split Screen Grids */}
-            <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Split Screen Grids or Dedicated Surveying Suite */}
+            {activeModule === 'surveying-suite' ? (
+              <div className="p-4 md:p-6">
+                <SurveyingSuite />
+              </div>
+            ) : (
+              <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Pane: Parameter Input Form with Smooth Unit Transition */}
               <motion.section
                 key={`inputs-pane-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
@@ -3754,6 +3777,7 @@ export default function App() {
                 />
               </motion.section>
             </div>
+            )}
               </>
             )}
 
