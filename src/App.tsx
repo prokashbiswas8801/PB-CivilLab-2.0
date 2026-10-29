@@ -54,6 +54,8 @@ import {
   ChevronDown,
   ChevronUp,
   LayoutDashboard,
+  Loader2,
+  FileDown,
 } from 'lucide-react';
 import {
   exportAnalyticalScheduleCsv,
@@ -164,6 +166,8 @@ import { DashboardView } from './components/DashboardView';
 import { DcrCapacityGauge, DcrGaugeSuite } from './components/DcrCapacityGauge';
 import { CelebrationToast, ToastMessage } from './components/CelebrationToast';
 import { exportCertifiedEngineeringPdf, PdfExportProgress } from './utils/pdfExport';
+import { exportCertifiedReportPDF, exportModuleCSV, exportBoqCSV } from './utils/exportEngine';
+import { FloatingActionBar } from './components/FloatingActionBar';
 import { PdfExportProgressModal } from './components/PdfExportProgressModal';
 import { syncAllModulesToBoq, syncRebarBbsToBoq, syncConcreteMixToBoq } from './utils/boqAutoSync';
 import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
@@ -174,11 +178,18 @@ import {
   CustomUnitModal,
   PersistenceInspectorModal,
   HistoryDrawer,
+  ArchitectureByLawsModal,
+  CadUtilitiesModal,
+  SiteQcModal,
 } from './components/modals';
+import { Sidebar } from './components/layout/Sidebar';
+import { Topbar } from './components/layout/Topbar';
+import { Dashboard } from './components/dashboard/Dashboard';
 import { SidebarToolbar } from './components/SidebarToolbar';
 import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
 import { ReportVerificationView } from './components/ReportVerificationView';
 import { VerifySubmittalModal } from './components/VerifySubmittalModal';
+import { useWorkbench } from './context/WorkbenchContext';
 import {
   PublicEngineeringReportRecord,
   decodeVerificationToken,
@@ -319,6 +330,7 @@ function RuntimeFaultProbe({ shouldThrow }: { shouldThrow: boolean }) {
 }
 
 export default function App() {
+  const workbench = useWorkbench();
   const [appState, setAppState] = useState<CivilLabSchemaV2>(() => loadPersistedState());
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -405,6 +417,11 @@ export default function App() {
   const [activeReportQr, setActiveReportQr] = useState<GeneratedReportQrResult | null>(null);
   const [verifiedReportRecord, setVerifiedReportRecord] = useState<PublicEngineeringReportRecord | null>(null);
   const [verifySubmittalModalOpen, setVerifySubmittalModalOpen] = useState(false);
+  const [architectureModalOpen, setArchitectureModalOpen] = useState(false);
+  const [architectureInitialTab, setArchitectureInitialTab] = useState<'far' | 'watertank' | 'septictank'>('far');
+  const [cadModalOpen, setCadModalOpen] = useState(false);
+  const [cadInitialTab, setCadInitialTab] = useState<'viewport' | 'shortcuts' | 'excel'>('viewport');
+  const [siteQcModalOpen, setSiteQcModalOpen] = useState(false);
 
   // File Inputs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1205,6 +1222,13 @@ export default function App() {
     setIsUnitSystemTransitioning(true);
     setUnitTransitionKey((prev) => prev + 1);
 
+    // Synchronize global workbench unit system
+    if (preset === 'imperial') {
+      workbench.setUnitSystem('Imperial');
+    } else if (preset === 'metric') {
+      workbench.setUnitSystem('SI');
+    }
+
     updateActiveWorkspace((ws) => ({
       ...ws,
       unitPreferences: {
@@ -1222,10 +1246,17 @@ export default function App() {
     }, 380);
   };
 
-  const handleSetModule = (moduleId: EngineeringModuleId) => {
-    updateActiveWorkspace((ws) => ({ ...ws, activeModule: moduleId }));
+  const handleSetModule = (moduleId: EngineeringModuleId, subAction?: string) => {
+    updateActiveWorkspace((ws) => {
+      let nextWs = { ...ws, activeModule: moduleId };
+      if (subAction === 'staircase') {
+        nextWs.rebarBbs = { ...ws.rebarBbs, elementType: 'staircase' };
+      }
+      return nextWs;
+    });
     setIsDashboardView(false);
     setMobileDrawerOpen(false);
+    workbench.recordToolUsage(moduleId);
   };
 
   const handleOpenDashboard = () => {
@@ -1660,72 +1691,13 @@ export default function App() {
   // Export BOQ Takeoff as CSV Spreadsheet
   const handleExportBOQCSV = () => {
     if (!boqEnvelope.result) return;
-    const res = boqEnvelope.result;
-    const headers = [
-      'Item No',
-      'Description',
-      'Category',
-      'Nos (Count)',
-      'Length (m)',
-      'Width (m)',
-      'Height (m)',
-      'Deduction',
-      'Unit',
-      'Gross Qty',
-      'Net Qty',
-      'Wastage (%)',
-      'Billable Qty',
-      `Unit Rate (${res.currency})`,
-      `Total Amount (${res.currency})`,
-    ];
-
-    const rows = res.items.map((it) => [
-      `"${it.itemNo}"`,
-      `"${it.description.replace(/"/g, '""')}"`,
-      `"${it.category}"`,
-      it.numberOfMembers,
-      it.lengthM,
-      it.widthM,
-      it.heightM,
-      it.deductionQty,
-      `"${it.unit}"`,
-      it.grossQty,
-      it.netQty,
-      it.wastagePercent,
-      it.totalBillableQty,
-      it.unitRate,
-      it.itemTotalAmount,
-    ]);
-
-    // Footer summary
-    rows.push([]);
-    rows.push(['Subtotal Amount', '', '', '', '', '', '', '', '', '', '', '', '', '', res.subtotalAmount]);
-    rows.push([`Contingency (${res.contingencyPercent}%)`, '', '', '', '', '', '', '', '', '', '', '', '', '', res.contingencyAmount]);
-    rows.push([`Contractor Profit & Overhead (${res.contractorOverheadPercent}%)`, '', '', '', '', '', '', '', '', '', '', '', '', '', res.contractorOverheadAmount]);
-    rows.push([`VAT / Tax (${res.vatTaxPercent}%)`, '', '', '', '', '', '', '', '', '', '', '', '', '', res.vatTaxAmount]);
-    rows.push([`GRAND TOTAL BOQ (${res.currency})`, '', '', '', '', '', '', '', '', '', '', '', '', '', res.grandTotalAmount]);
-
-    const brandComments = [
-      '# PB CivilLab — Quantity Takeoff & BOQ Schedule',
-      '# CALCULATE SMARTER. BUILD BETTER.',
-      '# Developed & Designed by PROKASH BISWAS',
-      `# Project: ${activeWorkspace.name} [${activeWorkspace.projectCode}]`,
-      `# Site: ${activeWorkspace.siteLocation} | EOR: ${activeWorkspace.engineerOfRecord}`,
-      `# Export Timestamp: ${new Date().toISOString()}`,
-      '',
-    ].join('\n');
-
-    const csvContent = brandComments + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `takeoff-boq-${activeWorkspace.projectCode}-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setToastBanner('Exported Takeoff & BOQ CSV spreadsheet');
+    exportBoqCSV(activeWorkspace, boqEnvelope.result, userProfile);
+    setToastBanner('Exported Takeoff & BOQ CSV spreadsheet (UTF-8 BOM)');
+    triggerCelebration(
+      'Exported BOQ Spreadsheet',
+      `Saved ${activeWorkspace.projectCode} Takeoff & BOQ Schedule with Excel UTF-8 BOM encoding.`,
+      'celebrate'
+    );
   };
 
   // Copy analytical calculation summary
@@ -1774,8 +1746,13 @@ export default function App() {
       setToastBanner('No active analytical calculation result to export.');
       return;
     }
-    exportAnalyticalScheduleCsv(activeModule, activeWorkspace, currentEnvelope, userProfile);
-    setToastBanner(`Exported ${MODULE_META[activeModule].shortLabel} Schedule to CSV`);
+    exportModuleCSV(activeModule, activeWorkspace, currentEnvelope, userProfile);
+    setToastBanner(`Exported ${MODULE_META[activeModule].shortLabel} Schedule to Excel (CSV)`);
+    triggerCelebration(
+      'Exported Excel CSV Schedule',
+      `Saved ${MODULE_META[activeModule].shortLabel} calculation schedule with UTF-8 BOM encoding.`,
+      'info'
+    );
   };
 
   // Helper to construct and inject printable A4 submittal report with verified QR code into pb-printable-report
@@ -1983,16 +1960,16 @@ export default function App() {
       });
       setToastBanner('Starting certified A4 engineering PDF generation (10%)...');
 
-      await exportCertifiedEngineeringPdf({
-        workspace: activeWorkspace,
+      await exportCertifiedReportPDF(
         activeModule,
-        envelope: currentEnvelope,
+        activeWorkspace,
+        currentEnvelope,
         userProfile,
-        onProgress: (progress) => {
+        (progress) => {
           setPdfExportProgress(progress);
           setToastBanner(`Exporting PDF: ${progress.percent}% · ${progress.stage}`);
-        },
-      });
+        }
+      );
 
       // Brief completion stage to show 100% completion before dismissal
       setPdfExportProgress({
@@ -2375,6 +2352,20 @@ export default function App() {
       ...prev,
       calculationHistory: [newRecord, ...prev.calculationHistory],
     }));
+
+    try {
+      workbench.saveCalculationSnapshot({
+        moduleId: activeModule,
+        moduleName: MODULE_META[activeModule]?.label || activeModule,
+        title: `${MODULE_META[activeModule]?.label || activeModule} — ${activeWorkspace.name}`,
+        unitSystem: workbench.unitSystem,
+        status: newRecord.status === 'nominal' ? 'valid' : newRecord.status === 'warning' ? 'warning' : 'invalid',
+        summaryMetrics: (newRecord.keyMetrics || []).map((m) => ({ label: m.label, value: m.value, unit: m.unit })),
+        inputsSnapshot: newRecord.inputsSnapshot as Record<string, unknown>,
+      });
+    } catch {
+      // Non-blocking
+    }
 
     triggerCelebration(
       'Analytical Snapshot Logged',
@@ -2776,6 +2767,9 @@ export default function App() {
         onQuickPrint={handleQuickPrintA4Report}
         onExportPdf={handleDirectDownloadPdf}
         onOpenVerification={() => setVerifySubmittalModalOpen(true)}
+        onOpenArchitectureModal={() => setArchitectureModalOpen(true)}
+        onOpenCadModal={() => setCadModalOpen(true)}
+        onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={undoStack.length > 0}
@@ -2811,709 +2805,42 @@ export default function App() {
         />
       ) : (
         <div className="screen-app-container h-screen h-[100dvh] flex flex-col bg-[var(--md-sys-color-background)] text-[var(--md-sys-color-on-background)] overflow-hidden print:hidden">
-        {/* Top Bar Contract: 3 Zones */}
-        <header className="shrink-0 z-30 flex items-center justify-between gap-4 md:gap-8 px-4 md:px-6 h-16 bg-[var(--md-sys-color-surface)] border-b border-[var(--md-sys-color-outline-variant)]">
-          {/* Zone 1: Brand & Project Switcher */}
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => setMobileDrawerOpen(true)}
-              aria-label="Open navigation drawer"
-              className="lg:hidden touch-target-48 -ml-2 inline-flex items-center justify-center rounded-lg text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <Logo
-              variant="full"
-              size="md"
-              asLink={true}
-              href="/"
-              onClick={() => handleOpenDashboard()}
-              className="shrink-0"
-            />
+          {/* Sticky Global Topbar */}
+          <Topbar
+            onToggleMobileSidebar={() => setMobileDrawerOpen((prev) => !prev)}
+            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+            themePreference={appState.themePreference}
+            onSelectTheme={handleThemeChange}
+            onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
+            onDirectDownloadPdf={handleDirectDownloadPdf}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={undoStack.length > 0}
+            canRedo={redoStack.length > 0}
+          />
 
-            {/* Quick Workspace Switcher Button */}
-            <button
-              type="button"
-              onClick={() => setWorkspaceManagerOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline-variant)] cursor-pointer transition-colors"
-              title="Manage Project Workspaces"
-            >
-              <FolderArchive className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate max-w-[130px]">{activeWorkspace.name}</span>
-              <span className="opacity-70 text-[10px]">({activeWorkspace.currency})</span>
-            </button>
-          </div>
-
-          {/* Zone 2: Module Navigation & Command Palette Trigger */}
-          <div className="hidden xl:flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setCommandPaletteOpen(true)}
-              className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] inline-flex items-center gap-2 transition-colors cursor-pointer"
-            >
-              <Search className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-              <span>Search modules & formulas</span>
-              <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] text-[10px]">
-                Ctrl K or /
-              </kbd>
-            </button>
-
-            <nav
-              aria-label="Primary Engineering Modules"
-              className="flex items-center gap-2 text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] overflow-x-auto"
-            >
-              <button
-                type="button"
-                onClick={handleOpenDashboard}
-                className={`touch-target-48 px-2 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 border-b-2 transition-colors cursor-pointer ${
-                  isDashboardView
-                    ? 'border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] font-bold'
-                    : 'border-transparent hover:text-[var(--md-sys-color-on-surface)] hover:border-[var(--md-sys-color-outline)]'
-                }`}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                <span>Dashboard</span>
-              </button>
-
-              {(Object.keys(MODULE_META) as EngineeringModuleId[]).map((modId) => {
-                const isCurrent = !isDashboardView && activeModule === modId;
-                return (
-                  <button
-                    key={modId}
-                    type="button"
-                    onClick={() => handleSetModule(modId)}
-                    className={`touch-target-48 px-1 inline-flex items-center whitespace-nowrap shrink-0 border-b-2 transition-colors cursor-pointer ${
-                      isCurrent
-                        ? 'border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] font-bold'
-                        : 'border-transparent hover:text-[var(--md-sys-color-on-surface)] hover:border-[var(--md-sys-color-outline)]'
-                    }`}
-                  >
-                    {MODULE_META[modId].shortLabel}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Zone 3: Primary Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Undo / Redo Global Header Controls */}
-            <div className="hidden sm:flex items-center gap-1 border-r border-[var(--md-sys-color-outline-variant)] pr-2">
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={undoStack.length === 0}
-                className={`touch-target-48 p-2 rounded-lg border border-[var(--md-sys-color-outline)] transition-colors cursor-pointer ${
-                  undoStack.length > 0
-                    ? 'hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
-                    : 'opacity-30 cursor-not-allowed text-[var(--md-sys-color-on-surface-variant)]'
-                }`}
-                title="Undo last change (Ctrl+Z)"
-                aria-label="Undo last change"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={redoStack.length === 0}
-                className={`touch-target-48 p-2 rounded-lg border border-[var(--md-sys-color-outline)] transition-colors cursor-pointer ${
-                  redoStack.length > 0
-                    ? 'hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
-                    : 'opacity-30 cursor-not-allowed text-[var(--md-sys-color-on-surface-variant)]'
-                }`}
-                title="Redo change (Ctrl+Y)"
-                aria-label="Redo change"
-              >
-                <RotateCw className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* History Drawer Header Button */}
-            <button
-              type="button"
-              onClick={() => setIsHistoryDrawerOpen(true)}
-              className="touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-1.5 cursor-pointer relative"
-              title="Calculation Session History Ledger (Ctrl+H)"
-              aria-label="Open session calculation history ledger"
-            >
-              <History className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-              <span className="hidden lg:inline">History</span>
-              {appState.calculationHistory.length > 0 && (
-                <span className="min-w-4 h-4 px-1 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-[10px] font-mono font-bold flex items-center justify-center">
-                  {appState.calculationHistory.length > 99 ? '99+' : appState.calculationHistory.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCommandPaletteOpen(true)}
-              className="xl:hidden touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center cursor-pointer"
-              title="Search commands (Ctrl+K)"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenProfileModal('presets')}
-              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] items-center gap-1.5 cursor-pointer"
-              title="Engineering Presets & Standard Mixes"
-            >
-              <BookmarkCheck className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-              <span className="hidden lg:inline">Presets</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPrintPreviewModalOpen(true)}
-              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] items-center gap-1.5 cursor-pointer btn-tactile"
-              title="Print Preview & Vector PDF Submittal Engine"
-            >
-              <Printer className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-              <span className="hidden xl:inline">Print / PDF</span>
-            </button>
-
-            {/* Verify Engineering Submittal Button */}
-            <button
-              type="button"
-              onClick={() => setVerifySubmittalModalOpen(true)}
-              className="hidden sm:inline-flex touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 items-center gap-1.5 cursor-pointer btn-tactile"
-              title="Verify Engineering Submittal via Reference ID or QR Code"
-            >
-              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="hidden xl:inline">Verify</span>
-            </button>
-
-            {/* Sunlight High-Contrast Mode Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                setSunlightMode((prev) => {
-                  const next = !prev;
-                  triggerCelebration(
-                    next ? 'Sunlight High-Contrast Mode Active' : 'Standard Contrast Restored',
-                    next ? 'Tuned for direct bright sunlight on construction jobsites.' : 'Returned to default theme.',
-                    'info'
-                  );
-                  return next;
-                });
-              }}
-              className={`touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer inline-flex items-center gap-1.5 btn-tactile ${
-                sunlightMode
-                  ? 'bg-amber-400 text-black border-amber-500 font-bold shadow-md'
-                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
-              }`}
-              title="Jobsite High-Contrast Sunlight Mode for outdoor bright sun"
-            >
-              <Sun className={`w-4 h-4 shrink-0 ${sunlightMode ? 'text-black' : 'text-amber-500'}`} />
-              <span className="hidden xl:inline">Sunlight</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setWorkspaceManagerOpen(true)}
-              className="touch-target-48 px-2.5 md:px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-1.5 cursor-pointer btn-tactile"
-              title="Manage Projects & Takeoffs"
-            >
-              <FolderArchive className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-              <span className="hidden md:inline">Projects</span>
-            </button>
-
-            {/* Engineer Profile & Credentials Badge Button */}
-            <button
-              type="button"
-              onClick={() => handleOpenProfileModal('profile')}
-              className="touch-target-48 px-2 md:px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center gap-2 cursor-pointer transition-colors"
-              title={userProfile.fullName ? `Engineer Profile: ${userProfile.fullName} (${userProfile.designation})` : `Set Engineer Profile (${userProfile.designation})`}
-            >
-              <div className="w-6 h-6 rounded bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] flex items-center justify-center text-xs font-bold font-mono shrink-0 shadow-xs">
-                {userProfile.initials || (userProfile.fullName ? userProfile.fullName.slice(0, 2).toUpperCase() : 'PE')}
-              </div>
-              <div className="hidden lg:flex flex-col text-left">
-                <span className="text-xs font-bold leading-tight truncate max-w-[130px]">
-                  {userProfile.fullName ? userProfile.fullName.split(',')[0] : 'Set Engineer Name'}
-                </span>
-                <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] leading-tight truncate max-w-[130px]">
-                  {userProfile.licenseNumber || userProfile.designation || userProfile.role.replace('-', ' ')}
-                </span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleLogCalculationSnapshot}
-              disabled={currentEnvelope.status === 'invalid'}
-              className={`touch-target-48 px-3.5 md:px-4 py-2 text-xs md:text-sm font-semibold rounded-lg inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-opacity ${
-                currentEnvelope.status === 'invalid'
-                  ? 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] cursor-not-allowed opacity-50'
-                  : 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 cursor-pointer'
-              }`}
-            >
-              <BookmarkCheck className="w-4 h-4 shrink-0" />
-              <span>Log Snapshot</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Mobile Navigation Drawer */}
-        {mobileDrawerOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex">
-            <div
-              className="fixed inset-0 bg-black/60 transition-opacity"
-              onClick={() => setMobileDrawerOpen(false)}
-              aria-hidden="true"
-            />
-            <aside className="relative z-10 w-80 max-w-[85vw] h-full bg-[var(--md-sys-color-surface)] border-r border-[var(--md-sys-color-outline-variant)] flex flex-col justify-between p-4 overflow-hidden">
-              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                <div className="shrink-0 flex items-center justify-between pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
-                  <Logo
-                    variant="full"
-                    size="sm"
-                    showTagline={true}
-                    onClick={() => {
-                      handleSetModule('boq-estimator');
-                      setMobileDrawerOpen(false);
-                      const mainEl = document.getElementById('top');
-                      if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setMobileDrawerOpen(false)}
-                    className="touch-target-48 inline-flex items-center justify-center rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
-                    aria-label="Close navigation drawer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="flex-1 min-h-0 overflow-y-auto py-4 custom-scrollbar">
-                  <div className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-2 uppercase tracking-wider">
-                    Engineering Workbenches
-                  </div>
-                  <div className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleOpenDashboard();
-                        setMobileDrawerOpen(false);
-                      }}
-                      className={`w-full touch-target-48 px-3 rounded-lg flex items-center gap-3 text-left transition-colors cursor-pointer ${
-                        isDashboardView
-                          ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
-                          : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
-                      }`}
-                    >
-                      <LayoutDashboard className="w-4 h-4 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs truncate font-semibold">Dashboard Overview</div>
-                        <div className="text-[11px] font-mono opacity-75 truncate">
-                          Command Center &amp; Solvers
-                        </div>
-                      </div>
-                    </button>
-
-                    {(Object.keys(MODULE_META) as EngineeringModuleId[]).map((modId) => {
-                      const Icon = MODULE_META[modId].icon;
-                      const active = !isDashboardView && activeModule === modId;
-                      return (
-                        <button
-                          key={modId}
-                          type="button"
-                          onClick={() => {
-                            handleSetModule(modId);
-                            setMobileDrawerOpen(false);
-                          }}
-                          className={`w-full touch-target-48 px-3 rounded-lg flex items-center gap-3 text-left transition-colors cursor-pointer ${
-                            active
-                              ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
-                              : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4 shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs truncate">{MODULE_META[modId].label}</div>
-                            <div className="text-[11px] font-mono opacity-75 truncate">
-                              {MODULE_META[modId].codeStandard}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile Sidebar Quick-Action Toolbar */}
-              <div className="shrink-0 -mx-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                <SidebarToolbar
-                  collapsed={false}
-                  onQuickPrint={() => {
-                    setMobileDrawerOpen(false);
-                    handleQuickPrintA4Report();
-                  }}
-                  onExportPdf={() => {
-                    setMobileDrawerOpen(false);
-                    handleDirectDownloadPdf();
-                  }}
-                  isExportingPdf={isExportingPdf}
-                  pdfExportProgress={pdfExportProgress}
-                  onLogSnapshot={handleLogCalculationSnapshot}
-                  onShareSummary={handleCopyAnalyticalSummary}
-                  copiedSummary={copiedSummary}
-                  onUndo={handleUndo}
-                  onRedo={handleRedo}
-                  canUndo={undoStack.length > 0}
-                  canRedo={redoStack.length > 0}
-                  onOpenHistoryDrawer={() => {
-                    setMobileDrawerOpen(false);
-                    setIsHistoryDrawerOpen(true);
-                  }}
-                  historyCount={appState.calculationHistory.length}
-                  onOpenCommandPalette={() => {
-                    setMobileDrawerOpen(false);
-                    setCommandPaletteOpen(true);
-                  }}
-                  activeModuleName={MODULE_META[activeModule]?.shortLabel}
-                />
-              </div>
-
-              <div className="shrink-0 pt-4 border-t border-[var(--md-sys-color-outline-variant)] space-y-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileDrawerOpen(false);
-                    handleOpenProfileModal('profile');
-                  }}
-                  className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <User className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                  <span>Engineer Profile &amp; Preferences</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileDrawerOpen(false);
-                    setWorkspaceManagerOpen(true);
-                  }}
-                  className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <FolderArchive className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                  <span>Projects Manager ({appState.workspaces.length})</span>
-                </button>
-              </div>
-            </aside>
-          </div>
-        )}
 
         {/* Desktop Split-Screen Layout */}
         <div className="flex-1 flex min-w-0 min-h-0 overflow-hidden">
-          {/* Desktop Left Rail Sidebar */}
-          <aside
-            aria-label="Engineering Sidebar"
-            className={`hidden lg:flex flex-col h-full border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] transition-all duration-300 ease-in-out shrink-0 select-none overflow-hidden ${
-              appState.sidebarCollapsed ? 'w-16' : 'w-72'
-            }`}
-          >
-            {/* Sidebar Top: Logo, Tagline & Collapse/Expand Rail Controls */}
-            <div
-              className={`shrink-0 border-b border-[var(--md-sys-color-outline-variant)]/50 transition-all duration-300 ${
-                appState.sidebarCollapsed
-                  ? 'p-2 flex flex-col items-center gap-2'
-                  : 'p-3 flex flex-col gap-2.5'
-              }`}
-            >
-              <div
-                className={`flex items-center w-full transition-all duration-300 ${
-                  appState.sidebarCollapsed
-                    ? 'flex-col gap-2 justify-center'
-                    : 'justify-between min-w-0'
-                }`}
-              >
-                <div
-                  className={`flex items-center min-w-0 transition-all duration-300 ${
-                    appState.sidebarCollapsed ? 'justify-center w-full' : 'flex-1 mr-2 overflow-hidden'
-                  }`}
-                >
-                  <Logo
-                    variant="full"
-                    size="sm"
-                    showTagline={true}
-                    collapsed={appState.sidebarCollapsed}
-                    onClick={() => {
-                      if (appState.sidebarCollapsed) {
-                        handleToggleSidebar();
-                      } else {
-                        handleSetModule('boq-estimator');
-                        const mainEl = document.getElementById('top');
-                        if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-                      }
-                    }}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleToggleSidebar}
-                  aria-label={appState.sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-                  title={appState.sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-                  className={`rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)] flex items-center justify-center cursor-pointer shrink-0 transition-all duration-200 ${
-                    appState.sidebarCollapsed
-                      ? 'w-10 h-8 mt-0.5'
-                      : 'w-8 h-8'
-                  }`}
-                >
-                  {appState.sidebarCollapsed ? (
-                    <PanelLeftOpen className="w-4 h-4 shrink-0" />
-                  ) : (
-                    <PanelLeftClose className="w-4 h-4 shrink-0" />
-                  )}
-                </button>
-              </div>
-
-              {/* New Project Workspace Button */}
-              {appState.sidebarCollapsed ? (
-                <button
-                  type="button"
-                  onClick={handleOpenNewWorkspace}
-                  title="New Project Workspace"
-                  aria-label="New Project Workspace"
-                  className="w-10 h-8 rounded-lg bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] flex items-center justify-center cursor-pointer border border-[var(--md-sys-color-outline-variant)] transition-colors"
-                >
-                  <Plus className="w-4 h-4 shrink-0" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleOpenNewWorkspace}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] inline-flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer border border-[var(--md-sys-color-outline-variant)] transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
-                  <span className="truncate">New Project Workspace</span>
-                </button>
-              )}
-            </div>
-
-            {/* Sidebar Middle: Scrollable Engineering Modules Directory */}
-            <div
-              className={`flex-1 min-h-0 overflow-y-auto space-y-4 custom-scrollbar transition-all duration-300 ${
-                appState.sidebarCollapsed ? 'p-2' : 'p-3'
-              }`}
-            >
-              <div>
-                {!appState.sidebarCollapsed && (
-                  <div className="px-1 mb-2 text-xs font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider truncate">
-                    Engineering Modules
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={handleOpenDashboard}
-                    title="PB CivilLab Overview Dashboard"
-                    aria-label="Overview Dashboard"
-                    className={`w-full rounded-lg flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
-                      appState.sidebarCollapsed
-                        ? 'h-10 justify-center px-0'
-                        : 'h-11 px-3 gap-3 text-left'
-                    } ${
-                      isDashboardView
-                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-xs'
-                        : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
-                    }`}
-                  >
-                    <LayoutDashboard className="w-4 h-4 shrink-0" />
-                    {!appState.sidebarCollapsed && (
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="text-xs truncate font-medium">Dashboard Overview</div>
-                        <div className="text-[11px] font-mono opacity-75 truncate">
-                          Command Center &amp; Solvers
-                        </div>
-                      </div>
-                    )}
-                  </button>
-
-                  {(Object.keys(MODULE_META) as EngineeringModuleId[]).map((modId) => {
-                    const Icon = MODULE_META[modId].icon;
-                    const active = !isDashboardView && activeModule === modId;
-                    return (
-                      <button
-                        key={modId}
-                        type="button"
-                        onClick={() => handleSetModule(modId)}
-                        title={`${MODULE_META[modId].label} (${MODULE_META[modId].codeStandard})`}
-                        aria-label={MODULE_META[modId].label}
-                        className={`w-full rounded-lg flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
-                          appState.sidebarCollapsed
-                            ? 'min-h-[48px] h-12 justify-center px-0 touch-target-48'
-                            : 'min-h-[48px] h-12 px-3 gap-3 text-left touch-target-48'
-                        } ${
-                          active
-                            ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-xs'
-                            : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4 shrink-0" />
-                        {!appState.sidebarCollapsed && (
-                          <div className="min-w-0 flex-1 overflow-hidden">
-                            <div className="text-xs truncate font-medium">{MODULE_META[modId].label}</div>
-                            <div className="text-[11px] font-mono opacity-75 truncate">
-                              {MODULE_META[modId].codeStandard}
-                            </div>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Pinned Engineering Quick Actions Toolbar */}
-            <SidebarToolbar
-              collapsed={appState.sidebarCollapsed}
-              onQuickPrint={handleQuickPrintA4Report}
-              onExportPdf={handleDirectDownloadPdf}
-              isExportingPdf={isExportingPdf}
-              pdfExportProgress={pdfExportProgress}
-              onLogSnapshot={handleLogCalculationSnapshot}
-              onShareSummary={handleCopyAnalyticalSummary}
-              copiedSummary={copiedSummary}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              canUndo={undoStack.length > 0}
-              canRedo={redoStack.length > 0}
-              onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
-              historyCount={appState.calculationHistory.length}
-              onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-              activeModuleName={MODULE_META[activeModule]?.shortLabel}
-            />
-
-            {/* Sidebar Bottom: Pinned Action Controls & Theme Toggle */}
-            <div
-              className={`shrink-0 border-t border-[var(--md-sys-color-outline-variant)] space-y-1.5 bg-[var(--md-sys-color-surface)] transition-all duration-300 ${
-                appState.sidebarCollapsed ? 'p-2' : 'p-3'
-              }`}
-            >
-              {/* Project Workspaces Manager Button */}
-              <button
-                type="button"
-                onClick={() => setWorkspaceManagerOpen(true)}
-                className={`w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
-                  appState.sidebarCollapsed
-                    ? 'min-h-[48px] h-12 justify-center px-0 touch-target-48'
-                    : 'min-h-[48px] h-12 px-3 gap-2.5 text-xs font-medium touch-target-48'
-                }`}
-                title={`Projects Manager: ${appState.workspaces.length} Projects (${activeWorkspace.currency})`}
-                aria-label="Project Workspaces Manager"
-              >
-                <FolderArchive className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-                {!appState.sidebarCollapsed && (
-                  <div className="text-left min-w-0 flex-1 overflow-hidden">
-                    <div className="font-semibold text-xs truncate">Projects Manager</div>
-                    <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
-                      {appState.workspaces.length} Projects · {activeWorkspace.currency}
-                    </div>
-                  </div>
-                )}
-              </button>
-
-              {/* Engineer Profile, Preferences & Presets Button */}
-              <button
-                type="button"
-                onClick={() => handleOpenProfileModal('profile')}
-                className={`w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
-                  appState.sidebarCollapsed
-                    ? 'min-h-[48px] h-12 justify-center px-0 touch-target-48'
-                    : 'min-h-[48px] h-12 px-3 gap-2.5 text-xs font-medium touch-target-48'
-                }`}
-                title={`Engineer Profile & Settings: ${userProfile.fullName || 'Project Engineer, PE'} (${userProfile.designation})`}
-                aria-label="Engineer Profile and Preferences"
-              >
-                <User className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-                {!appState.sidebarCollapsed && (
-                  <div className="text-left min-w-0 flex-1 overflow-hidden">
-                    <div className="font-semibold text-xs truncate">
-                      {userProfile.fullName || 'Engineer Profile'}
-                    </div>
-                    <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
-                      {userProfile.designation} · Settings
-                    </div>
-                  </div>
-                )}
-              </button>
-
-              {/* Schema Persistence Inspector Button */}
-              <button
-                type="button"
-                onClick={() => setInspectorModalOpen(true)}
-                className={`w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center transition-all duration-200 cursor-pointer overflow-hidden ${
-                  appState.sidebarCollapsed
-                    ? 'min-h-[48px] h-12 justify-center px-0 touch-target-48'
-                    : 'min-h-[48px] h-12 px-3 gap-2.5 text-xs font-medium touch-target-48'
-                }`}
-                title={`Schema v2 Persistence (${appState.calculationHistory.length} logs · Client-Side)`}
-                aria-label="Schema v2 Persistence Inspector"
-              >
-                <Database className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
-                {!appState.sidebarCollapsed && (
-                  <div className="text-left min-w-0 flex-1 overflow-hidden">
-                    <div className="font-semibold text-xs truncate">Schema v2 Persistence</div>
-                    <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
-                      {appState.calculationHistory.length} logs · Client-Side
-                    </div>
-                  </div>
-                )}
-              </button>
-
-              {/* Theme Toggle (Compact Icon when collapsed, Segmented control when expanded) */}
-              {appState.sidebarCollapsed ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next: ThemePreference =
-                      appState.themePreference === 'light'
-                        ? 'dark'
-                        : appState.themePreference === 'dark'
-                        ? 'system'
-                        : 'light';
-                    handleThemeChange(next);
-                  }}
-                  title={`Theme: ${appState.themePreference} (Click to toggle)`}
-                  aria-label={`Theme: ${appState.themePreference} (Click to toggle)`}
-                  className="w-full min-h-[48px] h-12 touch-target-48 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center justify-center cursor-pointer transition-colors"
-                >
-                  {appState.themePreference === 'light' && <Sun className="w-4 h-4 text-amber-500 shrink-0" />}
-                  {appState.themePreference === 'dark' && <Moon className="w-4 h-4 text-indigo-400 shrink-0" />}
-                  {appState.themePreference === 'system' && <Monitor className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />}
-                </button>
-              ) : (
-                <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-[var(--md-sys-color-surface-container)] min-h-[48px] items-center">
-                  {(['light', 'dark', 'system'] as ThemePreference[]).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => handleThemeChange(mode)}
-                      className={`min-h-[40px] h-10 touch-target-48 rounded-md text-xs font-semibold capitalize flex items-center justify-center gap-1 cursor-pointer transition-colors ${
-                        appState.themePreference === mode
-                          ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] shadow-xs'
-                          : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
-                      }`}
-                    >
-                      {mode === 'light' && <Sun className="w-3.5 h-3.5" />}
-                      {mode === 'dark' && <Moon className="w-3.5 h-3.5" />}
-                      {mode === 'system' && <Monitor className="w-3.5 h-3.5" />}
-                      <span className="text-[11px]">{mode}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </aside>
+          {/* Collapsible Accordion Sidebar with 6 Categories */}
+          <Sidebar
+            isMobileOpen={mobileDrawerOpen}
+            onCloseMobile={() => setMobileDrawerOpen(false)}
+            isCollapsed={appState.sidebarCollapsed}
+            onToggleCollapse={handleToggleSidebar}
+            activeModule={activeModule}
+            isDashboardActive={isDashboardView}
+            onSelectDashboard={handleOpenDashboard}
+            onSelectModule={(id) => {
+              handleSetModule(id);
+              const mainEl = document.getElementById("top");
+              if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            onOpenArchitectureModal={() => setArchitectureModalOpen(true)}
+            onOpenCadModal={() => setCadModalOpen(true)}
+            onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
+            onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
+          />
 
           {/* Main Content Area — Independently Scrollable */}
           <main id="top" className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto custom-scrollbar relative focus:outline-none" tabIndex={-1}>
@@ -3570,7 +2897,7 @@ export default function App() {
             </div>
 
             {isDashboardView ? (
-              <DashboardView
+              <Dashboard
                 activeWorkspace={activeWorkspace}
                 workspaces={appState.workspaces}
                 activeModule={activeModule}
@@ -3579,17 +2906,14 @@ export default function App() {
                 onOpenNewWorkspace={handleOpenNewWorkspace}
                 onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
                 onOpenProfileModal={handleOpenProfileModal}
-                onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
+                onOpenArchitectureModal={() => setArchitectureModalOpen(true)}
+                onOpenCadModal={() => setCadModalOpen(true)}
+                onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
                 onDirectDownloadPdf={handleDirectDownloadPdf}
+                onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
                 calculationHistory={appState.calculationHistory}
                 onRestoreCalculation={handleRestoreCalculation}
-                userProfile={userProfile}
-                boqEnvelope={boqEnvelope}
-                bbsEnvelope={bbsEnvelope}
-                concreteEnvelope={concreteEnvelope}
-                matEnvelope={matEnvelope}
-                capacityInfo={capacityInfo}
-                moduleMeta={MODULE_META}
+                onDeleteCalculation={handleDeleteHistoryItem}
               />
             ) : (
               <>
@@ -3905,7 +3229,7 @@ export default function App() {
                 initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-                className="lg:col-span-7 space-y-6"
+                className="lg:col-span-7 lg:sticky lg:top-20 lg:self-start space-y-6"
               >
                 <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 analytical-envelope-container">
                   <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-[var(--md-sys-color-outline-variant)]">
@@ -4006,15 +3330,16 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Export CSV Button */}
+                      {/* Export Excel (CSV) Button */}
                       <button
                         type="button"
                         onClick={handleExportAnalyticalCsv}
-                        className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors shadow-2xs"
-                        title="Export Itemized Analytical Calculation Schedule to CSV"
+                        className="touch-target-48 px-3 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-xs font-semibold inline-flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 cursor-pointer transition-colors shadow-2xs"
+                        title="Export Itemized Analytical Calculation Schedule to Microsoft Excel (CSV with UTF-8 BOM)"
+                        aria-label="Export Excel (CSV)"
                       >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
-                        <span className="hidden sm:inline">CSV</span>
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span className="font-mono">Export Excel (CSV)</span>
                       </button>
 
                       {/* Governing Equations Toggle */}
@@ -4070,16 +3395,33 @@ export default function App() {
                         <span>Print A4 Report</span>
                       </button>
 
-                      {/* Direct Client-Side PDF Download Engine (jsPDF) */}
+                      {/* Direct Client-Side PDF Download Engine (jsPDF + autotable + QR) */}
                       <button
                         type="button"
                         onClick={handleDirectDownloadPdf}
                         disabled={isExportingPdf}
-                        className="px-3 py-1.5 rounded-lg border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors disabled:opacity-50"
-                        title="Direct Client-Side PDF Generation (jsPDF) with Certified QR Stamp"
+                        className="touch-target-48 relative overflow-hidden px-3.5 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95 disabled:opacity-90"
+                        title="Direct Client-Side PDF Generation (jsPDF + autotable) with Certified QR Stamp"
+                        aria-label="Export PDF Report"
                       >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
+                        {isExportingPdf && pdfExportProgress && (
+                          <span
+                            className="absolute inset-0 bg-emerald-500/35 transition-all duration-300 pointer-events-none"
+                            style={{ width: `${pdfExportProgress.percent}%` }}
+                          />
+                        )}
+                        {isExportingPdf ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin z-10 shrink-0" />
+                        ) : (
+                          <FileDown className="w-3.5 h-3.5 z-10 shrink-0" />
+                        )}
+                        <span className="font-mono z-10">
+                          {isExportingPdf
+                            ? pdfExportProgress
+                              ? `${pdfExportProgress.percent}%`
+                              : 'Exporting...'
+                            : 'Export PDF Report'}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -4302,6 +3644,8 @@ export default function App() {
                       customUnits={appState.customUnits}
                       getOutputUnit={getOutputUnit}
                       updateOutputUnit={updateOutputUnit}
+                      onExportCsv={handleExportAnalyticalCsv}
+                      onExportPdf={handleDirectDownloadPdf}
                     />
                   )}
 
@@ -4411,6 +3755,30 @@ export default function App() {
               </motion.section>
             </div>
               </>
+            )}
+
+            {/* Persistent Floating Quick-Action Dock */}
+            {!isDashboardView && (
+              <div className="hidden lg:block">
+                <FloatingActionBar
+                  onQuickPrint={handleQuickPrintA4Report}
+                  onExportPdf={handleDirectDownloadPdf}
+                  onExportCsv={handleExportAnalyticalCsv}
+                  isExportingPdf={isExportingPdf}
+                  pdfExportProgress={pdfExportProgress}
+                  onLogSnapshot={handleLogCalculationSnapshot}
+                  onShareSummary={handleCopyAnalyticalSummary}
+                  copiedSummary={copiedSummary}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  canUndo={undoStack.length > 0}
+                  canRedo={redoStack.length > 0}
+                  onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
+                  historyCount={appState.calculationHistory?.length || 0}
+                  onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+                  activeModuleName={MODULE_META[activeModule].shortLabel}
+                />
+              </div>
             )}
 
             {/* PB CivilLab Global Engineered Footer */}
@@ -4675,6 +4043,24 @@ export default function App() {
         <CelebrationToast
           toast={celebrationToast}
           onDismiss={() => setCelebrationToast(null)}
+        />
+
+        {/* Architecture & By-Laws Interactive Modal */}
+        <ArchitectureByLawsModal
+          isOpen={architectureModalOpen}
+          onClose={() => setArchitectureModalOpen(false)}
+        />
+
+        {/* AutoCAD Scale & Viewport Calculator, CAD Shortcuts & LISP Hub Modal */}
+        <CadUtilitiesModal
+          isOpen={cadModalOpen}
+          onClose={() => setCadModalOpen(false)}
+        />
+
+        {/* Construction QA/QC & Pre-Pour Inspection Checklists Modal */}
+        <SiteQcModal
+          isOpen={siteQcModalOpen}
+          onClose={() => setSiteQcModalOpen(false)}
         />
       </div>
       )}

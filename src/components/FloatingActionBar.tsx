@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Printer,
   FileDown,
+  FileSpreadsheet,
   Sparkles,
   Share2,
   Check,
@@ -19,6 +20,7 @@ import { PdfExportProgress } from '../utils/pdfExport';
 interface FloatingActionBarProps {
   onQuickPrint: () => void;
   onExportPdf: () => void;
+  onExportCsv?: () => void;
   isExportingPdf?: boolean;
   pdfExportProgress?: PdfExportProgress | null;
   onLogSnapshot: () => void;
@@ -37,6 +39,7 @@ interface FloatingActionBarProps {
 export const FloatingActionBar: React.FC<FloatingActionBarProps> = ({
   onQuickPrint,
   onExportPdf,
+  onExportCsv,
   isExportingPdf = false,
   pdfExportProgress = null,
   onLogSnapshot,
@@ -189,6 +192,20 @@ export const FloatingActionBar: React.FC<FloatingActionBarProps> = ({
                 : 'Export PDF'}
             </span>
           </button>
+
+          {/* Export Excel / CSV */}
+          {onExportCsv && (
+            <button
+              type="button"
+              onClick={onExportCsv}
+              className="touch-target-48 px-2.5 py-2 rounded-xl text-xs font-semibold border border-emerald-500/30 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 cursor-pointer flex items-center gap-1.5 transition-colors shadow-2xs"
+              title="Export calculation schedule to Excel (CSV)"
+              aria-label="Export calculation schedule to Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden sm:inline font-mono">CSV</span>
+            </button>
+          )}
 
           {/* Share Summary */}
           <button

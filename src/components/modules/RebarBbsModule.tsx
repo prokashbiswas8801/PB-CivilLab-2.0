@@ -7,6 +7,7 @@ import {
 import { RebarBBSResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
+import { FileSpreadsheet, FileDown } from 'lucide-react';
 
 export interface RebarBbsInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -682,6 +683,8 @@ export interface RebarBbsMetricsProps {
   customUnits: CustomUnitDefinition[];
   getOutputUnit: (fieldKey: string, category: UnitCategoryKey, fallbackUnitId: string) => string;
   updateOutputUnit: (fieldKey: string, unitId: string) => void;
+  onExportCsv?: () => void;
+  onExportPdf?: () => void;
 }
 
 export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
@@ -690,44 +693,76 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
   customUnits,
   getOutputUnit,
   updateOutputUnit,
+  onExportCsv,
+  onExportPdf,
 }) => {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-      <UnitValueDisplay
-        label="Total Steel Weight"
-        category="mass"
-        siValue={result.totalSteelWeightKg}
-        currentUnitId={getOutputUnit('rebar.out.mass', 'mass', 'kg')}
-        onUnitChange={(u) => updateOutputUnit('rebar.out.mass', u)}
-        customUnits={customUnits}
-        highlight={true}
-      />
-      <UnitValueDisplay
-        label="Total Bar Length"
-        category="length"
-        siValue={result.totalBarsLengthM}
-        currentUnitId={getOutputUnit('rebar.out.len', 'length', 'm')}
-        onUnitChange={(u) => updateOutputUnit('rebar.out.len', u)}
-        customUnits={customUnits}
-      />
-      <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
-        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Total Steel Tonnes</div>
-        <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
-          {result.totalSteelTonnes.toFixed(3)} <span className="text-xs font-normal">MT</span>
+    <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <UnitValueDisplay
+          label="Total Steel Weight"
+          category="mass"
+          siValue={result.totalSteelWeightKg}
+          currentUnitId={getOutputUnit('rebar.out.mass', 'mass', 'kg')}
+          onUnitChange={(u) => updateOutputUnit('rebar.out.mass', u)}
+          customUnits={customUnits}
+          highlight={true}
+        />
+        <UnitValueDisplay
+          label="Total Bar Length"
+          category="length"
+          siValue={result.totalBarsLengthM}
+          currentUnitId={getOutputUnit('rebar.out.len', 'length', 'm')}
+          onUnitChange={(u) => updateOutputUnit('rebar.out.len', u)}
+          customUnits={customUnits}
+        />
+        <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
+          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Total Steel Tonnes</div>
+          <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
+            {result.totalSteelTonnes.toFixed(3)} <span className="text-xs font-normal">MT</span>
+          </div>
+          <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
+            Density: {result.steelDensityKgPerM3} kg/m³
+          </div>
         </div>
-        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-          Density: {result.steelDensityKgPerM3} kg/m³
-        </div>
+        <UnitValueDisplay
+          label="Total Bend Deductions"
+          category="length"
+          siValue={result.items.reduce((s: number, it) => s + (it.bendDeductionM || 0), 0)}
+          currentUnitId={getOutputUnit('rebar.out.bend', 'length', 'm')}
+          onUnitChange={(u) => updateOutputUnit('rebar.out.bend', u)}
+          customUnits={customUnits}
+          subText={`Hook: ${activeWorkspace.rebarBbs.hookAngle}° standard`}
+        />
       </div>
-      <UnitValueDisplay
-        label="Total Bend Deductions"
-        category="length"
-        siValue={result.items.reduce((s: number, it) => s + (it.bendDeductionM || 0), 0)}
-        currentUnitId={getOutputUnit('rebar.out.bend', 'length', 'm')}
-        onUnitChange={(u) => updateOutputUnit('rebar.out.bend', u)}
-        customUnits={customUnits}
-        subText={`Hook: ${activeWorkspace.rebarBbs.hookAngle}° standard`}
-      />
+
+      {/* One-Click BBS Schedule Export Toolbar */}
+      {(onExportCsv || onExportPdf) && (
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+          {onExportCsv && (
+            <button
+              type="button"
+              onClick={onExportCsv}
+              className="touch-target-48 px-3 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-xs font-semibold inline-flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 cursor-pointer shadow-2xs transition-colors"
+              title="Export Bar Bending Schedule to Microsoft Excel (CSV with UTF-8 BOM)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Export BBS to Excel (CSV)</span>
+            </button>
+          )}
+          {onExportPdf && (
+            <button
+              type="button"
+              onClick={onExportPdf}
+              className="touch-target-48 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-opacity"
+              title="Export Certified BBS Submittal PDF Report"
+            >
+              <FileDown className="w-3.5 h-3.5 shrink-0" />
+              <span>Export BBS PDF Report</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

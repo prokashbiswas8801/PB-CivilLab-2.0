@@ -4,6 +4,7 @@
  */
 
 import { ChannelShapeType, PipeMaterialType, PipeServiceType } from '../types/civil';
+import { solveBisection, solveNewtonRaphson, roundEng, preventZeroDivision } from './mathEngine';
 
 export interface HydraulicMaterialDefinition {
   id: string;
@@ -241,6 +242,7 @@ export function calculateChannelGeometry(
 /**
  * High-precision critical depth solver for arbitrary channels
  * Solves Froude = 1 <=> Q^2 * T / (g * A^3) = 1
+ * Uses mathEngine solveBisection with strict max iterations and tolerance
  */
 export function solveCriticalDepth(
   shape: ChannelShapeType,
@@ -258,41 +260,73 @@ export function solveCriticalDepth(
     const yc = Math.pow(Math.pow(q, 2) / g, 1 / 3);
     const Vc = q / yc;
     const Emin = yc + Math.pow(Vc, 2) / (2 * g);
-    return { criticalDepth: yc, criticalVelocity: Vc, minSpecificEnergy: Emin };
+    return {
+      criticalDepth: roundEng(yc, 4),
+      criticalVelocity: roundEng(Vc, 3),
+      minSpecificEnergy: roundEng(Emin, 4),
+    };
   }
 
-  // Bisection & Newton method for trapezoidal and circular
-  let yLow = 0.005;
-  let yHigh = shape === 'circular' ? Math.max(0.05, diameterD) * 0.98 : Math.max(10, (Q / Math.max(0.1, bottomWidthB)) + 2);
+  // Safe iterative bisection solver using mathEngine
+  const yLow = 0.005;
+  const yHigh = shape === 'circular' ? Math.max(0.05, diameterD) * 0.98 : Math.max(10, (Q / Math.max(0.1, bottomWidthB)) + 2);
 
-  for (let iter = 0; iter < 40; iter++) {
-    const yMid = (yLow + yHigh) / 2;
-    const geom = calculateChannelGeometry(shape, yMid, bottomWidthB, sideSlopeZ, diameterD);
-    const fMid = (Math.pow(Q, 2) * geom.topWidth) / (g * Math.pow(geom.area, 3)) - 1.0;
+  const fCriterion = (y: number) => {
+    const geom = calculateChannelGeometry(shape, y, bottomWidthB, sideSlopeZ, diameterD);
+    return (Math.pow(Q, 2) * geom.topWidth) / (g * Math.pow(geom.area, 3)) - 1.0;
+  };
 
-    if (Math.abs(fMid) < 0.0001) {
-      yLow = yMid;
-      yHigh = yMid;
-      break;
-    }
-
-    if (fMid > 0) {
-      // Flow is supercritical at yMid, so critical depth is deeper
-      yLow = yMid;
-    } else {
-      yHigh = yMid;
-    }
-  }
-
-  const yc = (yLow + yHigh) / 2;
+  const solution = solveBisection(fCriterion, yLow, yHigh, 1e-5, 100);
+  const yc = Math.max(0.005, solution.root);
   const finalGeom = calculateChannelGeometry(shape, yc, bottomWidthB, sideSlopeZ, diameterD);
-  const Vc = Q / finalGeom.area;
+  const Vc = Q / Math.max(1e-5, finalGeom.area);
   const Emin = yc + Math.pow(Vc, 2) / (2 * g);
 
   return {
-    criticalDepth: Math.max(0.005, yc),
-    criticalVelocity: Vc,
-    minSpecificEnergy: Emin,
+    criticalDepth: roundEng(yc, 4),
+    criticalVelocity: roundEng(Vc, 3),
+    minSpecificEnergy: roundEng(Emin, 4),
+  };
+}
+
+/**
+ * Safe Normal Depth Solver (Manning's Uniform Flow Equation)
+ * Solves: Q = (1/n) * A(y) * R_h(y)^(2/3) * sqrt(S)
+ * Guaranteed non-infinite loop using mathEngine solveBisection
+ */
+export function solveNormalDepth(
+  shape: ChannelShapeType,
+  dischargeQ: number,
+  bedSlopeS: number,
+  manningN: number,
+  bottomWidthB: number,
+  sideSlopeZ: number,
+  diameterD: number
+): { normalDepth: number; normalVelocity: number; normalArea: number; converged: boolean } {
+  const Q = Math.max(0.0001, dischargeQ);
+  const S = Math.max(0.00001, bedSlopeS);
+  const n = Math.max(0.005, manningN);
+  const sqrtS = Math.sqrt(S);
+
+  const yLow = 0.002;
+  const yHigh = shape === 'circular' ? Math.max(0.05, diameterD) * 0.98 : Math.max(15, (Q / Math.max(0.1, bottomWidthB)) + 5);
+
+  const fManning = (y: number) => {
+    const geom = calculateChannelGeometry(shape, y, bottomWidthB, sideSlopeZ, diameterD);
+    const Qcalc = (1 / n) * geom.area * Math.pow(geom.hydraulicRadius, 2 / 3) * sqrtS;
+    return Qcalc - Q;
+  };
+
+  const solution = solveBisection(fManning, yLow, yHigh, 1e-5, 100);
+  const yn = Math.max(0.002, solution.root);
+  const geom = calculateChannelGeometry(shape, yn, bottomWidthB, sideSlopeZ, diameterD);
+  const Vn = Q / Math.max(1e-5, geom.area);
+
+  return {
+    normalDepth: roundEng(yn, 4),
+    normalVelocity: roundEng(Vn, 3),
+    normalArea: roundEng(geom.area, 4),
+    converged: solution.converged,
   };
 }
 

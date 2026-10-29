@@ -396,7 +396,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           onChange={handleInputChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          className={`w-full min-w-0 min-h-[48px] touch-target-48 bg-transparent px-3 py-2 text-sm font-mono text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
+          className={`w-full min-w-0 min-h-[48px] touch-target-48 bg-transparent px-3 py-2 text-base md:text-sm font-mono text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
             isUnitFading
               ? 'opacity-25 scale-[0.985] text-[var(--md-sys-color-primary)]'
               : 'opacity-100 scale-100'

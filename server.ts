@@ -40,7 +40,7 @@ if (fs.existsSync(distPath)) {
 }
 
 // Fallback to index.html for client-side SPA routing
-app.get('*', (_req, res) => {
+app.use((_req, res) => {
   const indexPath = path.join(distPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);

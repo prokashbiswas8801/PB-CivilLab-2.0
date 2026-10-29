@@ -1,7 +1,7 @@
-import React from 'react';
 import {
   Printer,
   FileDown,
+  FileSpreadsheet,
   Sparkles,
   Share2,
   Check,
@@ -18,6 +18,7 @@ export interface SidebarToolbarProps {
   collapsed?: boolean;
   onQuickPrint: () => void;
   onExportPdf: () => void;
+  onExportCsv?: () => void;
   isExportingPdf?: boolean;
   pdfExportProgress?: PdfExportProgress | null;
   onLogSnapshot: () => void;
@@ -38,6 +39,7 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
   collapsed = false,
   onQuickPrint,
   onExportPdf,
+  onExportCsv,
   isExportingPdf = false,
   pdfExportProgress = null,
   onLogSnapshot,
@@ -80,6 +82,19 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
             <FileDown className="w-4 h-4 z-10" />
           )}
         </button>
+
+        {/* Export CSV Button (Collapsed) */}
+        {onExportCsv && (
+          <button
+            type="button"
+            onClick={onExportCsv}
+            className="touch-target-48 w-11 h-11 rounded-lg border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 flex items-center justify-center cursor-pointer transition-colors shadow-2xs"
+            title="Export Excel (CSV Schedule)"
+            aria-label="Export Excel (CSV Schedule)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </button>
+        )}
 
         {/* Quick Print Button (Collapsed) */}
         <button
@@ -195,7 +210,7 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
         )}
       </div>
 
-      {/* Primary Action Buttons: Export PDF & Quick Print */}
+      {/* Primary Action Buttons: Export PDF & Export CSV */}
       <div className="grid grid-cols-2 gap-2">
         {/* Export PDF Button */}
         <button
@@ -226,16 +241,16 @@ export const SidebarToolbar: React.FC<SidebarToolbarProps> = ({
           </span>
         </button>
 
-        {/* Quick Print Button */}
+        {/* Export Excel (CSV) Button */}
         <button
           type="button"
-          onClick={onQuickPrint}
-          className="touch-target-48 px-3 py-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
-          title="Quick print verification report (Ctrl+P)"
-          aria-label="Quick print verification report"
+          onClick={onExportCsv || onQuickPrint}
+          className="touch-target-48 px-3 py-2.5 rounded-lg border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+          title="Export Excel (CSV Schedule)"
+          aria-label="Export Excel (CSV Schedule)"
         >
-          <Printer className="w-4 h-4 shrink-0 text-[var(--md-sys-color-primary)]" />
-          <span className="font-mono">Quick Print</span>
+          <FileSpreadsheet className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="font-mono truncate">Export CSV</span>
         </button>
       </div>
 

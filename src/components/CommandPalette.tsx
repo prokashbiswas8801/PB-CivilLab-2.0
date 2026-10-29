@@ -27,7 +27,7 @@ import { EngineeringModuleId, CalculationRecord, TakeoffLineItem } from '../type
 export interface CommandPaletteItem {
   id: string;
   title: string;
-  category: 'Calculators' | 'Units & Conversion' | 'Design Codes & Equations' | 'Actions' | 'Saved Calculations' | 'Takeoff & BOQ Items';
+  category: 'Calculators' | 'Units & Conversion' | 'Design Codes & Equations' | 'CAD & Utilities' | 'Excel Formulas' | 'Actions' | 'Saved Calculations' | 'Takeoff & BOQ Items';
   description: string;
   keywords: string[];
   shortcut?: string;
@@ -49,6 +49,9 @@ interface CommandPaletteProps {
   onQuickPrint?: () => void;
   onExportPdf?: () => void;
   onOpenVerification?: () => void;
+  onOpenArchitectureModal?: () => void;
+  onOpenCadModal?: () => void;
+  onOpenSiteQcModal?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
@@ -72,6 +75,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onQuickPrint,
   onExportPdf,
   onOpenVerification,
+  onOpenArchitectureModal,
+  onOpenCadModal,
+  onOpenSiteQcModal,
   onUndo,
   onRedo,
   canUndo = false,
@@ -390,6 +396,108 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         keywords: ['verify', 'verification', 'qr', 'scan', 'docid', 'submittal', 'certificate', 'iso9001', 'audit', 'check'],
         action: onOpenVerification,
       },
+
+      // CAD Shortcuts, Viewport Scales & AutoLISP Hub
+      {
+        id: 'cad-scale-calc',
+        title: 'AutoCAD Viewport Scale & Zoom XP Calculator',
+        category: 'CAD & Utilities',
+        description: 'Calculate Exact Zoom XP (e.g. 1000/100xp = 10xp) and drawing units for metric/imperial paper space layouts',
+        keywords: ['autocad', 'scale', 'viewport', 'zoom', 'xp', 'paper', 'model', 'space', 'drawing', '1:100', '1:50'],
+        action: onOpenCadModal,
+      },
+      {
+        id: 'cad-tlen',
+        title: 'AutoLISP Routine: TLEN (Total Length)',
+        category: 'CAD & Utilities',
+        description: 'AutoLISP script to measure total cumulative length of selected lines, polylines, and arcs for pipe & cabling takeoffs',
+        keywords: ['lisp', 'tlen', 'length', 'autocad', 'script', 'cumulative', 'polyline', 'takeoff'],
+        action: onOpenCadModal,
+      },
+      {
+        id: 'cad-xyz',
+        title: 'AutoLISP Routine: XYZ Coordinate Point Exporter',
+        category: 'CAD & Utilities',
+        description: 'AutoLISP routine to export survey points, traverse stations, and vertex coordinates directly to CSV spreadsheet',
+        keywords: ['lisp', 'xyz', 'export', 'coordinates', 'survey', 'points', 'csv', 'northing', 'easting'],
+        action: onOpenCadModal,
+      },
+      {
+        id: 'cad-shortcuts-hub',
+        title: 'AutoCAD Engineering Shortcuts & Command Reference',
+        category: 'CAD & Utilities',
+        description: 'Quick reference for XL (XLine), DIV (Divide), BURST, OVERKILL, ALIGN, FLATTEN, PURGE, and AUDIT',
+        keywords: ['cad', 'shortcuts', 'commands', 'xline', 'burst', 'overkill', 'flatten', 'audit', 'purge', 'divide'],
+        action: onOpenCadModal,
+      },
+
+      // Civil Engineering Excel Formulas Library
+      {
+        id: 'excel-distance',
+        title: 'Excel: Coordinate Distance =SQRT((X2-X1)^2 + (Y2-Y1)^2)',
+        category: 'Excel Formulas',
+        description: 'Calculate true spatial distance between survey stations with Pythagorean Euclidean formula',
+        keywords: ['excel', 'formula', 'distance', 'survey', 'coordinates', 'easting', 'northing'],
+        action: onOpenCadModal,
+      },
+      {
+        id: 'excel-bearing',
+        title: 'Excel: Whole Circle Bearing =MOD(DEGREES(ATAN2(Y2-Y1, X2-X1))+360, 360)',
+        category: 'Excel Formulas',
+        description: 'Compute 0°-360° Whole Circle Bearing (WCB) from survey coordinates',
+        keywords: ['excel', 'bearing', 'wcb', 'azimuth', 'survey', 'atan2', 'angle'],
+        action: onOpenCadModal,
+      },
+      {
+        id: 'excel-rebar',
+        title: 'Excel: Rebar Steel Weight =ROUND((D^2/162.2)*L, 2)',
+        category: 'Excel Formulas',
+        description: 'Standard formula for metric reinforcement bar unit weight in kg/m and total tonnage',
+        keywords: ['excel', 'rebar', 'steel', 'weight', 'formula', '162.2', 'kg'],
+        action: onOpenCadModal,
+      },
+      {
+        id: 'excel-interp',
+        title: 'Excel: Linear Interpolation =Y1 + (X-X1)*(Y2-Y1)/(X2-X1)',
+        category: 'Excel Formulas',
+        description: 'Engineering table lookup formula for soil parameters, friction factors, and hydraulic charts',
+        keywords: ['excel', 'interpolation', 'linear', 'lookup', 'chart', 'soil'],
+        action: onOpenCadModal,
+      },
+
+      // Architecture & By-Laws
+      {
+        id: 'arch-far-mgc',
+        title: 'FAR (Floor Area Ratio) & Setbacks Calculator',
+        category: 'Calculators',
+        description: 'Building height, maximum ground coverage (MGC), mandatory front/rear/side setbacks, and built-up area check',
+        keywords: ['far', 'mgc', 'setback', 'coverage', 'building', 'by-laws', 'rajuk', 'nbc', 'architecture'],
+        action: onOpenArchitectureModal,
+      },
+      {
+        id: 'arch-water-tank',
+        title: 'Water Tank Sizing: UGWR & OHT Storage',
+        category: 'Calculators',
+        description: 'Calculate domestic and fire reserve storage in liters, plus tank dimensions (L × W × H)',
+        keywords: ['water', 'tank', 'ugwr', 'oht', 'overhead', 'underground', 'storage', 'liters', 'pump'],
+        action: onOpenArchitectureModal,
+      },
+      {
+        id: 'arch-septic-tank',
+        title: 'Septic Tank & Soak Pit Dimensions Sizer',
+        category: 'Calculators',
+        description: 'Volume for sewage retention, sludge accumulation, soak pit diameter and depth per IS 2470 / BNBC',
+        keywords: ['septic', 'tank', 'soak', 'pit', 'sewage', 'retention', 'sludge', 'sanitary'],
+        action: onOpenArchitectureModal,
+      },
+      {
+        id: 'qc-site-inspection',
+        title: 'Site QA/QC Checklists: Pre-Pour & Soil Compaction',
+        category: 'Actions',
+        description: 'Civil engineer site compliance checklists: shuttering, cover blocks, slump test, rebar spacing, FDD proctor check',
+        keywords: ['qc', 'qa', 'checklist', 'inspection', 'pre-pour', 'slump', 'compaction', 'proctor', 'site'],
+        action: onOpenSiteQcModal,
+      },
     ];
 
     // Inject active BOQ items for instant discovery
@@ -441,6 +549,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     onOpenPresets,
     onOpenPrintPreview,
     onOpenVerification,
+    onOpenArchitectureModal,
+    onOpenCadModal,
+    onOpenSiteQcModal,
     boqItems,
     savedCalculations,
     onSelectCalculation,
