@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
   CivilWorkspace,
   CustomUnitDefinition,
@@ -6,6 +7,10 @@ import {
 import { MasonryResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
+import { MaterialTakeoff } from '../calculators/construction/MaterialTakeoff';
+import { FileSpreadsheet, Box } from 'lucide-react';
+
+export { MaterialTakeoff };
 
 export interface MasonryFinishesInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -22,55 +27,91 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
   getFieldUnit,
   updateFieldUnit,
 }) => {
+  const [takeoffMode, setTakeoffMode] = useState<'suite' | 'single'>('suite');
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        <UnitInput
-          label="Wall Length"
-          category="length"
-          siValue={activeWorkspace.masonry.wallLengthM}
-          onChangeSI={(val) => {
-            updateActiveWorkspace((ws) => ({
-              ...ws,
-              masonry: { ...ws.masonry, wallLengthM: val },
-            }));
-          }}
-          currentUnitId={getFieldUnit('mas.wallL', 'length', 'm')}
-          onUnitChange={(u) => updateFieldUnit('mas.wallL', u)}
-          customUnits={customUnits}
-          step={0.5}
-        />
-        <UnitInput
-          label="Wall Height"
-          category="length"
-          siValue={activeWorkspace.masonry.wallHeightM}
-          onChangeSI={(val) => {
-            updateActiveWorkspace((ws) => ({
-              ...ws,
-              masonry: { ...ws.masonry, wallHeightM: val },
-            }));
-          }}
-          currentUnitId={getFieldUnit('mas.wallH', 'length', 'm')}
-          onUnitChange={(u) => updateFieldUnit('mas.wallH', u)}
-          customUnits={customUnits}
-          step={0.2}
-        />
-        <UnitInput
-          label="Thickness"
-          category="length"
-          siValue={activeWorkspace.masonry.wallThicknessM}
-          onChangeSI={(val) => {
-            updateActiveWorkspace((ws) => ({
-              ...ws,
-              masonry: { ...ws.masonry, wallThicknessM: val },
-            }));
-          }}
-          currentUnitId={getFieldUnit('mas.wallT', 'length', 'm')}
-          onUnitChange={(u) => updateFieldUnit('mas.wallT', u)}
-          customUnits={customUnits}
-          step={0.125}
-        />
+      {/* Mode Switcher */}
+      <div className="flex items-center justify-between p-1.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
+        <button
+          type="button"
+          onClick={() => setTakeoffMode('suite')}
+          className={`flex-1 min-h-[44px] touch-target-48 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+            takeoffMode === 'suite'
+              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
+              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+          <span>Multi-Trade Material Takeoff &amp; Labor Suite</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTakeoffMode('single')}
+          className={`flex-1 min-h-[44px] touch-target-48 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+            takeoffMode === 'single'
+              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
+              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+          }`}
+        >
+          <Box className="w-4 h-4 text-sky-500" />
+          <span>Single Wall Sizer</span>
+        </button>
       </div>
+
+      {takeoffMode === 'suite' ? (
+        <MaterialTakeoff />
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-2">
+            <UnitInput
+              label="Wall Length"
+              category="length"
+              siValue={activeWorkspace.masonry.wallLengthM}
+              onChangeSI={(val) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  masonry: { ...ws.masonry, wallLengthM: val },
+                }));
+              }}
+              currentUnitId={getFieldUnit('mas.wallL', 'length', 'm')}
+              onUnitChange={(u) => updateFieldUnit('mas.wallL', u)}
+              customUnits={customUnits}
+              step={0.5}
+            />
+            <UnitInput
+              label="Wall Height"
+              category="length"
+              siValue={activeWorkspace.masonry.wallHeightM}
+              onChangeSI={(val) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  masonry: { ...ws.masonry, wallHeightM: val },
+                }));
+              }}
+              currentUnitId={getFieldUnit('mas.wallH', 'length', 'm')}
+              onUnitChange={(u) => updateFieldUnit('mas.wallH', u)}
+              customUnits={customUnits}
+              step={0.2}
+            />
+            <UnitInput
+              label="Thickness"
+              category="length"
+              siValue={activeWorkspace.masonry.wallThicknessM}
+              onChangeSI={(val) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  masonry: { ...ws.masonry, wallThicknessM: val },
+                }));
+              }}
+              currentUnitId={getFieldUnit('mas.wallT', 'length', 'm')}
+              onUnitChange={(u) => updateFieldUnit('mas.wallT', u)}
+              customUnits={customUnits}
+              step={0.125}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

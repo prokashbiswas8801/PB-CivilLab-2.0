@@ -58,7 +58,7 @@ export interface DashboardProps {
   onRestoreCalculation?: (record: CalculationRecord) => void;
   onDeleteCalculation?: (id: string) => void;
   userProfile?: UserProfile;
-  onOpenArchitectureModal?: (tab: 'far' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
   onOpenCadModal?: (tab: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
 }
@@ -148,6 +148,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleToolClick = (tool: (typeof allTools)[0]) => {
     if (tool.actionType === 'far-setback' && onOpenArchitectureModal) {
       onOpenArchitectureModal('far');
+    } else if (tool.actionType === 'staircase' && onOpenArchitectureModal) {
+      onOpenArchitectureModal('staircase');
     } else if (tool.actionType === 'watertank' && onOpenArchitectureModal) {
       onOpenArchitectureModal('watertank');
     } else if (tool.actionType === 'septictank' && onOpenArchitectureModal) {

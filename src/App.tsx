@@ -426,7 +426,7 @@ export default function App() {
   const [verifiedReportRecord, setVerifiedReportRecord] = useState<PublicEngineeringReportRecord | null>(null);
   const [verifySubmittalModalOpen, setVerifySubmittalModalOpen] = useState(false);
   const [architectureModalOpen, setArchitectureModalOpen] = useState(false);
-  const [architectureInitialTab, setArchitectureInitialTab] = useState<'far' | 'watertank' | 'septictank'>('far');
+  const [architectureInitialTab, setArchitectureInitialTab] = useState<'far' | 'staircase' | 'watertank' | 'septictank'>('far');
   const [cadModalOpen, setCadModalOpen] = useState(false);
   const [cadInitialTab, setCadInitialTab] = useState<'viewport' | 'shortcuts' | 'excel'>('viewport');
   const [siteQcModalOpen, setSiteQcModalOpen] = useState(false);
@@ -2785,8 +2785,14 @@ export default function App() {
         onQuickPrint={handleQuickPrintA4Report}
         onExportPdf={handleDirectDownloadPdf}
         onOpenVerification={() => setVerifySubmittalModalOpen(true)}
-        onOpenArchitectureModal={() => setArchitectureModalOpen(true)}
-        onOpenCadModal={() => setCadModalOpen(true)}
+        onOpenArchitectureModal={(tab) => {
+          if (tab) setArchitectureInitialTab(tab);
+          setArchitectureModalOpen(true);
+        }}
+        onOpenCadModal={(tab) => {
+          if (tab) setCadInitialTab(tab);
+          setCadModalOpen(true);
+        }}
         onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
         onUndo={handleUndo}
         onRedo={handleRedo}
@@ -2854,8 +2860,14 @@ export default function App() {
               const mainEl = document.getElementById("top");
               if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
             }}
-            onOpenArchitectureModal={() => setArchitectureModalOpen(true)}
-            onOpenCadModal={() => setCadModalOpen(true)}
+            onOpenArchitectureModal={(tab) => {
+              setArchitectureInitialTab(tab || 'far');
+              setArchitectureModalOpen(true);
+            }}
+            onOpenCadModal={(tab) => {
+              if (tab) setCadInitialTab(tab);
+              setCadModalOpen(true);
+            }}
             onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
             onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
           />
@@ -2924,8 +2936,14 @@ export default function App() {
                 onOpenNewWorkspace={handleOpenNewWorkspace}
                 onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
                 onOpenProfileModal={handleOpenProfileModal}
-                onOpenArchitectureModal={() => setArchitectureModalOpen(true)}
-                onOpenCadModal={() => setCadModalOpen(true)}
+                onOpenArchitectureModal={(tab) => {
+                  if (tab) setArchitectureInitialTab(tab);
+                  setArchitectureModalOpen(true);
+                }}
+                onOpenCadModal={(tab) => {
+                  if (tab) setCadInitialTab(tab);
+                  setCadModalOpen(true);
+                }}
                 onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
                 onDirectDownloadPdf={handleDirectDownloadPdf}
                 onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
@@ -4073,12 +4091,14 @@ export default function App() {
         <ArchitectureByLawsModal
           isOpen={architectureModalOpen}
           onClose={() => setArchitectureModalOpen(false)}
+          initialTab={architectureInitialTab}
         />
 
         {/* AutoCAD Scale & Viewport Calculator, CAD Shortcuts & LISP Hub Modal */}
         <CadUtilitiesModal
           isOpen={cadModalOpen}
           onClose={() => setCadModalOpen(false)}
+          initialTab={cadInitialTab}
         />
 
         {/* Construction QA/QC & Pre-Pour Inspection Checklists Modal */}

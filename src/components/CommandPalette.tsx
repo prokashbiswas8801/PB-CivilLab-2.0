@@ -49,8 +49,8 @@ interface CommandPaletteProps {
   onQuickPrint?: () => void;
   onExportPdf?: () => void;
   onOpenVerification?: () => void;
-  onOpenArchitectureModal?: () => void;
-  onOpenCadModal?: () => void;
+  onOpenArchitectureModal?: (tab?: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
+  onOpenCadModal?: (tab?: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -397,22 +397,42 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: onOpenVerification,
       },
 
+      // Surveying Suite
+      {
+        id: 'mod-surveying-suite',
+        title: 'Surveying & Land Measurement Suite',
+        category: 'Calculators',
+        description: 'Irregular Land Area (Heron & Coordinates), Katha/Decimal converter, and Rise & Fall / HI Leveling Book with arithmetic check',
+        keywords: ['survey', 'land', 'heron', 'katha', 'decimal', 'leveling', 'hi', 'rise', 'fall', 'rl', 'bm', 'shoelace', 'traverse'],
+        moduleId: 'surveying-suite',
+      },
+
+      // Material Takeoff Suite
+      {
+        id: 'mod-takeoff-suite',
+        title: 'Construction Material Takeoff & BOQ Suite',
+        category: 'Calculators',
+        description: 'Detailed takeoff for Brickwork, Plastering, Painting, Tiles/Flooring, and Formwork & Labor productivity analysis',
+        keywords: ['takeoff', 'brickwork', 'plaster', 'paint', 'tiles', 'formwork', 'shuttering', 'labor', 'productivity', 'mortar'],
+        moduleId: 'masonry-finishes',
+      },
+
       // CAD Shortcuts, Viewport Scales & AutoLISP Hub
       {
         id: 'cad-scale-calc',
         title: 'AutoCAD Viewport Scale & Zoom XP Calculator',
         category: 'CAD & Utilities',
-        description: 'Calculate Exact Zoom XP (e.g. 1000/100xp = 10xp) and drawing units for metric/imperial paper space layouts',
-        keywords: ['autocad', 'scale', 'viewport', 'zoom', 'xp', 'paper', 'model', 'space', 'drawing', '1:100', '1:50'],
-        action: onOpenCadModal,
+        description: 'Calculate Exact Zoom XP (e.g. 1000/100xp = 10xp), Model Text Height, DIMSCALE, and standard AIA/ISO layers',
+        keywords: ['autocad', 'scale', 'viewport', 'zoom', 'xp', 'paper', 'model', 'space', 'drawing', '1:100', '1:50', 'dimscale', 'ltscale'],
+        action: () => onOpenCadModal?.('viewport'),
       },
       {
         id: 'cad-tlen',
-        title: 'AutoLISP Routine: TLEN (Total Length)',
+        title: 'AutoLISP Routine: TLEN (Cumulative Polyline Length)',
         category: 'CAD & Utilities',
-        description: 'AutoLISP script to measure total cumulative length of selected lines, polylines, and arcs for pipe & cabling takeoffs',
+        description: 'AutoLISP script to measure total cumulative length of selected lines, polylines, and arcs for pipe & rebar takeoffs',
         keywords: ['lisp', 'tlen', 'length', 'autocad', 'script', 'cumulative', 'polyline', 'takeoff'],
-        action: onOpenCadModal,
+        action: () => onOpenCadModal?.('shortcuts'),
       },
       {
         id: 'cad-xyz',
@@ -420,25 +440,33 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: 'CAD & Utilities',
         description: 'AutoLISP routine to export survey points, traverse stations, and vertex coordinates directly to CSV spreadsheet',
         keywords: ['lisp', 'xyz', 'export', 'coordinates', 'survey', 'points', 'csv', 'northing', 'easting'],
-        action: onOpenCadModal,
+        action: () => onOpenCadModal?.('shortcuts'),
       },
       {
         id: 'cad-shortcuts-hub',
-        title: 'AutoCAD Engineering Shortcuts & Command Reference',
+        title: 'AutoCAD Engineering Shortcuts & System Variables',
         category: 'CAD & Utilities',
-        description: 'Quick reference for XL (XLine), DIV (Divide), BURST, OVERKILL, ALIGN, FLATTEN, PURGE, and AUDIT',
-        keywords: ['cad', 'shortcuts', 'commands', 'xline', 'burst', 'overkill', 'flatten', 'audit', 'purge', 'divide'],
-        action: onOpenCadModal,
+        description: 'Searchable reference for LTSCALE, PSLTSCALE, DIMASSOC, OVERKILL, PURGE, AUDIT, WBLOCK, and XREF',
+        keywords: ['cad', 'shortcuts', 'commands', 'xline', 'burst', 'overkill', 'flatten', 'audit', 'purge', 'divide', 'ltscale', 'xref'],
+        action: () => onOpenCadModal?.('shortcuts'),
       },
 
       // Civil Engineering Excel Formulas Library
+      {
+        id: 'excel-formulas-hub',
+        title: 'Civil Engineering Excel Formula Library',
+        category: 'Excel Formulas',
+        description: 'Interactive cards with copyable formulas: Rebar SUMIFS, FORECAST interpolation, CONVERT, CEILING, and A4 print setup',
+        keywords: ['excel', 'formula', 'library', 'rebar', 'sumifs', 'interpolation', 'forecast', 'ceiling', 'roundup', 'takeoff', 'spreadsheet'],
+        action: () => onOpenCadModal?.('excel'),
+      },
       {
         id: 'excel-distance',
         title: 'Excel: Coordinate Distance =SQRT((X2-X1)^2 + (Y2-Y1)^2)',
         category: 'Excel Formulas',
         description: 'Calculate true spatial distance between survey stations with Pythagorean Euclidean formula',
         keywords: ['excel', 'formula', 'distance', 'survey', 'coordinates', 'easting', 'northing'],
-        action: onOpenCadModal,
+        action: () => onOpenCadModal?.('excel'),
       },
       {
         id: 'excel-bearing',
@@ -446,56 +474,66 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         category: 'Excel Formulas',
         description: 'Compute 0°-360° Whole Circle Bearing (WCB) from survey coordinates',
         keywords: ['excel', 'bearing', 'wcb', 'azimuth', 'survey', 'atan2', 'angle'],
-        action: onOpenCadModal,
+        action: () => onOpenCadModal?.('excel'),
       },
       {
         id: 'excel-rebar',
         title: 'Excel: Rebar Steel Weight =ROUND((D^2/162.2)*L, 2)',
         category: 'Excel Formulas',
         description: 'Standard formula for metric reinforcement bar unit weight in kg/m and total tonnage',
-        keywords: ['excel', 'rebar', 'steel', 'weight', 'formula', '162.2', 'kg'],
-        action: onOpenCadModal,
+        keywords: ['excel', 'rebar', 'steel', 'weight', 'formula', '162.2', 'kg', 'sumifs'],
+        action: () => onOpenCadModal?.('excel'),
       },
       {
         id: 'excel-interp',
         title: 'Excel: Linear Interpolation =Y1 + (X-X1)*(Y2-Y1)/(X2-X1)',
         category: 'Excel Formulas',
         description: 'Engineering table lookup formula for soil parameters, friction factors, and hydraulic charts',
-        keywords: ['excel', 'interpolation', 'linear', 'lookup', 'chart', 'soil'],
-        action: onOpenCadModal,
+        keywords: ['excel', 'interpolation', 'linear', 'lookup', 'chart', 'soil', 'forecast'],
+        action: () => onOpenCadModal?.('excel'),
       },
 
-      // Architecture & By-Laws
+      // Architecture, Space Planning & By-Laws
       {
         id: 'arch-far-mgc',
-        title: 'FAR (Floor Area Ratio) & Setbacks Calculator',
+        title: 'FAR (Floor Area Ratio), MGC & Mandatory Setback Calculator',
         category: 'Calculators',
-        description: 'Building height, maximum ground coverage (MGC), mandatory front/rear/side setbacks, and built-up area check',
-        keywords: ['far', 'mgc', 'setback', 'coverage', 'building', 'by-laws', 'rajuk', 'nbc', 'architecture'],
-        action: onOpenArchitectureModal,
+        description: 'Allowable FAR, MGC %, total permissible built-up area, story count, and 2D setback plot layout diagram',
+        keywords: ['far', 'mgc', 'setback', 'coverage', 'building', 'by-laws', 'rajuk', 'nbc', 'architecture', 'front road', 'footprint'],
+        action: () => onOpenArchitectureModal?.('far'),
+      },
+      {
+        id: 'arch-staircase',
+        title: 'Staircase Ergonomics & Geometry Designer',
+        category: 'Calculators',
+        description: 'Riser-Tread 2R+T comfort check, waist slab slope angle, landing dimensions, headroom clearance, and 2D flight diagram',
+        keywords: ['stair', 'staircase', 'riser', 'tread', 'headroom', 'waist slab', 'flight', 'landing', 'ergonomics', 'architecture'],
+        action: () => onOpenArchitectureModal?.('staircase'),
       },
       {
         id: 'arch-water-tank',
-        title: 'Water Tank Sizing: UGWR & OHT Storage',
+        title: 'Water Reservoir (UGWR & OHT) Sizer',
         category: 'Calculators',
-        description: 'Calculate domestic and fire reserve storage in liters, plus tank dimensions (L × W × H)',
-        keywords: ['water', 'tank', 'ugwr', 'oht', 'overhead', 'underground', 'storage', 'liters', 'pump'],
-        action: onOpenArchitectureModal,
+        description: 'Daily domestic & fire demand sizer (LPCD) with internal dimensions (L × W × D) and freeboard',
+        keywords: ['water', 'tank', 'ugwr', 'oht', 'overhead', 'underground', 'storage', 'liters', 'pump', 'fire', 'lpcd'],
+        action: () => onOpenArchitectureModal?.('watertank'),
       },
       {
         id: 'arch-septic-tank',
         title: 'Septic Tank & Soak Pit Dimensions Sizer',
         category: 'Calculators',
-        description: 'Volume for sewage retention, sludge accumulation, soak pit diameter and depth per IS 2470 / BNBC',
+        description: 'Sewage retention volume, sludge accumulation, soak pit diameter and depth per IS 2470 / BNBC standards',
         keywords: ['septic', 'tank', 'soak', 'pit', 'sewage', 'retention', 'sludge', 'sanitary'],
-        action: onOpenArchitectureModal,
+        action: () => onOpenArchitectureModal?.('septictank'),
       },
+
+      // Site QA/QC
       {
         id: 'qc-site-inspection',
-        title: 'Site QA/QC Checklists: Pre-Pour & Soil Compaction',
+        title: 'Site QA/QC Checklists: Pre-Pour & Structural Inspections',
         category: 'Actions',
-        description: 'Civil engineer site compliance checklists: shuttering, cover blocks, slump test, rebar spacing, FDD proctor check',
-        keywords: ['qc', 'qa', 'checklist', 'inspection', 'pre-pour', 'slump', 'compaction', 'proctor', 'site'],
+        description: 'Interactive Pass/Fail checklists: Pre-Concreting, Footing/Column Layout, Brick Masonry & Plastering with PDF sign-off',
+        keywords: ['qc', 'qa', 'checklist', 'inspection', 'pre-pour', 'slump', 'compaction', 'proctor', 'site', 'rebar cover', 'formwork'],
         action: onOpenSiteQcModal,
       },
     ];

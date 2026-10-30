@@ -57,7 +57,7 @@ export interface SidebarProps {
   isDashboardActive: boolean;
   onSelectDashboard: () => void;
   onSelectModule: (moduleId: EngineeringModuleId, subAction?: string) => void;
-  onOpenArchitectureModal?: (tab: 'far' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
   onOpenCadModal?: (tab: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
   onOpenWorkspaceManager?: () => void;
@@ -177,7 +177,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (item.actionType === 'septictank') {
       if (onOpenArchitectureModal) onOpenArchitectureModal('septictank');
     } else if (item.actionType === 'staircase') {
-      onSelectModule('rebar-bbs', 'staircase');
+      if (onOpenArchitectureModal) onOpenArchitectureModal('staircase');
+      else onSelectModule('rebar-bbs', 'staircase');
     } else if (item.actionType === 'cad-viewport') {
       if (onOpenCadModal) onOpenCadModal('viewport');
     } else if (item.actionType === 'cad-shortcuts') {
