@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { EngineeringModuleId } from '../../types/civil';
 import { useWorkbench } from '../../context/WorkbenchContext';
+import { TOOL_REGISTRY_MAP } from '../../data/toolRegistry';
 import { LogoMark } from '../Logo';
 
 export interface SidebarCategory {
@@ -412,11 +413,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1 shrink-0">
-                            {item.badge && (
+                            {(item.moduleId && TOOL_REGISTRY_MAP[item.moduleId]?.shortCode) ? (
+                              <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline-variant)]">
+                                {TOOL_REGISTRY_MAP[item.moduleId].shortCode}
+                              </span>
+                            ) : item.badge ? (
                               <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[var(--md-sys-color-on-surface-variant)]">
                                 {item.badge}
                               </span>
-                            )}
+                            ) : null}
                             {item.moduleId && (
                               <button
                                 type="button"

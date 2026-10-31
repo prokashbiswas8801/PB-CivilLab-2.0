@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { CurrencyCode, SUPPORTED_CURRENCIES } from '../../types/civil';
 
@@ -39,11 +40,25 @@ export const NewWorkspaceModal: React.FC<NewWorkspaceModalProps> = ({
   setTemplate,
   activeWorkspaceItemCount,
 }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="w-full max-w-md bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] rounded-xl p-6 space-y-4">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350, mass: 0.8 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xl"
+          >
         <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
           <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
             Create New Project Workspace
@@ -165,7 +180,9 @@ export const NewWorkspaceModal: React.FC<NewWorkspaceModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

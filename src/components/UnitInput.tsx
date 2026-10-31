@@ -18,6 +18,7 @@ import {
   FeetInchParseResult,
 } from '../utils/unitEngine';
 import { ChevronDown, Check, ArrowRightLeft, HelpCircle, AlertCircle, X, Info, Compass, MapPin } from 'lucide-react';
+import { evaluateMathExpression } from './ui/TechnicalInput';
 
 export interface UnitInputPreset {
   label: string;
@@ -233,6 +234,13 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
   const handleBlur = () => {
     isFocusedRef.current = false;
+    const mathVal = evaluateMathExpression(rawText);
+    if (mathVal !== null && /[+\-*/^]/.test(rawText)) {
+      const newSI = normalizeToBase(mathVal, activeUnitInfo.id, category, customUnits);
+      onChangeSI(newSI);
+      setRawText(formatSmartNumber(mathVal));
+      return;
+    }
     setRawText(formattedDisplayValue);
   };
 

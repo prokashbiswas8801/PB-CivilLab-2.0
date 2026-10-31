@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Printer,
   Download,
@@ -163,8 +164,6 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
     generateQrCodeDataUrl(qrText).then((url) => setQrCodeDataUrl(url));
   }, [isOpen, documentId, qrPayload]);
 
-  if (!isOpen) return null;
-
   // Toggle individual sections
   const handleToggleSection = (sectionKey: keyof PrintSectionToggles) => {
     setSettings((prev) => ({
@@ -317,13 +316,27 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
   };
 
   return (
-    <div
-      id="pb-print-dialog"
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150 no-print print:hidden"
-    >
-      <div className="relative w-full max-w-7xl h-[94vh] flex flex-col rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-2xl overflow-hidden">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          id="pb-print-dialog"
+          role="dialog"
+          aria-modal="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs no-print print:hidden"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350, mass: 0.8 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-7xl h-[94vh] flex flex-col rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-2xl overflow-hidden"
+          >
         {/* Top Control Bar */}
         <div className="shrink-0 px-6 py-3.5 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] flex flex-wrap items-center justify-between gap-4 no-print">
           <div className="flex items-center gap-3">
@@ -1018,8 +1031,10 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

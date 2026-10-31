@@ -20,8 +20,10 @@ import {
   Scale,
   Sparkles,
   Command,
+  Palette,
 } from 'lucide-react';
 import { useWorkbench } from '../../context/WorkbenchContext';
+import { useTheme, EngineeringTheme } from '../../context/ThemeContext';
 import { LogoMark } from '../Logo';
 import { ThemePreference } from '../../types/civil';
 
@@ -51,6 +53,9 @@ export const Topbar: React.FC<TopbarProps> = ({
   canRedo = false,
 }) => {
   const workbench = useWorkbench();
+  const { theme, themeConfig, setTheme, availableThemes } = useTheme();
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+  const themeDropdownRef = useRef<HTMLDivElement>(null);
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +84,19 @@ export const Topbar: React.FC<TopbarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [projectPopoverOpen]);
 
+  // Close theme dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target as Node)) {
+        setThemeDropdownOpen(false);
+      }
+    };
+    if (themeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [themeDropdownOpen]);
+
   const handleSaveMetadata = (e: React.FormEvent) => {
     e.preventDefault();
     workbench.updateProjectMetadata({
@@ -92,58 +110,31 @@ export const Topbar: React.FC<TopbarProps> = ({
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
   return (
-    <header className="sticky top-0 z-40 h-16 w-full bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] px-4 md:px-6 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 h-12 w-full bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] px-3 md:px-4 flex items-center justify-between gap-3 select-none">
       {/* Left Zone: Mobile Hamburger + Brand Lockup */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
         <button
           type="button"
           onClick={onToggleMobileSidebar}
-          className="lg:hidden p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
+          className="lg:hidden p-1.5 rounded text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
           aria-label="Toggle navigation menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-2.5">
-          <LogoMark size={28} animated={false} className="shadow-xs shrink-0" />
-          <span className="text-sm md:text-base font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)] whitespace-nowrap hidden sm:inline">
+        <div className="flex items-center gap-2">
+          <LogoMark size={24} animated={false} className="shadow-xs shrink-0" />
+          <span className="text-sm font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)] whitespace-nowrap hidden sm:inline">
             PB CivilLab
+          </span>
+          <span className="hidden lg:inline px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline)]">
+            v2.6 Enterprise
           </span>
         </div>
       </div>
 
-      {/* Center Zone: Quick Search (Ctrl+K) */}
-      <div className="flex-1 max-w-md mx-auto hidden md:block">
-        <button
-          type="button"
-          onClick={onOpenCommandPalette}
-          className="w-full flex items-center justify-between px-3.5 py-2 rounded-2xl bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-xs text-[var(--md-sys-color-on-surface-variant)] transition-all cursor-pointer group shadow-2xs"
-          title="Fuzzy-search any calculator, CAD shortcut, or formula (Ctrl+K)"
-        >
-          <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-[var(--md-sys-color-primary)] group-hover:scale-110 transition-transform" />
-            <span className="text-[var(--md-sys-color-on-surface-variant)] font-medium">
-              Search calculators, CAD tools &amp; formulas...
-            </span>
-          </div>
-
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] shadow-2xs">
-            {isMac ? '⌘K' : 'Ctrl+K'}
-          </kbd>
-        </button>
-      </div>
-
       {/* Right Zone: Controls, Unit System Toggle, Project Quick-Edit, Theme Toggle */}
-      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-        {/* Mobile Search Button */}
-        <button
-          type="button"
-          onClick={onOpenCommandPalette}
-          className="md:hidden p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
-          title="Search (Ctrl+K)"
-        >
-          <Search className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
-        </button>
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 
         {/* Global SI / Imperial Unit System Toggle Switch */}
         <div className="flex items-center bg-[var(--md-sys-color-surface-container-low)] p-1 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
@@ -295,22 +286,76 @@ export const Topbar: React.FC<TopbarProps> = ({
           </button>
         )}
 
-        {/* Dark / Light Theme Toggle */}
-        <button
-          type="button"
-          onClick={() => {
-            const nextTheme = themePreference === 'dark' ? 'light' : 'dark';
-            onSelectTheme(nextTheme);
-          }}
-          className="p-2 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
-          title={`Switch to ${themePreference === 'dark' ? 'Light' : 'Dark'} Engineering Theme`}
-        >
-          {themePreference === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400" />
-          ) : (
-            <Moon className="w-4 h-4 text-slate-700" />
+        {/* Engineering 4-Theme Switcher */}
+        <div className="relative" ref={themeDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setThemeDropdownOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] text-xs font-mono transition-colors cursor-pointer"
+            title="Switch Engineering Workbench Theme"
+          >
+            <span
+              className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/30"
+              style={{ backgroundColor: themeConfig.colors.accent }}
+            />
+            <span className="hidden sm:inline font-semibold">{themeConfig.name}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)]" />
+          </button>
+
+          {themeDropdownOpen && (
+            <div className="absolute right-0 mt-1.5 w-64 rounded-md border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 z-50 space-y-1">
+              <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)]">
+                Engineering Theme Presets
+              </div>
+              {availableThemes.map((t) => {
+                const isActive = t.id === theme;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setTheme(t.id);
+                      onSelectTheme(t.mode === 'dark' ? 'dark' : 'light');
+                      setThemeDropdownOpen(false);
+                    }}
+                    className={`w-full text-left p-2 rounded flex items-center justify-between transition-colors cursor-pointer ${
+                      isActive
+                        ? 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
+                        : 'hover:bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex -space-x-1 shrink-0">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/30"
+                          style={{ backgroundColor: t.colors.bg }}
+                        />
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/30"
+                          style={{ backgroundColor: t.colors.accent }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                          <span>{t.name}</span>
+                          <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
+                            {t.subtitle}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] truncate">
+                          {t.description}
+                        </div>
+                      </div>
+                    </div>
+                    {isActive && (
+                      <Check className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0 ml-2" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           )}
-        </button>
+        </div>
 
         {/* Direct PDF Export Action */}
         {onDirectDownloadPdf && (

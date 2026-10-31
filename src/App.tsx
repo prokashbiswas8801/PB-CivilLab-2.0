@@ -89,6 +89,7 @@ import {
   UserCustomPreferences,
   EngineeringPreset,
 } from './types/civil';
+import { useTheme } from './context/ThemeContext';
 import {
   loadPersistedState,
   savePersistedState,
@@ -185,6 +186,9 @@ import {
 } from './components/modals';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
+import { WorkspaceTabs, WorkspaceTabItem } from './components/layout/WorkspaceTabs';
+import { BottomCommandBar } from './components/layout/BottomCommandBar';
+import { TOOL_REGISTRY_MAP } from './data/toolRegistry';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { SidebarToolbar } from './components/SidebarToolbar';
 import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
@@ -339,6 +343,7 @@ function RuntimeFaultProbe({ shouldThrow }: { shouldThrow: boolean }) {
 
 export default function App() {
   const workbench = useWorkbench();
+  const { theme: activeEngineeringTheme, setTheme: setEngTheme } = useTheme();
   const [appState, setAppState] = useState<CivilLabSchemaV2>(() => loadPersistedState());
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -347,6 +352,17 @@ export default function App() {
   const [redoStack, setRedoStack] = useState<CivilWorkspace[]>([]);
   const [customUnitModalOpen, setCustomUnitModalOpen] = useState(false);
   const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false);
+  const [openTabs, setOpenTabs] = useState<WorkspaceTabItem[]>([
+    { id: 'dashboard', type: 'dashboard', title: 'Dashboard' },
+    {
+      id: 'tab-beam-analysis',
+      type: 'module',
+      moduleId: 'beam-analysis',
+      title: 'RC Beam Analysis',
+      shortCode: 'STR-01',
+    },
+  ]);
+  const [activeTabId, setActiveTabId] = useState<string>('dashboard');
   const [osDarkPreference, setOsDarkPreference] = useState<boolean>(() =>
     typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -536,27 +552,7 @@ export default function App() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Resolve Effective Theme & sync .dark class on <html>
-  const effectiveTheme: 'light' | 'dark' =
-    appState.themePreference === 'system'
-      ? osDarkPreference
-        ? 'dark'
-        : 'light'
-      : appState.themePreference;
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (effectiveTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    if (sunlightMode) {
-      root.classList.add('sunlight-mode');
-    } else {
-      root.classList.remove('sunlight-mode');
-    }
-  }, [effectiveTheme, sunlightMode]);
+  // Note: Root HTML theme classes and data-theme attributes are managed authoritatively by ThemeProvider
 
   const activeWorkspace: CivilWorkspace = useMemo(() => {
     return (
@@ -1275,9 +1271,64 @@ export default function App() {
     setIsDashboardView(false);
     setMobileDrawerOpen(false);
     workbench.recordToolUsage(moduleId);
+
+    // Sync multi-tab workspace
+    const tabId = `tab-${moduleId}`;
+    setOpenTabs((prev) => {
+      const exists = prev.some((t) => t.id === tabId || t.moduleId === moduleId);
+      if (exists) return prev;
+      const toolMeta = TOOL_REGISTRY_MAP[moduleId];
+      const newTab: WorkspaceTabItem = {
+        id: tabId,
+        type: 'module',
+        moduleId,
+        title: toolMeta?.shortLabel || MODULE_META[moduleId]?.shortLabel || moduleId,
+        shortCode: toolMeta?.shortCode,
+      };
+      return [...prev, newTab];
+    });
+    setActiveTabId(tabId);
+  };
+
+  const handleSelectWorkspaceTab = (tabId: string) => {
+    setActiveTabId(tabId);
+    if (tabId === 'dashboard') {
+      setIsDashboardView(true);
+      const mainEl = document.getElementById('top');
+      if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      const targetTab = openTabs.find((t) => t.id === tabId);
+      if (targetTab && targetTab.moduleId) {
+        setIsDashboardView(false);
+        updateActiveWorkspace((ws) => ({ ...ws, activeModule: targetTab.moduleId! }));
+        workbench.recordToolUsage(targetTab.moduleId);
+      }
+    }
+  };
+
+  const handleCloseWorkspaceTab = (tabId: string) => {
+    if (tabId === 'dashboard') return;
+    setOpenTabs((prev) => {
+      const filtered = prev.filter((t) => t.id !== tabId);
+      if (activeTabId === tabId) {
+        const closedIdx = prev.findIndex((t) => t.id === tabId);
+        const fallback = filtered[Math.max(0, closedIdx - 1)] || filtered[0];
+        if (fallback) {
+          setActiveTabId(fallback.id);
+          if (fallback.id === 'dashboard') {
+            setIsDashboardView(true);
+          } else if (fallback.moduleId) {
+            setIsDashboardView(false);
+            updateActiveWorkspace((ws) => ({ ...ws, activeModule: fallback.moduleId! }));
+          }
+        }
+      }
+      return filtered;
+    });
   };
 
   const handleOpenDashboard = () => {
+    setActiveTabId('dashboard');
     setIsDashboardView(true);
     setMobileDrawerOpen(false);
     const mainEl = document.getElementById('top');
@@ -1319,6 +1370,11 @@ export default function App() {
 
   const handleThemeChange = (pref: ThemePreference) => {
     setAppState((prev) => ({ ...prev, themePreference: pref }));
+    if (pref === 'dark') {
+      setEngTheme('cad-charcoal');
+    } else if (pref === 'light') {
+      setEngTheme('calcpad-paper');
+    }
   };
 
   const handleToggleSidebar = () => {
@@ -2842,7 +2898,17 @@ export default function App() {
             canUndo={undoStack.length > 0}
             canRedo={redoStack.length > 0}
           />
-
+          {/* IDE/CAD Multi-Tab Workspace Header */}
+          <WorkspaceTabs
+            openTabs={openTabs}
+            activeTabId={activeTabId}
+            onSelectTab={handleSelectWorkspaceTab}
+            onCloseTab={handleCloseWorkspaceTab}
+            projectName={activeWorkspace.name}
+            projectCode={activeWorkspace.projectCode}
+            onSaveSnapshot={handleLogCalculationSnapshot}
+            onOpenProjectMetadata={() => handleOpenEditWorkspace(activeWorkspace)}
+          />
 
         {/* Desktop Split-Screen Layout */}
         <div className="flex-1 flex min-w-0 min-h-0 overflow-hidden">
@@ -2873,7 +2939,7 @@ export default function App() {
           />
 
           {/* Main Content Area — Independently Scrollable */}
-          <main id="top" className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto custom-scrollbar relative focus:outline-none" tabIndex={-1}>
+          <main id="top" className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto custom-scrollbar relative focus:outline-none pb-16" tabIndex={-1}>
             {/* PRINT-ONLY OFFICIAL CALCULATION & REPORT HEADER */}
             <div className="print-only p-6 border-b-2 border-black mb-6">
               <div className="flex items-start justify-between">
@@ -3835,83 +3901,33 @@ export default function App() {
           </main>
         </div>
 
-        {/* ADAPTIVE MOBILE BOTTOM NAVIGATION BAR (Material Design 3 - 48px touch targets) */}
-        <nav
-          aria-label="Mobile Bottom Navigation"
-          className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[var(--md-sys-color-surface-container)]/95 backdrop-blur-md border-t border-[var(--md-sys-color-outline-variant)] px-2 py-1 flex items-center justify-around shadow-lg"
-        >
-          <button
-            type="button"
-            onClick={handleOpenDashboard}
-            className={`touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl transition-colors cursor-pointer ${
-              isDashboardView
-                ? 'text-[var(--md-sys-color-primary)] font-bold'
-                : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
-            }`}
-          >
-            <div
-              className={`px-3 py-1 rounded-full transition-colors ${
-                isDashboardView ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]' : ''
-              }`}
-            >
-              <LayoutDashboard className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-medium leading-none">Dashboard</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMobileDrawerOpen(true)}
-            className={`touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl transition-colors cursor-pointer ${
-              !isDashboardView
-                ? 'text-[var(--md-sys-color-primary)] font-bold'
-                : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
-            }`}
-          >
-            <div
-              className={`px-3 py-1 rounded-full transition-colors ${
-                !isDashboardView ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]' : ''
-              }`}
-            >
-              <Calculator className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-medium leading-none">Solvers</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSetModule('boq-estimator')}
-            className="touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-          >
-            <div className="px-3 py-1 rounded-full">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-medium leading-none">Takeoff</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setWorkspaceManagerOpen(true)}
-            className="touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-          >
-            <div className="px-3 py-1 rounded-full">
-              <FolderArchive className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-medium leading-none">Projects</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDirectDownloadPdf}
-            className="touch-target-48 min-w-[60px] flex flex-col items-center justify-center gap-0.5 rounded-2xl text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-colors cursor-pointer"
-            title="Direct Download Certified PDF"
-          >
-            <div className="px-3 py-1 rounded-full bg-emerald-500/10">
-              <Download className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-semibold leading-none">PDF</span>
-          </button>
-        </nav>
+        {/* AUTOCAD-STYLE BOTTOM COMMAND DOCK & STATUS BAR */}
+        <BottomCommandBar
+          isSidebarCollapsed={appState.sidebarCollapsed}
+          onToggleSidebar={handleToggleSidebar}
+          activeModule={activeModule}
+          governingCode={activeWorkspace.governingCode}
+          onChangeGoverningCode={(code) => {
+            updateActiveWorkspace((ws) => ({ ...ws, governingCode: code }));
+            setToastBanner(`Governing code updated to ${code}`);
+          }}
+          onSelectModule={(id) => {
+            handleSetModule(id);
+            const mainEl = document.getElementById("top");
+            if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onOpenArchitectureModal={(tab) => {
+            if (tab) setArchitectureInitialTab(tab);
+            setArchitectureModalOpen(true);
+          }}
+          onOpenCadModal={(tab) => {
+            if (tab) setCadInitialTab(tab);
+            setCadModalOpen(true);
+          }}
+          onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
+          onExportPdf={handleDirectDownloadPdf}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        />
 
         {/* PROJECT WORKSPACES MANAGER MODAL */}
         <WorkspaceManagerModal

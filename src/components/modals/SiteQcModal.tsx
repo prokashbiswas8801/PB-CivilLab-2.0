@@ -14,18 +14,25 @@ export const SiteQcModal: React.FC<SiteQcModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs">
+      {isOpen && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.96 }}
-          transition={{ duration: 0.2 }}
-          className="w-full max-w-6xl max-h-[92vh] bg-[var(--md-sys-color-surface,#ffffff)] dark:bg-slate-900 border border-[var(--md-sys-color-outline-variant,#e2e8f0)] dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350, mass: 0.8 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-6xl max-h-[92vh] bg-[var(--md-sys-color-surface,#ffffff)] dark:bg-slate-900 border border-[var(--md-sys-color-outline-variant,#e2e8f0)] dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+          >
           {/* Header */}
           <div className="px-6 py-4 border-b border-[var(--md-sys-color-outline-variant,#e2e8f0)] dark:border-slate-800 flex items-center justify-between bg-[var(--md-sys-color-surface-container-lowest,#fafafa)] dark:bg-slate-950/60">
             <div className="flex items-center gap-3">
@@ -59,7 +66,8 @@ export const SiteQcModal: React.FC<SiteQcModalProps> = ({
             <SiteChecklist />
           </div>
         </motion.div>
-      </div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

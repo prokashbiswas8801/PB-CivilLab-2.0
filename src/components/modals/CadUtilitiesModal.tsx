@@ -14,18 +14,25 @@ export const CadUtilitiesModal: React.FC<CadUtilitiesModalProps> = ({
   onClose,
   initialTab = 'viewport',
 }) => {
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-xs">
+      {isOpen && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-          className="w-full max-w-6xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-xs"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350, mass: 0.8 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-6xl max-h-[92vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+          >
           {/* Header */}
           <div className="px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/80">
             <div className="flex items-center gap-3">
@@ -57,7 +64,8 @@ export const CadUtilitiesModal: React.FC<CadUtilitiesModalProps> = ({
             <CadExcelHub initialTab={initialTab} />
           </div>
         </motion.div>
-      </div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

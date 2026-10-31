@@ -23,6 +23,7 @@ import {
   FileDown,
 } from 'lucide-react';
 import { EngineeringModuleId, CalculationRecord, TakeoffLineItem } from '../types/civil';
+import { useTheme } from '../context/ThemeContext';
 
 export interface CommandPaletteItem {
   id: string;
@@ -86,6 +87,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   boqItems = [],
   onSelectCalculation,
 }) => {
+  const { setTheme } = useTheme();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -395,6 +397,38 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         description: 'Verify official PDF calculation reports using document reference (PBCL-2026-XXXXXX) or QR code link',
         keywords: ['verify', 'verification', 'qr', 'scan', 'docid', 'submittal', 'certificate', 'iso9001', 'audit', 'check'],
         action: onOpenVerification,
+      },
+      {
+        id: 'theme-cad-charcoal',
+        title: 'Theme: CAD Charcoal (Default Dark Workbench)',
+        category: 'Actions',
+        description: 'Low-glare dark engineering aesthetic with CAD Cyan and Amber crosshair accents',
+        keywords: ['theme', 'dark', 'charcoal', 'cad', 'cyan', 'amber', 'autocad'],
+        action: () => setTheme('cad-charcoal'),
+      },
+      {
+        id: 'theme-blueprint-navy',
+        title: 'Theme: Blueprint Navy (Technical Blue Canvas)',
+        category: 'Actions',
+        description: 'Architectural cyan blueprint with exposed 20px grid background',
+        keywords: ['theme', 'blueprint', 'navy', 'blue', 'grid', 'architectural'],
+        action: () => setTheme('blueprint-navy'),
+      },
+      {
+        id: 'theme-calcpad-paper',
+        title: 'Theme: CalcPad Paper (Engineering Pad Warm Light)',
+        category: 'Actions',
+        description: 'Crisp computational pad with warm graph paper tint and technical green/blue accents',
+        keywords: ['theme', 'light', 'paper', 'calcpad', 'graph', 'warm', 'white'],
+        action: () => setTheme('calcpad-paper'),
+      },
+      {
+        id: 'theme-site-daylight',
+        title: 'Theme: Site Daylight (High-Contrast Field Mode)',
+        category: 'Actions',
+        description: 'Pure high-contrast white with Safety Orange accents for direct sunlight readability on active construction sites',
+        keywords: ['theme', 'site', 'daylight', 'sun', 'contrast', 'orange', 'field'],
+        action: () => setTheme('site-daylight'),
       },
 
       // Surveying Suite

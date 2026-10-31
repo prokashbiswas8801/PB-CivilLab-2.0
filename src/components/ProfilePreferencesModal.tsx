@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   Settings,
@@ -43,6 +44,7 @@ import {
   SUPPORTED_CURRENCIES,
   EngineeringModuleId,
 } from '../types/civil';
+import { useTheme } from '../context/ThemeContext';
 import { exportPresetsPackage, parseAndValidatePresetsPackage, generateUUID } from '../utils/storage';
 
 export interface ProfilePreferencesModalProps {
@@ -102,6 +104,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
   initialTab = 'profile',
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'presets'>(initialTab);
+  const { theme: activeEngineeringTheme, setTheme: setEngineeringTheme, availableThemes } = useTheme();
 
   // Profile Form State
   const [profileForm, setProfileForm] = useState<UserProfile>(userProfile);
@@ -138,8 +141,6 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
       setActiveTab(initialTab);
     }
   }, [initialTab, isOpen]);
-
-  if (!isOpen) return null;
 
   // Filtered Presets
   const filteredPresets = presets.filter((p) => {
@@ -301,8 +302,24 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs">
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350, mass: 0.8 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-2xl overflow-hidden"
+          >
         {/* Modal Top Bar */}
         <div className="shrink-0 px-6 py-4 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -625,6 +642,59 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                     <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
                       Control decimal rounding, unit systems, and standard packaging rates.
                     </p>
+                  </div>
+                </div>
+
+                {/* Technical Engineering Themes (4 Bespoke CAD Modes) */}
+                <div className="p-3.5 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">
+                        Workbench Engineering Themes (4 CAD/CAE Presets)
+                      </span>
+                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                        Instant switch between CAD Charcoal, Blueprint Navy, CalcPad Paper, and Site Daylight modes.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {availableThemes.map((t) => {
+                      const isSel = t.id === activeEngineeringTheme;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setEngineeringTheme(t.id)}
+                          className={`p-2.5 rounded text-left border transition-all cursor-pointer ${
+                            isSel
+                              ? 'border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-xs'
+                              : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex -space-x-1">
+                              <span
+                                className="w-4 h-4 rounded-full border border-black/30"
+                                style={{ backgroundColor: t.colors.bg }}
+                              />
+                              <span
+                                className="w-4 h-4 rounded-full border border-black/30"
+                                style={{ backgroundColor: t.colors.accent }}
+                              />
+                            </div>
+                            {isSel && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                            )}
+                          </div>
+                          <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">
+                            {t.name}
+                          </div>
+                          <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                            {t.subtitle}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1236,7 +1306,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
             Done
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* SUB-MODAL: Save Current as Preset */}
       {isCreatingPreset && (
@@ -1383,6 +1453,8 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
           </div>
         </div>
       )}
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
