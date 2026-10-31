@@ -301,17 +301,18 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
 
         {/* LIVE PROJECT ROLLUP COUNTERS (4 METRIC TILES) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-1">
-          {/* Tile 1: Concrete Volume */}
-          <div className="p-3 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-md flex items-center justify-between">
+          {/* Tile 1: Concrete Volume (Cyan / Sky Jewel) */}
+          <div className="p-3 bg-gradient-to-br from-sky-500/15 via-[var(--md-sys-color-surface)] to-[var(--md-sys-color-surface)] border border-sky-500/30 hover:border-sky-400/60 rounded-md flex items-center justify-between transition-all duration-200 group shadow-xs">
             <div className="space-y-0.5 min-w-0">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                Total Concrete
+              <div className="text-[10px] uppercase font-mono tracking-wider text-sky-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
+                <span>Total Concrete</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)]">
+                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)] group-hover:text-sky-300 transition-colors">
                   {totalConcreteM3.toLocaleString()}
                 </span>
-                <span className="text-xs font-mono font-semibold text-[var(--md-sys-color-primary)]">
+                <span className="text-xs font-mono font-bold text-sky-400">
                   m³
                 </span>
               </div>
@@ -319,22 +320,23 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
                 ≈ {(totalConcreteM3 * 35.3147).toFixed(0)} CFT wet volume
               </div>
             </div>
-            <div className="w-8 h-8 rounded bg-[var(--md-sys-color-surface-container-high)] flex items-center justify-center shrink-0 text-[var(--md-sys-color-primary)]">
+            <div className="w-9 h-9 rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
               <Layers className="w-4 h-4" />
             </div>
           </div>
 
-          {/* Tile 2: Rebar Steel */}
-          <div className="p-3 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-md flex items-center justify-between">
+          {/* Tile 2: Rebar Steel (Amber / Gold Jewel) */}
+          <div className="p-3 bg-gradient-to-br from-amber-500/15 via-[var(--md-sys-color-surface)] to-[var(--md-sys-color-surface)] border border-amber-500/30 hover:border-amber-400/60 rounded-md flex items-center justify-between transition-all duration-200 group shadow-xs">
             <div className="space-y-0.5 min-w-0">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                Total Rebar Steel
+              <div className="text-[10px] uppercase font-mono tracking-wider text-amber-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]" />
+                <span>Total Rebar Steel</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)]">
+                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)] group-hover:text-amber-300 transition-colors">
                   {estimatedRebarTon.toLocaleString()}
                 </span>
-                <span className="text-xs font-mono font-semibold text-amber-500">
+                <span className="text-xs font-mono font-bold text-amber-400">
                   Ton
                 </span>
               </div>
@@ -342,22 +344,23 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
                 ≈ {Math.round(estimatedRebarTon * 1000).toLocaleString()} kg (d²/162)
               </div>
             </div>
-            <div className="w-8 h-8 rounded bg-[var(--md-sys-color-surface-container-high)] flex items-center justify-center shrink-0 text-amber-500">
+            <div className="w-9 h-9 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
               <Scale className="w-4 h-4" />
             </div>
           </div>
 
-          {/* Tile 3: Bricks */}
-          <div className="p-3 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-md flex items-center justify-between">
+          {/* Tile 3: Bricks (Rose / Coral Jewel) */}
+          <div className="p-3 bg-gradient-to-br from-rose-500/15 via-[var(--md-sys-color-surface)] to-[var(--md-sys-color-surface)] border border-rose-500/30 hover:border-rose-400/60 rounded-md flex items-center justify-between transition-all duration-200 group shadow-xs">
             <div className="space-y-0.5 min-w-0">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                Total Clay Bricks
+              <div className="text-[10px] uppercase font-mono tracking-wider text-rose-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_#fb7185]" />
+                <span>Total Clay Bricks</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)]">
+                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)] group-hover:text-rose-300 transition-colors">
                   {totalBricksNos.toLocaleString()}
                 </span>
-                <span className="text-xs font-mono font-semibold text-rose-500">
+                <span className="text-xs font-mono font-bold text-rose-400">
                   Nos
                 </span>
               </div>
@@ -365,22 +368,23 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
                 Modular 240×115×75mm
               </div>
             </div>
-            <div className="w-8 h-8 rounded bg-[var(--md-sys-color-surface-container-high)] flex items-center justify-center shrink-0 text-rose-500">
+            <div className="w-9 h-9 rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
               <Boxes className="w-4 h-4" />
             </div>
           </div>
 
-          {/* Tile 4: Cement Bags */}
-          <div className="p-3 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-md flex items-center justify-between">
+          {/* Tile 4: Cement Bags (Mint / Emerald Jewel) */}
+          <div className="p-3 bg-gradient-to-br from-emerald-500/15 via-[var(--md-sys-color-surface)] to-[var(--md-sys-color-surface)] border border-emerald-500/30 hover:border-emerald-400/60 rounded-md flex items-center justify-between transition-all duration-200 group shadow-xs">
             <div className="space-y-0.5 min-w-0">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-                Total Cement Bags
+              <div className="text-[10px] uppercase font-mono tracking-wider text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                <span>Total Cement</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)]">
+                <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)] group-hover:text-emerald-300 transition-colors">
                   {totalCementBags.toLocaleString()}
                 </span>
-                <span className="text-xs font-mono font-semibold text-emerald-500">
+                <span className="text-xs font-mono font-bold text-emerald-400">
                   Bags
                 </span>
               </div>
@@ -388,7 +392,7 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
                 50 kg net wt · 1.54 factor
               </div>
             </div>
-            <div className="w-8 h-8 rounded bg-[var(--md-sys-color-surface-container-high)] flex items-center justify-center shrink-0 text-emerald-500">
+            <div className="w-9 h-9 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
               <Package className="w-4 h-4" />
             </div>
           </div>

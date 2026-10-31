@@ -135,29 +135,41 @@ export const DisciplineMatrix: React.FC<DisciplineMatrixProps> = ({
         </div>
       </div>
 
-      {/* DISCIPLINE TABS */}
+      {/* DISCIPLINE TABS WITH JOYFUL ACCENTS */}
       <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 text-xs">
-        {DISCIPLINE_TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`px-2.5 py-1 rounded text-xs font-mono whitespace-nowrap transition-colors cursor-pointer ${
-              activeTab === tab
-                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
-                : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+        {DISCIPLINE_TABS.map((tab) => {
+          const isSel = activeTab === tab;
+          let activeClass = 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold';
+          if (isSel) {
+            if (tab === 'Structural') activeClass = 'bg-sky-500 text-white font-bold shadow-xs';
+            else if (tab === 'Geotech') activeClass = 'bg-amber-500 text-slate-950 font-bold shadow-xs';
+            else if (tab === 'Architecture') activeClass = 'bg-purple-500 text-white font-bold shadow-xs';
+            else if (tab === 'BOQ & BBS') activeClass = 'bg-emerald-500 text-white font-bold shadow-xs';
+            else if (tab === 'Hydraulics') activeClass = 'bg-teal-500 text-white font-bold shadow-xs';
+            else if (tab === 'CAD & Excel') activeClass = 'bg-rose-500 text-white font-bold shadow-xs';
+          }
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-2.5 py-1 rounded text-xs font-mono whitespace-nowrap transition-all cursor-pointer ${
+                isSel
+                  ? activeClass
+                  : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
+              }`}
+            >
+              {tab}
+            </button>
+          );
+        })}
       </div>
 
       {/* PINNED TOOLS STRIP (IF ANY & NO SEARCH QUERY) */}
       {!searchQuery && activeTab === 'All' && pinnedTools.length > 0 && (
-        <div className="p-2 bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]/80 rounded space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-amber-500 font-bold">
-            <Star className="w-3 h-3 fill-amber-500" />
+        <div className="p-2 bg-[var(--md-sys-color-surface-container-low)] border border-amber-500/30 rounded space-y-1.5 shadow-xs">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+            <Star className="w-3 h-3 fill-amber-400" />
             <span>Pinned Engineering Solvers</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -166,17 +178,17 @@ export const DisciplineMatrix: React.FC<DisciplineMatrixProps> = ({
                 key={tool.id}
                 type="button"
                 onClick={() => handleLaunchTool(tool)}
-                className="px-2 py-1 bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] rounded text-left flex items-center justify-between group transition-colors cursor-pointer"
+                className="px-2 py-1 bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] hover:border-amber-400/50 rounded text-left flex items-center justify-between group transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-mono text-[10px] font-bold text-[var(--md-sys-color-primary)] shrink-0">
+                  <span className="font-mono text-[10px] font-bold text-amber-400 shrink-0">
                     {tool.shortCode}
                   </span>
                   <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] truncate">
                     {tool.shortLabel}
                   </span>
                 </div>
-                <ArrowRight className="w-2.5 h-2.5 text-slate-400 group-hover:text-[var(--md-sys-color-primary)] shrink-0 ml-1" />
+                <ArrowRight className="w-2.5 h-2.5 text-slate-400 group-hover:text-amber-400 shrink-0 ml-1" />
               </button>
             ))}
           </div>
@@ -188,15 +200,28 @@ export const DisciplineMatrix: React.FC<DisciplineMatrixProps> = ({
         {filteredTools.map((tool) => {
           const isPinned = tool.moduleId ? workbench.isFavoriteTool(tool.moduleId) : false;
 
+          // Discipline-specific jewel color
+          const prefix = tool.shortCode.split('-')[0];
+          let badgeStyle = 'bg-sky-500/15 text-sky-400 border-sky-500/30';
+          if (prefix === 'STR') badgeStyle = 'bg-sky-500/15 text-sky-400 border-sky-500/30';
+          else if (prefix === 'GEO') badgeStyle = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+          else if (prefix === 'BOQ') badgeStyle = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+          else if (prefix === 'MAT') badgeStyle = 'bg-teal-500/15 text-teal-400 border-teal-500/30';
+          else if (prefix === 'ARC') badgeStyle = 'bg-purple-500/15 text-purple-400 border-purple-500/30';
+          else if (prefix === 'HYD') badgeStyle = 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30';
+          else if (prefix === 'SUR') badgeStyle = 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+          else if (prefix === 'CAD') badgeStyle = 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30';
+          else if (prefix === 'QCS') badgeStyle = 'bg-orange-500/15 text-orange-400 border-orange-500/30';
+
           return (
             <div
               key={tool.id}
               onClick={() => handleLaunchTool(tool)}
-              className="p-2.5 bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]/80 hover:border-[var(--md-sys-color-primary)] rounded transition-all cursor-pointer group flex flex-col justify-between space-y-2"
+              className="p-2.5 bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]/80 hover:border-sky-400/50 rounded transition-all cursor-pointer group flex flex-col justify-between space-y-2 shadow-xs"
             >
               <div className="space-y-1">
                 <div className="flex items-start justify-between gap-1.5">
-                  <span className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] font-mono text-[10px] font-bold text-[var(--md-sys-color-primary)] shrink-0">
+                  <span className={`px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold shrink-0 ${badgeStyle}`}>
                     {tool.shortCode}
                   </span>
                   <div className="flex items-center gap-1">

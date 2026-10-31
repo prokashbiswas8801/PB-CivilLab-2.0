@@ -326,14 +326,13 @@ export const Topbar: React.FC<TopbarProps> = ({
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="flex -space-x-1 shrink-0">
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-black/30"
-                          style={{ backgroundColor: t.colors.bg }}
-                        />
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-black/30"
-                          style={{ backgroundColor: t.colors.accent }}
-                        />
+                        {t.colors.palette.map((col, idx) => (
+                          <span
+                            key={idx}
+                            className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-xs"
+                            style={{ backgroundColor: col }}
+                          />
+                        ))}
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">

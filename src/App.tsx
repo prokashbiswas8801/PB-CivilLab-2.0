@@ -164,7 +164,6 @@ import { ProfilePreferencesModal } from './components/ProfilePreferencesModal';
 import { PresetQuickBar } from './components/PresetQuickBar';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { AnalyticalDenseTable } from './components/AnalyticalDenseTable';
-import { DashboardView } from './components/DashboardView';
 import { DcrCapacityGauge, DcrGaugeSuite } from './components/DcrCapacityGauge';
 import { CelebrationToast, ToastMessage } from './components/CelebrationToast';
 import { exportCertifiedEngineeringPdf, PdfExportProgress } from './utils/pdfExport';
@@ -190,7 +189,6 @@ import { WorkspaceTabs, WorkspaceTabItem } from './components/layout/WorkspaceTa
 import { BottomCommandBar } from './components/layout/BottomCommandBar';
 import { TOOL_REGISTRY_MAP } from './data/toolRegistry';
 import { Dashboard } from './components/dashboard/Dashboard';
-import { SidebarToolbar } from './components/SidebarToolbar';
 import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
 import { ReportVerificationView } from './components/ReportVerificationView';
 import { VerifySubmittalModal } from './components/VerifySubmittalModal';

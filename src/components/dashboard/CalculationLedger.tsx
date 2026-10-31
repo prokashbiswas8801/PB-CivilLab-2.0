@@ -145,36 +145,36 @@ export const CalculationLedger: React.FC<CalculationLedgerProps> = ({
                   >
                     {/* Tool Short Code */}
                     <td className="py-2 px-2 whitespace-nowrap">
-                      <span className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold text-[10px]">
                         {shortCode}
                       </span>
                     </td>
 
                     {/* Title */}
-                    <td className="py-2 px-2 max-w-[140px] truncate font-medium text-[var(--md-sys-color-on-surface)]" title={record.title}>
+                    <td className="py-2 px-2 max-w-[140px] truncate font-semibold text-[var(--md-sys-color-on-surface)] group-hover:text-sky-300 transition-colors" title={record.title}>
                       {record.title}
                     </td>
 
                     {/* Key Output Result */}
                     <td className="py-2 px-2 text-[var(--md-sys-color-on-surface-variant)] max-w-[140px] truncate tabular-nums text-[11px]" title={metricString}>
-                      {metricString}
+                      <span className="font-semibold text-emerald-400/90">{metricString}</span>
                     </td>
 
                     {/* Status Badge */}
                     <td className="py-2 px-1 text-center whitespace-nowrap">
                       {isFail ? (
-                        <span className="inline-flex items-center gap-0.5 text-rose-500 font-bold text-[10px]">
-                          <AlertOctagon className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/15 border border-rose-500/30 text-rose-400 font-bold text-[10px] shadow-xs">
+                          <AlertOctagon className="w-2.5 h-2.5" />
                           <span>{statusLabel}</span>
                         </span>
                       ) : isWarning ? (
-                        <span className="inline-flex items-center gap-0.5 text-amber-500 font-bold text-[10px]">
-                          <AlertTriangle className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold text-[10px] shadow-xs">
+                          <AlertTriangle className="w-2.5 h-2.5" />
                           <span>{statusLabel}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-0.5 text-emerald-500 font-bold text-[10px]">
-                          <CheckCircle2 className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] shadow-xs">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
                           <span>{statusLabel}</span>
                         </span>
                       )}

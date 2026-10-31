@@ -650,14 +650,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">
-                        Workbench Engineering Themes (4 CAD/CAE Presets)
+                        Workbench Engineering Themes (5 Colorful Presets)
                       </span>
                       <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                        Instant switch between CAD Charcoal, Blueprint Navy, CalcPad Paper, and Site Daylight modes.
+                        Switch between Cyber Charcoal, Royal Blueprint, Creative CalcPad, Solar Amber, and Emerald Studio.
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                     {availableThemes.map((t) => {
                       const isSel = t.id === activeEngineeringTheme;
                       return (
@@ -673,14 +673,13 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                         >
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex -space-x-1">
-                              <span
-                                className="w-4 h-4 rounded-full border border-black/30"
-                                style={{ backgroundColor: t.colors.bg }}
-                              />
-                              <span
-                                className="w-4 h-4 rounded-full border border-black/30"
-                                style={{ backgroundColor: t.colors.accent }}
-                              />
+                              {t.colors.palette.map((col, idx) => (
+                                <span
+                                  key={idx}
+                                  className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-xs"
+                                  style={{ backgroundColor: col }}
+                                />
+                              ))}
                             </div>
                             {isSel && (
                               <CheckCircle2 className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />

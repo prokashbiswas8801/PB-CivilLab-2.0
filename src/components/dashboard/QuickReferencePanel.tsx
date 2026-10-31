@@ -83,14 +83,14 @@ export const QuickReferencePanel: React.FC = () => {
             <span>Field Engineering Reference Manual</span>
           </div>
 
-          {/* Sub-tabs */}
-          <div className="hidden sm:flex items-center gap-1 text-xs">
+          {/* Sub-tabs with colorful accents */}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs">
             <button
               type="button"
               onClick={() => setActiveTab('rebar')}
-              className={`px-2.5 py-1 rounded text-xs font-mono transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
                 activeTab === 'rebar'
-                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
+                  ? 'bg-sky-500 text-white font-bold shadow-xs'
                   : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
               }`}
             >
@@ -99,9 +99,9 @@ export const QuickReferencePanel: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('concrete')}
-              className={`px-2.5 py-1 rounded text-xs font-mono transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
                 activeTab === 'concrete'
-                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
+                  ? 'bg-emerald-500 text-white font-bold shadow-xs'
                   : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
               }`}
             >
@@ -110,9 +110,9 @@ export const QuickReferencePanel: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('densities')}
-              className={`px-2.5 py-1 rounded text-xs font-mono transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
                 activeTab === 'densities'
-                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                   : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]'
               }`}
             >

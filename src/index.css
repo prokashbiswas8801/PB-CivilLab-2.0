@@ -7,36 +7,42 @@
     --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
-    /* THEME 1: CAD Charcoal (Default Dark Workbench) */
-    --md-sys-color-background: #0F1216;
-    --md-sys-color-on-background: #E6EDF3;
-    --md-sys-color-surface: #161B22;
-    --md-sys-color-surface-dim: #0D1014;
-    --md-sys-color-surface-bright: #1F2630;
-    --md-sys-color-surface-container-lowest: #0B0E12;
-    --md-sys-color-surface-container-low: #12161D;
-    --md-sys-color-surface-container: #1A2029;
-    --md-sys-color-surface-container-high: #212833;
-    --md-sys-color-surface-container-highest: #29323F;
-    --md-sys-color-on-surface: #E6EDF3;
-    --md-sys-color-on-surface-variant: #8B949E;
-    --md-sys-color-outline: #262C36;
-    --md-sys-color-outline-variant: #1D232C;
+    /* THEME 1: Cyber Charcoal (Luminous Electric Dark Workbench) */
+    --md-sys-color-background: #0B0F19;
+    --md-sys-color-on-background: #F0F6FC;
+    --md-sys-color-surface: #131A29;
+    --md-sys-color-surface-dim: #080C14;
+    --md-sys-color-surface-bright: #1C263B;
+    --md-sys-color-surface-container-lowest: #070A11;
+    --md-sys-color-surface-container-low: #0F1522;
+    --md-sys-color-surface-container: #182235;
+    --md-sys-color-surface-container-high: #202D45;
+    --md-sys-color-surface-container-highest: #2A3B5A;
+    --md-sys-color-on-surface: #F0F6FC;
+    --md-sys-color-on-surface-variant: #94A3B8;
+    --md-sys-color-outline: #26354D;
+    --md-sys-color-outline-variant: #1B2638;
 
-    --md-sys-color-primary: #0EA5E9; /* CAD Cyan */
-    --md-sys-color-on-primary: #031526;
-    --md-sys-color-primary-container: #075985;
-    --md-sys-color-on-primary-container: #E0F2FE;
+    --md-sys-color-primary: #00E5FF; /* Luminous Electric Cyan */
+    --md-sys-color-on-primary: #021B24;
+    --md-sys-color-primary-container: #083344;
+    --md-sys-color-on-primary-container: #CFFAFE;
 
-    --md-sys-color-secondary: #F59E0B; /* Amber Crosshair */
+    --md-sys-color-secondary: #F59E0B; /* Radiant Amber */
     --md-sys-color-on-secondary: #451A03;
     --md-sys-color-secondary-container: #78350F;
     --md-sys-color-on-secondary-container: #FEF3C7;
 
-    --md-sys-color-tertiary: #10B981;
+    --md-sys-color-tertiary: #10B981; /* Neon Emerald */
     --md-sys-color-on-tertiary: #022C22;
     --md-sys-color-tertiary-container: #064E3B;
     --md-sys-color-on-tertiary-container: #A7F3D0;
+
+    --md-sys-color-accent-purple: #C084FC;
+    --md-sys-color-accent-rose: #FB7185;
+    --md-sys-color-accent-amber: #FBBF24;
+    --md-sys-color-accent-emerald: #34D399;
+    --md-sys-color-accent-cyan: #38BDF8;
 
     --md-sys-color-error: #F87171;
     --md-sys-color-on-error: #450A0A;
@@ -50,99 +56,120 @@
     color-scheme: dark;
   }
 
-  /* THEME 2: Blueprint Navy (Technical Blue Architectural Canvas) */
-  .theme-blueprint-navy {
-    --md-sys-color-background: #071324;
-    --md-sys-color-on-background: #F0F6FC;
-    --md-sys-color-surface: #0D1F38;
-    --md-sys-color-surface-dim: #050E1A;
-    --md-sys-color-surface-bright: #132B4C;
-    --md-sys-color-surface-container-lowest: #040B16;
-    --md-sys-color-surface-container-low: #09182E;
-    --md-sys-color-surface-container: #122744;
-    --md-sys-color-surface-container-high: #183355;
-    --md-sys-color-surface-container-highest: #1F4069;
-    --md-sys-color-on-surface: #F0F6FC;
-    --md-sys-color-on-surface-variant: #93C5FD;
-    --md-sys-color-outline: #1E3A5F;
-    --md-sys-color-outline-variant: #142944;
+  /* Cyber Charcoal Subtle Radial Grid */
+  .theme-cad-charcoal body,
+  .theme-cad-charcoal .screen-app-container {
+    background-size: 24px 24px;
+    background-image: 
+      linear-gradient(to right, rgba(0, 229, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 229, 255, 0.025) 1px, transparent 1px);
+  }
 
-    --md-sys-color-primary: #38BDF8; /* Blueprint Cyan */
-    --md-sys-color-on-primary: #041D35;
+  /* THEME 2: Royal Blueprint (Deep Oceanic & Holographic Sky Blue) */
+  .theme-blueprint-navy {
+    --md-sys-color-background: #061325;
+    --md-sys-color-on-background: #F0F8FF;
+    --md-sys-color-surface: #0B213F;
+    --md-sys-color-surface-dim: #040D1A;
+    --md-sys-color-surface-bright: #12335E;
+    --md-sys-color-surface-container-lowest: #030A14;
+    --md-sys-color-surface-container-low: #081B34;
+    --md-sys-color-surface-container: #102B52;
+    --md-sys-color-surface-container-high: #163B6E;
+    --md-sys-color-surface-container-highest: #1F4F91;
+    --md-sys-color-on-surface: #F0F8FF;
+    --md-sys-color-on-surface-variant: #93C5FD;
+    --md-sys-color-outline: #1E4D85;
+    --md-sys-color-outline-variant: #14355E;
+
+    --md-sys-color-primary: #38BDF8; /* Holographic Sky Cyan */
+    --md-sys-color-on-primary: #031D33;
     --md-sys-color-primary-container: #0369A1;
     --md-sys-color-on-primary-container: #E0F2FE;
 
-    --md-sys-color-secondary: #60A5FA;
-    --md-sys-color-on-secondary: #0F172A;
-    --md-sys-color-secondary-container: #1E3A8A;
+    --md-sys-color-secondary: #3B82F6; /* Royal Sapphire */
+    --md-sys-color-on-secondary: #0A1B38;
+    --md-sys-color-secondary-container: #1D4ED8;
     --md-sys-color-on-secondary-container: #DBEAFE;
 
-    --md-sys-color-tertiary: #34D399;
+    --md-sys-color-tertiary: #34D399; /* Mint Aurora */
     --md-sys-color-on-tertiary: #022C22;
-    --md-sys-color-tertiary-container: #065F46;
+    --md-sys-color-tertiary-container: #047857;
     --md-sys-color-on-tertiary-container: #D1FAE5;
 
-    --md-sys-color-error: #F87171;
-    --md-sys-color-on-error: #450A0A;
-    --md-sys-color-error-container: #7F1D1D;
-    --md-sys-color-on-error-container: #FECACA;
+    --md-sys-color-accent-purple: #A78BFA;
+    --md-sys-color-accent-rose: #FB7185;
+    --md-sys-color-accent-amber: #FBBF24;
+    --md-sys-color-accent-emerald: #34D399;
+    --md-sys-color-accent-cyan: #38BDF8;
 
-    --md-sys-color-success: #4ADE80;
-    --md-sys-color-success-container: #14532D;
+    --md-sys-color-error: #FB7185;
+    --md-sys-color-on-error: #4C0519;
+    --md-sys-color-error-container: #9F1239;
+    --md-sys-color-on-error-container: #FFE4E6;
+
+    --md-sys-color-success: #34D399;
+    --md-sys-color-success-container: #064E3B;
     --md-sys-color-on-success-container: #DCFCE7;
 
     color-scheme: dark;
   }
 
-  /* Blueprint Grid Pattern */
+  /* Royal Blueprint Grid Pattern */
   .theme-blueprint-navy body,
   .theme-blueprint-navy .screen-app-container {
     background-size: 20px 20px;
     background-image: 
-      linear-gradient(to right, rgba(56, 189, 248, 0.045) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(56, 189, 248, 0.045) 1px, transparent 1px);
+      linear-gradient(to right, rgba(56, 189, 248, 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(56, 189, 248, 0.055) 1px, transparent 1px);
   }
 
-  /* THEME 3: CalcPad Paper (Engineering Pad Warm Light) */
+  /* THEME 3: Creative CalcPad (Joyful Warm Studio Light) */
   .theme-calcpad-paper {
-    --md-sys-color-background: #F4F5F0; /* warm graph paper tint */
-    --md-sys-color-on-background: #111827;
+    --md-sys-color-background: #F8FAF6; /* fresh, joyful graph paper cream */
+    --md-sys-color-on-background: #0F172A;
     --md-sys-color-surface: #FFFFFF;
-    --md-sys-color-surface-dim: #EBECE6;
+    --md-sys-color-surface-dim: #EEF2EB;
     --md-sys-color-surface-bright: #FFFFFF;
     --md-sys-color-surface-container-lowest: #FFFFFF;
-    --md-sys-color-surface-container-low: #EDEDE6;
-    --md-sys-color-surface-container: #E6E8E0;
-    --md-sys-color-surface-container-high: #DFE2D8;
-    --md-sys-color-surface-container-highest: #D3D8CB;
-    --md-sys-color-on-surface: #111827;
-    --md-sys-color-on-surface-variant: #4B5563;
-    --md-sys-color-outline: #D8DDD6;
-    --md-sys-color-outline-variant: #E2E6DF;
+    --md-sys-color-surface-container-low: #F1F5EE;
+    --md-sys-color-surface-container: #E7EEE4;
+    --md-sys-color-surface-container-high: #DDE7D8;
+    --md-sys-color-surface-container-highest: #CFDDC8;
+    --md-sys-color-on-surface: #0F172A;
+    --md-sys-color-on-surface-variant: #475569;
+    --md-sys-color-outline: #CAD7C6;
+    --md-sys-color-outline-variant: #DCE5D9;
 
-    --md-sys-color-primary: #0284C7; /* Technical Cyan/Blue */
+    --md-sys-color-primary: #0284C7; /* Vibrant Cerulean */
     --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-primary-container: #BAE6FD;
     --md-sys-color-on-primary-container: #0369A1;
 
-    --md-sys-color-secondary: #059669; /* Technical Green */
+    --md-sys-color-secondary: #059669; /* Fresh Mint Green */
     --md-sys-color-on-secondary: #FFFFFF;
     --md-sys-color-secondary-container: #A7F3D0;
     --md-sys-color-on-secondary-container: #065F46;
 
-    --md-sys-color-tertiary: #D97706;
+    --md-sys-color-tertiary: #F97316; /* Sunburst Orange */
     --md-sys-color-on-tertiary: #FFFFFF;
-    --md-sys-color-tertiary-container: #FEF3C7;
-    --md-sys-color-on-tertiary-container: #78350F;
+    --md-sys-color-tertiary-container: #FFEDD5;
+    --md-sys-color-on-tertiary-container: #9A3412;
 
-    --md-sys-color-error: #DC2626;
+    --md-sys-color-accent-purple: #8B5CF6;
+    --md-sys-color-accent-rose: #F43F5E;
+    --md-sys-color-accent-amber: #F59E0B;
+    --md-sys-color-accent-emerald: #10B981;
+    --md-sys-color-accent-cyan: #06B6D4;
+
+    --md-sys-color-error: #E11D48;
     --md-sys-color-on-error: #FFFFFF;
-    --md-sys-color-error-container: #FEE2E2;
-    --md-sys-color-on-error-container: #7F1D1D;
+    --md-sys-color-error-container: #FFE4E6;
+    --md-sys-color-on-error-container: #881337;
 
-    --md-sys-color-success: #16A34A;
-    --md-sys-color-success-container: #DCFCE7;
-    --md-sys-color-on-success-container: #14532D;
+    --md-sys-color-success: #10B981;
+    --md-sys-color-success-container: #D1FAE5;
+    --md-sys-color-on-success-container: #065F46;
 
     color-scheme: light;
   }
@@ -151,42 +178,48 @@
   .theme-calcpad-paper .screen-app-container {
     background-size: 20px 20px;
     background-image: 
-      linear-gradient(to right, rgba(2, 132, 199, 0.035) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(2, 132, 199, 0.035) 1px, transparent 1px);
+      linear-gradient(to right, rgba(5, 150, 105, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(5, 150, 105, 0.045) 1px, transparent 1px);
   }
 
-  /* THEME 4: Site Daylight (High-Contrast Field Mode) */
+  /* THEME 4: Solar Amber (Sun-Drenched High Energy Field Mode) */
   .theme-site-daylight,
   .sunlight-mode {
-    --md-sys-color-background: #FFFFFF;
-    --md-sys-color-on-background: #000000;
+    --md-sys-color-background: #FFFDF8;
+    --md-sys-color-on-background: #090D16;
     --md-sys-color-surface: #FFFFFF;
-    --md-sys-color-surface-dim: #F1F5F9;
+    --md-sys-color-surface-dim: #F8F5EE;
     --md-sys-color-surface-bright: #FFFFFF;
     --md-sys-color-surface-container-lowest: #FFFFFF;
-    --md-sys-color-surface-container-low: #F8FAFC;
-    --md-sys-color-surface-container: #F1F5F9;
-    --md-sys-color-surface-container-high: #E2E8F0;
-    --md-sys-color-surface-container-highest: #CBD5E1;
-    --md-sys-color-on-surface: #000000;
-    --md-sys-color-on-surface-variant: #1E293B;
-    --md-sys-color-outline: #1E293B;
-    --md-sys-color-outline-variant: #334155;
+    --md-sys-color-surface-container-low: #FBF8F0;
+    --md-sys-color-surface-container: #F4EFE3;
+    --md-sys-color-surface-container-high: #EDE5D5;
+    --md-sys-color-surface-container-highest: #E2D7C1;
+    --md-sys-color-on-surface: #090D16;
+    --md-sys-color-on-surface-variant: #334155;
+    --md-sys-color-outline: #94A3B8;
+    --md-sys-color-outline-variant: #CBD5E1;
 
-    --md-sys-color-primary: #EA580C; /* Safety Orange */
+    --md-sys-color-primary: #FF5500; /* Safety Clementine Orange */
     --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-primary-container: #FFEDD5;
     --md-sys-color-on-primary-container: #9A3412;
 
-    --md-sys-color-secondary: #0284C7; /* Cobalt */
+    --md-sys-color-secondary: #2563EB; /* Royal Cobalt */
     --md-sys-color-on-secondary: #FFFFFF;
-    --md-sys-color-secondary-container: #E0F2FE;
-    --md-sys-color-on-secondary-container: #0369A1;
+    --md-sys-color-secondary-container: #DBEAFE;
+    --md-sys-color-on-secondary-container: #1E40AF;
 
-    --md-sys-color-tertiary: #475569;
+    --md-sys-color-tertiary: #16A34A; /* Leaf Emerald */
     --md-sys-color-on-tertiary: #FFFFFF;
-    --md-sys-color-tertiary-container: #F1F5F9;
-    --md-sys-color-on-tertiary-container: #0F172A;
+    --md-sys-color-tertiary-container: #DCFCE7;
+    --md-sys-color-on-tertiary-container: #14532D;
+
+    --md-sys-color-accent-purple: #9333EA;
+    --md-sys-color-accent-rose: #E11D48;
+    --md-sys-color-accent-amber: #D97706;
+    --md-sys-color-accent-emerald: #16A34A;
+    --md-sys-color-accent-cyan: #0284C7;
 
     --md-sys-color-error: #DC2626;
     --md-sys-color-on-error: #FFFFFF;
@@ -198,6 +231,64 @@
     --md-sys-color-on-success-container: #14532D;
 
     color-scheme: light;
+  }
+
+  /* THEME 5: Emerald Studio (Lush Botanical Civil Lab) */
+  .theme-emerald-matrix {
+    --md-sys-color-background: #051611;
+    --md-sys-color-on-background: #ECFDF5;
+    --md-sys-color-surface: #0B261E;
+    --md-sys-color-surface-dim: #030E0B;
+    --md-sys-color-surface-bright: #123C30;
+    --md-sys-color-surface-container-lowest: #020A08;
+    --md-sys-color-surface-container-low: #081F18;
+    --md-sys-color-surface-container: #0F3329;
+    --md-sys-color-surface-container-high: #154537;
+    --md-sys-color-surface-container-highest: #1D5C4A;
+    --md-sys-color-on-surface: #ECFDF5;
+    --md-sys-color-on-surface-variant: #6EE7B7;
+    --md-sys-color-outline: #1C5443;
+    --md-sys-color-outline-variant: #133D30;
+
+    --md-sys-color-primary: #10B981; /* Luminous Jade Emerald */
+    --md-sys-color-on-primary: #022C22;
+    --md-sys-color-primary-container: #047857;
+    --md-sys-color-on-primary-container: #A7F3D0;
+
+    --md-sys-color-secondary: #06B6D4; /* Radiant Aqua Cyan */
+    --md-sys-color-on-secondary: #042F2E;
+    --md-sys-color-secondary-container: #0E7490;
+    --md-sys-color-on-secondary-container: #CFFAFE;
+
+    --md-sys-color-tertiary: #84CC16; /* Electric Lime */
+    --md-sys-color-on-tertiary: #1A2E05;
+    --md-sys-color-tertiary-container: #4D7C0F;
+    --md-sys-color-on-tertiary-container: #ECFCCB;
+
+    --md-sys-color-accent-purple: #C084FC;
+    --md-sys-color-accent-rose: #FB7185;
+    --md-sys-color-accent-amber: #FBBF24;
+    --md-sys-color-accent-emerald: #10B981;
+    --md-sys-color-accent-cyan: #06B6D4;
+
+    --md-sys-color-error: #FB7185;
+    --md-sys-color-on-error: #4C0519;
+    --md-sys-color-error-container: #9F1239;
+    --md-sys-color-on-error-container: #FFE4E6;
+
+    --md-sys-color-success: #34D399;
+    --md-sys-color-success-container: #065F46;
+    --md-sys-color-on-success-container: #D1FAE5;
+
+    color-scheme: dark;
+  }
+
+  .theme-emerald-matrix body,
+  .theme-emerald-matrix .screen-app-container {
+    background-size: 20px 20px;
+    background-image: 
+      linear-gradient(to right, rgba(16, 185, 129, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(16, 185, 129, 0.045) 1px, transparent 1px);
   }
 
   body {

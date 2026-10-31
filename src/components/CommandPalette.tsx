@@ -424,11 +424,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       {
         id: 'theme-site-daylight',
-        title: 'Theme: Site Daylight (High-Contrast Field Mode)',
+        title: 'Theme: Solar Amber (Sun-Drenched High Energy Mode)',
         category: 'Actions',
-        description: 'Pure high-contrast white with Safety Orange accents for direct sunlight readability on active construction sites',
-        keywords: ['theme', 'site', 'daylight', 'sun', 'contrast', 'orange', 'field'],
+        description: 'Vibrant sunlit white with Safety Clementine and Royal Cobalt accents for direct sunlight readability',
+        keywords: ['theme', 'site', 'daylight', 'sun', 'contrast', 'orange', 'field', 'solar'],
         action: () => setTheme('site-daylight'),
+      },
+      {
+        id: 'theme-emerald-matrix',
+        title: 'Theme: Emerald Studio (Lush Botanical Civil Lab)',
+        category: 'Actions',
+        description: 'Deep botanical evergreen workbench glowing with jade, radiant aqua, and lime highlights',
+        keywords: ['theme', 'emerald', 'matrix', 'green', 'jade', 'botanical', 'civil', 'aqua'],
+        action: () => setTheme('emerald-matrix'),
       },
 
       // Surveying Suite

@@ -60,9 +60,9 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
               }`}
               title={tab.title}
             >
-              {/* Active Tab Top Indicator Line */}
+              {/* Active Tab Top Indicator Line with Jewel Glow */}
               {isActive && (
-                <div className="absolute top-0 inset-x-0 h-0.5 bg-[var(--md-sys-color-primary)] rounded-t" />
+                <div className="absolute top-0 inset-x-0 h-0.5 bg-[var(--md-sys-color-primary)] shadow-[0_0_10px_var(--md-sys-color-primary)] rounded-t" />
               )}
 
               {/* Icon / Short Code Badge */}
@@ -70,7 +70,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                 <LayoutDashboard className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
               ) : (
                 shortCode && (
-                  <span className="px-1 py-0.2 rounded text-[9.5px] font-mono font-bold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] shrink-0">
+                  <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0">
                     {shortCode}
                   </span>
                 )

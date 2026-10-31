@@ -4,7 +4,8 @@ export type EngineeringTheme =
   | 'cad-charcoal'
   | 'blueprint-navy'
   | 'calcpad-paper'
-  | 'site-daylight';
+  | 'site-daylight'
+  | 'emerald-matrix';
 
 export interface ThemeDefinition {
   id: EngineeringTheme;
@@ -16,8 +17,11 @@ export interface ThemeDefinition {
     surface: string;
     border: string;
     accent: string;
-    secondary?: string;
+    secondary: string;
+    tertiary?: string;
+    quaternary?: string;
     text: string;
+    palette: string[]; // 4 vibrant preview swatches
   };
   gridPattern: boolean;
   highContrast: boolean;
@@ -27,71 +31,103 @@ export interface ThemeDefinition {
 export const ENGINEERING_THEMES: Record<EngineeringTheme, ThemeDefinition> = {
   'cad-charcoal': {
     id: 'cad-charcoal',
-    name: 'CAD Charcoal',
-    subtitle: 'Default Dark',
+    name: 'Cyber Charcoal',
+    subtitle: 'Electric Dark Workbench',
     mode: 'dark',
     colors: {
-      bg: '#0F1216',
-      surface: '#161B22',
-      border: '#262C36',
-      accent: '#0EA5E9', // CAD Cyan
-      secondary: '#F59E0B', // Amber Crosshair
-      text: '#E6EDF3',
+      bg: '#0B0F19',
+      surface: '#131A29',
+      border: '#243047',
+      accent: '#00E5FF', // Luminous Electric Cyan
+      secondary: '#F59E0B', // Radiant Amber
+      tertiary: '#10B981', // Neon Emerald
+      quaternary: '#A855F7', // Electric Violet
+      text: '#F0F6FC',
+      palette: ['#0B0F19', '#131A29', '#00E5FF', '#F59E0B'],
     },
     gridPattern: false,
     highContrast: false,
-    description: 'Precision low-glare dark workbench inspired by AutoCAD and modern CAD/CAE tools.',
+    description: 'Precision low-glare dark workbench glowing with luminous electric cyan, radiant amber, and neon emerald.',
   },
   'blueprint-navy': {
     id: 'blueprint-navy',
-    name: 'Blueprint Navy',
-    subtitle: 'Technical Blue',
+    name: 'Royal Blueprint',
+    subtitle: 'Oceanic Technical Blue',
     mode: 'dark',
     colors: {
-      bg: '#071324',
-      surface: '#0D1F38',
-      border: '#1E3A5F',
-      accent: '#38BDF8', // Blueprint Cyan
-      secondary: '#60A5FA',
-      text: '#F0F6FC',
+      bg: '#061325',
+      surface: '#0B213F',
+      border: '#1B3F6E',
+      accent: '#38BDF8', // Blueprint Sky Cyan
+      secondary: '#3B82F6', // Royal Sapphire
+      tertiary: '#34D399', // Mint Green
+      quaternary: '#FBBF24', // Golden Compass
+      text: '#F0F8FF',
+      palette: ['#061325', '#0B213F', '#38BDF8', '#34D399'],
     },
     gridPattern: true,
     highContrast: false,
-    description: 'Classic architectural cyan blueprint with subtle coordinate grid background.',
+    description: 'Deep oceanic navy with holographic cyan blueprint grid, royal sapphire surfaces, and golden compass highlights.',
   },
   'calcpad-paper': {
     id: 'calcpad-paper',
-    name: 'CalcPad Paper',
-    subtitle: 'Engineering Pad Light',
+    name: 'Creative CalcPad',
+    subtitle: 'Joyful Studio Light',
     mode: 'light',
     colors: {
-      bg: '#F4F5F0', // warm graph paper tint
+      bg: '#F8FAF6', // warm joyful graph paper tint
       surface: '#FFFFFF',
-      border: '#D8DDD6',
-      accent: '#0284C7',
-      secondary: '#059669',
-      text: '#111827',
+      border: '#D5DFD3',
+      accent: '#0284C7', // Vibrant Cerulean
+      secondary: '#059669', // Fresh Mint Green
+      tertiary: '#F97316', // Sunburst Orange
+      quaternary: '#8B5CF6', // Amethyst Violet
+      text: '#0F172A',
+      palette: ['#F8FAF6', '#FFFFFF', '#0284C7', '#059669'],
     },
     gridPattern: true,
     highContrast: false,
-    description: 'Crisp computational pad with warm grid tint and high-legibility mathematical typesetting.',
+    description: 'Crisp computational pad with cheerful graph paper tint, jewel-toned accents, and joyful mathematical typesetting.',
   },
   'site-daylight': {
     id: 'site-daylight',
-    name: 'Site Daylight',
-    subtitle: 'High-Contrast Field Mode',
+    name: 'Solar Amber',
+    subtitle: 'Sun-Drenched High Energy',
     mode: 'light',
     colors: {
-      bg: '#FFFFFF',
+      bg: '#FFFDF8',
       surface: '#FFFFFF',
-      border: '#1E293B',
-      accent: '#EA580C', // Safety Orange
-      secondary: '#0284C7',
-      text: '#000000',
+      border: '#CBD5E1',
+      accent: '#FF5500', // Safety Clementine Orange
+      secondary: '#2563EB', // Royal Cobalt
+      tertiary: '#16A34A', // Leaf Green
+      quaternary: '#EAB308', // Sunflower Gold
+      text: '#090D16',
+      palette: ['#FFFDF8', '#FFFFFF', '#FF5500', '#2563EB'],
     },
     gridPattern: false,
     highContrast: true,
-    description: 'Ultra-high contrast with Safety Orange accents engineered for direct sun visibility on active construction sites.',
+    description: 'High-energy sunlit white with Safety Clementine orange and vivid cobalt engineered for maximum outdoor satisfaction.',
+  },
+  'emerald-matrix': {
+    id: 'emerald-matrix',
+    name: 'Emerald Studio',
+    subtitle: 'Lush Botanical Civil Lab',
+    mode: 'dark',
+    colors: {
+      bg: '#051611',
+      surface: '#0B261E',
+      border: '#16483A',
+      accent: '#10B981', // Luminous Jade
+      secondary: '#06B6D4', // Aqua Cyan
+      tertiary: '#84CC16', // Electric Lime
+      quaternary: '#F59E0B', // Solar Amber
+      text: '#ECFDF5',
+      palette: ['#051611', '#0B261E', '#10B981', '#06B6D4'],
+    },
+    gridPattern: true,
+    highContrast: false,
+    description: 'Deep botanical evergreen workbench inspired by environmental & hydraulic civil systems, glowing with jade and aqua.',
   },
 };
 
@@ -119,7 +155,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       // Migrate legacy string preferences if found
       if (stored === 'light') return 'calcpad-paper';
       if (stored === 'dark') return 'cad-charcoal';
-      
+
       const v2State = localStorage.getItem('pb_civillab_schema_v2');
       if (v2State) {
         const parsed = JSON.parse(v2State);
@@ -132,7 +168,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return 'cad-charcoal';
   });
 
-  const themeConfig = useMemo(() => ENGINEERING_THEMES[theme], [theme]);
+  const themeConfig = useMemo(() => ENGINEERING_THEMES[theme] || ENGINEERING_THEMES['cad-charcoal'], [theme]);
 
   const setTheme = (newTheme: EngineeringTheme) => {
     if (!ENGINEERING_THEMES[newTheme]) return;
@@ -145,7 +181,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const cycleNextTheme = () => {
-    const themeKeys: EngineeringTheme[] = ['cad-charcoal', 'blueprint-navy', 'calcpad-paper', 'site-daylight'];
+    const themeKeys = Object.keys(ENGINEERING_THEMES) as EngineeringTheme[];
     const currentIndex = themeKeys.indexOf(theme);
     const nextIndex = (currentIndex + 1) % themeKeys.length;
     setTheme(themeKeys[nextIndex]);
@@ -162,6 +198,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       'theme-blueprint-navy',
       'theme-calcpad-paper',
       'theme-site-daylight',
+      'theme-emerald-matrix',
       'dark',
       'sunlight-mode'
     );
