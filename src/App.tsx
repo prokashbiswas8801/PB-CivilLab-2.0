@@ -186,13 +186,14 @@ import {
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { WorkspaceTabs, WorkspaceTabItem } from './components/layout/WorkspaceTabs';
-import { BottomCommandBar } from './components/layout/BottomCommandBar';
+import { FloatingBottomDock } from './components/layout/FloatingBottomDock';
 import { TOOL_REGISTRY_MAP } from './data/toolRegistry';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
 import { ReportVerificationView } from './components/ReportVerificationView';
 import { VerifySubmittalModal } from './components/VerifySubmittalModal';
 import { useWorkbench } from './context/WorkbenchContext';
+import { useCivilLab } from './context/CivilLabContext';
 import {
   PublicEngineeringReportRecord,
   decodeVerificationToken,
@@ -340,6 +341,7 @@ function RuntimeFaultProbe({ shouldThrow }: { shouldThrow: boolean }) {
 }
 
 export default function App() {
+  const civilLab = useCivilLab();
   const workbench = useWorkbench();
   const { theme: activeEngineeringTheme, setTheme: setEngTheme } = useTheme();
   const [appState, setAppState] = useState<CivilLabSchemaV2>(() => loadPersistedState());
@@ -1269,6 +1271,7 @@ export default function App() {
     setIsDashboardView(false);
     setMobileDrawerOpen(false);
     workbench.recordToolUsage(moduleId);
+    civilLab.setActivePage(moduleId === 'unit-converter' ? 'converter' : 'calculator', moduleId);
 
     // Sync multi-tab workspace
     const tabId = `tab-${moduleId}`;
@@ -1292,6 +1295,7 @@ export default function App() {
     setActiveTabId(tabId);
     if (tabId === 'dashboard') {
       setIsDashboardView(true);
+      civilLab.setActivePage('home', null);
       const mainEl = document.getElementById('top');
       if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -1300,6 +1304,10 @@ export default function App() {
         setIsDashboardView(false);
         updateActiveWorkspace((ws) => ({ ...ws, activeModule: targetTab.moduleId! }));
         workbench.recordToolUsage(targetTab.moduleId);
+        civilLab.setActivePage(
+          targetTab.moduleId === 'unit-converter' ? 'converter' : 'calculator',
+          targetTab.moduleId
+        );
       }
     }
   };
@@ -1315,9 +1323,14 @@ export default function App() {
           setActiveTabId(fallback.id);
           if (fallback.id === 'dashboard') {
             setIsDashboardView(true);
+            civilLab.setActivePage('home', null);
           } else if (fallback.moduleId) {
             setIsDashboardView(false);
             updateActiveWorkspace((ws) => ({ ...ws, activeModule: fallback.moduleId! }));
+            civilLab.setActivePage(
+              fallback.moduleId === 'unit-converter' ? 'converter' : 'calculator',
+              fallback.moduleId
+            );
           }
         }
       }
@@ -1328,6 +1341,7 @@ export default function App() {
   const handleOpenDashboard = () => {
     setActiveTabId('dashboard');
     setIsDashboardView(true);
+    civilLab.setActivePage('home', null);
     setMobileDrawerOpen(false);
     const mainEl = document.getElementById('top');
     if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2425,6 +2439,25 @@ export default function App() {
       calculationHistory: [newRecord, ...prev.calculationHistory],
     }));
 
+    // Persistent storage in CivilLabContext (items NEVER auto-deleted; remain until user explicitly deletes them)
+    try {
+      civilLab.addSavedHistoryItem({
+        type: activeModule === 'unit-converter' ? 'conversion' : 'calculation',
+        title: newRecord.title,
+        moduleId: activeModule,
+        summary: newRecord.notes,
+        status: newRecord.status,
+        keyMetrics: newRecord.keyMetrics,
+        inputs: (newRecord.inputsSnapshot as Record<string, any>) || undefined,
+        results: (currentEnvelope?.result as Record<string, any>) || undefined,
+        unitSystem: workbench.unitSystem,
+        notes: newRecord.notes,
+        tags: [activeModule, MODULE_META[activeModule]?.shortLabel || ''],
+      });
+    } catch {
+      // Non-blocking
+    }
+
     try {
       workbench.saveCalculationSnapshot({
         moduleId: activeModule,
@@ -2440,8 +2473,8 @@ export default function App() {
     }
 
     triggerCelebration(
-      'Analytical Snapshot Logged',
-      `Archived snapshot #${newId.slice(0, 8)} to ${activeWorkspace.name} calculation ledger.`,
+      'Saved to History Ledger',
+      `Saved ${newRecord.title} permanently into calculation & conversion history ledger.`,
       'celebrate'
     );
   };
@@ -2937,7 +2970,7 @@ export default function App() {
           />
 
           {/* Main Content Area — Independently Scrollable */}
-          <main id="top" className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto custom-scrollbar relative focus:outline-none pb-16" tabIndex={-1}>
+          <main id="top" className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto custom-scrollbar relative focus:outline-none pb-24 sm:pb-28" tabIndex={-1}>
             {/* PRINT-ONLY OFFICIAL CALCULATION & REPORT HEADER */}
             <div className="print-only p-6 border-b-2 border-black mb-6">
               <div className="flex items-start justify-between">
@@ -3489,6 +3522,18 @@ export default function App() {
                         <span className="hidden sm:inline">Quick Print</span>
                       </button>
 
+                      {/* Add to History Button (Persistent array in CivilLabContext) */}
+                      <button
+                        type="button"
+                        onClick={handleLogCalculationSnapshot}
+                        className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)]/40 bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                        title="Save calculation & parameters permanently to History Ledger (never auto-deleted)"
+                        aria-label="Add to History"
+                      >
+                        <BookmarkCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+                        <span className="font-mono">Add to History</span>
+                      </button>
+
                       {/* Print A4 Report (Full Modal Engine) */}
                       <button
                         type="button"
@@ -3899,32 +3944,32 @@ export default function App() {
           </main>
         </div>
 
-        {/* AUTOCAD-STYLE BOTTOM COMMAND DOCK & STATUS BAR */}
-        <BottomCommandBar
-          isSidebarCollapsed={appState.sidebarCollapsed}
-          onToggleSidebar={handleToggleSidebar}
-          activeModule={activeModule}
-          governingCode={activeWorkspace.governingCode}
-          onChangeGoverningCode={(code) => {
-            updateActiveWorkspace((ws) => ({ ...ws, governingCode: code }));
-            setToastBanner(`Governing code updated to ${code}`);
+        {/* FLOATING COLLAPSIBLE & ORIENTATION-ADAPTIVE BOTTOM DOCK */}
+        <FloatingBottomDock
+          onNavigateHome={() => {
+            handleOpenDashboard();
           }}
-          onSelectModule={(id) => {
-            handleSetModule(id);
+          onNavigateAll={() => {
+            handleOpenDashboard();
+            setTimeout(() => {
+              const el = document.getElementById('disciplines-matrix') || document.getElementById('top');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 50);
+          }}
+          onOpenSearch={() => {
+            setCommandPaletteOpen(true);
+          }}
+          onNavigateConverter={() => {
+            handleSetModule('unit-converter');
             const mainEl = document.getElementById("top");
             if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          onOpenArchitectureModal={(tab) => {
-            if (tab) setArchitectureInitialTab(tab);
-            setArchitectureModalOpen(true);
+          onOpenHistory={() => {
+            setIsHistoryDrawerOpen(true);
           }}
-          onOpenCadModal={(tab) => {
-            if (tab) setCadInitialTab(tab);
-            setCadModalOpen(true);
+          onOpenProfile={() => {
+            handleOpenProfileModal('profile');
           }}
-          onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
-          onExportPdf={handleDirectDownloadPdf}
-          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         />
 
         {/* PROJECT WORKSPACES MANAGER MODAL */}
