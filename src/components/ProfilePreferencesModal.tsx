@@ -195,8 +195,9 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
       const parsed = parseAndValidatePresetsPackage(text);
       if (parsed && parsed.length > 0) {
         onImportPresets(parsed);
+        setAppliedPresetToast(`Imported ${parsed.length} preset configurations.`);
       } else {
-        alert('Could not parse valid PB CivilLab engineering presets from file.');
+        setAppliedPresetToast('Error: Could not parse valid PB CivilLab engineering presets from file.');
       }
     };
     reader.readAsText(file);

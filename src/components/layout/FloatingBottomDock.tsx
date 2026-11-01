@@ -114,6 +114,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
         setActivePage('all', null);
         onNavigateAll?.();
       } else if (destId === 'search') {
+        setActivePage('search', null);
         onOpenSearch?.();
       } else if (destId === 'converter') {
         setActivePage('converter', 'unit-converter');
@@ -228,8 +229,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
         max-h-[500px]:p-1 max-h-[500px]:gap-0.5"
       >
         {DESTINATIONS.map((dest) => {
-          const isActive =
-            dest.id === 'search' ? false : activePage === dest.id;
+          const isActive = activePage === dest.id;
           const Icon = dest.icon;
           const hasBadge = dest.id === 'history' && savedHistory.length > 0;
 

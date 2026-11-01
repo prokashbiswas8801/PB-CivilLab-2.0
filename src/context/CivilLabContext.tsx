@@ -23,6 +23,7 @@ export interface CivilProjectItem {
   id: string;
   name: string;
   code: string;
+  clientName?: string;
   location?: string;
   currency?: string;
   createdAt: string;
@@ -34,21 +35,31 @@ export interface CivilUserProfile {
   organization: string;
   licenseNo: string;
   email: string;
+  phone?: string;
+  location?: string;
   defaultUnitSystem: 'SI' | 'Imperial';
+  defaultDesignCode?: string;
   theme: EngineeringThemeOption;
+  autoCollapseLandscape?: boolean;
+  showShortcutBadges?: boolean;
+  activeProjectId?: string;
   projects: CivilProjectItem[];
 }
 
 export interface CivilPdfPreset {
-  paperSize: 'a4' | 'letter';
+  paperSize: 'a4' | 'letter' | 'legal';
   orientation: 'portrait' | 'landscape';
+  marginMm: number;
   includeHeader: boolean;
   includeFooter: boolean;
   includeQR: boolean;
   includeFormulaSteps: boolean;
+  includeDiagram?: boolean;
+  includeSignatureBlock?: boolean;
+  showProjectMetadata?: boolean;
   customHeaderTitle: string;
+  companySubtitle?: string;
   signatoryName: string;
-  marginMm: number;
 }
 
 export interface SavedHistoryItem {
@@ -101,7 +112,9 @@ export interface CivilLabContextType {
   userProfile: CivilUserProfile;
   updateUserProfile: (partial: Partial<CivilUserProfile>) => void;
   addProject: (project: Omit<CivilProjectItem, 'id' | 'createdAt'>) => void;
+  updateProject: (id: string, partial: Partial<CivilProjectItem>) => void;
   removeProject: (id: string) => void;
+  selectActiveProject: (id: string) => void;
 
   // PDF Export Preset
   pdfPreset: CivilPdfPreset;
@@ -129,14 +142,21 @@ const DEFAULT_USER_PROFILE: CivilUserProfile = {
   organization: 'PB Civil Engineering Consultancy',
   licenseNo: 'PE-8801-BD',
   email: 'prokashbiswas8801@gmail.com',
+  phone: '+880 1712-345678',
+  location: 'Dhaka, Bangladesh',
   defaultUnitSystem: 'SI',
+  defaultDesignCode: 'BNBC 2020',
   theme: 'cad-charcoal',
+  autoCollapseLandscape: true,
+  showShortcutBadges: true,
+  activeProjectId: 'proj-001',
   projects: [
     {
       id: 'proj-001',
-      name: 'Metro Elevated Viaduct & Pier Caps',
+      name: 'Padma Bridge River Viaduct & Pier Caps',
       code: 'PBCL-2026-VIAD',
-      location: 'Dhaka Metropolitan Zone, Bangladesh',
+      clientName: 'Bangladesh Bridge Authority (BBA)',
+      location: 'Mawa-Janjira Sector, Bangladesh',
       currency: 'BDT',
       createdAt: new Date().toISOString(),
     },
@@ -144,6 +164,7 @@ const DEFAULT_USER_PROFILE: CivilUserProfile = {
       id: 'proj-002',
       name: 'High-Rise Commercial Mat & Bored Piles',
       code: 'PBCL-2026-MAT',
+      clientName: 'Eastern Housing & Commercial Ltd.',
       location: 'Chittagong Port City, Bangladesh',
       currency: 'BDT',
       createdAt: new Date().toISOString(),
@@ -154,13 +175,17 @@ const DEFAULT_USER_PROFILE: CivilUserProfile = {
 const DEFAULT_PDF_PRESET: CivilPdfPreset = {
   paperSize: 'a4',
   orientation: 'portrait',
+  marginMm: 15,
   includeHeader: true,
   includeFooter: true,
   includeQR: true,
   includeFormulaSteps: true,
+  includeDiagram: true,
+  includeSignatureBlock: true,
+  showProjectMetadata: true,
   customHeaderTitle: 'Official Structural & Geotechnical Submittal Sheet',
+  companySubtitle: 'PB Civil Engineering Consultancy · Verified Engineering Calculations',
   signatoryName: 'Prokash Biswas, PE',
-  marginMm: 12,
 };
 
 const DEFAULT_PINNED_TOOLS: string[] = [
@@ -482,6 +507,14 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUserProfile((prev) => ({
       ...prev,
       projects: [newProj, ...prev.projects],
+      activeProjectId: newProj.id,
+    }));
+  }, []);
+
+  const updateProject = useCallback((id: string, partial: Partial<CivilProjectItem>) => {
+    setUserProfile((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === id ? { ...p, ...partial } : p)),
     }));
   }, []);
 
@@ -489,6 +522,14 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUserProfile((prev) => ({
       ...prev,
       projects: prev.projects.filter((p) => p.id !== id),
+      activeProjectId: prev.activeProjectId === id ? (prev.projects.find((p) => p.id !== id)?.id || '') : prev.activeProjectId,
+    }));
+  }, []);
+
+  const selectActiveProject = useCallback((id: string) => {
+    setUserProfile((prev) => ({
+      ...prev,
+      activeProjectId: id,
     }));
   }, []);
 
@@ -543,7 +584,9 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       userProfile,
       updateUserProfile,
       addProject,
+      updateProject,
       removeProject,
+      selectActiveProject,
       pdfPreset,
       updatePdfPreset,
     }),
@@ -569,7 +612,9 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       userProfile,
       updateUserProfile,
       addProject,
+      updateProject,
       removeProject,
+      selectActiveProject,
       pdfPreset,
       updatePdfPreset,
     ]

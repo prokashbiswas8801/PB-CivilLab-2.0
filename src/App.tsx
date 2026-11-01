@@ -182,11 +182,13 @@ import {
   ArchitectureByLawsModal,
   CadUtilitiesModal,
   SiteQcModal,
+  PdfExportModal,
 } from './components/modals';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { WorkspaceTabs, WorkspaceTabItem } from './components/layout/WorkspaceTabs';
 import { FloatingBottomDock } from './components/layout/FloatingBottomDock';
+import { HomePage, AllToolsPage, SearchCommandPage, ConverterPage, HistoryPage, ProfilePage } from './components/pages';
 import { TOOL_REGISTRY_MAP } from './data/toolRegistry';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { WorkflowCrossLinkBanner } from './components/WorkflowCrossLinkBanner';
@@ -2029,11 +2031,16 @@ export default function App() {
     }, 50);
   };
 
-  // Direct Client-Side PDF Generation & Download (jsPDF) with Multi-Stage Progress Tracking
+  // Direct Client-Side PDF Generation & Download (jsPDF) with Multi-Stage Progress Tracking & Two-Stage Modal
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfExportProgress, setPdfExportProgress] = useState<PdfExportProgress | null>(null);
+  const [isPdfExportModalOpen, setIsPdfExportModalOpen] = useState(false);
 
-  const handleDirectDownloadPdf = async () => {
+  const handleDirectDownloadPdf = () => {
+    setIsPdfExportModalOpen(true);
+  };
+
+  const handleExecuteDirectPdfExport = async () => {
     if (!currentEnvelope || !currentEnvelope.result) {
       setToastBanner('Cannot export PDF: No calculation result is available for this module.');
       return;
@@ -3023,11 +3030,10 @@ export default function App() {
               </div>
             </div>
 
-            {isDashboardView ? (
-              <Dashboard
+            {civilLab.activePage === 'home' || (isDashboardView && !['all', 'search', 'converter', 'history', 'profile', 'calculator'].includes(civilLab.activePage)) ? (
+              <HomePage
                 activeWorkspace={activeWorkspace}
                 workspaces={appState.workspaces}
-                activeModule={activeModule}
                 onSelectModule={handleSetModule}
                 onSelectWorkspace={handleSelectWorkspace}
                 onOpenNewWorkspace={handleOpenNewWorkspace}
@@ -3044,10 +3050,66 @@ export default function App() {
                 onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
                 onDirectDownloadPdf={handleDirectDownloadPdf}
                 onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
-                calculationHistory={appState.calculationHistory}
-                onRestoreCalculation={handleRestoreCalculation}
-                onDeleteCalculation={handleDeleteHistoryItem}
               />
+            ) : civilLab.activePage === 'all' ? (
+              <AllToolsPage
+                onSelectModule={handleSetModule}
+                onOpenArchitectureModal={(tab) => {
+                  if (tab) setArchitectureInitialTab(tab);
+                  setArchitectureModalOpen(true);
+                }}
+                onOpenCadModal={(tab) => {
+                  if (tab) setCadInitialTab(tab);
+                  setCadModalOpen(true);
+                }}
+                onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
+              />
+            ) : civilLab.activePage === 'search' ? (
+              <SearchCommandPage
+                onSelectModule={handleSetModule}
+                onOpenArchitectureModal={(tab) => {
+                  if (tab) setArchitectureInitialTab(tab);
+                  setArchitectureModalOpen(true);
+                }}
+                onOpenCadModal={(tab) => {
+                  if (tab) setCadInitialTab(tab);
+                  setCadModalOpen(true);
+                }}
+                onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
+                onOpenProfileModal={handleOpenProfileModal}
+                onOpenPrintPreview={() => setPrintPreviewModalOpen(true)}
+                onDirectDownloadPdf={handleDirectDownloadPdf}
+                onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
+                onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
+              />
+            ) : civilLab.activePage === 'converter' ? (
+              <div className="p-4 md:p-6">
+                <ConverterPage />
+              </div>
+            ) : civilLab.activePage === 'history' ? (
+              <div className="p-4 md:p-6">
+                <HistoryPage
+                  onReloadCalculation={(item) => {
+                    if (item.moduleId) {
+                      if (item.moduleId.startsWith('converter-')) {
+                        civilLab.setActivePage('converter');
+                      } else {
+                        handleSetModule(item.moduleId as any);
+                      }
+                    }
+                  }}
+                  onExportPdf={(item) => {
+                    if (item.moduleId) {
+                      handleSetModule(item.moduleId as any);
+                      setIsPdfExportModalOpen(true);
+                    }
+                  }}
+                />
+              </div>
+            ) : civilLab.activePage === 'profile' ? (
+              <div className="p-4 md:p-6">
+                <ProfilePage />
+              </div>
             ) : (
               <>
                 {/* Context Sub-Bar (Sticky at top of Main Page) */}
@@ -3947,28 +4009,39 @@ export default function App() {
         {/* FLOATING COLLAPSIBLE & ORIENTATION-ADAPTIVE BOTTOM DOCK */}
         <FloatingBottomDock
           onNavigateHome={() => {
-            handleOpenDashboard();
+            civilLab.setActivePage('home', null);
+            setIsDashboardView(true);
+            const mainEl = document.getElementById("top");
+            if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onNavigateAll={() => {
-            handleOpenDashboard();
-            setTimeout(() => {
-              const el = document.getElementById('disciplines-matrix') || document.getElementById('top');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }, 50);
+            civilLab.setActivePage('all', null);
+            setIsDashboardView(true);
+            const mainEl = document.getElementById("top");
+            if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onOpenSearch={() => {
-            setCommandPaletteOpen(true);
+            civilLab.setActivePage('search', null);
+            const mainEl = document.getElementById("top");
+            if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onNavigateConverter={() => {
-            handleSetModule('unit-converter');
+            setIsDashboardView(false);
+            civilLab.setActivePage('converter', null);
             const mainEl = document.getElementById("top");
             if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onOpenHistory={() => {
-            setIsHistoryDrawerOpen(true);
+            setIsDashboardView(false);
+            civilLab.setActivePage('history', null);
+            const mainEl = document.getElementById("top");
+            if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onOpenProfile={() => {
-            handleOpenProfileModal('profile');
+            setIsDashboardView(false);
+            civilLab.setActivePage('profile', null);
+            const mainEl = document.getElementById("top");
+            if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
         />
 
@@ -4164,6 +4237,24 @@ export default function App() {
         <SiteQcModal
           isOpen={siteQcModalOpen}
           onClose={() => setSiteQcModalOpen(false)}
+        />
+
+        {/* TWO-STAGE PDF EXPORT PRESET & PRE-DOWNLOAD SETUP MODAL */}
+        <PdfExportModal
+          isOpen={isPdfExportModalOpen}
+          onClose={() => setIsPdfExportModalOpen(false)}
+          activeWorkspace={activeWorkspace}
+          activeModule={activeModule}
+          envelope={currentEnvelope}
+          moduleLabel={MODULE_META[activeModule]?.label}
+          codeStandard={MODULE_META[activeModule]?.codeStandard}
+          onComplete={() => {
+            triggerCelebration(
+              'PDF Exported Successfully',
+              `Certified submittal downloaded for ${MODULE_META[activeModule]?.shortLabel || activeModule}`,
+              'celebrate'
+            );
+          }}
         />
       </div>
       )}
