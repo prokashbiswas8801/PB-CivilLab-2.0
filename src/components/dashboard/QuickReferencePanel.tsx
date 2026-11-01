@@ -137,21 +137,21 @@ export const QuickReferencePanel: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('rebar')}
-            className={`px-2 py-0.5 rounded text-[11px] whitespace-nowrap ${activeTab === 'rebar' ? 'bg-[var(--md-sys-color-primary)] text-white font-bold' : 'text-slate-400'}`}
+            className={`px-3 py-1 rounded-full text-[11px] whitespace-nowrap transition-colors ${activeTab === 'rebar' ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold' : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'}`}
           >
             Rebars
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('concrete')}
-            className={`px-2 py-0.5 rounded text-[11px] whitespace-nowrap ${activeTab === 'concrete' ? 'bg-[var(--md-sys-color-primary)] text-white font-bold' : 'text-slate-400'}`}
+            className={`px-3 py-1 rounded-full text-[11px] whitespace-nowrap transition-colors ${activeTab === 'concrete' ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold' : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'}`}
           >
             Mix Ratios
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('densities')}
-            className={`px-2 py-0.5 rounded text-[11px] whitespace-nowrap ${activeTab === 'densities' ? 'bg-[var(--md-sys-color-primary)] text-white font-bold' : 'text-slate-400'}`}
+            className={`px-3 py-1 rounded-full text-[11px] whitespace-nowrap transition-colors ${activeTab === 'densities' ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold' : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'}`}
           >
             Unit Weights
           </button>

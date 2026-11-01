@@ -25,6 +25,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useCivilLab, CivilProjectItem, EngineeringThemeOption, CivilPdfPreset } from '../../context/CivilLabContext';
+import { useTheme } from '../../context/ThemeContext';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
@@ -41,6 +42,7 @@ export const ProfilePage: React.FC = () => {
     pdfPreset,
     updatePdfPreset,
   } = useCivilLab();
+  const { setTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('engineer');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export const ProfilePage: React.FC = () => {
 
   // Site & Unit Preferences State
   const [prefForm, setPrefForm] = useState({
-    theme: userProfile.theme || 'cad-charcoal',
+    theme: userProfile.theme || 'obsidian-gold',
     defaultUnitSystem: userProfile.defaultUnitSystem || 'SI',
     defaultDesignCode: userProfile.defaultDesignCode || 'BNBC 2020',
     autoCollapseLandscape: userProfile.autoCollapseLandscape ?? true,
@@ -112,6 +114,7 @@ export const ProfilePage: React.FC = () => {
   // Save Preferences Handler
   const handleSavePreferences = () => {
     updateUserProfile(prefForm);
+    setTheme(prefForm.theme as any);
     showToast('Site & unit preferences saved.');
   };
 
@@ -355,38 +358,51 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const themes: Array<{ id: EngineeringThemeOption; name: string; desc: string; bg: string; text: string; border: string }> = [
+  const themes: Array<{ id: EngineeringThemeOption; name: string; desc: string; bg: string; text: string; border: string; swatches: string[] }> = [
     {
-      id: 'cad-charcoal',
-      name: 'CAD Charcoal',
-      desc: 'Dark technical aesthetic with AutoCAD drafting contrast',
-      bg: 'bg-slate-900',
-      text: 'text-slate-100',
-      border: 'border-cyan-500/40',
+      id: 'obsidian-gold',
+      name: 'Obsidian Gold',
+      desc: 'Default dark workbench with amber gold and crimson accents',
+      bg: 'bg-[#1C1917]',
+      text: 'text-[#FAF7F2]',
+      border: 'border-[#F59E0B]/60',
+      swatches: ['#121110', '#1C1917', '#F59E0B', '#E11D48'],
     },
     {
-      id: 'blueprint-navy',
-      name: 'Blueprint Navy',
-      desc: 'Deep cyan-navy blueprint aesthetic with grid vibes',
-      bg: 'bg-sky-950',
-      text: 'text-sky-100',
-      border: 'border-sky-400/40',
+      id: 'terracotta-studio',
+      name: 'Terracotta Studio',
+      desc: 'Espresso dark with burnt orange & warm gold for masonry & structural design',
+      bg: 'bg-[#211B18]',
+      text: 'text-[#FFFBEB]',
+      border: 'border-[#EA580C]/60',
+      swatches: ['#161210', '#211B18', '#EA580C', '#EAB308'],
     },
     {
-      id: 'calcpad-paper',
-      name: 'CalcPad Paper',
-      desc: 'Warm engineering graph pad paper look with sepia tint',
-      bg: 'bg-amber-50',
-      text: 'text-amber-950',
-      border: 'border-amber-300',
+      id: 'editorial-parchment',
+      name: 'Editorial Parchment',
+      desc: 'Archival cream paper with crimson ruby & amber accents in serif typography',
+      bg: 'bg-[#FFFFFF]',
+      text: 'text-[#1C1917]',
+      border: 'border-[#9F1239]/60',
+      swatches: ['#F7F4EF', '#FFFFFF', '#9F1239', '#B45309'],
     },
     {
-      id: 'site-daylight',
-      name: 'Site Daylight',
-      desc: 'High-contrast outdoor daylight mode for field construction',
-      bg: 'bg-white',
-      text: 'text-slate-900',
-      border: 'border-slate-300',
+      id: 'solar-amber',
+      name: 'Solar Amber',
+      desc: 'Sun-drenched daytime mode with safety vermilion & forest emerald for field use',
+      bg: 'bg-[#F8FAFC]',
+      text: 'text-[#090D16]',
+      border: 'border-[#D9460F]/60',
+      swatches: ['#FFFFFF', '#F8FAFC', '#D9460F', '#047857'],
+    },
+    {
+      id: 'emerald-botanical',
+      name: 'Emerald Botanical',
+      desc: 'Evergreen & polished brass workbench for hydraulic & geotechnical engineering',
+      bg: 'bg-[#0D241D]',
+      text: 'text-[#ECFDF5]',
+      border: 'border-[#10B981]/60',
+      swatches: ['#071712', '#0D241D', '#10B981', '#F59E0B'],
     },
   ];
 
@@ -649,27 +665,40 @@ export const ProfilePage: React.FC = () => {
                 <Palette className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
                 <span>Visual Theme Aesthetic</span>
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 {themes.map((t) => {
                   const isSelected = prefForm.theme === t.id;
                   return (
                     <div
                       key={t.id}
-                      onClick={() => setPrefForm({ ...prefForm, theme: t.id })}
-                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                      onClick={() => {
+                        setPrefForm({ ...prefForm, theme: t.id });
+                        setTheme(t.id as any);
+                        updateUserProfile({ theme: t.id });
+                      }}
+                      className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-[var(--md-sys-color-primary)] shadow-md bg-[var(--md-sys-color-primary-container)]/10'
+                          ? 'border-[var(--md-sys-color-primary)] shadow-md bg-[var(--md-sys-color-primary-container)]/15'
                           : 'border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">{t.name}</span>
-                        {isSelected && <Check className="w-4 h-4 text-[var(--md-sys-color-primary)]" />}
+                        <span className="font-bold text-xs text-[var(--md-sys-color-on-surface)] truncate">{t.name}</span>
+                        {isSelected && <Check className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />}
                       </div>
-                      <div className={`h-12 rounded-lg ${t.bg} ${t.border} border p-2 mb-2 flex items-center justify-center`}>
-                        <span className={`text-[11px] font-mono font-bold ${t.text}`}>CAD Preview</span>
+                      <div className={`h-10 rounded-xl ${t.bg} ${t.border} border p-2 mb-2 flex items-center justify-between px-2.5`}>
+                        <div className="flex -space-x-1.5 shrink-0">
+                          {t.swatches.map((color, idx) => (
+                            <span
+                              key={idx}
+                              className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-xs"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                        <span className={`text-[10px] font-mono font-bold ${t.text}`}>Serif CAD</span>
                       </div>
-                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug">
+                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug line-clamp-2">
                         {t.desc}
                       </p>
                     </div>

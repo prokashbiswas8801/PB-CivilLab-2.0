@@ -114,7 +114,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       subtitle: 'Flexural Analysis, Continuous FEM & Reinforcement Detailing',
       badge: 'ACI / AISC / BNBC',
       icon: SlidersHorizontal,
-      accentColor: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10',
+      accentColor: 'text-[var(--md-sys-color-primary)] border-[var(--md-sys-color-primary)]/30 bg-[var(--md-sys-color-primary-container)]/30',
       tools: [
         {
           id: 'beam-analysis',
@@ -340,7 +340,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       subtitle: 'Open Channel Surface Flow & Pressure Conduits',
       badge: 'Manning / Hazen-Williams',
       icon: Waves,
-      accentColor: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+      accentColor: 'text-[var(--md-sys-color-primary)] border-[var(--md-sys-color-primary)]/30 bg-[var(--md-sys-color-primary-container)]/30',
       tools: [
         {
           id: 'open-channel',
@@ -445,7 +445,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <button
               type="button"
               onClick={workbench.toggleUnitSystem}
-              className="px-2.5 py-1.5 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer text-[var(--md-sys-color-on-surface)]"
+              className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer text-[var(--md-sys-color-on-surface)] shadow-xs"
               title="Click to toggle Global Unit System (SI <-> Imperial)"
             >
               <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
@@ -453,8 +453,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             </button>
 
             {/* Governing Code Badge */}
-            <div className="px-2.5 py-1.5 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-xs font-mono font-bold flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)]">
-              <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+            <div className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-xs font-mono font-bold flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] shadow-xs">
+              <BookOpen className="w-3.5 h-3.5 text-[var(--md-sys-color-secondary)]" />
               <span>{activeWorkspace.governingCode}</span>
             </div>
 
@@ -462,7 +462,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <button
               type="button"
               onClick={onOpenWorkspaceManager}
-              className="px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-white hover:opacity-95 text-xs font-mono font-bold transition-all cursor-pointer shadow-xs"
+              className="px-4 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-mono font-bold transition-all cursor-pointer shadow-xs"
             >
               Manage Projects
             </button>
@@ -492,7 +492,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               <button
                 type="button"
                 onClick={() => civilLab.setActivePage('all')}
-                className="px-2.5 py-1 rounded-lg bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] font-bold cursor-pointer"
+                className="px-3.5 py-1 rounded-full bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] font-bold cursor-pointer"
               >
                 Browse & Pin Tools
               </button>
@@ -618,7 +618,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                         <button
                           type="button"
                           onClick={() => handleLaunchTool(tool)}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--md-sys-color-primary)]/10 text-[var(--md-sys-color-primary)] group-hover:bg-[var(--md-sys-color-primary)] group-hover:text-white font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                          className="px-3 py-1 rounded-full bg-[var(--md-sys-color-primary)]/10 text-[var(--md-sys-color-primary)] group-hover:bg-[var(--md-sys-color-primary)] group-hover:text-[var(--md-sys-color-on-primary)] font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0"
                         >
                           <span>Open</span>
                           <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />

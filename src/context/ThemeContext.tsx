@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 
 export type EngineeringTheme =
-  | 'cad-charcoal'
-  | 'blueprint-navy'
-  | 'calcpad-paper'
-  | 'site-daylight'
-  | 'emerald-matrix';
+  | 'obsidian-gold'
+  | 'terracotta-studio'
+  | 'editorial-parchment'
+  | 'solar-amber'
+  | 'emerald-botanical';
 
 export interface ThemeDefinition {
   id: EngineeringTheme;
@@ -15,13 +15,15 @@ export interface ThemeDefinition {
   colors: {
     bg: string;
     surface: string;
+    card: string;
     border: string;
     accent: string;
     secondary: string;
     tertiary?: string;
-    quaternary?: string;
+    success: string;
     text: string;
-    palette: string[]; // 4 vibrant preview swatches
+    muted: string;
+    palette: string[]; // 4 preview swatches: [bg, surface, primary, secondary]
   };
   gridPattern: boolean;
   highContrast: boolean;
@@ -29,109 +31,130 @@ export interface ThemeDefinition {
 }
 
 export const ENGINEERING_THEMES: Record<EngineeringTheme, ThemeDefinition> = {
-  'cad-charcoal': {
-    id: 'cad-charcoal',
-    name: 'Cyber Charcoal',
-    subtitle: 'Electric Dark Workbench',
+  'obsidian-gold': {
+    id: 'obsidian-gold',
+    name: 'Obsidian Gold',
+    subtitle: 'Default Dark',
     mode: 'dark',
     colors: {
-      bg: '#0B0F19',
-      surface: '#131A29',
-      border: '#243047',
-      accent: '#00E5FF', // Luminous Electric Cyan
-      secondary: '#F59E0B', // Radiant Amber
-      tertiary: '#10B981', // Neon Emerald
-      quaternary: '#A855F7', // Electric Violet
-      text: '#F0F6FC',
-      palette: ['#0B0F19', '#131A29', '#00E5FF', '#F59E0B'],
-    },
-    gridPattern: false,
-    highContrast: false,
-    description: 'Precision low-glare dark workbench glowing with luminous electric cyan, radiant amber, and neon emerald.',
-  },
-  'blueprint-navy': {
-    id: 'blueprint-navy',
-    name: 'Royal Blueprint',
-    subtitle: 'Oceanic Technical Blue',
-    mode: 'dark',
-    colors: {
-      bg: '#061325',
-      surface: '#0B213F',
-      border: '#1B3F6E',
-      accent: '#38BDF8', // Blueprint Sky Cyan
-      secondary: '#3B82F6', // Royal Sapphire
-      tertiary: '#34D399', // Mint Green
-      quaternary: '#FBBF24', // Golden Compass
-      text: '#F0F8FF',
-      palette: ['#061325', '#0B213F', '#38BDF8', '#34D399'],
-    },
-    gridPattern: true,
-    highContrast: false,
-    description: 'Deep oceanic navy with holographic cyan blueprint grid, royal sapphire surfaces, and golden compass highlights.',
-  },
-  'calcpad-paper': {
-    id: 'calcpad-paper',
-    name: 'Creative CalcPad',
-    subtitle: 'Joyful Studio Light',
-    mode: 'light',
-    colors: {
-      bg: '#F8FAF6', // warm joyful graph paper tint
-      surface: '#FFFFFF',
-      border: '#D5DFD3',
-      accent: '#0284C7', // Vibrant Cerulean
-      secondary: '#059669', // Fresh Mint Green
-      tertiary: '#F97316', // Sunburst Orange
-      quaternary: '#8B5CF6', // Amethyst Violet
-      text: '#0F172A',
-      palette: ['#F8FAF6', '#FFFFFF', '#0284C7', '#059669'],
-    },
-    gridPattern: true,
-    highContrast: false,
-    description: 'Crisp computational pad with cheerful graph paper tint, jewel-toned accents, and joyful mathematical typesetting.',
-  },
-  'site-daylight': {
-    id: 'site-daylight',
-    name: 'Solar Amber',
-    subtitle: 'Sun-Drenched High Energy',
-    mode: 'light',
-    colors: {
-      bg: '#FFFDF8',
-      surface: '#FFFFFF',
-      border: '#CBD5E1',
-      accent: '#FF5500', // Safety Clementine Orange
-      secondary: '#2563EB', // Royal Cobalt
-      tertiary: '#16A34A', // Leaf Green
-      quaternary: '#EAB308', // Sunflower Gold
-      text: '#090D16',
-      palette: ['#FFFDF8', '#FFFFFF', '#FF5500', '#2563EB'],
+      bg: '#121110',
+      surface: '#1C1917',
+      card: '#24201D',
+      border: '#38322C',
+      accent: '#F59E0B', // Radiant Gold / Amber
+      secondary: '#E11D48', // Crimson Rose
+      tertiary: '#10B981', // Emerald
+      success: '#10B981',
+      text: '#FAF7F2',
+      muted: '#A8A29E',
+      palette: ['#121110', '#1C1917', '#F59E0B', '#E11D48'],
     },
     gridPattern: false,
     highContrast: true,
-    description: 'High-energy sunlit white with Safety Clementine orange and vivid cobalt engineered for maximum outdoor satisfaction.',
+    description: 'Bespoke obsidian charcoal dark workspace with high-contrast amber gold and crimson accents.',
   },
-  'emerald-matrix': {
-    id: 'emerald-matrix',
-    name: 'Emerald Studio',
-    subtitle: 'Lush Botanical Civil Lab',
+  'terracotta-studio': {
+    id: 'terracotta-studio',
+    name: 'Terracotta Studio',
+    subtitle: 'Espresso Dark',
     mode: 'dark',
     colors: {
-      bg: '#051611',
-      surface: '#0B261E',
-      border: '#16483A',
-      accent: '#10B981', // Luminous Jade
-      secondary: '#06B6D4', // Aqua Cyan
-      tertiary: '#84CC16', // Electric Lime
-      quaternary: '#F59E0B', // Solar Amber
-      text: '#ECFDF5',
-      palette: ['#051611', '#0B261E', '#10B981', '#06B6D4'],
+      bg: '#161210',
+      surface: '#211B18',
+      card: '#2B231F',
+      border: '#433630',
+      accent: '#EA580C', // Burnt Terracotta
+      secondary: '#EAB308', // Warm Gold
+      tertiary: '#22C55E', // Green
+      success: '#22C55E',
+      text: '#FFFBEB',
+      muted: '#D6C7B2',
+      palette: ['#161210', '#211B18', '#EA580C', '#EAB308'],
+    },
+    gridPattern: false,
+    highContrast: true,
+    description: 'Rich espresso and earthen clay palette tailored for heavy civil masonry & structural design.',
+  },
+  'editorial-parchment': {
+    id: 'editorial-parchment',
+    name: 'Editorial Parchment',
+    subtitle: 'Serif Light',
+    mode: 'light',
+    colors: {
+      bg: '#F7F4EF',
+      surface: '#FFFFFF',
+      card: '#EFECE6',
+      border: '#D6D0C4',
+      accent: '#9F1239', // Crimson Ruby
+      secondary: '#B45309', // Amber Ochre
+      tertiary: '#15803D', // Forest Green
+      success: '#15803D',
+      text: '#1C1917',
+      muted: '#57534E',
+      palette: ['#F7F4EF', '#FFFFFF', '#9F1239', '#B45309'],
     },
     gridPattern: true,
-    highContrast: false,
-    description: 'Deep botanical evergreen workbench inspired by environmental & hydraulic civil systems, glowing with jade and aqua.',
+    highContrast: true,
+    description: 'High-elegance archival print aesthetic with cream paper, ruby accents, and authoritative typography.',
+  },
+  'solar-amber': {
+    id: 'solar-amber',
+    name: 'Solar Amber',
+    subtitle: 'Sun-Drenched Light',
+    mode: 'light',
+    colors: {
+      bg: '#FFFFFF',
+      surface: '#F8FAFC',
+      card: '#F1F5F9',
+      border: '#CBD5E1',
+      accent: '#D9460F', // Safety Vermilion
+      secondary: '#047857', // Forest Emerald
+      tertiary: '#16A34A', // Leaf Green
+      success: '#16A34A',
+      text: '#090D16',
+      muted: '#475569',
+      palette: ['#FFFFFF', '#F8FAFC', '#D9460F', '#047857'],
+    },
+    gridPattern: false,
+    highContrast: true,
+    description: 'Maximum contrast sun-drenched daytime palette engineered for outdoor jobsites and tablet use.',
+  },
+  'emerald-botanical': {
+    id: 'emerald-botanical',
+    name: 'Emerald Botanical',
+    subtitle: 'Evergreen & Brass',
+    mode: 'dark',
+    colors: {
+      bg: '#071712',
+      surface: '#0D241D',
+      card: '#133027',
+      border: '#214E3F',
+      accent: '#10B981', // Jade Emerald
+      secondary: '#F59E0B', // Polished Brass
+      tertiary: '#34D399', // Mint
+      success: '#34D399',
+      text: '#ECFDF5',
+      muted: '#A7F3D0',
+      palette: ['#071712', '#0D241D', '#10B981', '#F59E0B'],
+    },
+    gridPattern: true,
+    highContrast: true,
+    description: 'Deep botanical evergreen & brass workbench inspired by environmental & hydraulic civil engineering.',
   },
 };
 
-const THEME_STORAGE_KEY = 'pb_civillab_active_theme_v3';
+const THEME_STORAGE_KEY = 'pb_civillab_active_theme_v4';
+
+// Helper to map any legacy theme id to a v4 theme id
+function normalizeTheme(id: string | null | undefined): EngineeringTheme {
+  if (!id) return 'obsidian-gold';
+  if (id in ENGINEERING_THEMES) return id as EngineeringTheme;
+  if (id === 'cad-charcoal' || id === 'blueprint-navy' || id === 'dark') return 'obsidian-gold';
+  if (id === 'calcpad-paper' || id === 'light') return 'editorial-parchment';
+  if (id === 'site-daylight') return 'solar-amber';
+  if (id === 'emerald-matrix') return 'emerald-botanical';
+  return 'obsidian-gold';
+}
 
 interface ThemeContextType {
   theme: EngineeringTheme;
@@ -146,35 +169,22 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<EngineeringTheme>(() => {
-    if (typeof window === 'undefined') return 'cad-charcoal';
+    if (typeof window === 'undefined') return 'obsidian-gold';
     try {
-      const stored = localStorage.getItem(THEME_STORAGE_KEY);
-      if (stored && stored in ENGINEERING_THEMES) {
-        return stored as EngineeringTheme;
-      }
-      // Migrate legacy string preferences if found
-      if (stored === 'light') return 'calcpad-paper';
-      if (stored === 'dark') return 'cad-charcoal';
-
-      const v2State = localStorage.getItem('pb_civillab_schema_v2');
-      if (v2State) {
-        const parsed = JSON.parse(v2State);
-        if (parsed.themePreference === 'light') return 'calcpad-paper';
-        if (parsed.themePreference === 'dark') return 'cad-charcoal';
-      }
+      const stored = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem('pb_civillab_active_theme_v3');
+      return normalizeTheme(stored);
     } catch {
-      // Fallback
+      return 'obsidian-gold';
     }
-    return 'cad-charcoal';
   });
 
-  const themeConfig = useMemo(() => ENGINEERING_THEMES[theme] || ENGINEERING_THEMES['cad-charcoal'], [theme]);
+  const themeConfig = useMemo(() => ENGINEERING_THEMES[theme] || ENGINEERING_THEMES['obsidian-gold'], [theme]);
 
   const setTheme = (newTheme: EngineeringTheme) => {
-    if (!ENGINEERING_THEMES[newTheme]) return;
-    setThemeState(newTheme);
+    const validTheme = normalizeTheme(newTheme);
+    setThemeState(validTheme);
     try {
-      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      localStorage.setItem(THEME_STORAGE_KEY, validTheme);
     } catch {
       // Ignore
     }
@@ -192,8 +202,13 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
 
-    // Remove any previous theme class
+    // Remove any previous theme classes (including legacy)
     root.classList.remove(
+      'theme-obsidian-gold',
+      'theme-terracotta-studio',
+      'theme-editorial-parchment',
+      'theme-solar-amber',
+      'theme-emerald-botanical',
       'theme-cad-charcoal',
       'theme-blueprint-navy',
       'theme-calcpad-paper',
@@ -203,7 +218,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       'sunlight-mode'
     );
 
-    // Apply active theme class
+    // Apply active theme class and data-theme attribute
     root.classList.add(`theme-${theme}`);
     root.setAttribute('data-theme', theme);
 
@@ -211,7 +226,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       root.classList.add('dark');
     }
 
-    if (theme === 'site-daylight') {
+    if (theme === 'solar-amber') {
       root.classList.add('sunlight-mode');
     }
 

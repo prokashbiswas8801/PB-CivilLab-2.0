@@ -38,6 +38,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
     savedHistory,
     deleteSavedHistoryItem,
     clearSavedHistory,
+    importSavedHistory,
     navigateToCalculator,
     setActivePage,
   } = useCivilLab();
@@ -128,17 +129,14 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (Array.isArray(parsed)) {
-          // Merge imported items into localStorage savedHistory
-          const existing = savedHistory;
-          const existingIds = new Set(existing.map((x) => x.id));
-          const newItems = parsed.filter((x) => x && x.id && !existingIds.has(x.id));
-          const merged = [...newItems, ...existing];
-          localStorage.setItem('pb_civillab_saved_history_v2', JSON.stringify(merged));
-          localStorage.setItem('civil_lab_saved_history_v1', JSON.stringify(merged));
-          setImportNotification({ message: `Successfully restored ${newItems.length} records into ledger.`, type: 'success' });
+          const addedCount = importSavedHistory(parsed);
+          setImportNotification({
+            message: `Successfully restored ${addedCount} new records into persistent ledger.`,
+            type: 'success',
+          });
           setTimeout(() => {
-            window.location.reload();
-          }, 800);
+            setImportNotification(null);
+          }, 3500);
         } else {
           setImportNotification({ message: 'Invalid backup format. Expected a JSON array of records.', type: 'error' });
         }
@@ -271,7 +269,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
         {/* Filters Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
           {/* Type Filter Pills */}
-          <div className="flex items-center gap-1.5 bg-[var(--md-sys-color-surface-container)] p-1 rounded-xl border border-[var(--md-sys-color-outline-variant)]/60">
+          <div className="flex items-center gap-1.5 bg-[var(--md-sys-color-surface-container)] p-1 rounded-full border border-[var(--md-sys-color-outline-variant)]/60">
             {[
               { id: 'all', label: `All (${savedHistory.length})` },
               {
@@ -287,9 +285,9 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
                 key={btn.id}
                 type="button"
                 onClick={() => setFilterType(btn.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`px-4 py-1.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
                   filterType === btn.id
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)]'
                 }`}
               >
@@ -306,7 +304,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search ledger by title, tag, value..."
-              className="w-full h-10 pl-9 pr-3 text-xs font-mono rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:border-[var(--md-sys-color-primary)]"
+              className="w-full h-10 pl-9 pr-4 text-xs font-mono rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)]"
             />
           </div>
         </div>

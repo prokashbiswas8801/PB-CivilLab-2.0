@@ -56,8 +56,8 @@ export const AddToHistoryButton: React.FC<AddToHistoryButtonProps> = ({
   }
 
   const sizeStyles = compact
-    ? 'px-2 py-1 text-xs gap-1 rounded-md'
-    : 'px-3 py-1.5 text-xs font-semibold gap-1.5 rounded-lg';
+    ? 'px-2.5 py-1 text-xs gap-1 rounded-full'
+    : 'px-3.5 py-1.5 text-xs font-semibold gap-1.5 rounded-full';
 
   return (
     <button

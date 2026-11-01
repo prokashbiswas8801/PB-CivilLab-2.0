@@ -224,16 +224,16 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
   };
 
   return (
-    <div className={`relative flex items-stretch rounded border transition-colors ${
+    <div className={`relative flex items-stretch rounded-full overflow-hidden border transition-all ${
       error
         ? 'border-red-500 bg-red-50/10'
         : evalSuccess
-          ? 'border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)]'
-          : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-outline-variant)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-1 focus-within:ring-[var(--md-sys-color-primary)]'
+          ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)]'
+          : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]'
     } bg-[var(--md-sys-color-surface)] ${className}`}>
       {/* Left Mathematical Symbol Badge */}
       {symbol && (
-        <div className="flex items-center justify-center px-2.5 bg-[var(--md-sys-color-surface-container-low)] border-r border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-xs font-semibold select-none shrink-0 min-w-[34px]">
+        <div className="flex items-center justify-center pl-3.5 pr-2.5 bg-[var(--md-sys-color-surface-container-low)] border-r border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-xs font-semibold select-none shrink-0 min-w-[36px]">
           {symbol}
         </div>
       )}
@@ -252,7 +252,7 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
         disabled={disabled}
         readOnly={readOnly}
         aria-label={ariaLabel}
-        className={`w-full min-w-0 bg-transparent px-2.5 py-1.5 text-xs font-mono font-medium text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/50 focus:outline-none tabular-nums ${
+        className={`w-full min-w-0 bg-transparent px-3.5 py-2 text-xs font-mono font-medium text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/50 focus:outline-none tabular-nums ${
           disabled ? 'opacity-50 cursor-not-allowed' : ''
         }`}
       />
@@ -260,7 +260,7 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
       {/* Evaluation Indicator */}
       {isEvaluating && (
         <div
-          className="flex items-center pr-1.5 text-[var(--md-sys-color-primary)] animate-pulse"
+          className="flex items-center pr-2 text-[var(--md-sys-color-primary)] animate-pulse"
           title="Press Enter or Blur to evaluate math"
         >
           <Calculator className="w-3.5 h-3.5" />
@@ -269,7 +269,7 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
 
       {/* Right Engineering Unit Badge */}
       {unit && (
-        <div className="flex items-center justify-center px-2 bg-[var(--md-sys-color-surface-container-low)] border-l border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-[11px] font-semibold select-none shrink-0 whitespace-nowrap badge-unit">
+        <div className="flex items-center justify-center pl-2.5 pr-3.5 bg-[var(--md-sys-color-surface-container-low)] border-l border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-[11px] font-semibold select-none shrink-0 whitespace-nowrap badge-unit">
           {unit}
         </div>
       )}

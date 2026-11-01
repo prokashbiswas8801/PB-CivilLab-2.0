@@ -136,14 +136,14 @@ export const Topbar: React.FC<TopbarProps> = ({
       {/* Right Zone: Controls, Unit System Toggle, Project Quick-Edit, Theme Toggle */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 
-        {/* Global SI / Imperial Unit System Toggle Switch */}
-        <div className="flex items-center bg-[var(--md-sys-color-surface-container-low)] p-1 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
+        {/* Global SI / Imperial Unit System Toggle Switch — Tactile Pill */}
+        <div className="flex items-center bg-[var(--md-sys-color-surface-container-low)] p-0.5 rounded-full border border-[var(--md-sys-color-outline)] shadow-xs">
           <button
             type="button"
             onClick={() => workbench.setUnitSystem('SI')}
-            className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1 text-xs font-mono font-bold rounded-full transition-all cursor-pointer ${
               workbench.unitSystem === 'SI'
-                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                 : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
             }`}
             title="Switch to Metric (SI) Units (m, mm, kN, MPa, m³)"
@@ -153,9 +153,9 @@ export const Topbar: React.FC<TopbarProps> = ({
           <button
             type="button"
             onClick={() => workbench.setUnitSystem('Imperial')}
-            className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1 text-xs font-mono font-bold rounded-full transition-all cursor-pointer ${
               workbench.unitSystem === 'Imperial'
-                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                 : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
             }`}
             title="Switch to Imperial (US) Units (ft, in, kip, ksi, cft)"
@@ -169,7 +169,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <button
             type="button"
             onClick={() => setProjectPopoverOpen((prev) => !prev)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-xs font-medium text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer max-w-[150px] sm:max-w-[200px]"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-xs font-medium text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer max-w-[150px] sm:max-w-[200px]"
             title="Edit Project Name, Engineer & Date"
           >
             <Building className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
@@ -186,7 +186,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                 <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)] uppercase font-mono tracking-wider">
                   Project Metadata
                 </span>
-                <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)]">
+                <span className="text-[10px] font-mono font-bold text-[var(--md-sys-color-primary)]">
                   {workbench.projectMetadata.projectCode}
                 </span>
               </div>
@@ -201,7 +201,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] focus:outline-none"
+                    className="w-full text-xs px-4 py-2 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] focus:outline-none"
                     placeholder="Enter project name..."
                   />
                 </div>
@@ -215,7 +215,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                     type="text"
                     value={editEngineer}
                     onChange={(e) => setEditEngineer(e.target.value)}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] focus:outline-none"
+                    className="w-full text-xs px-4 py-2 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] focus:outline-none"
                     placeholder="Engineer of record..."
                   />
                 </div>
@@ -229,7 +229,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                     type="date"
                     value={editDate}
                     onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] focus:outline-none"
+                    className="w-full text-xs px-4 py-2 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] focus:outline-none"
                   />
                 </div>
 
@@ -237,13 +237,13 @@ export const Topbar: React.FC<TopbarProps> = ({
                   <button
                     type="button"
                     onClick={() => setProjectPopoverOpen(false)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-3.5 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-semibold shadow-xs cursor-pointer hover:opacity-95"
+                    className="px-4 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-semibold shadow-xs cursor-pointer hover:opacity-95 font-bold"
                   >
                     Save Changes
                   </button>
@@ -291,7 +291,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <button
             type="button"
             onClick={() => setThemeDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] text-xs font-mono transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] text-xs font-mono transition-colors cursor-pointer"
             title="Switch Engineering Workbench Theme"
           >
             <span
@@ -303,7 +303,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           </button>
 
           {themeDropdownOpen && (
-            <div className="absolute right-0 mt-1.5 w-64 rounded-md border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 z-50 space-y-1">
+            <div className="absolute right-0 mt-1.5 w-64 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-2 z-50 space-y-1">
               <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)]">
                 Engineering Theme Presets
               </div>
@@ -361,7 +361,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <button
             type="button"
             onClick={onDirectDownloadPdf}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] text-xs font-semibold shadow-xs transition-all cursor-pointer"
             title="Download Certified PDF Report"
           >
             <Download className="w-3.5 h-3.5" />

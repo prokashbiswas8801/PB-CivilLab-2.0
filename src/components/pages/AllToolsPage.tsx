@@ -134,19 +134,19 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
 
         {/* Dedicated Live Search Input */}
         <div className="relative flex items-center">
-          <Search className="w-4 h-4 text-[var(--md-sys-color-primary)] absolute left-3.5 pointer-events-none" />
+          <Search className="w-4 h-4 text-[var(--md-sys-color-primary)] absolute left-4 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder='Instant live search... try "beam", "STR-01", "pile", "far", "manning", "1:100", "brick"'
-            className="w-full h-11 pl-10 pr-10 text-xs sm:text-sm font-mono rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-1 focus:ring-[var(--md-sys-color-primary)] transition-all"
+            className="w-full h-11 pl-11 pr-11 text-xs sm:text-sm font-mono rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] transition-all"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 p-1 rounded-md text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
+              className="absolute right-3.5 p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -163,13 +163,13 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
             <span className="text-xs font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] mr-1">
               View:
             </span>
-            <div className="flex items-center p-0.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
+            <div className="flex items-center p-1 rounded-full bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`px-2.5 py-1 text-xs font-mono font-bold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-3 py-1 text-xs font-mono font-bold rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
                   viewMode === 'grid'
-                    ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
                 }`}
                 title="Card Grid View"
@@ -180,9 +180,9 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`px-2.5 py-1 text-xs font-mono font-bold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-3 py-1 text-xs font-mono font-bold rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
                   viewMode === 'table'
-                    ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
                 }`}
                 title="Dense Compact Table View"
@@ -220,9 +220,9 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
           <button
             type="button"
             onClick={() => setSelectedDiscipline('all')}
-            className={`px-3 py-1 rounded-full text-xs font-mono font-bold shrink-0 transition-all cursor-pointer border ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold shrink-0 transition-all cursor-pointer border ${
               selectedDiscipline === 'all'
-                ? 'bg-[var(--md-sys-color-primary)] text-white border-[var(--md-sys-color-primary)] shadow-xs'
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-[var(--md-sys-color-primary)] shadow-xs font-black'
                 : 'bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-surface)]'
             }`}
           >
@@ -238,14 +238,14 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
                 key={discipline}
                 type="button"
                 onClick={() => setSelectedDiscipline(discipline)}
-                className={`px-3 py-1 rounded-full text-xs font-mono font-bold shrink-0 transition-all cursor-pointer border flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold shrink-0 transition-all cursor-pointer border flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-[var(--md-sys-color-primary)] text-white border-[var(--md-sys-color-primary)] shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-[var(--md-sys-color-primary)] shadow-xs font-black'
                     : 'bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-surface)]'
                 }`}
               >
                 <span>{discipline}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]'}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-[var(--md-sys-color-on-primary)]/20 text-[var(--md-sys-color-on-primary)] font-bold' : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]'}`}>
                   {count}
                 </span>
               </button>
@@ -270,7 +270,7 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
               setSearchQuery('');
               setSelectedDiscipline('all');
             }}
-            className="px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-white text-xs font-mono font-bold cursor-pointer"
+            className="px-4 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-mono font-bold cursor-pointer"
           >
             Reset Filters
           </button>
@@ -352,7 +352,7 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
                   <button
                     type="button"
                     onClick={() => handleLaunchTool(tool)}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] text-white hover:opacity-95 font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
+                    className="px-3.5 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
                   >
                     <span>Launch</span>
                     <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
@@ -442,7 +442,7 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
                             e.stopPropagation();
                             handleLaunchTool(tool);
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--md-sys-color-primary)]/10 text-[var(--md-sys-color-primary)] group-hover:bg-[var(--md-sys-color-primary)] group-hover:text-white font-bold transition-all text-xs cursor-pointer inline-flex items-center gap-1"
+                          className="px-3 py-1 rounded-full bg-[var(--md-sys-color-primary)]/10 text-[var(--md-sys-color-primary)] group-hover:bg-[var(--md-sys-color-primary)] group-hover:text-[var(--md-sys-color-on-primary)] font-bold transition-all text-xs cursor-pointer inline-flex items-center gap-1"
                         >
                           <span>Open</span>
                           <ArrowRight className="w-3 h-3" />

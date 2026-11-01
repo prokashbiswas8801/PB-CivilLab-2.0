@@ -338,9 +338,9 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 key={pair.label}
                 type="button"
                 onClick={() => handleApplyQuickPair(pair)}
-                className={`min-h-[32px] px-2.5 py-1 text-[11px] font-mono rounded-lg border whitespace-nowrap transition-all cursor-pointer btn-tactile ${
+                className={`min-h-[32px] px-3 py-1 text-[11px] font-mono rounded-full border whitespace-nowrap transition-all cursor-pointer btn-tactile ${
                   isPairSelected
-                    ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent font-bold shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
                     : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
                 }`}
                 title={pair.title || `Switch units to ${pair.label}`}
@@ -502,9 +502,9 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                     converter: { ...ws.converter, inputValue: num },
                   }));
                 }}
-                className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 text-[10px] font-mono rounded-full border transition-colors cursor-pointer ${
                   converter.inputValue === num
-                    ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent font-bold'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
                     : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
               >
@@ -912,7 +912,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                       },
                     }));
                   }}
-                  className="px-2 py-1 text-[11px] font-mono rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-white transition-colors cursor-pointer font-bold"
+                  className="px-3 py-1 text-[11px] font-mono rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-colors cursor-pointer font-bold"
                   title="Load parsed meters into main converter input"
                 >
                   Apply {activeFeetInchResult.totalMeters.toFixed(3)} m to Input
@@ -1018,7 +1018,7 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
           <button
             type="button"
             onClick={() => setIsExplainModalOpen(true)}
-            className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-white transition-all cursor-pointer flex items-center gap-1.5 btn-tactile font-bold shadow-xs"
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-full border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-all cursor-pointer flex items-center gap-1.5 btn-tactile font-bold shadow-xs"
             title="Explain step-by-step conversion logic using stored custom unit factors"
           >
             <HelpCircle className="w-3.5 h-3.5" />

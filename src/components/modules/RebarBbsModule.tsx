@@ -380,9 +380,9 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                     key={cnt}
                     type="button"
                     onClick={() => updateBBS({ colMainBarCount: cnt })}
-                    className={`px-2 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
+                    className={`px-2.5 py-0.5 text-[10px] font-mono rounded-full border transition-colors cursor-pointer ${
                       bbs.colMainBarCount === cnt
-                        ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent'
+                        ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
                         : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                     }`}
                   >

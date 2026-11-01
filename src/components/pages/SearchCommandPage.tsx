@@ -281,7 +281,7 @@ export const SearchCommandPage: React.FC<SearchCommandPageProps> = ({
               }
             }}
             placeholder='Type a command, tool name, code (STR-01), or math: e.g. "> switch to imperial", "beam", "25*1.54", "10 m to ft"'
-            className="w-full h-12 pl-10 pr-12 text-sm sm:text-base font-mono rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-1 focus:ring-[var(--md-sys-color-primary)] transition-all"
+            className="w-full h-12 pl-11 pr-14 text-sm sm:text-base font-mono rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)] transition-all"
           />
           {query ? (
             <button
@@ -290,13 +290,13 @@ export const SearchCommandPage: React.FC<SearchCommandPageProps> = ({
                 setQuery('');
                 inputRef.current?.focus();
               }}
-              className="absolute right-3.5 p-1 rounded-md text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
+              className="absolute right-4 p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
               aria-label="Clear input"
             >
               <X className="w-4 h-4" />
             </button>
           ) : (
-            <kbd className="hidden sm:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] absolute right-3 pointer-events-none">
+            <kbd className="hidden sm:inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded-full border border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] absolute right-4 pointer-events-none">
               Ctrl+K
             </kbd>
           )}
@@ -310,35 +310,35 @@ export const SearchCommandPage: React.FC<SearchCommandPageProps> = ({
           <button
             type="button"
             onClick={() => setQuery('> ')}
-            className="px-2 py-0.5 rounded-lg border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold cursor-pointer"
+            className="px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold cursor-pointer"
           >
             &gt; Commands Mode
           </button>
           <button
             type="button"
             onClick={() => setQuery('25 * 1.54')}
-            className="px-2 py-0.5 rounded-lg border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+            className="px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
           >
             25 * 1.54 (Dry Vol)
           </button>
           <button
             type="button"
             onClick={() => setQuery('10 m to ft')}
-            className="px-2 py-0.5 rounded-lg border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+            className="px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
           >
             10 m to ft
           </button>
           <button
             type="button"
             onClick={() => setQuery('50 kn to kip')}
-            className="px-2 py-0.5 rounded-lg border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+            className="px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
           >
             50 kN to kip
           </button>
           <button
             type="button"
             onClick={() => setQuery('STR-01')}
-            className="px-2 py-0.5 rounded-lg border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+            className="px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
           >
             STR-01 (Beam)
           </button>
@@ -369,7 +369,7 @@ export const SearchCommandPage: React.FC<SearchCommandPageProps> = ({
             <button
               type="button"
               onClick={() => handleCopyMath(String(mathResult.result))}
-              className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-100 dark:bg-emerald-900/50 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 text-xs font-mono font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+              className="px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-100 dark:bg-emerald-900/50 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 text-xs font-mono font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
             >
               {copiedMath ? (
                 <>
@@ -409,7 +409,7 @@ export const SearchCommandPage: React.FC<SearchCommandPageProps> = ({
             {civilLab.searchHistory.map((q) => (
               <div
                 key={q}
-                className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)] text-xs font-mono transition-all"
+                className="group flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)] text-xs font-mono transition-all"
               >
                 <button
                   type="button"

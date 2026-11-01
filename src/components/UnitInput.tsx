@@ -385,13 +385,13 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
       {/* Input Field with Unit Selector Dropdown Trigger */}
       <div
-        className={`relative flex items-center rounded-lg border bg-[var(--md-sys-color-surface)] shadow-xs transition-all duration-300 focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-1 focus-within:ring-[var(--md-sys-color-primary)] ${
+        className={`relative flex items-center rounded-full overflow-hidden border bg-[var(--md-sys-color-surface)] shadow-xs transition-all duration-300 focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)] ${
           validationResult?.status === 'error'
-            ? 'border-[var(--md-sys-color-error)] ring-1 ring-[var(--md-sys-color-error)]/40'
+            ? 'border-[var(--md-sys-color-error)] ring-2 ring-[var(--md-sys-color-error)]/40'
             : validationResult?.status === 'warning'
-            ? 'border-amber-500 ring-1 ring-amber-500/40'
+            ? 'border-amber-500 ring-2 ring-amber-500/40'
             : isUnitFading
-            ? 'border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)]/40 shadow-xs'
+            ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)]/40 shadow-xs'
             : 'border-[var(--md-sys-color-outline)]'
         }`}
       >
@@ -404,7 +404,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           onChange={handleInputChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          className={`w-full min-w-0 min-h-[48px] touch-target-48 bg-transparent px-3 py-2 text-base md:text-sm font-mono text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
+          className={`w-full min-w-0 min-h-[48px] touch-target-48 bg-transparent pl-5 pr-3 py-2 text-base md:text-sm font-mono text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
             isUnitFading
               ? 'opacity-25 scale-[0.985] text-[var(--md-sys-color-primary)]'
               : 'opacity-100 scale-100'
@@ -424,7 +424,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             onMouseLeave={() => setIsUnitHovered(false)}
             onFocus={() => setIsUnitHovered(true)}
             onBlur={() => setIsUnitHovered(false)}
-            className="flex items-center gap-1.5 min-h-[48px] touch-target-48 px-3 border-l border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-mono font-bold rounded-r-lg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 min-h-[48px] touch-target-48 pl-3 pr-4 border-l border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-mono font-bold rounded-r-full transition-colors cursor-pointer"
             title={conversionFactorDetails.tooltip}
             aria-label={`Unit: ${activeUnitInfo.name}. ${conversionFactorDetails.factorFormula}. Click to change unit.`}
           >

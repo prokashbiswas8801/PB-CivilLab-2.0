@@ -190,7 +190,7 @@ export const BottomCommandBar: React.FC<BottomCommandBarProps> = ({
           <button
             type="button"
             onClick={() => setCategoryLauncherOpen((prev) => !prev)}
-            className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
             title="Browse Engineering Disciplines"
           >
             <Layers className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
@@ -232,9 +232,9 @@ export const BottomCommandBar: React.FC<BottomCommandBarProps> = ({
       {/* CENTER SECTION: AutoCAD-Style Bottom Command Line & Upward Results Menu */}
       <div className="flex-1 max-w-2xl relative" ref={searchContainerRef}>
         <div
-          className={`flex items-center h-8 px-2.5 rounded border transition-all ${
+          className={`flex items-center h-8 px-3.5 rounded-full border transition-all ${
             isFocused
-              ? 'border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)]'
+              ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)]'
               : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-outline-variant)]'
           }`}
         >
@@ -337,7 +337,7 @@ export const BottomCommandBar: React.FC<BottomCommandBarProps> = ({
             const nextUnit: GlobalUnitSystem = workbench.unitSystem === 'SI' ? 'Imperial' : 'SI';
             workbench.setUnitSystem(nextUnit);
           }}
-          className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer text-[11px]"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer text-[11px]"
           title="Click to toggle Global Unit System (SI <-> Imperial)"
         >
           <ArrowRightLeft className="w-3 h-3 text-[var(--md-sys-color-primary)] shrink-0" />
@@ -351,7 +351,7 @@ export const BottomCommandBar: React.FC<BottomCommandBarProps> = ({
           <button
             type="button"
             onClick={() => setCodeDropdownOpen((prev) => !prev)}
-            className="hidden sm:flex items-center gap-1 px-2 py-1 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer text-[11px]"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer text-[11px]"
             title="Active Structural & Building Code Reference"
           >
             <BookOpen className="w-3 h-3 text-amber-500 shrink-0" />
@@ -359,7 +359,7 @@ export const BottomCommandBar: React.FC<BottomCommandBarProps> = ({
           </button>
 
           {codeDropdownOpen && onChangeGoverningCode && (
-            <div className="absolute bottom-full mb-1 right-0 w-44 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1 z-50 space-y-0.5">
+            <div className="absolute bottom-full mb-1 right-0 w-44 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1 z-50 space-y-0.5">
               <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)]">
                 Governing Code
               </div>
@@ -371,7 +371,7 @@ export const BottomCommandBar: React.FC<BottomCommandBarProps> = ({
                     onChangeGoverningCode(code);
                     setCodeDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-2 py-1 rounded flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                  className={`w-full text-left px-2 py-1 rounded-full flex items-center justify-between text-xs transition-colors cursor-pointer ${
                     governingCode === code
                       ? 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] font-bold'
                       : 'hover:bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)]'
@@ -390,7 +390,7 @@ export const BottomCommandBar: React.FC<BottomCommandBarProps> = ({
           <button
             type="button"
             onClick={() => setThemeDropdownOpen((prev) => !prev)}
-            className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer text-[11px]"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer text-[11px]"
             title="Switch Engineering Theme"
           >
             <div className="flex -space-x-1 shrink-0">

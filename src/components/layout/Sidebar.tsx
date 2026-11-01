@@ -430,7 +430,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   workbench.toggleFavoriteTool(item.moduleId!);
                                 }}
                                 className={`p-1 opacity-0 group-hover/sub:opacity-100 transition-opacity ${
-                                  isFav ? '!opacity-100 text-amber-500' : 'text-slate-400 hover:text-amber-500'
+                                  isFav ? '!opacity-100 text-amber-500' : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-amber-500'
                                 }`}
                                 title={isFav ? 'Remove from Pinned' : 'Pin to favorites'}
                               >

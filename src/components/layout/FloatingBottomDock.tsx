@@ -209,7 +209,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
             Expand Dock
           </span>
           {savedHistory.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary)] text-white shadow-xs">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs">
               {savedHistory.length}
             </span>
           )}
@@ -241,7 +241,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
               className={`relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-full min-w-[48px] min-h-[44px] sm:min-w-[56px] text-xs font-mono font-medium transition-all cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]
               max-h-[500px]:min-h-[36px] max-h-[500px]:py-1 max-h-[500px]:px-2 ${
                 isActive
-                  ? 'bg-[var(--md-sys-color-primary)] text-white shadow-md shadow-[var(--md-sys-color-primary)]/30 font-bold'
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-md shadow-[var(--md-sys-color-primary)]/30 font-bold'
                   : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
               }`}
               title={`${dest.label} — ${dest.description} (${dest.shortcutHint})`}
@@ -251,15 +251,15 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
               <div className="relative flex items-center justify-center">
                 <Icon
                   className={`w-4 h-4 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 ${
-                    isActive ? 'text-white' : 'text-[var(--md-sys-color-primary)]'
+                    isActive ? 'text-[var(--md-sys-color-on-primary)]' : 'text-[var(--md-sys-color-primary)]'
                   }`}
                 />
                 {hasBadge && (
                   <span
                     className={`absolute -top-1.5 -right-2 px-1 py-0.2 rounded-full text-[9px] font-bold font-mono tracking-tighter shadow-xs ${
                       isActive
-                        ? 'bg-white text-[var(--md-sys-color-primary)]'
-                        : 'bg-[var(--md-sys-color-primary)] text-white'
+                        ? 'bg-[var(--md-sys-color-on-primary)] text-[var(--md-sys-color-primary)]'
+                        : 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
                     }`}
                   >
                     {savedHistory.length}
@@ -277,7 +277,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
               <kbd
                 className={`hidden lg:inline-flex items-center text-[9px] font-mono px-1 py-0.2 rounded border transition-colors opacity-70 group-hover:opacity-100 max-h-[500px]:hidden ${
                   isActive
-                    ? 'border-white/40 text-white/90 bg-white/10'
+                    ? 'border-[var(--md-sys-color-on-primary)]/40 text-[var(--md-sys-color-on-primary)]/90 bg-[var(--md-sys-color-on-primary)]/15'
                     : 'border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] bg-[var(--md-sys-color-surface-container-low)]'
                 }`}
               >

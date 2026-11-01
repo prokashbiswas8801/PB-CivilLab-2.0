@@ -260,8 +260,8 @@ export const ConverterPage: React.FC = () => {
           </div>
 
           {/* Precision Controls */}
-          <div className="flex items-center gap-2 self-start md:self-auto bg-[var(--md-sys-color-surface-container)] p-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
-            <span className="text-[11px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)] px-2">
+          <div className="flex items-center gap-1.5 self-start md:self-auto bg-[var(--md-sys-color-surface-container)] p-1 rounded-full border border-[var(--md-sys-color-outline-variant)]">
+            <span className="text-[11px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)] px-2.5">
               Decimals:
             </span>
             {[2, 3, 4, 6].map((p) => (
@@ -269,9 +269,9 @@ export const ConverterPage: React.FC = () => {
                 key={p}
                 type="button"
                 onClick={() => setPrecision(p)}
-                className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                className={`w-7 h-7 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
                   precision === p
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
               >
@@ -281,8 +281,8 @@ export const ConverterPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-2 mt-6 overflow-x-auto border-b border-[var(--md-sys-color-outline-variant)] pb-px no-scrollbar">
+        {/* Tab Navigation — Full Pill Segmented Bar */}
+        <div className="flex items-center gap-1.5 p-1 rounded-full bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] mt-6 overflow-x-auto no-scrollbar">
           {[
             { id: 'area', label: 'Land & Area (Regional)', icon: Compass, badge: 'Katha / Decimal' },
             { id: 'volume', label: 'Volume & Concrete', icon: Boxes, badge: 'CFT / Brass / Bags' },
@@ -297,15 +297,19 @@ export const ConverterPage: React.FC = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as ConverterTab)}
-                className={`flex items-center gap-2 px-4 py-3 border-b-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
                   isActive
-                    ? 'border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/15'
-                    : 'border-transparent text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:border-[var(--md-sys-color-outline)]'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
+                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span>{tab.label}</span>
-                <span className="hidden md:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]">
+                <span className={`hidden md:inline-block px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+                  isActive
+                    ? 'bg-[var(--md-sys-color-on-primary)]/20 text-[var(--md-sys-color-on-primary)]'
+                    : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]'
+                }`}>
                   {tab.badge}
                 </span>
               </button>

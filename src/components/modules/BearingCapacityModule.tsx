@@ -318,7 +318,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                     updateLayers(layers);
                   }
                 }}
-                className={`px-2 py-0.5 rounded text-xs font-mono font-semibold cursor-pointer border ${showMultiLayer ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent' : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline)]'}`}
+                className={`px-3 py-1 rounded-full text-xs font-mono font-semibold cursor-pointer border transition-colors ${showMultiLayer ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent' : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline)]'}`}
               >
                 {showMultiLayer ? 'Multi-Strata Active' : 'Single Layer'}
               </button>
@@ -512,9 +512,9 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         bearing: { ...ws.bearing, frictionAngleDeg: item.val },
                       }));
                     }}
-                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
+                    className={`px-2 py-0.5 text-[10px] font-mono rounded-full border transition-colors cursor-pointer ${
                       activeWorkspace.bearing.frictionAngleDeg === item.val
-                        ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent'
+                        ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
                         : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                     }`}
                     title={item.title}
@@ -643,9 +643,9 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         bearing: { ...ws.bearing, factorOfSafety: item.val },
                       }));
                     }}
-                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
+                    className={`px-2 py-0.5 text-[10px] font-mono rounded-full border transition-colors cursor-pointer ${
                       activeWorkspace.bearing.factorOfSafety === item.val
-                        ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent'
+                        ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
                         : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                     }`}
                     title={item.title}

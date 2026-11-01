@@ -1385,9 +1385,9 @@ export default function App() {
   const handleThemeChange = (pref: ThemePreference) => {
     setAppState((prev) => ({ ...prev, themePreference: pref }));
     if (pref === 'dark') {
-      setEngTheme('cad-charcoal');
+      setEngTheme('obsidian-gold');
     } else if (pref === 'light') {
-      setEngTheme('calcpad-paper');
+      setEngTheme('editorial-parchment');
     }
   };
 
@@ -3546,14 +3546,14 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setShowGoverningEquations(!showGoverningEquations)}
-                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all ${
+                        className={`px-3 py-1.5 rounded-full border text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all ${
                           showGoverningEquations
                             ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
                             : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
                         }`}
                         title="Inspect Governing Engineering Equations & Code Derivations"
                       >
-                        <FileText className="w-3.5 h-3.5 text-blue-500" />
+                        <FileText className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
                         <span className="hidden md:inline">Equations</span>
                         {showGoverningEquations ? (
                           <ChevronUp className="w-3 h-3 opacity-70" />
@@ -3566,7 +3566,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleCopyAnalyticalSummary}
-                        className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors"
+                        className="px-3 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors"
                         title="Copy Formatted Calculation Summary"
                       >
                         {copiedSummary ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -3577,7 +3577,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleQuickPrintA4Report}
-                        className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer shadow-xs transition-colors"
+                        className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold inline-flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)] cursor-pointer shadow-xs transition-colors"
                         title="Instant 1-Click Print of Verified A4 Submittal Sheet"
                       >
                         <Printer className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
@@ -3588,7 +3588,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleLogCalculationSnapshot}
-                        className="touch-target-48 px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)]/40 bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                        className="touch-target-48 px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-primary)]/40 bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                         title="Save calculation & parameters permanently to History Ledger (never auto-deleted)"
                         aria-label="Add to History"
                       >
@@ -3600,7 +3600,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setPrintPreviewModalOpen(true)}
-                        className="px-3 py-1.5 rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-opacity"
+                        className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-opacity"
                         title="Open Full Verified A4 Report Generator with QR & Stamps"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
@@ -3612,7 +3612,7 @@ export default function App() {
                         type="button"
                         onClick={handleDirectDownloadPdf}
                         disabled={isExportingPdf}
-                        className="touch-target-48 relative overflow-hidden px-3.5 py-1.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95 disabled:opacity-90"
+                        className="touch-target-48 relative overflow-hidden px-4 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95 disabled:opacity-90"
                         title="Direct Client-Side PDF Generation (jsPDF + autotable) with Certified QR Stamp"
                         aria-label="Export PDF Report"
                       >

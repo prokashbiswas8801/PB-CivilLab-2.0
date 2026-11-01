@@ -70,7 +70,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                 <LayoutDashboard className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
               ) : (
                 shortCode && (
-                  <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-outline)] shrink-0">
                     {shortCode}
                   </span>
                 )
@@ -119,7 +119,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
         <button
           type="button"
           onClick={onSaveSnapshot}
-          className="flex items-center gap-1 px-2.5 py-1 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-primary)] hover:text-white hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] text-xs font-mono font-semibold transition-all cursor-pointer shadow-2xs"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] text-xs font-mono font-semibold transition-all cursor-pointer shadow-2xs"
           title="Save immutable calculation snapshot to project audit trail"
         >
           <Camera className="w-3.5 h-3.5 shrink-0" />

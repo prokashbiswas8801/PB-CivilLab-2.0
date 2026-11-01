@@ -14,10 +14,11 @@ export type ActivePage =
   | 'calculator';
 
 export type EngineeringThemeOption =
-  | 'cad-charcoal'
-  | 'blueprint-navy'
-  | 'calcpad-paper'
-  | 'site-daylight';
+  | 'obsidian-gold'
+  | 'terracotta-studio'
+  | 'editorial-parchment'
+  | 'solar-amber'
+  | 'emerald-botanical';
 
 export interface CivilProjectItem {
   id: string;
@@ -107,6 +108,7 @@ export interface CivilLabContextType {
   addSavedHistoryItem: (item: Omit<SavedHistoryItem, 'id' | 'timestamp'>) => SavedHistoryItem;
   deleteSavedHistoryItem: (id: string) => void;
   clearSavedHistory: () => void;
+  importSavedHistory: (items: SavedHistoryItem[]) => number;
 
   // User Profile
   userProfile: CivilUserProfile;
@@ -146,7 +148,7 @@ const DEFAULT_USER_PROFILE: CivilUserProfile = {
   location: 'Dhaka, Bangladesh',
   defaultUnitSystem: 'SI',
   defaultDesignCode: 'BNBC 2020',
-  theme: 'cad-charcoal',
+  theme: 'obsidian-gold',
   autoCollapseLandscape: true,
   showShortcutBadges: true,
   activeProjectId: 'proj-001',
@@ -471,6 +473,18 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
+  const importSavedHistory = useCallback((items: SavedHistoryItem[]): number => {
+    if (!Array.isArray(items)) return 0;
+    let addedCount = 0;
+    setSavedHistory((prev) => {
+      const existingIds = new Set(prev.map((x) => x.id));
+      const newItems = items.filter((x) => x && x.id && !existingIds.has(x.id));
+      addedCount = newItems.length;
+      return [...newItems, ...prev];
+    });
+    return addedCount;
+  }, []);
+
   // 6. User Profile
   const [userProfile, setUserProfile] = useState<CivilUserProfile>(() => {
     if (typeof window === 'undefined') return DEFAULT_USER_PROFILE;
@@ -581,6 +595,7 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addSavedHistoryItem,
       deleteSavedHistoryItem,
       clearSavedHistory,
+      importSavedHistory,
       userProfile,
       updateUserProfile,
       addProject,
@@ -609,6 +624,7 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addSavedHistoryItem,
       deleteSavedHistoryItem,
       clearSavedHistory,
+      importSavedHistory,
       userProfile,
       updateUserProfile,
       addProject,

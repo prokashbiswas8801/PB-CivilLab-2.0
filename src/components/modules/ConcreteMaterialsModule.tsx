@@ -114,9 +114,9 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                     },
                   }));
                 }}
-                className={`min-h-[32px] px-2.5 py-1 text-[11px] font-mono rounded-md border whitespace-nowrap transition-colors cursor-pointer ${
+                className={`min-h-[32px] px-3 py-1 text-[11px] font-mono rounded-full border whitespace-nowrap transition-colors cursor-pointer ${
                   isSelected
-                    ? 'bg-[var(--md-sys-color-primary)] text-white border-transparent font-bold'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
                     : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
                 title={item.title}
