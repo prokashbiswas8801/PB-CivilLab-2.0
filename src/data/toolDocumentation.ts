@@ -26,7 +26,7 @@ export interface ToolDocumentation {
     methodology: string;
     governingEquations: GoverningEquation[];
     codeStandards: string[];
-    assumptions: string[];
+    assumptions?: string[];
   };
   stepByStepUsage: StepByStepUsage[];
   proTipsAndBestPractices: string[];

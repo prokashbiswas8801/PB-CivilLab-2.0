@@ -13,4 +13,5 @@ export {
   type AboutThisToolProps,
   type AboutThisToolButtonProps,
   type AboutThisToolDrawerProps,
+  type DocumentationLanguage,
 } from './AboutThisTool';

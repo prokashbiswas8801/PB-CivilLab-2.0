@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { EngineeringModuleId, CalculationRecord } from '../../types/civil';
 import { useSiteManagement } from '../../context/SiteManagementContext';
-import { AboutThisTool } from '../ui/AboutThisTool';
+import { AboutThisTool, AboutThisToolButton } from '../ui/AboutThisTool';
 import {
   StoreInventoryModule,
   RequisitionModule,
@@ -321,6 +321,11 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
               <Printer className="w-3.5 h-3.5 text-amber-500" />
               <span>Print Sheet</span>
             </button>
+
+            <AboutThisToolButton
+              toolId={activeTab}
+              targetId="site-management-doc-section"
+            />
           </div>
         </div>
 
@@ -475,7 +480,12 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
 
       {/* 4. DEDICATED EXPANDABLE "ABOUT THIS TOOL" MONOGRAPH FOR THE ACTIVE MODULE */}
       <div className="pt-4">
-        <AboutThisTool toolId={activeTab} defaultExpanded={false} />
+        <AboutThisTool
+          key={activeTab}
+          toolId={activeTab}
+          id="site-management-doc-section"
+          defaultExpanded={false}
+        />
       </div>
     </div>
   );
