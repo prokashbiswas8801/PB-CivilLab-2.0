@@ -9,7 +9,8 @@ export type ToolDiscipline =
   | 'Earthwork & Surveying'
   | 'Architecture & By-Laws'
   | 'CAD & Utilities'
-  | 'Site QC & Field';
+  | 'Site QC & Field'
+  | 'Site Management & ERP';
 
 export interface ToolRegistryEntry {
   id: string;
@@ -337,7 +338,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Site Store Ledger & Materials Inventory (মালামাল ইন-আউট)',
     shortLabel: 'Store & Inventory Ledger',
     shortCode: 'SM-01',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Store & Logistics',
     keywords: ['store', 'inventory', 'stock', 'challan', 'gate pass', 'cement', 'steel', 'sand', 'inward', 'outward', 'মালামাল', 'ইনভেন্টরি', 'sm-01', 'erp-01'],
     standardUsed: 'Construction Material Control & BOQ Variance',
@@ -349,7 +350,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Material Requisition Slip & PO Generator (রিকুইজিশন)',
     shortLabel: 'Material Requisitions & PO',
     shortCode: 'SM-02',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Procurement & Indents',
     keywords: ['requisition', 'purchase order', 'po', 'indent', 'material request', 'whatsapp', 'procurement', 'রিকুইজিশন', 'অর্ডার', 'sm-02', 'erp-02'],
     standardUsed: 'Construction Site Purchase Indents / ISO 9001 Procurement',
@@ -361,7 +362,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Project Construction Schedule & Engineer Roster (শিডিউল)',
     shortLabel: 'Schedule & Curing Roster',
     shortCode: 'SM-03',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Scheduling & QA/QC',
     keywords: ['schedule', 'milestones', 'casting', 'curing', 'deshuttering', 'props', 'engineer roster', 'inspections', 'শিডিউল', 'কিউরিং', 'sm-03', 'erp-03'],
     standardUsed: 'ACI 308 Curing / ACI 347 Formwork De-shuttering',
@@ -373,7 +374,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Muster Roll Labor Attendance & Wage Manager (লেবার হাজিরা ও মজুরি)',
     shortLabel: 'Labor Attendance & Wages',
     shortCode: 'SM-04',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Labor & Payroll',
     keywords: ['labor', 'attendance', 'muster roll', 'wages', 'khoraki', 'overtime', 'head mason', 'jogali', 'hajira khata', 'হাজিরা', 'মজুরি', 'লেবার', 'sm-04', 'erp-04'],
     standardUsed: 'South Asian Construction Muster Roll & Daily Wage Practices',
@@ -385,7 +386,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Smart Engineering Field Diary & Instructions Log (সাইট নোটবুক)',
     shortLabel: 'Field Diary & Voice Notes',
     shortCode: 'SM-05',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Site Documentation',
     keywords: ['field notes', 'diary', 'site notebook', 'voice notes', 'dictation', 'grid location', 'instructions', 'architect orders', 'নোটবুক', 'ডায়েরি', 'sm-05', 'erp-05'],
     standardUsed: 'Standard Engineering Site Diary Protocol',
@@ -397,7 +398,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Sub-Contractor RA Bill & Measurement Tracker (কন্ট্রাক্টর বিল)',
     shortLabel: 'Subcontractor RA Bills',
     shortCode: 'SM-06',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Billing & Contracts',
     keywords: ['ra bill', 'running account', 'contractor bill', 'measurement', 'retention', 'security money', 'advance deduction', 'কন্ট্রাক্টর', 'বিল', 'sm-06', 'erp-06'],
     standardUsed: 'Standard FIDIC / CPWD Sub-Contractor Measurement Billing',
@@ -409,7 +410,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Site Petty Cash & Daily Expense Imprest Register (খুচরা ক্যাশ হিসাব)',
     shortLabel: 'Site Petty Cash Ledger',
     shortCode: 'SM-07',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Site Finance',
     keywords: ['petty cash', 'imprest', 'daily expenses', 'site cash', 'vouchers', 'cash in hand', 'receipts', 'ক্যাশ', 'পেটি ক্যাশ', 'sm-07', 'erp-07'],
     standardUsed: 'Standard Imprest Accounting System',
@@ -421,7 +422,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Concrete Pour & Cube/Cylinder Compressive Strength Log (কিউব টেস্ট)',
     shortLabel: 'Cube Crushing Register',
     shortCode: 'SM-08',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'QA/QC Materials',
     keywords: ['cube test', 'cylinder test', 'compressive strength', '7-day', '28-day', 'slump test', 'crushing', 'dcr', 'কিউব টেস্ট', 'সিলিন্ডার', 'sm-08', 'erp-08'],
     standardUsed: 'ASTM C39 / BS 1881 / BNBC 2020 Chapter 5',
@@ -433,7 +434,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     title: 'Master 1-Click Daily Progress Report (DPR) Aggregator (ডেইলি প্রগ্রেস রিপোর্ট)',
     shortLabel: 'Daily Progress Report',
     shortCode: 'SM-09',
-    category: 'Site QC & Field',
+    category: 'Site Management & ERP',
     subCategory: 'Field Reporting',
     keywords: ['dpr', 'daily progress report', 'site report', 'weather', 'manpower', 'materials log', 'progress', 'site diary', 'রিপোর্ট', 'ডিপিআর', 'sm-09', 'erp-09'],
     standardUsed: 'Standard Construction Project DPR Protocol',
@@ -468,4 +469,5 @@ export const TOOL_DISCIPLINES: ToolDiscipline[] = [
   'Architecture & By-Laws',
   'CAD & Utilities',
   'Site QC & Field',
+  'Site Management & ERP',
 ];

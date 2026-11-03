@@ -8,3 +8,4 @@ export { PettyCashModule } from './PettyCashModule';
 export { CubeTestModule } from './CubeTestModule';
 export { DailyProgressReportModule } from './DailyProgressReportModule';
 export { SiteManagementHub } from './SiteManagementHub';
+export { OfflineSyncManager } from './OfflineSyncManager';

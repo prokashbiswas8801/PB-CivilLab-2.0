@@ -134,7 +134,7 @@ export const CubeTestModule: React.FC = () => {
   const handleSavePour = (e: React.FormEvent) => {
     e.preventDefault();
     if (!structuralElement.trim()) {
-      alert('Please specify the Structural Element (e.g. 3rd Floor Slab & Beams).');
+      showToast('⚠️ Please specify the Structural Element (e.g. 3rd Floor Slab & Beams).');
       return;
     }
     const target = CONCRETE_GRADES.find((g) => g.grade === concreteGrade)?.targetMpa || 25;
@@ -191,7 +191,7 @@ export const CubeTestModule: React.FC = () => {
   // Export CSV
   const handleExportCSV = () => {
     if (filteredCubes.length === 0) {
-      alert('No cube records to export.');
+      showToast('⚠️ No cube records to export.');
       return;
     }
     const headers = [

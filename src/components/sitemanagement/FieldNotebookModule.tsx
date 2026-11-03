@@ -20,8 +20,12 @@ import {
   User,
   ShieldAlert,
   Compass,
+  Wifi,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react';
 import { useSiteManagement } from '../../context/SiteManagementContext';
+import { useOfflineSync } from '../../context/OfflineSyncContext';
 import { FieldNote, FieldNoteCategory } from '../../types/siteManagement';
 
 const CATEGORIES: { key: FieldNoteCategory; label: string; color: string }[] = [
@@ -40,6 +44,7 @@ export const FieldNotebookModule: React.FC = () => {
     updateFieldNote,
     deleteFieldNote,
   } = useSiteManagement();
+  const { isOnline, stats, triggerSyncNow, isSyncing, isEntityPending } = useOfflineSync();
 
   // Filters & State
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -301,6 +306,45 @@ export const FieldNotebookModule: React.FC = () => {
         </div>
       </div>
 
+      {/* Offline & Sync Status Banner */}
+      {(!isOnline || stats.fieldNotesPending > 0) && (
+        <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans shadow-xs ${
+          !isOnline
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+            : 'bg-purple-500/10 border-purple-500/30 text-purple-900 dark:text-purple-200'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {!isOnline ? (
+              <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+            ) : (
+              <RefreshCw className="w-4 h-4 text-purple-600 shrink-0" />
+            )}
+            <div>
+              <span className="font-bold">
+                {!isOnline ? 'Offline Field Note Mode: ' : 'Local Notes Queued: '}
+              </span>
+              <span>
+                {stats.fieldNotesPending > 0
+                  ? `${stats.fieldNotesPending} field note${stats.fieldNotesPending > 1 ? 's' : ''} stored in local cache.`
+                  : 'Site notes and voice memos are safely recorded locally.'}
+                {' Data will sync automatically when online.'}
+              </span>
+            </div>
+          </div>
+          {isOnline && stats.fieldNotesPending > 0 && (
+            <button
+              type="button"
+              onClick={() => triggerSyncNow()}
+              disabled={isSyncing}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0 inline-flex items-center gap-1.5 shadow-xs cursor-pointer self-start sm:self-center"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : `Sync Notes (${stats.fieldNotesPending})`}</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Category Pills & Search */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
@@ -413,6 +457,16 @@ export const FieldNotebookModule: React.FC = () => {
                     >
                       {note.priority || 'Normal'} Priority
                     </span>
+
+                    {isEntityPending('field-notes', note.id) ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 inline-flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" /> Pending Sync
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 inline-flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5" /> Synced
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">

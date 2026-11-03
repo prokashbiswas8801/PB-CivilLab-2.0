@@ -185,15 +185,15 @@ export const ContractorBillModule: React.FC = () => {
   const handleSaveBill = (e: React.FormEvent) => {
     e.preventDefault();
     if (!contractorName.trim()) {
-      alert('Please enter or select a Contractor Name.');
+      showToast('⚠️ Please enter or select a Contractor Name.');
       return;
     }
     if (currQtyNum <= 0) {
-      alert('Current Measured Quantity must be greater than zero.');
+      showToast('⚠️ Current Measured Quantity must be greater than zero.');
       return;
     }
     if (rateNum <= 0) {
-      alert('Contract Rate must be greater than zero.');
+      showToast('⚠️ Contract Rate must be greater than zero.');
       return;
     }
 
@@ -253,7 +253,7 @@ export const ContractorBillModule: React.FC = () => {
   // Export CSV
   const handleExportCSV = () => {
     if (filteredBills.length === 0) {
-      alert('No bills to export.');
+      showToast('⚠️ No bills to export.');
       return;
     }
     const headers = [

@@ -1716,6 +1716,546 @@ export const TOOL_DOCUMENTATION: Record<string, ToolDocumentation> = {
     ],
     limitationsAndNotes: ['For temperature extremes (< 5°C or > 35°C), follow ACI 306R Cold Weather or ACI 305R Hot Weather concreting guidelines.'],
   },
+
+  // =========================================================================
+  // 24. STORE & INVENTORY LEDGER (SM-01)
+  // =========================================================================
+  'store-inventory': {
+    id: 'store-inventory',
+    title: 'Store & Inventory Ledger (মালামাল ইন-আউট রেজিস্টার)',
+    shortLabel: 'Store Ledger',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'CPWD / PWD Works Manual / Store Ledger Practice',
+    overview:
+      'The Store & Inventory Ledger tracks site materials from arrival through issuance to structural elements. It maintains running balances, enforces minimum thresholds, tracks delivery challans/truck numbers, and analyzes material variance against theoretical BOQ requirements.',
+    capabilities: [
+      'Real-time material balance tracking with red LOW STOCK alerts',
+      'Inward stock verification with Challan No., Truck No., and Supplier tagging',
+      'Outward issue tracking scoped by Floor/Zone and Sub-Contractor/Foreman',
+      'Theoretical BOQ vs. Actual Outward Consumption Wastage analysis',
+      '1-Click automated transfer of depleted materials to Requisitions',
+      'Instant CSV and printable A4 Store Inventory balance sheets',
+    ],
+    howItWorks: {
+      methodology:
+        'Maintains a dual-entry inventory register where every incoming Challan creates an Inward transaction (Stock += Qty) and every jobsite issue creates an Outward transaction (Stock -= Qty). The engine verifies that issue quantities do not exceed available on-site stock and computes cumulative wastage vs BOQ targets.',
+      governingEquations: [
+        {
+          name: 'Running Inventory Balance',
+          formula: 'Balance_t = Balance_{t-1} + Qty_{Inward} - Qty_{Outward}',
+          description: 'Fundamental site storekeeper mass conservation principle.',
+        },
+        {
+          name: 'Material Wastage / Variance %',
+          formula: 'Wastage = ((Qty_{Actual} - Qty_{BOQ}) / Qty_{BOQ}) × 100%',
+          description: 'Variance analysis indicating material leakage, site loss, or over-breakage.',
+        },
+      ],
+      codeStandards: ['PWD Works Code Chapter 7: Stores', 'CPWD Works Manual Section 6', 'ISO 9001:2015 Material Traceability'],
+      assumptions: [
+        'Materials are weighed or counted upon truck arrival prior to unloading',
+        'Damaged or rain-affected materials are written off with proper loss remarks',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Initialize Site Materials',
+        instruction: 'Click "+ Add Material Item" to record materials with initial balance, unit, and minimum re-order threshold.',
+      },
+      {
+        step: 2,
+        title: 'Record Truck Delivery (মালামাল জমা)',
+        instruction: 'Click "+ Inward Entry" upon truck arrival. Enter Challan No., Supplier, Truck No., and verified quantity.',
+      },
+      {
+        step: 3,
+        title: 'Issue to Work Head (মালামাল খরচ)',
+        instruction: 'Click "- Outward Issue" to dispense materials. Specify target floor/zone and the responsible foreman.',
+      },
+      {
+        step: 4,
+        title: 'Analyze BOQ Variance',
+        instruction: 'Review the Theoretical vs. Actual table to monitor if rebar or cement consumption exceeds allowable waste (3-5%).',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Cement Storage: Stack cement bags maximum 10 bags high on wooden pallets at least 150mm above the store floor to prevent moisture absorption.',
+      'Rebar Rust Protection: Keep deformed bars stacked off the bare ground on timber sleepers and cover with tarpaulins to avoid excessive pitting rust.',
+    ],
+    limitationsAndNotes: ['Physical store audits should be performed weekly to reconcile physical count against the digital ledger.'],
+  },
+
+  // =========================================================================
+  // 25. MATERIAL REQUISITIONS & PO SLIPS (SM-02)
+  // =========================================================================
+  'material-requisition': {
+    id: 'material-requisition',
+    title: 'Material Requisition & Purchase Order Generator (রিকুইজিশন)',
+    shortLabel: 'Material Requisitions',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'Standard Construction Procurement Practice',
+    overview:
+      'Generates formal multi-item material requisitions, purchase order slips, and instant WhatsApp ordering strings. Enables site engineers to request cement, rebar, aggregates, and hardware with urgency levels and seamless inward store reconciliation upon delivery.',
+    capabilities: [
+      'Multi-item requisition orders with stock lookup and urgency tagging (Normal, Urgent, Critical)',
+      '1-Click WhatsApp text generator for direct messaging to suppliers and head office procurement',
+      'Official printable A4 Requisition & PO Slip with client, contractor, and engineer signature blocks',
+      'One-click "Receive into Store" button that automatically stocks arrived goods in the Store Ledger',
+    ],
+    howItWorks: {
+      methodology:
+        'Aggregates material requirements, evaluates lead times, and compiles structured procurement slips. When marked as Received, it generates corresponding Inward entries in the Store Ledger with Challan references.',
+      governingEquations: [
+        {
+          name: 'Requisition Quantity Calculation',
+          formula: 'ReqQty = (PlannedDemand + SafetyStock) - CurrentStoreBalance',
+          description: 'Calculates net purchase order volume to prevent jobsite stoppage.',
+        },
+      ],
+      codeStandards: ['FIDIC Red Book Procurement Clauses', 'Standard PWD Requisition Form 28'],
+      assumptions: ['Requisitions reflect genuine work schedules for the upcoming 7 to 14 days'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Create Requisition Order',
+        instruction: 'Click "+ New Requisition". Select urgency (Normal, Urgent, Critical) and specify required-by date.',
+      },
+      {
+        step: 2,
+        title: 'Add Items & Quantities',
+        instruction: 'Add line items by selecting existing store materials or entering new custom items with specifications.',
+      },
+      {
+        step: 3,
+        title: 'Send via WhatsApp or Print Slip',
+        instruction: 'Click "Copy WhatsApp" to copy a cleanly formatted message or "Print Slip" for official sign-off.',
+      },
+      {
+        step: 4,
+        title: 'Receive into Store',
+        instruction: 'When materials arrive, click "Receive" to input the Challan No. and auto-update store inventory balances.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Aggregate Lead Times: Always order coarse and fine aggregate at least 48 hours prior to large slab casting to allow sampling and moisture checks.',
+    ],
+    limitationsAndNotes: ['Ensure delivery tickets and mill test certificates accompany high-strength rebar deliveries.'],
+  },
+
+  // =========================================================================
+  // 26. SCHEDULE & ROSTER (SM-03)
+  // =========================================================================
+  'schedule-roster': {
+    id: 'schedule-roster',
+    title: 'Project Schedule, Concrete Pour & Curing Roster (শিডিউল)',
+    shortLabel: 'Schedule & Roster',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'CPM Scheduling & ACI 308 Curing Standards',
+    overview:
+      'Integrated project timeline manager tracking major structural milestones, concrete casting dates, minimum 14/28-day water curing countdowns, soffit formwork deshuttering schedules, and daily field engineer inspection checklists.',
+    capabilities: [
+      'Gantt-style milestone tracker with automated progress calculation',
+      'Automated water-curing countdowns with active curing alert badges',
+      'Code-compliant formwork deshuttering dates based on structural member type',
+      'Daily site engineer quality checklists (reinforcement check, cover blocks, slump test)',
+    ],
+    howItWorks: {
+      methodology:
+        'Calculates critical curing duration and deshuttering periods from casting date based on BNBC/ACI specifications (e.g. beam soffits: 14 days, slabs: 7 days, columns/walls: 24-48 hours).',
+      governingEquations: [
+        {
+          name: 'Curing Time Countdown',
+          formula: 'DaysRemaining = TargetCuringDays - (Today - CastingDate)',
+          description: 'Calculates remaining mandatory water curing period.',
+        },
+      ],
+      codeStandards: ['BNBC 2020 Part 6 Section 5.11 (Curing)', 'ACI 308R Guide to External Curing', 'ACI 347 Guide to Formwork'],
+      assumptions: ['Ambient temperature is above 10°C; standard OPC or PCC cement is utilized'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Log Concrete Pour Event',
+        instruction: 'Click "+ Add Milestone" and set category to Concrete Pour with structural member details.',
+      },
+      {
+        step: 2,
+        title: 'Track Curing Countdown',
+        instruction: 'Monitor the Curing tab to ensure wet burlap or ponding continues until the green 0 days badge is achieved.',
+      },
+      {
+        step: 3,
+        title: 'Execute Quality Inspection',
+        instruction: 'Open the Engineer Checklist tab to verify rebar binding, clear cover, and shuttering plumb before pouring.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Ponding on Slabs: Form clay or sand bunds (আইল) across roof slabs to retain at least 50mm standing water for the entire 14-day curing cycle.',
+    ],
+    limitationsAndNotes: ['Never remove slab props until adjacent beam test cubes achieve at least 75% of characteristic 28-day strength.'],
+  },
+
+  // =========================================================================
+  // 27. LABOR MUSTER ROLL & WAGES (SM-04)
+  // =========================================================================
+  'labor-attendance': {
+    id: 'labor-attendance',
+    title: 'Labor Muster Roll & Wage Sheet (হাজিরা খাতা ও মজুরি)',
+    shortLabel: 'Labor Attendance',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'Bangladesh Labor Act 2006 & South-Asian Site Muster Roll Practice',
+    overview:
+      'Digital 1-to-31 day monthly Present Book (হাজিরা খাতা) for jobsite labor. Manages trade categories (Masons, Jogalis, Bar Benders, Carpenters), records daily attendance (P, H, OT, A), logs weekly food allowances (খোরকী), and compiles net wages.',
+    capabilities: [
+      'Authentic 1-to-31 day monthly muster roll grid with 1-click status cycling (P = 1, H = 0.5, OT, A = 0)',
+      '1-Click "Mark All Active Present Today" batch button for fast daily morning attendance',
+      'Worker profile directory with daily wage rates, overtime hourly rates, and NID tracking',
+      'Weekly Khoraki (খোরকী) advance payment ledger with balance deductions',
+      'A4 Printable Monthly Wage Sheet & Payment Register with worker signature/thumbprint blocks',
+    ],
+    howItWorks: {
+      methodology:
+        'Computes total effective present days, overtime hours, gross earnings, and subtracts cumulative Khoraki and salary advances to calculate net payable wage per worker.',
+      governingEquations: [
+        {
+          name: 'Monthly Gross Wages',
+          formula: 'Gross = (Days_P + 0.5 × Days_H) × DailyWage + Hours_OT × Rate_OT',
+          description: 'Calculates total labor earnings for the selected calendar month.',
+        },
+        {
+          name: 'Net Payout Due',
+          formula: 'NetPayable = Gross - (TotalKhoraki + AdvancesDeducted)',
+          description: 'Net balance disbursed on weekly or monthly labor settlement day.',
+        },
+      ],
+      codeStandards: ['Bangladesh Labor Act 2006 (Minimum Wage & OT Rules)', 'PWD Muster Roll Form 21'],
+      assumptions: ['Normal working shift is 8 hours; additional hours qualify for overtime compensation'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Enroll Site Workers',
+        instruction: 'Click "+ Enroll Worker" to input name, trade (Mason, Helper, Bar Bender), phone, and daily wage rate.',
+      },
+      {
+        step: 2,
+        title: 'Mark Daily Attendance',
+        instruction: 'Use "+ Mark All Present" for quick batch entry or click any cell in the 1-31 grid to toggle P, H, OT, or A.',
+      },
+      {
+        step: 3,
+        title: 'Disburse Weekly Khoraki',
+        instruction: 'Click "Khoraki" next to a worker to record cash advances given for food and personal expenses.',
+      },
+      {
+        step: 4,
+        title: 'Generate Master Wage Sheet',
+        instruction: 'Click "Print Wage Sheet" to print the certified monthly payment sheet with signature blocks.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Daily Morning Roll Call: Conduct headcount roll call at 8:00 AM sharp to ensure accurate muster roll logging and job safety briefings.',
+    ],
+    limitationsAndNotes: ['Workers remain preserved in localStorage across all months until explicitly archived.'],
+  },
+
+  // =========================================================================
+  // 28. FIELD NOTEBOOK & VOICE DIARY (SM-05)
+  // =========================================================================
+  'field-notebook': {
+    id: 'field-notebook',
+    title: 'Smart Field Notebook & Voice Diary (সাইট নোটবুক ও ডায়েরি)',
+    shortLabel: 'Field Notebook',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'Civil Site Engineer Inspection Diary Standard',
+    overview:
+      'Digital jobsite diary and voice-dictated field inspection log. Allows engineers to record structural observations, non-conformance defects (NCR), architectural discrepancies, and consultant instructions categorized by Grid/Floor tags.',
+    capabilities: [
+      'Speech-to-Text voice dictation for hands-free logging while walking rebar cages or scaffolds',
+      'Categorization by Defect, Instructions, Material Issue, Safety, or Progress',
+      'Location tagging by Floor and Grid Intersection (e.g. 4th Floor Grid C-3)',
+      'Resolution tracking with checkbox verification and audit timestamps',
+    ],
+    howItWorks: {
+      methodology:
+        'Utilizes browser SpeechRecognition APIs with graceful text fallback to capture real-time observations, stores them with resolution workflows, and links unresolved items to the Daily Progress Report.',
+      governingEquations: [
+        {
+          name: 'Resolution Rate %',
+          formula: 'ResolvedRate = (Notes_Resolved / TotalNotes) × 100%',
+          description: 'Tracks quality control responsiveness and defect closure efficiency.',
+        },
+      ],
+      codeStandards: ['ISO 9001:2015 Non-Conformance Reporting (NCR)', 'PWD Site Order Book Rules'],
+      assumptions: ['Engineers inspect structural works prior to casting and log deviations promptly'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Start Voice Dictation or Text Note',
+        instruction: 'Click "Voice Dictation" to record spoken notes hands-free, or type into the field notebook prompt.',
+      },
+      {
+        step: 2,
+        title: 'Tag Location & Category',
+        instruction: 'Select category (Defect, Safety, Progress) and enter the floor/column grid tag.',
+      },
+      {
+        step: 3,
+        title: 'Track & Resolve',
+        instruction: 'Mark the checkmark once the contractor corrects the rebar spacing, shuttering prop, or honeycombing.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Grid Referencing: Always note column grid lines (e.g., Column C-4) so sub-contractors locate defective areas without ambiguity.',
+    ],
+    limitationsAndNotes: ['Speech recognition requires browser microphone permissions; manual typing is always available.'],
+  },
+
+  // =========================================================================
+  // 29. SUB-CONTRACTOR RA BILLS (SM-06)
+  // =========================================================================
+  'contractor-bills': {
+    id: 'contractor-bills',
+    title: 'Sub-Contractor RA Bill Tracker (কন্ট্রাক্টর রানিং বিল)',
+    shortLabel: 'Contractor Bills',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'CPWD / PWD Running Account Bill Form 26 & Measurement Book (MB)',
+    overview:
+      'Professional Running Account (RA) Bill generator for sub-contractors (Rebar fabrication, Shuttering, Brickwork, Plaster, Tiles). Automatically computes cumulative quantities, gross amounts, retention deductions (5-10%), and net payable sums.',
+    capabilities: [
+      'Sequential RA Bill tracking (RA-01, RA-02, etc.) with cumulative measurement history',
+      'Automated retention / security money deduction percentage (5% to 10%)',
+      'Advance recovery and TDS/VAT deduction calculations',
+      'Printable official A4 Running Account Bill with measurement details and signature certifications',
+    ],
+    howItWorks: {
+      methodology:
+        'Calculates current gross billing from measured work, subtracts retention for defects liability, deducts prior mobilization/labor advances, and generates certified net payment vouchers.',
+      governingEquations: [
+        {
+          name: 'Current Bill Gross Amount',
+          formula: 'Gross = CurrentMeasuredQty × ContractRate',
+          description: 'Value of physical work executed during the current billing period.',
+        },
+        {
+          name: 'Net Payable Bill Amount',
+          formula: 'NetPayable = Gross - (Gross × Retention%) - AdvancesDeducted - TaxVAT',
+          description: 'Amount certified by Site Engineer for release to the sub-contractor.',
+        },
+      ],
+      codeStandards: ['PWD Measurement Book (MB) Rules', 'FIDIC Short Form of Contract Clause 11'],
+      assumptions: ['Physical work has been jointly measured and verified by the site engineer'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Create New RA Bill',
+        instruction: 'Click "+ New RA Bill". Enter contractor name, trade (e.g. Shuttering), and unit contract rate.',
+      },
+      {
+        step: 2,
+        title: 'Enter Measured Quantities',
+        instruction: 'Input previous cumulative quantity (auto-filled for recurring contractors) and current measured quantity.',
+      },
+      {
+        step: 3,
+        title: 'Apply Deductions',
+        instruction: 'Confirm retention percentage (standard 5% or 10%) and enter any advance payments to be recovered.',
+      },
+      {
+        step: 4,
+        title: 'Print Certified Bill',
+        instruction: 'Click "Print Bill" to generate the formal signed invoice for accounts clearance.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Retention Release: Never release security retention money until after the contractual Defect Liability Period (usually 6 to 12 months) expires.',
+    ],
+    limitationsAndNotes: ['Ensure joint measurement records (MB) are signed before certifying payment.'],
+  },
+
+  // =========================================================================
+  // 30. SITE PETTY CASH (SM-07)
+  // =========================================================================
+  'petty-cash': {
+    id: 'petty-cash',
+    title: 'Site Petty Cash & Daily Expense Ledger (খুচরা ক্যাশ হিসাব)',
+    shortLabel: 'Petty Cash',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'Standard Imprest Accounting System',
+    overview:
+      'Imprest cash fund tracker for site engineers. Records cash received from head office/clients, tracks daily small site expenses (labor refreshments, nails, binding wire, transport/van fare, minor tools), and maintains real-time Cash in Hand.',
+    capabilities: [
+      'Dual Credit/Debit imprest ledger tracking Cash In vs Cash Out',
+      'Real-time Cash in Hand display with low-cash balance warnings',
+      'Expense breakdown by category (Materials, Transport, Refreshments, Tools, Labor)',
+      '1-Click CSV export and printable A4 Petty Cash Voucher statement',
+    ],
+    howItWorks: {
+      methodology:
+        'Maintains a continuous imprest balance where Credits increase cash and Debits decrease cash, providing audit-proof reconciliation for Head Office accounts submission.',
+      governingEquations: [
+        {
+          name: 'Cash in Hand Formula',
+          formula: 'CurrentCash = OpeningBalance + TotalReceived - TotalSpent',
+          description: 'Fundamental imprest accounting equation.',
+        },
+      ],
+      codeStandards: ['GAAP Imprest Fund Guidelines', 'PWD Cash Book Regulations'],
+      assumptions: ['All cash disbursements are backed by physical receipts or voucher chits'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Record Cash Received (Credit)',
+        instruction: 'Click "+ Add Transaction", select "Cash Received", enter amount and head office voucher reference.',
+      },
+      {
+        step: 2,
+        title: 'Record Site Expense (Debit)',
+        instruction: 'Select "Cash Expense", choose category (Binding Wire, Van Fare, Tea/Snacks) and party/receiver.',
+      },
+      {
+        step: 3,
+        title: 'Monitor Cash in Hand',
+        instruction: 'Check the real-time balance widget to ensure adequate cash remains for daily emergencies.',
+      },
+      {
+        step: 4,
+        title: 'Export for Head Office Audit',
+        instruction: 'Click "Print Statement" or "Export CSV" to submit verified expense vouchers for reimbursement.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Voucher Chits: Staple all physical taxi/van chits, tea bills, and hardware receipts to a numbered sheet matching the voucher ID.',
+    ],
+    limitationsAndNotes: ['For major material purchases (> ৳25,000), use formal purchase orders rather than site petty cash.'],
+  },
+
+  // =========================================================================
+  // 31. CONCRETE CUBE TEST REGISTER (SM-08)
+  // =========================================================================
+  'cube-tests': {
+    id: 'cube-tests',
+    title: 'Concrete Pour & Cube/Cylinder Crushing Register (কিউব টেস্ট)',
+    shortLabel: 'Cube Test Register',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'ASTM C39 / BS EN 12390-3 / BNBC 2020 Part 6',
+    overview:
+      'Quality assurance database logging every concrete casting pour. Automatically calculates mandatory 7-Day and 28-Day crushing test dates, records compressive crushing strengths (MPa/psi), computes Demand-Capacity Ratios (DCR), and evaluates Pass/Fail acceptance.',
+    capabilities: [
+      'Pour event logging with Concrete Grade (M15 to M45 / 2000 to 6000 psi), slump test (mm), and structural element',
+      'Automated scheduling of 7-Day (65-75% target) and 28-Day (100% target) test dates',
+      'Crushing test strength logger with instant Pass/Fail status determination',
+      'Printable A4 Concrete Quality & Cube Crushing Test Certificate with lab sign-off blocks',
+    ],
+    howItWorks: {
+      methodology:
+        'Compares tested compressive crushing strength $f_c$ against the characteristic specified strength $f\'_c$. Enforces standard acceptance: 7-day strength must achieve $\\ge 67\\%$ of target and 28-day must achieve $\\ge 100\\%$.',
+      governingEquations: [
+        {
+          name: 'Compressive Strength DCR',
+          formula: 'DCR = f_{tested} / f_{target}',
+          description: 'Ratio of tested crushing strength to target design grade (Pass if DCR ≥ 1.0).',
+        },
+        {
+          name: 'Expected 7-Day Strength Benchmark',
+          formula: 'f_{c,7} \\approx 0.67 \\times f\'_c',
+          description: 'Standard hydration benchmark for ordinary Portland cement concrete.',
+        },
+      ],
+      codeStandards: ['ASTM C39 (Compressive Strength of Cylindrical Concrete)', 'BS EN 12390-3 (Compressive Strength of Cubes)', 'BNBC 2020 Section 5.6'],
+      assumptions: ['Specimens are cured in standard water tanks at 23°C ± 2°C in accordance with ASTM C31'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Log Concrete Casting Event',
+        instruction: 'Click "+ Log New Pour". Enter structural element (e.g. 5th Floor Slab & Beams), concrete grade, and slump.',
+      },
+      {
+        step: 2,
+        title: 'Observe Scheduled Test Dates',
+        instruction: 'The system automatically calculates 7-day and 28-day target testing calendar dates.',
+      },
+      {
+        step: 3,
+        title: 'Input Crushing Machine Results',
+        instruction: 'Upon crushing in the universal testing machine, click "Record Test" to log breaking strength in MPa.',
+      },
+      {
+        step: 4,
+        title: 'Export QA/QC Certificate',
+        instruction: 'Click "QA Certificate" to print the official test submittal for structural consultant approval.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Slump Tolerance: Verify concrete slump within 15 minutes of truck arrival. Slumps outside design specs (e.g. > 150mm for unplasticized mix) indicate excess water and must be rejected.',
+    ],
+    limitationsAndNotes: ['If 28-day strength fails, non-destructive rebound hammer (Schmidt) or core drilling (ASTM C42) is required.'],
+  },
+
+  // =========================================================================
+  // 32. 1-CLICK DAILY PROGRESS REPORT (SM-09)
+  // =========================================================================
+  'daily-progress-report': {
+    id: 'daily-progress-report',
+    title: '1-Click Daily Progress Report (DPR) Aggregator (ডেইলি প্রগ্রেস রিপোর্ট)',
+    shortLabel: '1-Click DPR',
+    discipline: 'Site Management & Field ERP',
+    standardUsed: 'Standard Consulting Engineer Daily Progress Reporting',
+    overview:
+      'Master jobsite progress aggregator. Synthesizes daily labor headcount by trade from the Muster Roll, material arrivals and issues from the Store Ledger, concrete casting events from the Schedule, and petty cash expenses into an official printable A4 Daily Progress Report.',
+    capabilities: [
+      '1-Click automated data aggregation across all 8 other Site Management modules',
+      'Weather and site operational conditions picker (Sunny, Rainy, Overcast, Temp)',
+      'Labor deployment breakdown by trade (Masons, Helpers, Bar Benders, Carpenters)',
+      'Material deliveries (Challans) and site issues log for the selected day',
+      'Printable official A4 DPR with consultant, client, and project manager sign-offs',
+    ],
+    howItWorks: {
+      methodology:
+        'Executes date-indexed cross-queries across localStorage tables (SiteWorkers, StoreLedger, MilestoneTasks, PettyCash, CubeTests) to automatically compile a cohesive daily construction digest without manual re-typing.',
+      governingEquations: [
+        {
+          name: 'Daily Labor Headcount',
+          formula: 'TotalHeadcount = \\sum Workers_{Present, Day} + 0.5 \\times \\sum Workers_{HalfDay, Day}',
+          description: 'Total active workforce deployed on site on the report date.',
+        },
+      ],
+      codeStandards: ['FIDIC Sub-Clause 4.21 (Progress Reports)', 'PWD Daily Report Standards'],
+      assumptions: ['All site transactions for the day have been logged into their respective modules'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Select Report Date',
+        instruction: 'Use the date picker or previous/next day buttons to choose the target progress report date.',
+      },
+      {
+        step: 2,
+        title: 'Verify Site Conditions',
+        instruction: 'Select weather (Sunny, Rainy, Overcast) and enter ambient temperature and general site status.',
+      },
+      {
+        step: 3,
+        title: 'Review Auto-Compiled Sections',
+        instruction: 'Review labor headcount, material deliveries, casting milestones, and expenses auto-filled by the engine.',
+      },
+      {
+        step: 4,
+        title: 'Generate Official DPR PDF',
+        instruction: 'Click "Generate Official DPR (PDF)" to preview and print the executive A4 daily submittal.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Evening Submission: Finalize and sign the DPR before 6:30 PM each evening to submit to the Project Director and Client.',
+    ],
+    limitationsAndNotes: ['DPR compiles historical snapshots based on the specific selected calendar date.'],
+  },
 };
 
 /**

@@ -179,7 +179,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
     e.preventDefault();
     const validItems = formItems.filter((i) => i.itemName.trim() && i.requestedQty > 0);
     if (validItems.length === 0) {
-      alert('Please add at least one valid material item with requested quantity.');
+      showToast('⚠️ Please add at least one valid material item with requested quantity.');
       return;
     }
 
@@ -224,7 +224,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
     e.preventDefault();
     if (!receiveModalReq) return;
     if (!receiveForm.challanNo.trim()) {
-      alert('Please provide Challan No. for inward verification!');
+      showToast('⚠️ Please provide Challan No. for inward verification!');
       return;
     }
 
@@ -244,7 +244,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
         // Option to navigate
       }
     } else {
-      alert('Failed to mark requisition as received. It may already be received.');
+      showToast('⚠️ Failed to mark requisition as received. It may already be received.');
     }
   };
 

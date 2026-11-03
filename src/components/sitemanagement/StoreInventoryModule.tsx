@@ -242,7 +242,7 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
     const qty = parseFloat(outwardForm.quantity) || 0;
     if (qty <= 0) return;
     if (qty > item.currentStock) {
-      alert(`Cannot issue ${qty} ${item.unit}. Current store balance is only ${item.currentStock} ${item.unit}!`);
+      showToast(`⚠️ Cannot issue ${qty} ${item.unit}. Current store balance is only ${item.currentStock} ${item.unit}!`);
       return;
     }
 

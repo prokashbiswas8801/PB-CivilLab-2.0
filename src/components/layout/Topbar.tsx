@@ -26,6 +26,7 @@ import { useWorkbench } from '../../context/WorkbenchContext';
 import { useTheme, EngineeringTheme } from '../../context/ThemeContext';
 import { LogoMark } from '../Logo';
 import { ThemePreference } from '../../types/civil';
+import { OfflineSyncManager } from '../sitemanagement/OfflineSyncManager';
 
 export interface TopbarProps {
   onToggleMobileSidebar: () => void;
@@ -355,6 +356,9 @@ export const Topbar: React.FC<TopbarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Global Offline Sync & Job-Site Status Pill */}
+        <OfflineSyncManager className="hidden md:flex" />
 
         {/* Direct PDF Export Action */}
         {onDirectDownloadPdf && (

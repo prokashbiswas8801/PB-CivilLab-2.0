@@ -29,6 +29,7 @@ import {
   CubeTestModule,
   DailyProgressReportModule,
 } from './index';
+import { OfflineSyncManager } from './OfflineSyncManager';
 
 export interface SiteManagementHubProps {
   activeTab: EngineeringModuleId;
@@ -135,6 +136,17 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  // Listen for background sync completion events
+  React.useEffect(() => {
+    const handleSyncComplete = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      const count = customEvt.detail?.syncedCount || 1;
+      showToast(`✓ Cloud Synchronized: ${count} offline mutation${count > 1 ? 's' : ''} pushed!`);
+    };
+    window.addEventListener('civillab:sync-complete', handleSyncComplete);
+    return () => window.removeEventListener('civillab:sync-complete', handleSyncComplete);
+  }, []);
 
   // Compute live KPIs
   const lowStockCount = siteData.inventory.filter(
@@ -266,8 +278,10 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
             </div>
           </div>
 
-          {/* Quick Actions (Backup, Restore, History) */}
+          {/* Quick Actions (Offline Sync, Backup, Restore, History) */}
           <div className="flex items-center gap-2 flex-wrap">
+            <OfflineSyncManager />
+
             <button
               type="button"
               onClick={handleExportBackup}

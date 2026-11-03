@@ -28,6 +28,7 @@ import {
   ConcreteGrade,
 } from '../types/siteManagement';
 import { useCivilLab } from './CivilLabContext';
+import { useOfflineSync } from './OfflineSyncContext';
 
 // ============================================================================
 // CONSTANTS & INITIAL DATA SCHEMAS
@@ -693,6 +694,7 @@ const SiteManagementContext = createContext<SiteManagementContextType | undefine
 
 export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { userProfile } = useCivilLab();
+  const { enqueueMutation } = useOfflineSync();
 
   // Active Project scoping — prioritizes userProfile.activeProjectId or fallback
   const [activeProjectId, setActiveProjectId] = useState<string>(
@@ -1325,8 +1327,23 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
           attendance: nextAttendance,
         };
       });
+
+      // Enqueue in Background Sync Queue
+      const worker = siteData.workers.find((w) => w.id === workerId);
+      const workerName = worker?.name || 'Worker';
+      const otText = record.overtimeHours ? ` (+${record.overtimeHours}h OT)` : '';
+      const khorakiText = record.khoraki ? ` (৳${record.khoraki} Khoraki)` : '';
+
+      enqueueMutation({
+        module: 'attendance',
+        action: 'RECORD_ATTENDANCE',
+        entityId: `${workerId}_${dateString}`,
+        summary: `Attendance: ${workerName} [${record.status || 'P'}] on ${dateString}${otText}${khorakiText}`,
+        payload: { workerId, dateString, record },
+        projectId: activeProjectId,
+      });
     },
-    [persistState]
+    [persistState, siteData.workers, enqueueMutation, activeProjectId]
   );
 
   const recordWorkerPayment = useCallback(
@@ -1592,9 +1609,19 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         ...prev,
         fieldNotes: [newNote, ...prev.fieldNotes],
       }));
+
+      enqueueMutation({
+        module: 'field-notes',
+        action: 'CREATE',
+        entityId: newNote.id,
+        summary: `Field Note [${newNote.floorGridTag || 'Site'}]: ${newNote.content.slice(0, 45)}...`,
+        payload: newNote,
+        projectId: activeProjectId,
+      });
+
       return newNote;
     },
-    [persistState]
+    [persistState, enqueueMutation, activeProjectId]
   );
 
   const updateFieldNote = useCallback(
@@ -1603,8 +1630,21 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         ...prev,
         fieldNotes: prev.fieldNotes.map((n) => (n.id === id ? { ...n, ...partial } : n)),
       }));
+
+      const actionText = partial.isResolved !== undefined
+        ? partial.isResolved ? 'Resolved' : 'Reopened'
+        : 'Updated';
+
+      enqueueMutation({
+        module: 'field-notes',
+        action: 'UPDATE',
+        entityId: id,
+        summary: `${actionText} Field Note: ${id}`,
+        payload: { id, partial },
+        projectId: activeProjectId,
+      });
     },
-    [persistState]
+    [persistState, enqueueMutation, activeProjectId]
   );
 
   const deleteFieldNote = useCallback(
@@ -1613,8 +1653,17 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         ...prev,
         fieldNotes: prev.fieldNotes.filter((n) => n.id !== id),
       }));
+
+      enqueueMutation({
+        module: 'field-notes',
+        action: 'DELETE',
+        entityId: id,
+        summary: `Deleted Field Note ${id}`,
+        payload: { id },
+        projectId: activeProjectId,
+      });
     },
-    [persistState]
+    [persistState, enqueueMutation, activeProjectId]
   );
 
   // --------------------------------------------------------------------------
@@ -1669,9 +1718,19 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         ...prev,
         pettyCash: [newEntry, ...prev.pettyCash],
       }));
+
+      enqueueMutation({
+        module: 'petty-cash',
+        action: 'CREATE',
+        entityId: newEntry.id,
+        summary: `Petty Cash ${newEntry.type}: ৳${newEntry.amount.toLocaleString()} (${newEntry.voucherNo} - ${newEntry.category})`,
+        payload: newEntry,
+        projectId: activeProjectId,
+      });
+
       return newEntry;
     },
-    [persistState]
+    [persistState, enqueueMutation, activeProjectId]
   );
 
   const updatePettyCashEntry = useCallback(
@@ -1680,8 +1739,17 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         ...prev,
         pettyCash: prev.pettyCash.map((p) => (p.id === id ? { ...p, ...partial } : p)),
       }));
+
+      enqueueMutation({
+        module: 'petty-cash',
+        action: 'UPDATE',
+        entityId: id,
+        summary: `Updated Petty Cash entry ${id}`,
+        payload: { id, partial },
+        projectId: activeProjectId,
+      });
     },
-    [persistState]
+    [persistState, enqueueMutation, activeProjectId]
   );
 
   const deletePettyCashEntry = useCallback(
@@ -1690,8 +1758,17 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         ...prev,
         pettyCash: prev.pettyCash.filter((p) => p.id !== id),
       }));
+
+      enqueueMutation({
+        module: 'petty-cash',
+        action: 'DELETE',
+        entityId: id,
+        summary: `Deleted Petty Cash entry ${id}`,
+        payload: { id },
+        projectId: activeProjectId,
+      });
     },
-    [persistState]
+    [persistState, enqueueMutation, activeProjectId]
   );
 
   // --------------------------------------------------------------------------

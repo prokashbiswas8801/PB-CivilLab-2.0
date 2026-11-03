@@ -25,8 +25,13 @@ import {
   Check,
   TrendingDown,
   TrendingUp,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
 import { useSiteManagement } from '../../context/SiteManagementContext';
+import { useOfflineSync } from '../../context/OfflineSyncContext';
 import { PettyCashTransaction, PettyCashType, PettyCashCategory } from '../../types/siteManagement';
 
 const CATEGORIES: Array<{ key: PettyCashCategory; label: string; icon: any }> = [
@@ -48,6 +53,7 @@ export const PettyCashModule: React.FC = () => {
     deletePettyCashEntry,
     financialSummary,
   } = useSiteManagement();
+  const { isOnline, stats, triggerSyncNow, isSyncing, isEntityPending } = useOfflineSync();
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,11 +141,11 @@ export const PettyCashModule: React.FC = () => {
     e.preventDefault();
     const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0) {
-      alert('Please enter a valid amount greater than 0.');
+      showToast('⚠️ Please enter a valid amount greater than 0.');
       return;
     }
     if (!description.trim()) {
-      alert('Please enter a transaction description.');
+      showToast('⚠️ Please enter a transaction description.');
       return;
     }
 
@@ -176,7 +182,7 @@ export const PettyCashModule: React.FC = () => {
   // Export CSV
   const handleExportCSV = () => {
     if (filteredTransactions.length === 0) {
-      alert('No transactions to export.');
+      showToast('⚠️ No transactions to export.');
       return;
     }
     const headers = ['Voucher No', 'Date', 'Type', 'Category', 'Amount (BDT)', 'Party/Receiver', 'Description', 'Approved By'];
@@ -337,6 +343,45 @@ export const PettyCashModule: React.FC = () => {
         </div>
       </div>
 
+      {/* Offline & Sync Status Banner */}
+      {(!isOnline || stats.pettyCashPending > 0) && (
+        <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans shadow-xs ${
+          !isOnline
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+            : 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {!isOnline ? (
+              <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+            ) : (
+              <RefreshCw className="w-4 h-4 text-amber-600 shrink-0" />
+            )}
+            <div>
+              <span className="font-bold">
+                {!isOnline ? 'Offline Imprest Mode: ' : 'Local Vouchers Queued: '}
+              </span>
+              <span>
+                {stats.pettyCashPending > 0
+                  ? `${stats.pettyCashPending} petty cash transaction${stats.pettyCashPending > 1 ? 's' : ''} stored safely in local cache.`
+                  : 'Cash advances and expense receipts are safely recorded locally.'}
+                {' Data will automatically push to cloud when connection is active.'}
+              </span>
+            </div>
+          </div>
+          {isOnline && stats.pettyCashPending > 0 && (
+            <button
+              type="button"
+              onClick={() => triggerSyncNow()}
+              disabled={isSyncing}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0 inline-flex items-center gap-1.5 shadow-xs cursor-pointer self-start sm:self-center"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : `Push Vouchers (${stats.pettyCashPending})`}</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Category Spend Distribution Cards */}
       <div className="p-5 rounded-3xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mb-3">
@@ -455,8 +500,17 @@ export const PettyCashModule: React.FC = () => {
                   >
                     {/* Voucher No & Date */}
                     <td className="py-3 px-4">
-                      <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                      <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 flex-wrap">
                         <span>{tx.voucherNo}</span>
+                        {isEntityPending('petty-cash', tx.id) ? (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 inline-flex items-center gap-0.5">
+                            <Clock className="w-2.5 h-2.5" /> Pending
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 inline-flex items-center gap-0.5">
+                            <Check className="w-2.5 h-2.5" /> Synced
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
                         {tx.date}

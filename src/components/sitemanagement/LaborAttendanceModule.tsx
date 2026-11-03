@@ -26,8 +26,12 @@ import {
   Coins,
   ShieldCheck,
   Share2,
+  Wifi,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react';
 import { useSiteManagement } from '../../context/SiteManagementContext';
+import { useOfflineSync } from '../../context/OfflineSyncContext';
 import {
   LaborWorker,
   TradeCategory,
@@ -59,6 +63,7 @@ export const LaborAttendanceModule: React.FC = () => {
     recordWorkerPayment,
     getWorkerMonthlySummary,
   } = useSiteManagement();
+  const { isOnline, stats, triggerSyncNow, isSyncing } = useOfflineSync();
 
   // Current Month/Year selector (default to current YYYY-MM)
   const today = new Date();
@@ -450,6 +455,45 @@ export const LaborAttendanceModule: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Offline & Sync Status Banner */}
+      {(!isOnline || stats.attendancePending > 0) && (
+        <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans shadow-xs ${
+          !isOnline
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+            : 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-200'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {!isOnline ? (
+              <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+            ) : (
+              <RefreshCw className="w-4 h-4 text-blue-600 shrink-0" />
+            )}
+            <div>
+              <span className="font-bold">
+                {!isOnline ? 'Offline Job-Site Mode Active: ' : 'Local Changes Queued: '}
+              </span>
+              <span>
+                {stats.attendancePending > 0
+                  ? `${stats.attendancePending} attendance change${stats.attendancePending > 1 ? 's' : ''} stored safely in local cache.`
+                  : 'Attendance entries are safely cached in browser storage.'}
+                {' Data is 100% preserved locally and will sync once connection is restored.'}
+              </span>
+            </div>
+          </div>
+          {isOnline && stats.attendancePending > 0 && (
+            <button
+              type="button"
+              onClick={() => triggerSyncNow()}
+              disabled={isSyncing}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0 inline-flex items-center gap-1.5 shadow-xs cursor-pointer self-start sm:self-center"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Pushing...' : `Push Now (${stats.attendancePending})`}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Month Navigator & Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
