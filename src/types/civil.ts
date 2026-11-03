@@ -23,7 +23,16 @@ export type EngineeringModuleId =
   | 'continuous-beam'
   | 'pile-capacity'
   | 'pipe-hydraulics'
-  | 'surveying-suite';
+  | 'surveying-suite'
+  | 'store-inventory'
+  | 'material-requisition'
+  | 'schedule-roster'
+  | 'labor-attendance'
+  | 'field-notebook'
+  | 'contractor-bills'
+  | 'petty-cash'
+  | 'cube-tests'
+  | 'daily-progress-report';
 
 export type BuildingCode = 'BNBC-2020' | 'ACI-318' | 'IS-456';
 

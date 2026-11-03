@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ClipboardCheck } from 'lucide-react';
 import { SiteChecklist } from '../calculators/construction/SiteChecklist';
+import { AboutThisTool, AboutThisToolButton } from '../ui';
 
 interface SiteQcModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export const SiteQcModal: React.FC<SiteQcModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              <AboutThisToolButton toolId="site-qc-protocols" targetId="site-qc-doc" />
               <button
                 type="button"
                 onClick={onClose}
@@ -62,8 +64,11 @@ export const SiteQcModal: React.FC<SiteQcModalProps> = ({
           </div>
 
           {/* Modal Content Body */}
-          <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6">
             <SiteChecklist />
+            <div className="pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+              <AboutThisTool toolId="site-qc-protocols" id="site-qc-doc" defaultExpanded={false} />
+            </div>
           </div>
         </motion.div>
         </motion.div>

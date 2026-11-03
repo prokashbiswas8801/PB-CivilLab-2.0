@@ -135,6 +135,22 @@ export const SIDEBAR_CATEGORIES: SidebarCategory[] = [
       { id: 'land-unit-converter', name: 'Land & Smart Unit Converter', subtitle: 'Decimal, Katha, Feet-Inch', moduleId: 'unit-converter', actionType: 'module' },
     ],
   },
+  {
+    id: 'sitemanagement',
+    name: 'Site Management & Field ERP',
+    icon: Building,
+    items: [
+      { id: 'store-inventory', name: 'Store & Inventory Ledger', subtitle: 'Live Balances, Gate Pass & Issues', moduleId: 'store-inventory', actionType: 'module', badge: 'Store' },
+      { id: 'material-requisition', name: 'Material Requisition & PO', subtitle: 'Multi-Item Indents & WhatsApp', moduleId: 'material-requisition', actionType: 'module', badge: 'PO' },
+      { id: 'schedule-roster', name: 'Schedule & Engineer Roster', subtitle: 'Pour Curing, Deshutter & QA/QC', moduleId: 'schedule-roster', actionType: 'module', badge: 'Schedule' },
+      { id: 'labor-attendance', name: 'Present Book & Labor Wages', subtitle: 'Muster Roll (হাজিরা খাতা) & Khoraki', moduleId: 'labor-attendance', actionType: 'module', badge: 'Labor' },
+      { id: 'field-notebook', name: 'Smart Field Notebook', subtitle: 'Voice Dictation & Grid Notes', moduleId: 'field-notebook', actionType: 'module', badge: 'Diary' },
+      { id: 'contractor-bills', name: 'Sub-Contractor RA Bills', subtitle: 'Measurements & Retention Money', moduleId: 'contractor-bills', actionType: 'module', badge: 'Billing' },
+      { id: 'petty-cash', name: 'Petty Cash & Imprest Register', subtitle: 'Site Expenses & Cash in Hand', moduleId: 'petty-cash', actionType: 'module', badge: 'Cash' },
+      { id: 'cube-tests', name: 'Concrete Cube Crushing Tests', subtitle: '7-Day / 28-Day Strength DCR', moduleId: 'cube-tests', actionType: 'module', badge: 'QC' },
+      { id: 'daily-progress-report', name: 'Daily Progress Report (DPR)', subtitle: '1-Click Master Site Report', moduleId: 'daily-progress-report', actionType: 'module', badge: 'DPR' },
+    ],
+  },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -159,6 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     construction: false,
     hydraulics: false,
     'cad-excel-hub': false,
+    sitemanagement: true,
   });
 
   const toggleCategory = (catId: string) => {

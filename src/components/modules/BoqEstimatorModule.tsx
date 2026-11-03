@@ -25,6 +25,9 @@ import {
   MapPin,
   RefreshCw,
   Search,
+  X,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
 import {
   CivilWorkspace,
@@ -44,6 +47,7 @@ import {
   BOQResult,
   RateAnalysisResult,
   ComputedTakeoffItem,
+  computeBOQEstimator,
 } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import {
@@ -102,6 +106,9 @@ export interface BoqEstimatorInputsProps {
   onClearAllBOQItems: () => void;
   onLoadSampleBOQItems: () => void;
   onExportBOQCSV: () => void;
+  onExportBOQPdf?: () => void;
+  isExportingPdf?: boolean;
+  userProfile?: UserProfile;
   onSyncFromModules?: () => void;
   selectedWbsSectionId?: string;
   setSelectedWbsSectionId?: (id: string) => void;
@@ -147,6 +154,9 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   onClearAllBOQItems,
   onLoadSampleBOQItems,
   onExportBOQCSV,
+  onExportBOQPdf,
+  isExportingPdf = false,
+  userProfile,
   onSyncFromModules,
   selectedWbsSectionId = 'sec-100',
   setSelectedWbsSectionId,
@@ -163,6 +173,28 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   const [localWbsSection, setLocalWbsSection] = useState<string>(selectedWbsSectionId);
   const [localStartMonth, setLocalStartMonth] = useState<number>(itemStartMonth);
   const [localDurationMonths, setLocalDurationMonths] = useState<number>(itemDurationMonths);
+  const [isLocalExportingPdf, setIsLocalExportingPdf] = useState<boolean>(false);
+
+  const handleExportPdfClick = async () => {
+    if (onExportBOQPdf) {
+      onExportBOQPdf();
+      return;
+    }
+    try {
+      setIsLocalExportingPdf(true);
+      const boqCalc = computeBOQEstimator(activeWorkspace.boq);
+      if (!boqCalc.result) return;
+      await exportTenderBoqPdf({
+        workspace: activeWorkspace,
+        boqResult: boqCalc.result,
+        userProfile,
+      });
+    } catch (err) {
+      console.error('Error generating Takeoff PDF report:', err);
+    } finally {
+      setIsLocalExportingPdf(false);
+    }
+  };
 
   const handleWbsChange = (secId: string) => {
     setLocalWbsSection(secId);
@@ -607,14 +639,38 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={onExportBOQCSV}
-          className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 hover:underline cursor-pointer"
-        >
-          <Download className="w-3.5 h-3.5 text-[var(--md-sys-color-tertiary)]" />
-          <span>Export CSV Sheet</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onExportBOQCSV}
+            className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 hover:underline cursor-pointer px-2 py-1 rounded-full hover:bg-[var(--md-sys-color-surface-container)] transition-colors"
+            title="Download CSV spreadsheet of current takeoff schedule"
+          >
+            <Download className="w-3.5 h-3.5 text-[var(--md-sys-color-tertiary)]" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportPdfClick}
+            disabled={isExportingPdf || isLocalExportingPdf}
+            className="px-3.5 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 text-xs font-mono font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all active:scale-95 disabled:opacity-75"
+            title="Generate and download current takeoff list as a formatted PDF report using jsPDF"
+            aria-label="Export Takeoff PDF Report"
+          >
+            {isExportingPdf || isLocalExportingPdf ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Generating PDF...</span>
+              </>
+            ) : (
+              <>
+                <FileDown className="w-3.5 h-3.5" />
+                <span>Export Takeoff PDF</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -633,6 +689,8 @@ export interface BoqEstimatorTableProps {
   activeWorkspace?: CivilWorkspace;
   updateActiveWorkspace?: (updater: (ws: CivilWorkspace) => CivilWorkspace) => void;
   userProfile?: UserProfile;
+  searchFilterQuery?: string;
+  onSearchFilterQueryChange?: (query: string) => void;
 }
 
 export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
@@ -648,9 +706,41 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
   activeWorkspace,
   updateActiveWorkspace,
   userProfile,
+  searchFilterQuery,
+  onSearchFilterQueryChange,
 }) => {
   // Navigation Tabs for Master QS Control Center
   const [activeTab, setActiveTab] = useState<'takeoff' | 'rate-library' | 'bid-tabulation' | 'cash-flow' | 'tender-forms'>('takeoff');
+
+  // Search query state for real-time filtering by itemNo or description
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const searchQuery = searchFilterQuery !== undefined ? searchFilterQuery : localSearchQuery;
+  const handleSearchChange = (val: string) => {
+    setLocalSearchQuery(val);
+    onSearchFilterQueryChange?.(val);
+  };
+
+  // Real-time search filter: checks both 'itemNo' and 'description' fields of each row
+  const searchedBOQItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredBOQItems;
+    return filteredBOQItems.filter((it) => {
+      const matchNo = (it.itemNo || '').toLowerCase().includes(q);
+      const matchDesc = (it.description || '').toLowerCase().includes(q);
+      return matchNo || matchDesc;
+    });
+  }, [filteredBOQItems, searchQuery]);
+
+  // Real-time sum of 'Total Amount' column based on active filtered results
+  const filteredTotalAmount = useMemo(() => {
+    return searchedBOQItems.reduce((acc, it) => acc + (it.itemTotalAmount || 0), 0);
+  }, [searchedBOQItems]);
+
+  const isFiltered = boqCategoryFilter !== 'all' || searchQuery.trim().length > 0;
+
+  const filteredCostSharePct = boqResult.subtotalAmount > 0
+    ? (filteredTotalAmount / boqResult.subtotalAmount) * 100
+    : 0;
 
   // Multi-Rate Library selection & Regional index state
   const selectedLibraryId = activeWorkspace?.boq?.rateLibraryId || 'pwd-2024';
@@ -692,14 +782,14 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
       map[sec.id] = [];
     });
 
-    filteredBOQItems.forEach((it) => {
+    searchedBOQItems.forEach((it) => {
       const secId = it.wbsSectionId || 'sec-100';
       if (!map[secId]) map[secId] = [];
       map[secId].push(it);
     });
 
     return map;
-  }, [filteredBOQItems]);
+  }, [searchedBOQItems]);
 
   // Apply Regional District Multiplier to All Unit Rates
   const handleApplyRegionalMultiplierToAll = () => {
@@ -750,6 +840,8 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
   };
 
   // Export Tender Forms
+  const [isTableExportingPdf, setIsTableExportingPdf] = useState(false);
+
   const handleExportCsv = () => {
     if (activeWorkspace) {
       exportTenderBoqCsv(activeWorkspace, boqResult, bidReport);
@@ -758,13 +850,20 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
 
   const handleExportPdf = async () => {
     if (activeWorkspace) {
-      await exportTenderBoqPdf({
-        workspace: activeWorkspace,
-        boqResult,
-        userProfile,
-        bidReport,
-        cashFlow: cashFlowResult,
-      });
+      try {
+        setIsTableExportingPdf(true);
+        await exportTenderBoqPdf({
+          workspace: activeWorkspace,
+          boqResult,
+          userProfile,
+          bidReport,
+          cashFlow: cashFlowResult,
+        });
+      } catch (err) {
+        console.error('Failed to export Takeoff PDF:', err);
+      } finally {
+        setIsTableExportingPdf(false);
+      }
     }
   };
 
@@ -884,13 +983,13 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
       {activeTab === 'takeoff' && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 overflow-x-auto text-xs font-semibold">
+            <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold pb-1">
               {(['all', 'earthwork', 'substructure', 'superstructure', 'rebar', 'masonry', 'finishing'] as const).map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setBoqCategoryFilter(cat)}
-                  className={`px-2.5 py-1 rounded-lg capitalize cursor-pointer transition-colors ${
+                  className={`px-3 py-1 rounded-full capitalize cursor-pointer transition-colors shadow-2xs ${
                     boqCategoryFilter === cat
                       ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
                       : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
@@ -901,20 +1000,105 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
               ))}
             </div>
 
-            <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-mono">
-              Direct Subtotal: <strong className="text-[var(--md-sys-color-primary)]">{boqResult.currencySymbol} {boqResult.subtotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                Direct Subtotal: <strong className="text-[var(--md-sys-color-primary)]">{boqResult.currencySymbol} {boqResult.subtotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={isTableExportingPdf}
+                className="px-3.5 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 text-xs font-mono font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95 disabled:opacity-75"
+                title="Generate and download current takeoff list as a formatted PDF report using jsPDF"
+                aria-label="Export Takeoff PDF Report"
+              >
+                {isTableExportingPdf ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>Export Takeoff PDF</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* REAL-TIME SEARCH FILTER INPUT (Filters by 'itemNo' and 'description') */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+            <div className="relative flex-1 flex items-center">
+              <Search className="w-4 h-4 text-[var(--md-sys-color-primary)] absolute left-3.5 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Filter takeoff line items in real-time by item # or description... (e.g. '1.01', 'RCC', 'rebar', 'plaster')"
+                className="w-full pl-9 pr-9 py-2 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)] transition-all shadow-xs"
+                aria-label="Filter takeoff line items by item number or description"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  className="absolute right-2.5 p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer transition-colors"
+                  title="Clear search filter"
+                  aria-label="Clear search filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Stats & Match Counter */}
+            <div className="flex items-center gap-2 shrink-0 text-xs font-mono">
+              {searchQuery ? (
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-outline)] shadow-xs">
+                    {searchedBOQItems.length} of {filteredBOQItems.length} matched
+                  </span>
+                  <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] hidden md:inline">
+                    Filtered Sum: <strong className="text-[var(--md-sys-color-primary)]">{boqResult.currencySymbol} {searchedBOQItems.reduce((acc, it) => acc + it.itemTotalAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] px-1">
+                  Showing all <strong className="text-[var(--md-sys-color-on-surface)]">{filteredBOQItems.length} items</strong>
+                </span>
+              )}
             </div>
           </div>
 
           {/* Hierarchical WBS Sections */}
           <div className="space-y-4">
+            {searchedBOQItems.length === 0 && searchQuery.trim() && (
+              <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2">
+                <Search className="w-8 h-8 mx-auto text-[var(--md-sys-color-on-surface-variant)] opacity-50" />
+                <h4 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                  No line items matching &ldquo;{searchQuery}&rdquo;
+                </h4>
+                <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] max-w-sm mx-auto">
+                  No takeoff items found with matching item number or description. Try searching with different keywords or clear the filter.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  className="mt-2 px-4 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-mono font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                >
+                  Clear Search Filter
+                </button>
+              </div>
+            )}
+
             {STANDARD_WBS_SECTIONS.map((sec) => {
               const secItems = itemsBySection[sec.id] || [];
-              if (secItems.length === 0 && boqCategoryFilter !== 'all') return null;
+              if (secItems.length === 0 && (boqCategoryFilter !== 'all' || searchQuery.trim())) return null;
 
               const secSubtotal = secItems.reduce((acc, it) => acc + it.itemTotalAmount, 0);
               const secSharePct = boqResult.subtotalAmount > 0 ? (secSubtotal / boqResult.subtotalAmount) * 100 : 0;
-              const isCollapsed = collapsedSections[sec.id] || false;
+              const isCollapsed = searchQuery.trim() ? false : (collapsedSections[sec.id] || false);
 
               return (
                 <div key={sec.id} className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] overflow-hidden">
@@ -1038,12 +1222,122 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
                             ))
                           )}
                         </tbody>
+                        {secItems.length > 0 && (
+                          <tfoot className="border-t-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] font-mono text-xs">
+                            <tr>
+                              <td colSpan={9} className="py-2.5 px-3 text-right text-[var(--md-sys-color-on-surface-variant)] font-bold text-[11px] uppercase tracking-wider">
+                                Section {sec.code} Subtotal:
+                              </td>
+                              <td className="py-2.5 px-2 text-right font-extrabold text-[var(--md-sys-color-primary)] whitespace-nowrap">
+                                {boqResult.currencySymbol} {secSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                              <td></td>
+                            </tr>
+                          </tfoot>
+                        )}
                       </table>
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+
+          {/* FLOATING SUMMARY FOOTER ROW (Real-Time Sum of 'Total Amount' Column for Active Filtered Results) */}
+          <div
+            className="sticky bottom-2 z-20 p-3.5 sm:p-4 rounded-2xl bg-[var(--md-sys-color-surface-container-high)]/95 backdrop-blur-md border border-[var(--md-sys-color-outline)] shadow-lg transition-all"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Left Column: Filter Scope & Matched Count */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--md-sys-color-primary)] animate-pulse" />
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
+                    Active Filtered Summary
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold border border-[var(--md-sys-color-outline)]">
+                    {searchedBOQItems.length} {searchedBOQItems.length === 1 ? 'item' : 'items'}
+                  </span>
+
+                  {boqCategoryFilter !== 'all' && (
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] capitalize border border-[var(--md-sys-color-outline-variant)]">
+                      Category: <strong>{boqCategoryFilter}</strong>
+                    </span>
+                  )}
+
+                  {searchQuery.trim() && (
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1">
+                      <span>Query: &ldquo;<strong>{searchQuery}</strong>&rdquo;</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSearchChange('')}
+                        className="hover:text-[var(--md-sys-color-error)] cursor-pointer"
+                        title="Clear search text"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+
+                  {isFiltered && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSearchChange('');
+                        setBoqCategoryFilter('all');
+                      }}
+                      className="px-2 py-0.5 rounded-full text-[11px] font-semibold text-[var(--md-sys-color-error)] hover:underline cursor-pointer"
+                      title="Reset all filters to show all items"
+                    >
+                      Reset Filters
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Real-time Sum of Total Amount */}
+              <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 font-mono">
+                <div className="text-left md:text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                    Total Amount ({isFiltered ? 'Filtered' : 'All Items'})
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-base sm:text-lg font-black text-[var(--md-sys-color-primary)]">
+                      {boqResult.currencySymbol} {filteredTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                      ({filteredCostSharePct.toFixed(1)}% of Direct Cost)
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  disabled={isTableExportingPdf}
+                  className="px-3.5 py-1.5 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 text-xs font-mono font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95 disabled:opacity-75 shrink-0"
+                  title="Generate and download current takeoff list as a formatted PDF report using jsPDF"
+                  aria-label="Export Takeoff PDF Report"
+                >
+                  {isTableExportingPdf ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span className="hidden sm:inline">Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Export PDF</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Grand Reconciliation Card */}
@@ -1600,9 +1894,20 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
               <button
                 type="button"
                 onClick={handleExportPdf}
-                className="px-4 py-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 text-xs font-bold shadow-xs cursor-pointer btn-tactile"
+                disabled={isTableExportingPdf}
+                className="px-4 py-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 text-xs font-bold shadow-xs cursor-pointer btn-tactile inline-flex items-center gap-1.5 disabled:opacity-75"
               >
-                Download Certified A4 PDF Submittal
+                {isTableExportingPdf ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>Download Certified A4 PDF Submittal</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

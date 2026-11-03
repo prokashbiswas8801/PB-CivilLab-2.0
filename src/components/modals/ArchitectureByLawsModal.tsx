@@ -11,6 +11,7 @@ import {
 import { FarMgcCalculator } from '../calculators/architecture/FarMgcCalculator';
 import { StaircaseDesigner } from '../calculators/architecture/StaircaseDesigner';
 import { BuildingServicesSizer } from '../calculators/architecture/BuildingServicesSizer';
+import { AboutThisTool, AboutThisToolButton } from '../ui';
 
 export type ArchitectureTab = 'far' | 'staircase' | 'watertank' | 'septictank';
 
@@ -63,6 +64,12 @@ export const ArchitectureByLawsModal: React.FC<ArchitectureByLawsModalProps> = (
             </div>
 
             <div className="flex items-center gap-2">
+              <AboutThisToolButton
+                toolId={`architecture-${activeTab}`}
+                onClick={() => {
+                  document.getElementById(`arch-doc-${activeTab}`)?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              />
               <button
                 type="button"
                 onClick={onClose}
@@ -130,11 +137,21 @@ export const ArchitectureByLawsModal: React.FC<ArchitectureByLawsModalProps> = (
           </div>
 
           {/* Content Body */}
-          <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6">
             {activeTab === 'far' && <FarMgcCalculator />}
             {activeTab === 'staircase' && <StaircaseDesigner />}
             {activeTab === 'watertank' && <BuildingServicesSizer />}
             {activeTab === 'septictank' && <BuildingServicesSizer />}
+
+            {/* Dedicated "About This Tool" Documentation Section */}
+            <div className="pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+              <AboutThisTool
+                key={`arch-doc-${activeTab}`}
+                toolId={`architecture-${activeTab}`}
+                id={`arch-doc-${activeTab}`}
+                defaultExpanded={false}
+              />
+            </div>
           </div>
         </motion.div>
         </motion.div>

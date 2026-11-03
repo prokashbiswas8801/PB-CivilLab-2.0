@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { exportToCSV } from '../../../utils/exportEngine';
+import { AboutThisTool, AboutThisToolButton } from '../../ui';
 
 export type CadHubTab = 'viewport-scale' | 'shortcuts-lisp' | 'excel-formulas';
 
@@ -71,6 +72,12 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLispCategory, setSelectedLispCategory] = useState<string>('all');
   const [selectedExcelCategory, setSelectedExcelCategory] = useState<string>('all');
+
+  const activeToolId = useMemo(() => {
+    if (activeTab === 'shortcuts-lisp') return 'cad-shortcuts';
+    if (activeTab === 'excel-formulas') return 'cad-excel';
+    return 'cad-viewport';
+  }, [activeTab]);
 
   // Copy helper with feedback
   const handleCopy = (text: string, id: string) => {
@@ -474,6 +481,7 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
           </div>
 
           <div className="flex items-center gap-2">
+            <AboutThisToolButton toolId={activeToolId} targetId="cad-hub-doc" />
             <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>One-Click Copy Ready</span>
@@ -1019,6 +1027,11 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
           </div>
         </div>
       )}
+
+      {/* Dynamic About This Tool Guide */}
+      <div className="pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+        <AboutThisTool toolId={activeToolId} id="cad-hub-doc" defaultExpanded={false} />
+      </div>
     </div>
   );
 };

@@ -57,6 +57,14 @@ import {
   Loader2,
   FileDown,
   Compass,
+  Package,
+  Calendar,
+  Users,
+  BookOpen,
+  Receipt,
+  Wallet,
+  Layers,
+  ClipboardCheck,
 } from 'lucide-react';
 import {
   exportAnalyticalScheduleCsv,
@@ -168,7 +176,7 @@ import { DcrCapacityGauge, DcrGaugeSuite } from './components/DcrCapacityGauge';
 import { CelebrationToast, ToastMessage } from './components/CelebrationToast';
 import { exportCertifiedEngineeringPdf, PdfExportProgress } from './utils/pdfExport';
 import { exportCertifiedReportPDF, exportModuleCSV, exportBoqCSV } from './utils/exportEngine';
-import { FloatingActionBar } from './components/FloatingActionBar';
+import { exportTenderBoqPdf } from './utils/tenderExport';
 import { PdfExportProgressModal } from './components/PdfExportProgressModal';
 import { syncAllModulesToBoq, syncRebarBbsToBoq, syncConcreteMixToBoq } from './utils/boqAutoSync';
 import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
@@ -235,7 +243,20 @@ import {
   CalculationHistoryLedger,
 } from './components/modules';
 import { BBSGenerator, SurveyingSuite } from './components/calculators/civil';
+import {
+  StoreInventoryModule,
+  RequisitionModule,
+  ScheduleRosterModule,
+  LaborAttendanceModule,
+  FieldNotebookModule,
+  ContractorBillModule,
+  PettyCashModule,
+  CubeTestModule,
+  DailyProgressReportModule,
+  SiteManagementHub,
+} from './components/sitemanagement';
 import { SYSTEM_PRESET_UNITS } from './utils/unitEngine';
+import { AboutThisTool, AboutThisToolButton, AboutThisToolDrawer } from './components/ui';
 
 const MODULE_META: Record<
   EngineeringModuleId,
@@ -330,6 +351,60 @@ const MODULE_META: Record<
     shortLabel: 'Surveying Suite',
     codeStandard: 'Heron / Shoelace / Differential Leveling',
     icon: Compass,
+  },
+  'store-inventory': {
+    label: 'Store & Inventory Ledger',
+    shortLabel: 'Store Ledger',
+    codeStandard: 'Challan Gate Pass / Issue Logs',
+    icon: Package,
+  },
+  'material-requisition': {
+    label: 'Material Requisition & PO Generator',
+    shortLabel: 'Requisitions',
+    codeStandard: 'Multi-Item Indents / WhatsApp PO',
+    icon: FileText,
+  },
+  'schedule-roster': {
+    label: 'Project Schedule & Engineer Roster',
+    shortLabel: 'Schedule & Roster',
+    codeStandard: 'Pour Curing / Deshutter & QA/QC',
+    icon: Calendar,
+  },
+  'labor-attendance': {
+    label: 'Present Book & Labor Wage Sheet',
+    shortLabel: 'Labor Muster Roll',
+    codeStandard: 'Daily Headcount / Khoraki & Wages',
+    icon: Users,
+  },
+  'field-notebook': {
+    label: 'Smart Engineering Field Notebook',
+    shortLabel: 'Field Diary',
+    codeStandard: 'Voice Dictation / Grid Directives',
+    icon: BookOpen,
+  },
+  'contractor-bills': {
+    label: 'Sub-Contractor RA Bill Tracker',
+    shortLabel: 'RA Bills',
+    codeStandard: 'Cumulative Joint Measurements / Retention',
+    icon: Receipt,
+  },
+  'petty-cash': {
+    label: 'Site Petty Cash & Imprest Register',
+    shortLabel: 'Petty Cash',
+    codeStandard: 'Cash In Hand / Expense Vouchers',
+    icon: Wallet,
+  },
+  'cube-tests': {
+    label: 'Concrete Pour & Cube/Cylinder Tests',
+    shortLabel: 'Cube Register',
+    codeStandard: '7-Day & 28-Day Strength DCR',
+    icon: Layers,
+  },
+  'daily-progress-report': {
+    label: 'Master Daily Progress Report (DPR)',
+    shortLabel: 'DPR Generator',
+    codeStandard: '1-Click Multi-Source Site Synthesis',
+    icon: ClipboardCheck,
   },
 };
 
@@ -448,6 +523,7 @@ export default function App() {
   const [cadModalOpen, setCadModalOpen] = useState(false);
   const [cadInitialTab, setCadInitialTab] = useState<'viewport' | 'shortcuts' | 'excel'>('viewport');
   const [siteQcModalOpen, setSiteQcModalOpen] = useState(false);
+  const [aboutToolDrawerOpen, setAboutToolDrawerOpen] = useState(false);
 
   // File Inputs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1788,6 +1864,34 @@ export default function App() {
     );
   };
 
+  // Export BOQ Takeoff as Formatted PDF Report using existing jsPDF export engine (exportTenderBoqPdf)
+  const [isExportingBoqPdf, setIsExportingBoqPdf] = useState(false);
+  const handleExportBOQPdf = async () => {
+    if (!boqEnvelope.result) {
+      setToastBanner('Cannot export PDF: No takeoff items available.');
+      return;
+    }
+    try {
+      setIsExportingBoqPdf(true);
+      setToastBanner('Generating formatted Takeoff & BOQ PDF report with jsPDF...');
+      await exportTenderBoqPdf({
+        workspace: activeWorkspace,
+        boqResult: boqEnvelope.result,
+        userProfile,
+      });
+      triggerCelebration(
+        'Exported Takeoff PDF Report',
+        `Generated and downloaded official Takeoff & BOQ PDF report for ${activeWorkspace.projectCode}.`,
+        'celebrate'
+      );
+    } catch (err: unknown) {
+      console.error('Failed to export Takeoff PDF:', err);
+      setToastBanner('Failed to generate PDF: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setIsExportingBoqPdf(false);
+    }
+  };
+
   // Copy analytical calculation summary
   const handleCopyAnalyticalSummary = () => {
     if (!currentEnvelope.result) return;
@@ -2198,15 +2302,54 @@ export default function App() {
   }, [commandPaletteOpen, undoStack, redoStack, activeWorkspace]);
 
   // Log calculation record
-  const handleLogCalculationSnapshot = () => {
+  const handleLogCalculationSnapshot = (customRecordOrEvent?: CalculationRecord | React.MouseEvent<unknown>) => {
+    const isCustomRecord = customRecordOrEvent && !('nativeEvent' in customRecordOrEvent);
+    const customRecord = isCustomRecord ? (customRecordOrEvent as CalculationRecord) : undefined;
+    const newId = generateUUID();
+    const now = new Date().toISOString();
+    let newRecord: CalculationRecord;
+
+    if (customRecord) {
+      newRecord = {
+        ...customRecord,
+        id: customRecord.id || newId,
+        timestamp: customRecord.timestamp || now,
+      };
+      setAppState((prev) => ({
+        ...prev,
+        calculationHistory: [newRecord, ...prev.calculationHistory],
+      }));
+      try {
+        civilLab.addSavedHistoryItem({
+          type: 'calculation',
+          title: newRecord.title,
+          moduleId: newRecord.moduleId,
+          summary: newRecord.notes,
+          status: newRecord.status,
+          keyMetrics: newRecord.keyMetrics,
+          inputs: (newRecord.inputsSnapshot as Record<string, any>) || undefined,
+          results: undefined,
+          unitSystem: workbench.unitSystem,
+          notes: newRecord.notes,
+          tags: [newRecord.moduleId, MODULE_META[newRecord.moduleId]?.shortLabel || 'Field ERP'],
+        });
+      } catch (err) {
+        console.warn('Failed to mirror to CivilLab history:', err);
+      }
+      setToastBanner(`Snapshot of ${newRecord.title} recorded to Project History.`);
+      setCelebrationToast({
+        id: newId,
+        title: 'Project Ledger Updated',
+        description: `${newRecord.title} successfully archived into project record.`,
+        type: 'success',
+      });
+      return;
+    }
+
     if (currentEnvelope.status === 'invalid') {
       setToastBanner('Cannot log calculation with active validation errors. Please rectify inputs.');
       return;
     }
-
-    const newId = generateUUID();
-    const now = new Date().toISOString();
-    let newRecord: CalculationRecord;
 
     if (activeModule === 'boq-estimator' && boqEnvelope.result) {
       const res = boqEnvelope.result;
@@ -3143,6 +3286,10 @@ export default function App() {
                   isTransitioning={isUnitSystemTransitioning}
                 />
                 {renderStatusBadge()}
+                <AboutThisToolButton
+                  toolId={activeModule}
+                  onClick={() => setAboutToolDrawerOpen(true)}
+                />
                 <button
                   type="button"
                   onClick={() => setInspectorModalOpen(true)}
@@ -3215,11 +3362,31 @@ export default function App() {
               </div>
             )}
 
-            {/* Split Screen Grids or Dedicated Surveying Suite */}
+            {/* Split Screen Grids or Dedicated Full-Width Modules */}
             {activeModule === 'surveying-suite' ? (
-              <div className="p-4 md:p-6">
+              <div className="p-4 md:p-6 space-y-6">
                 <SurveyingSuite />
+                <AboutThisTool toolId="surveying-suite" id="about-this-tool-section" defaultExpanded={true} />
               </div>
+            ) : [
+                'store-inventory',
+                'material-requisition',
+                'schedule-roster',
+                'labor-attendance',
+                'field-notebook',
+                'contractor-bills',
+                'petty-cash',
+                'cube-tests',
+                'daily-progress-report',
+              ].includes(activeModule) ? (
+              <SiteManagementHub
+                activeTab={activeModule}
+                onSelectTab={(tab) => handleSetModule(tab)}
+                onSaveToHistory={handleLogCalculationSnapshot}
+                workspaceId={activeWorkspace.id}
+                projectName={activeWorkspace.name}
+                currency={activeWorkspace.currency}
+              />
             ) : (
               <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Pane: Parameter Input Form with Smooth Unit Transition */}
@@ -3277,6 +3444,9 @@ export default function App() {
                     onClearAllBOQItems={handleClearAllBOQItems}
                     onLoadSampleBOQItems={handleLoadSampleBOQItems}
                     onExportBOQCSV={handleExportBOQCSV}
+                    onExportBOQPdf={handleExportBOQPdf}
+                    isExportingPdf={isExportingBoqPdf}
+                    userProfile={userProfile}
                     onSyncFromModules={handleSyncAllModulesToBoq}
                   />
                 )}
@@ -3561,6 +3731,12 @@ export default function App() {
                           <ChevronDown className="w-3 h-3 opacity-70" />
                         )}
                       </button>
+
+                      {/* About This Tool Guide Button */}
+                      <AboutThisToolButton
+                        toolId={activeModule}
+                        onClick={() => setAboutToolDrawerOpen(true)}
+                      />
 
                       {/* Copy Summary Button */}
                       <button
@@ -3964,35 +4140,21 @@ export default function App() {
                   onLoadSampleHistory={handleLoadSampleHistory}
                   onDeleteHistoryItem={handleDeleteHistoryItem}
                 />
+
+                {/* DEDICATED EXPANDABLE "ABOUT THIS TOOL" MONOGRAPH & USER GUIDANCE SECTION */}
+                <div className="pt-2">
+                  <AboutThisTool
+                    toolId={activeModule}
+                    id="about-this-tool-section"
+                    defaultExpanded={true}
+                  />
+                </div>
               </motion.section>
             </div>
             )}
               </>
             )}
 
-            {/* Persistent Floating Quick-Action Dock */}
-            {!isDashboardView && (
-              <div className="hidden lg:block">
-                <FloatingActionBar
-                  onQuickPrint={handleQuickPrintA4Report}
-                  onExportPdf={handleDirectDownloadPdf}
-                  onExportCsv={handleExportAnalyticalCsv}
-                  isExportingPdf={isExportingPdf}
-                  pdfExportProgress={pdfExportProgress}
-                  onLogSnapshot={handleLogCalculationSnapshot}
-                  onShareSummary={handleCopyAnalyticalSummary}
-                  copiedSummary={copiedSummary}
-                  onUndo={handleUndo}
-                  onRedo={handleRedo}
-                  canUndo={undoStack.length > 0}
-                  canRedo={redoStack.length > 0}
-                  onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
-                  historyCount={appState.calculationHistory?.length || 0}
-                  onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-                  activeModuleName={MODULE_META[activeModule].shortLabel}
-                />
-              </div>
-            )}
 
             {/* PB CivilLab Global Engineered Footer */}
             <Footer
@@ -4237,6 +4399,13 @@ export default function App() {
         <SiteQcModal
           isOpen={siteQcModalOpen}
           onClose={() => setSiteQcModalOpen(false)}
+        />
+
+        {/* Quick Engineering Monograph & "About This Tool" Drawer */}
+        <AboutThisToolDrawer
+          toolId={activeModule}
+          isOpen={aboutToolDrawerOpen}
+          onClose={() => setAboutToolDrawerOpen(false)}
         />
 
         {/* TWO-STAGE PDF EXPORT PRESET & PRE-DOWNLOAD SETUP MODAL */}

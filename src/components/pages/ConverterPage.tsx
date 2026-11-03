@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { AddToHistoryButton } from '../ui/AddToHistoryButton';
+import { AboutThisTool, AboutThisToolButton } from '../ui';
 import { EXACT_CONVERSION, parseFeetInchString } from '../../utils/unitConverter';
 
 type ConverterTab = 'length' | 'area' | 'volume' | 'pressure' | 'rebar';
@@ -259,25 +260,35 @@ export const ConverterPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Precision Controls */}
-          <div className="flex items-center gap-1.5 self-start md:self-auto bg-[var(--md-sys-color-surface-container)] p-1 rounded-full border border-[var(--md-sys-color-outline-variant)]">
-            <span className="text-[11px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)] px-2.5">
-              Decimals:
-            </span>
-            {[2, 3, 4, 6].map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPrecision(p)}
-                className={`w-7 h-7 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
-                  precision === p
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
-                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+          {/* Header Actions */}
+          <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+            <AboutThisToolButton
+              toolId="unit-converter"
+              onClick={() => {
+                document.getElementById('converter-about-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            />
+
+            {/* Precision Controls */}
+            <div className="flex items-center gap-1.5 bg-[var(--md-sys-color-surface-container)] p-1 rounded-full border border-[var(--md-sys-color-outline-variant)]">
+              <span className="text-[11px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)] px-2.5">
+                Decimals:
+              </span>
+              {[2, 3, 4, 6].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPrecision(p)}
+                  className={`w-7 h-7 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
+                    precision === p
+                      ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
+                      : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1381,6 +1392,13 @@ export const ConverterPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* DEDICATED EXPANDABLE "ABOUT THIS TOOL" MONOGRAPH & USER GUIDANCE SECTION */}
+      <AboutThisTool
+        toolId="unit-converter"
+        id="converter-about-section"
+        defaultExpanded={true}
+      />
     </div>
   );
 };
