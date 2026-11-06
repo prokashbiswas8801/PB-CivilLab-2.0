@@ -38,7 +38,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
     }));
   };
 
-  const currentType = (bbs.elementType === 'column' ? 'column-rect' : bbs.elementType === 'staircase' ? 'staircase-waist' : bbs.elementType) as StructuralElementType;
+  const currentType = (
+    bbs.elementType === 'column' ? 'column-rect' :
+    bbs.elementType === 'circular-column' ? 'column-circ' :
+    bbs.elementType === 'staircase' ? 'staircase-waist' :
+    bbs.elementType
+  ) as StructuralElementType;
 
   return (
     <div className="space-y-4">
@@ -66,7 +71,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
           }`}
         >
           <Layers className="w-4 h-4 text-[var(--md-sys-color-secondary)]" />
-          <span>Single RCC Element Sizer (Slab, Col, Footing)</span>
+          <span>Single RCC Element Sizer (Slab, Beam, Col, Footing)</span>
         </button>
       </div>
 
@@ -79,13 +84,16 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
         <label className="block text-xs font-semibold mb-1.5 text-[var(--md-sys-color-on-surface)]">
           RCC Structural Element
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 rounded-xl bg-[var(--md-sys-color-surface-container)]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 p-1 rounded-xl bg-[var(--md-sys-color-surface-container)]">
           {[
             { id: 'slab', label: 'RCC Slab' },
+            { id: 'beam', label: 'RCC Beam' },
             { id: 'column-rect', label: 'Rect Column' },
             { id: 'column-circ', label: 'Circ Column' },
             { id: 'footing', label: 'Pad Footing' },
             { id: 'staircase-waist', label: 'Stair Flight' },
+            { id: 'lintel-chajja', label: 'Lintel & Chajja' },
+            { id: 'pile-cage', label: 'Bored Pile Cage' },
           ].map((type) => (
             <button
               key={type.id}
@@ -113,7 +121,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             BNBC 2020 Sec 8.1.8 / ACI 318 Table 20.6.1.3.1
           </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <UnitInput
             label="Nominal Clear Cover"
             category="length"
@@ -151,8 +159,190 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               <option value="180">180° Semi-circular Hook (Bend deduction: 4d)</option>
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1">Lapping Standard (&gt; 12m)</label>
+            <select
+              value={bbs.lappingFactorD || 50}
+              onChange={(e) => updateBBS({ lappingFactorD: Number(e.target.value) })}
+              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+            >
+              <option value="50">50d Tension Lap (BNBC / ACI standard)</option>
+              <option value="60">60d Severe / Seismic Splice Lap</option>
+              <option value="40">40d Compression Lap (Columns only)</option>
+            </select>
+          </div>
         </div>
       </div>
+
+      {/* ELEMENT: RCC BEAM */}
+      {currentType === 'beam' && (
+        <div className="space-y-3 p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+          <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+            RCC Beam Section Dimensions &amp; Longitudinal Reinforcement
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <UnitInput
+              label="Clear Span Length L"
+              category="length"
+              siValue={bbs.beamLengthM || 5.0}
+              onChangeSI={(val) => updateBBS({ beamLengthM: val })}
+              currentUnitId={getFieldUnit('rebar.beamSpan', 'length', 'm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.beamSpan', u)}
+              customUnits={customUnits}
+              step={0.5}
+              presets={[
+                { label: '3.0 m (10 ft)', valueSI: 3.0, title: '10 ft Span' },
+                { label: '5.0 m (16.4 ft)', valueSI: 5.0, title: 'Standard Span' },
+                { label: '6.0 m (20 ft)', valueSI: 6.0, title: 'Long Span' },
+              ]}
+              validationRule={{
+                minSI: 0.5,
+                maxSI: 30.0,
+                warningBelowSI: 1.0,
+                warningHint: 'Beam span < 1.0 m is unusually short for typical structural spans.',
+              }}
+            />
+            <UnitInput
+              label="Beam Width b"
+              category="length"
+              siValue={(bbs.beamWidthMm || 250) * 0.001}
+              onChangeSI={(val) => updateBBS({ beamWidthMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.beamW', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.beamW', u)}
+              customUnits={customUnits}
+              step={25}
+              presets={[
+                { label: '250 mm (10")', valueSI: 0.250, title: '10" Beam Width' },
+                { label: '300 mm (12")', valueSI: 0.300, title: '12" Beam Width' },
+                { label: '375 mm (15")', valueSI: 0.375, title: '15" Heavy Width' },
+              ]}
+            />
+            <UnitInput
+              label="Beam Total Depth h"
+              category="length"
+              siValue={(bbs.beamDepthMm || 500) * 0.001}
+              onChangeSI={(val) => updateBBS({ beamDepthMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.beamD', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.beamD', u)}
+              customUnits={customUnits}
+              step={50}
+              presets={[
+                { label: '400 mm (16")', valueSI: 0.400, title: '16" Depth' },
+                { label: '500 mm (20")', valueSI: 0.500, title: '20" Depth' },
+                { label: '600 mm (24")', valueSI: 0.600, title: '24" Heavy Depth' },
+              ]}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+            <UnitInput
+              label="Main Longitudinal Rebar Dia"
+              category="length"
+              siValue={(bbs.beamMainBarDiaMm || 16) * 0.001}
+              onChangeSI={(val) => updateBBS({ beamMainBarDiaMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.beamMainDia', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.beamMainDia', u)}
+              customUnits={customUnits}
+              step={4}
+              presets={[
+                { label: 'Ø16 mm', valueSI: 0.016, title: '16mm Tension Bar' },
+                { label: 'Ø20 mm', valueSI: 0.020, title: '20mm Standard Bar' },
+                { label: 'Ø25 mm', valueSI: 0.025, title: '25mm Heavy Bar' },
+              ]}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-semibold mb-1">Bottom Bars (Tension)</label>
+                <input
+                  type="number"
+                  min="2"
+                  max="12"
+                  value={bbs.beamBotBarCount || 3}
+                  onChange={(e) => updateBBS({ beamBotBarCount: Math.max(1, Number(e.target.value) || 2) })}
+                  className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                />
+                <div className="flex items-center gap-1 mt-1">
+                  {[2, 3, 4].map((cnt) => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => updateBBS({ beamBotBarCount: cnt })}
+                      className={`px-2 py-0.5 text-[10px] font-mono rounded border cursor-pointer ${
+                        (bbs.beamBotBarCount || 3) === cnt
+                          ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
+                          : 'bg-[var(--md-sys-color-surface-container)]'
+                      }`}
+                    >
+                      {cnt} Nos
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Top Bars (Hangers)</label>
+                <input
+                  type="number"
+                  min="2"
+                  max="10"
+                  value={bbs.beamTopBarCount || 2}
+                  onChange={(e) => updateBBS({ beamTopBarCount: Math.max(1, Number(e.target.value) || 2) })}
+                  className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                />
+                <div className="flex items-center gap-1 mt-1">
+                  {[2, 3, 4].map((cnt) => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => updateBBS({ beamTopBarCount: cnt })}
+                      className={`px-2 py-0.5 text-[10px] font-mono rounded border cursor-pointer ${
+                        (bbs.beamTopBarCount || 2) === cnt
+                          ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
+                          : 'bg-[var(--md-sys-color-surface-container)]'
+                      }`}
+                    >
+                      {cnt} Nos
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+            <UnitInput
+              label="Shear Stirrup Bar Dia"
+              category="length"
+              siValue={(bbs.beamStirrupDiaMm || 8) * 0.001}
+              onChangeSI={(val) => updateBBS({ beamStirrupDiaMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.beamStirrupDia', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.beamStirrupDia', u)}
+              customUnits={customUnits}
+              step={2}
+              presets={[
+                { label: 'Ø8 mm', valueSI: 0.008, title: '8mm Stirrup' },
+                { label: 'Ø10 mm', valueSI: 0.010, title: '10mm Stirrup' },
+              ]}
+              standardRef="ACI 318 Sec 25.7.1"
+            />
+            <UnitInput
+              label="Stirrup Spacing c/c"
+              category="length"
+              siValue={(bbs.beamStirrupSpacingMm || 150) * 0.001}
+              onChangeSI={(val) => updateBBS({ beamStirrupSpacingMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.beamStirrupSpacing', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.beamStirrupSpacing', u)}
+              customUnits={customUnits}
+              step={25}
+              presets={[
+                { label: '100 mm (4")', valueSI: 0.100, title: 'End Zone Shear Spacing' },
+                { label: '150 mm (6")', valueSI: 0.150, title: 'Midspan Spacing' },
+                { label: '200 mm (8")', valueSI: 0.200, title: 'Maximum Code Spacing' },
+              ]}
+              standardRef="ACI 318 Sec 9.7.6"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ELEMENT 1: RCC SLAB */}
       {currentType === 'slab' && (
@@ -710,6 +900,285 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
           </div>
         </div>
       )}
+
+      {/* ELEMENT 6: LINTEL & SUNSHADE CHAJJA */}
+      {currentType === 'lintel-chajja' && (
+        <div className="space-y-3 p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+          <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+            Lintel Beam & Cantilever Chajja / Sunshade Dimensions
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <UnitInput
+              label="Lintel Clear Span L"
+              category="length"
+              siValue={bbs.lintelLengthM ?? 2.1}
+              onChangeSI={(val) => updateBBS({ lintelLengthM: val })}
+              currentUnitId={getFieldUnit('rebar.lintelL', 'length', 'm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.lintelL', u)}
+              customUnits={customUnits}
+              step={0.15}
+              presets={[
+                { label: '1.5 m (5 ft)', valueSI: 1.5, title: 'Standard Window Lintel' },
+                { label: '2.1 m (7 ft)', valueSI: 2.1, title: 'Wide Window / Veranda Lintel' },
+                { label: '2.7 m (9 ft)', valueSI: 2.7, title: 'Combined Door-Window Lintel' },
+              ]}
+            />
+            <UnitInput
+              label="Lintel Width b"
+              category="length"
+              siValue={(bbs.lintelWidthMm ?? 250) * 0.001}
+              onChangeSI={(val) => updateBBS({ lintelWidthMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.lintelW', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.lintelW', u)}
+              customUnits={customUnits}
+              step={25}
+              presets={[
+                { label: '125 mm (5")', valueSI: 0.125, title: '5" Wall Lintel' },
+                { label: '250 mm (10")', valueSI: 0.250, title: '10" Brickwork Wall Lintel' },
+              ]}
+            />
+            <UnitInput
+              label="Lintel Depth D"
+              category="length"
+              siValue={(bbs.lintelDepthMm ?? 150) * 0.001}
+              onChangeSI={(val) => updateBBS({ lintelDepthMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.lintelD', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.lintelD', u)}
+              customUnits={customUnits}
+              step={25}
+              presets={[
+                { label: '150 mm (6")', valueSI: 0.150, title: '6" Standard Lintel Depth' },
+                { label: '200 mm (8")', valueSI: 0.200, title: '8" Heavy Lintel Depth' },
+              ]}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+            <UnitInput
+              label="Lintel Main Rebar Dia"
+              category="length"
+              siValue={(bbs.lintelMainBarDiaMm ?? 12) * 0.001}
+              onChangeSI={(val) => updateBBS({ lintelMainBarDiaMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.lintelMainDia', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.lintelMainDia', u)}
+              customUnits={customUnits}
+              step={2}
+              presets={[
+                { label: 'Ø10 mm', valueSI: 0.010, title: '10mm Light Lintel' },
+                { label: 'Ø12 mm', valueSI: 0.012, title: '12mm Standard Lintel' },
+              ]}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-semibold mb-1">Bottom Rebar (Nos)</label>
+                <input
+                  type="number"
+                  min="2"
+                  max="6"
+                  value={bbs.lintelBotBarCount ?? 2}
+                  onChange={(e) => updateBBS({ lintelBotBarCount: Math.max(2, Number(e.target.value) || 2) })}
+                  className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">Top Rebar (Nos)</label>
+                <input
+                  type="number"
+                  min="2"
+                  max="6"
+                  value={bbs.lintelTopBarCount ?? 2}
+                  onChange={(e) => updateBBS({ lintelTopBarCount: Math.max(2, Number(e.target.value) || 2) })}
+                  className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+            <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-secondary)] tracking-wider mb-2">
+              Cantilever Chajja / Sunshade Overhang Details
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <UnitInput
+                label="Chajja Projection P"
+                category="length"
+                siValue={bbs.chajjaProjectionM ?? 0.6}
+                onChangeSI={(val) => updateBBS({ chajjaProjectionM: val })}
+                currentUnitId={getFieldUnit('rebar.chajjaP', 'length', 'm')}
+                onUnitChange={(u) => updateFieldUnit('rebar.chajjaP', u)}
+                customUnits={customUnits}
+                step={0.1}
+                presets={[
+                  { label: '0.45 m (18")', valueSI: 0.45, title: '18" Standard Projection' },
+                  { label: '0.60 m (24")', valueSI: 0.60, title: '24" Generous Sunshade' },
+                  { label: '0.75 m (30")', valueSI: 0.75, title: '30" Veranda Projection' },
+                ]}
+              />
+              <UnitInput
+                label="Chajja Main Cantilever Bar Dia"
+                category="length"
+                siValue={(bbs.chajjaMainBarDiaMm ?? 10) * 0.001}
+                onChangeSI={(val) => updateBBS({ chajjaMainBarDiaMm: Math.round(val * 1000) })}
+                currentUnitId={getFieldUnit('rebar.chajjaMainDia', 'length', 'mm')}
+                onUnitChange={(u) => updateFieldUnit('rebar.chajjaMainDia', u)}
+                customUnits={customUnits}
+                step={2}
+                presets={[
+                  { label: 'Ø8 mm', valueSI: 0.008, title: '8mm Rebar' },
+                  { label: 'Ø10 mm', valueSI: 0.010, title: '10mm Standard Rebar' },
+                ]}
+              />
+              <UnitInput
+                label="Chajja Main Bar Spacing c/c"
+                category="length"
+                siValue={(bbs.chajjaMainBarSpacingMm ?? 150) * 0.001}
+                onChangeSI={(val) => updateBBS({ chajjaMainBarSpacingMm: Math.round(val * 1000) })}
+                currentUnitId={getFieldUnit('rebar.chajjaSpacing', 'length', 'mm')}
+                onUnitChange={(u) => updateFieldUnit('rebar.chajjaSpacing', u)}
+                customUnits={customUnits}
+                step={25}
+                presets={[
+                  { label: '125 mm (5")', valueSI: 0.125, title: '5" Spacing' },
+                  { label: '150 mm (6")', valueSI: 0.150, title: '6" Standard Spacing' },
+                ]}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ELEMENT 7: BORED CAST-IN-SITU PILE CAGE */}
+      {currentType === 'pile-cage' && (
+        <div className="space-y-3 p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+          <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+            Bored Cast-in-Situ Pile Geometry & Reinforcement Cage
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <UnitInput
+              label="Pile Diameter D"
+              category="length"
+              siValue={(bbs.pileDiaMm ?? 500) * 0.001}
+              onChangeSI={(val) => updateBBS({ pileDiaMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.pileDia', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.pileDia', u)}
+              customUnits={customUnits}
+              step={50}
+              presets={[
+                { label: '500 mm (20")', valueSI: 0.500, title: '20" Bored Pile' },
+                { label: '600 mm (24")', valueSI: 0.600, title: '24" Standard Bored Pile' },
+                { label: '750 mm (30")', valueSI: 0.750, title: '30" Heavy Capacity Pile' },
+              ]}
+              standardRef="BNBC 2020 Part 6 Sec 3.10"
+            />
+            <UnitInput
+              label="Pile Depth / Length L"
+              category="length"
+              siValue={bbs.pileLengthM ?? 18.0}
+              onChangeSI={(val) => updateBBS({ pileLengthM: val })}
+              currentUnitId={getFieldUnit('rebar.pileL', 'length', 'm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.pileL', u)}
+              customUnits={customUnits}
+              step={1.0}
+              presets={[
+                { label: '15.0 m (50 ft)', valueSI: 15.0, title: '50 ft Bored Pile' },
+                { label: '18.0 m (60 ft)', valueSI: 18.0, title: '60 ft Standard Pile' },
+                { label: '24.0 m (80 ft)', valueSI: 24.0, title: '80 ft Deep Pile (>12m lapped)' },
+              ]}
+            />
+            <UnitInput
+              label="Pile Head Embedment into Cap"
+              category="length"
+              siValue={bbs.pileCutoffEmbedmentM ?? 0.75}
+              onChangeSI={(val) => updateBBS({ pileCutoffEmbedmentM: val })}
+              currentUnitId={getFieldUnit('rebar.pileCapEmbed', 'length', 'm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.pileCapEmbed', u)}
+              customUnits={customUnits}
+              step={0.05}
+              presets={[
+                { label: '0.60 m (24")', valueSI: 0.60, title: '24" Embedment' },
+                { label: '0.75 m (30")', valueSI: 0.75, title: '30" Standard Dowel' },
+              ]}
+              standardRef="BNBC 2020 / ACI 318"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+            <UnitInput
+              label="Longitudinal Main Bar Dia"
+              category="length"
+              siValue={(bbs.pileMainBarDiaMm ?? 16) * 0.001}
+              onChangeSI={(val) => updateBBS({ pileMainBarDiaMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.pileMainDia', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.pileMainDia', u)}
+              customUnits={customUnits}
+              step={4}
+              presets={[
+                { label: 'Ø16 mm', valueSI: 0.016, title: '16mm Main Bar' },
+                { label: 'Ø20 mm', valueSI: 0.020, title: '20mm Main Bar' },
+                { label: 'Ø25 mm', valueSI: 0.025, title: '25mm Main Bar' },
+              ]}
+            />
+            <div>
+              <label className="block text-xs font-semibold mb-1">Longitudinal Bar Count</label>
+              <input
+                type="number"
+                min="6"
+                max="24"
+                value={bbs.pileMainBarCount ?? 7}
+                onChange={(e) => updateBBS({ pileMainBarCount: Math.max(6, Number(e.target.value) || 6) })}
+                className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <div className="flex items-center gap-1 mt-1 overflow-x-auto">
+                {[6, 7, 8, 10, 12].map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => updateBBS({ pileMainBarCount: cnt })}
+                    className={`px-2 py-0.5 text-[10px] font-mono rounded border cursor-pointer ${
+                      (bbs.pileMainBarCount ?? 7) === cnt
+                        ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
+                        : 'bg-[var(--md-sys-color-surface-container)]'
+                    }`}
+                  >
+                    {cnt} Nos
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+            <UnitInput
+              label="Helical Spiral Tie Dia"
+              category="length"
+              siValue={(bbs.pileSpiralDiaMm ?? 8) * 0.001}
+              onChangeSI={(val) => updateBBS({ pileSpiralDiaMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.pileSpiralDia', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.pileSpiralDia', u)}
+              customUnits={customUnits}
+              step={2}
+              presets={[
+                { label: 'Ø8 mm', valueSI: 0.008, title: '8mm Spiral Rebar' },
+                { label: 'Ø10 mm', valueSI: 0.010, title: '10mm Spiral Rebar' },
+              ]}
+            />
+            <UnitInput
+              label="Helical Spiral Pitch"
+              category="length"
+              siValue={(bbs.pileSpiralPitchMm ?? 150) * 0.001}
+              onChangeSI={(val) => updateBBS({ pileSpiralPitchMm: Math.round(val * 1000) })}
+              currentUnitId={getFieldUnit('rebar.pileSpiralPitch', 'length', 'mm')}
+              onUnitChange={(u) => updateFieldUnit('rebar.pileSpiralPitch', u)}
+              customUnits={customUnits}
+              step={25}
+              presets={[
+                { label: '100 mm (4")', valueSI: 0.100, title: '4" Top Confined Pitch' },
+                { label: '150 mm (6")', valueSI: 0.150, title: '6" Standard Pitch' },
+              ]}
+            />
+          </div>
+        </div>
+      )}
         </>
       )}
     </div>
@@ -774,6 +1243,100 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
           subText={`Hook: ${activeWorkspace.rebarBbs.hookAngle}° standard`}
         />
       </div>
+
+      {/* Commercial 12m Full Bar Stock & Offcut Scrap Optimizer Table */}
+      {result.commercialBarStock && result.commercialBarStock.itemsByDiameter.length > 0 && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[var(--md-sys-color-primary)]">
+                12m (39.37 ft) Commercial Full Bar Procurement &amp; Offcut Scrap Schedule
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                {result.commercialBarStock.lappingStandardUsed}
+              </span>
+            </div>
+            <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+              Total 12m Bars: <strong className="text-[var(--md-sys-color-on-surface)]">{result.commercialBarStock.total12mBarsCount} Nos</strong> | Scrap: <strong className={result.commercialBarStock.overallScrapPercent > 8 ? 'text-amber-600' : 'text-emerald-600'}>{result.commercialBarStock.overallScrapPercent.toFixed(1)}%</strong> ({result.commercialBarStock.totalScrapWeightKg.toFixed(1)} kg)
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-[var(--md-sys-color-outline-variant)]">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th className="py-2 px-2.5">Bar Dia</th>
+                  <th className="py-2 px-2.5 text-right">Net BBS Length</th>
+                  <th className="py-2 px-2.5 text-right">Net Weight</th>
+                  <th className="py-2 px-2.5 text-right bg-primary/5 font-bold">12m Bars Reqd</th>
+                  <th className="py-2 px-2.5 text-right">Purchased Wt</th>
+                  <th className="py-2 px-2.5 text-right">Offcut Scrap</th>
+                  <th className="py-2 px-2.5 text-right">Scrap %</th>
+                  <th className="py-2 px-2.5 text-right">Est. Bundles</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                {result.commercialBarStock.itemsByDiameter.map((row) => (
+                  <tr key={row.barDiaMm} className="hover:bg-[var(--md-sys-color-surface-container-highest)]/40 transition-colors">
+                    <td className="py-2 px-2.5 font-bold text-[var(--md-sys-color-on-surface)]">
+                      Ø{row.barDiaMm} mm
+                    </td>
+                    <td className="py-2 px-2.5 text-right">{row.totalCuttingLengthM.toFixed(2)} m</td>
+                    <td className="py-2 px-2.5 text-right">{row.totalWeightKg.toFixed(1)} kg</td>
+                    <td className="py-2 px-2.5 text-right bg-primary/5 font-bold text-[var(--md-sys-color-primary)]">
+                      {row.bars12mRequired} Nos ({row.purchasedLengthM.toFixed(0)} m)
+                    </td>
+                    <td className="py-2 px-2.5 text-right font-semibold">
+                      {row.purchasedWeightKg.toFixed(1)} kg <span className="text-[10px] text-muted-foreground">({row.purchasedTonnes.toFixed(3)} MT)</span>
+                    </td>
+                    <td className="py-2 px-2.5 text-right text-amber-700 dark:text-amber-400">
+                      {row.offcutScrapWeightKg.toFixed(1)} kg ({row.offcutScrapLengthM.toFixed(1)} m)
+                    </td>
+                    <td className="py-2 px-2.5 text-right">
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        row.scrapPercent > 10
+                          ? 'bg-red-500/15 text-red-700 dark:text-red-300'
+                          : row.scrapPercent > 5
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                          : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                      }`}>
+                        {row.scrapPercent.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="py-2 px-2.5 text-right text-[var(--md-sys-color-on-surface-variant)]">
+                      ~{row.commercialBundlesEstimate} Bdl
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-[var(--md-sys-color-surface-container)] font-bold text-[11px]">
+                <tr>
+                  <td className="py-2 px-2.5">Total Commercial Stock</td>
+                  <td className="py-2 px-2.5 text-right">{result.commercialBarStock.totalCuttingLengthM.toFixed(2)} m</td>
+                  <td className="py-2 px-2.5 text-right">{result.totalSteelWeightKg.toFixed(1)} kg</td>
+                  <td className="py-2 px-2.5 text-right text-[var(--md-sys-color-primary)]">
+                    {result.commercialBarStock.total12mBarsCount} Bars ({result.commercialBarStock.totalPurchasedLengthM.toFixed(0)} m)
+                  </td>
+                  <td className="py-2 px-2.5 text-right">
+                    {result.commercialBarStock.totalPurchasedWeightKg.toFixed(1)} kg ({result.commercialBarStock.totalPurchasedTonnes.toFixed(3)} MT)
+                  </td>
+                  <td className="py-2 px-2.5 text-right text-amber-700 dark:text-amber-400">
+                    {result.commercialBarStock.totalScrapWeightKg.toFixed(1)} kg
+                  </td>
+                  <td className="py-2 px-2.5 text-right">
+                    <span className="text-amber-600 dark:text-amber-300 font-bold">
+                      {result.commercialBarStock.overallScrapPercent.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="py-2 px-2.5 text-right">
+                    ~{Math.ceil(result.commercialBarStock.totalPurchasedTonnes / 2.2)} Bdl
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* One-Click BBS Schedule Export Toolbar */}
       {(onExportCsv || onExportPdf) && (

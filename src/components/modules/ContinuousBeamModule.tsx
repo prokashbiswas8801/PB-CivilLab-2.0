@@ -247,21 +247,33 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-            Allowable Flexural Stress (MPa)
-          </label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
+              Allowable Flexural Stress (MPa)
+            </label>
+            {cb.allowableStressMpa === 0 && (
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wider">
+                0 ACTIVE
+              </span>
+            )}
+          </div>
           <input
             type="number"
             value={cb.allowableStressMpa}
-            onChange={(e) =>
+            onChange={(e) => {
+              const val = e.target.value === '' ? 0 : Number(e.target.value);
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, allowableStressMpa: Number(e.target.value) || 250 },
-              }))
-            }
-            className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="10"
-            min="50"
+                continuousBeam: { ...cb, allowableStressMpa: isNaN(val) ? 0 : val },
+              }));
+            }}
+            className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+              cb.allowableStressMpa === 0
+                ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                : 'border-[var(--md-sys-color-outline)]'
+            }`}
+            step="any"
+            min="0"
           />
         </div>
       </div>
@@ -269,59 +281,95 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
       {/* Cross-Section & Code Parameters (ACI 318 / BNBC 2020) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
         <div>
-          <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
-            Section Depth d (mm)
-          </label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Section Depth d (mm)
+            </label>
+            {cb.sectionDepthMm === 0 && (
+              <span className="px-1 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                0
+              </span>
+            )}
+          </div>
           <input
             type="number"
-            value={cb.sectionDepthMm || 600}
-            onChange={(e) =>
+            value={cb.sectionDepthMm}
+            onChange={(e) => {
+              const val = e.target.value === '' ? 0 : Number(e.target.value);
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, sectionDepthMm: Math.max(150, Number(e.target.value) || 600) },
-              }))
-            }
-            className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="50"
-            min="150"
+                continuousBeam: { ...cb, sectionDepthMm: isNaN(val) ? 0 : val },
+              }));
+            }}
+            className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+              cb.sectionDepthMm === 0
+                ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                : 'border-[var(--md-sys-color-outline)]'
+            }`}
+            step="any"
+            min="0"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
-            Section Width b (mm)
-          </label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Section Width b (mm)
+            </label>
+            {cb.sectionWidthMm === 0 && (
+              <span className="px-1 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                0
+              </span>
+            )}
+          </div>
           <input
             type="number"
-            value={cb.sectionWidthMm || 300}
-            onChange={(e) =>
+            value={cb.sectionWidthMm}
+            onChange={(e) => {
+              const val = e.target.value === '' ? 0 : Number(e.target.value);
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, sectionWidthMm: Math.max(150, Number(e.target.value) || 300) },
-              }))
-            }
-            className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="25"
-            min="150"
+                continuousBeam: { ...cb, sectionWidthMm: isNaN(val) ? 0 : val },
+              }));
+            }}
+            className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+              cb.sectionWidthMm === 0
+                ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                : 'border-[var(--md-sys-color-outline)]'
+            }`}
+            step="any"
+            min="0"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
-            Concrete f'c (MPa)
-          </label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Concrete f'c (MPa)
+            </label>
+            {cb.concreteGradeFckMpa === 0 && (
+              <span className="px-1 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                0
+              </span>
+            )}
+          </div>
           <input
             type="number"
-            value={cb.concreteGradeFckMpa || 25}
-            onChange={(e) =>
+            value={cb.concreteGradeFckMpa}
+            onChange={(e) => {
+              const val = e.target.value === '' ? 0 : Number(e.target.value);
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, concreteGradeFckMpa: Math.max(15, Number(e.target.value) || 25) },
-              }))
-            }
-            className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-            step="5"
-            min="15"
+                continuousBeam: { ...cb, concreteGradeFckMpa: isNaN(val) ? 0 : val },
+              }));
+            }}
+            className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+              cb.concreteGradeFckMpa === 0
+                ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                : 'border-[var(--md-sys-color-outline)]'
+            }`}
+            step="any"
+            min="0"
           />
         </div>
 
@@ -363,36 +411,69 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                 <span className="font-bold text-xs font-mono text-[var(--md-sys-color-primary)]">
                   Span {sIdx + 1} (Support {sIdx} → {sIdx + 1})
                 </span>
-                <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
                   L = {span.lengthM} m
+                  {span.lengthM === 0 && (
+                    <span className="px-1 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                      0 ACTIVE
+                    </span>
+                  )}
                 </span>
               </div>
 
               {/* Span Length & UDL */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
-                    Span Length (m)
-                  </label>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                      Span Length (m)
+                    </label>
+                    {span.lengthM === 0 && (
+                      <span className="text-[8px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                        [0]
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     value={span.lengthM}
-                    onChange={(e) => updateSpan(sIdx, { lengthM: Math.max(0.5, Number(e.target.value) || 1) })}
-                    className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                    step="0.5"
-                    min="0.5"
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateSpan(sIdx, { lengthM: isNaN(val) ? 0 : val });
+                    }}
+                    className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                      span.lengthM === 0
+                        ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                        : 'border-[var(--md-sys-color-outline)]'
+                    }`}
+                    step="any"
+                    min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
-                    UDL w (kN/m)
-                  </label>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                      UDL w (kN/m)
+                    </label>
+                    {span.udlKnPerM === 0 && (
+                      <span className="text-[8px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                        [0]
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     value={span.udlKnPerM}
-                    onChange={(e) => updateSpan(sIdx, { udlKnPerM: Math.max(0, Number(e.target.value) || 0) })}
-                    className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                    step="5"
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateSpan(sIdx, { udlKnPerM: isNaN(val) ? 0 : val });
+                    }}
+                    className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                      span.udlKnPerM === 0
+                        ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                        : 'border-[var(--md-sys-color-outline)]'
+                    }`}
+                    step="any"
                     min="0"
                   />
                 </div>
@@ -401,30 +482,57 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
               {/* Point Load P & Position a */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
-                    Point Load P (kN)
-                  </label>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                      Point Load P (kN)
+                    </label>
+                    {span.pointLoadKn === 0 && (
+                      <span className="text-[8px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                        [0]
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     value={span.pointLoadKn}
-                    onChange={(e) => updateSpan(sIdx, { pointLoadKn: Math.max(0, Number(e.target.value) || 0) })}
-                    className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                    step="5"
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateSpan(sIdx, { pointLoadKn: isNaN(val) ? 0 : val });
+                    }}
+                    className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                      span.pointLoadKn === 0
+                        ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                        : 'border-[var(--md-sys-color-outline)]'
+                    }`}
+                    step="any"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
-                    Load Pos a (m)
-                  </label>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                      Load Pos a (m)
+                    </label>
+                    {span.pointLoadPositionM === 0 && (
+                      <span className="text-[8px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                        [0]
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     value={span.pointLoadPositionM}
-                    onChange={(e) => updateSpan(sIdx, { pointLoadPositionM: Math.max(0, Number(e.target.value) || 0) })}
-                    className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                    step="0.5"
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateSpan(sIdx, { pointLoadPositionM: isNaN(val) ? 0 : val });
+                    }}
+                    className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                      span.pointLoadPositionM === 0
+                        ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                        : 'border-[var(--md-sys-color-outline)]'
+                    }`}
+                    step="any"
                     min="0"
-                    max={span.lengthM}
                   />
                 </div>
               </div>
@@ -432,15 +540,29 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
               {/* Triangular / Varying Load */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
-                    Triangular w (kN/m)
-                  </label>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                      Triangular w (kN/m)
+                    </label>
+                    {span.triangularLoadKnPerM === 0 && (
+                      <span className="text-[8px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                        [0]
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     value={span.triangularLoadKnPerM || 0}
-                    onChange={(e) => updateSpan(sIdx, { triangularLoadKnPerM: Math.max(0, Number(e.target.value) || 0) })}
-                    className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                    step="5"
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateSpan(sIdx, { triangularLoadKnPerM: isNaN(val) ? 0 : val });
+                    }}
+                    className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                      (span.triangularLoadKnPerM || 0) === 0
+                        ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                        : 'border-[var(--md-sys-color-outline)]'
+                    }`}
+                    step="any"
                     min="0"
                   />
                 </div>

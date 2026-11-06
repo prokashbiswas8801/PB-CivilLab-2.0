@@ -38,7 +38,7 @@ export interface CivilUserProfile {
   email: string;
   phone?: string;
   location?: string;
-  defaultUnitSystem: 'SI' | 'Imperial';
+  defaultUnitSystem: 'SI' | 'Imperial' | 'Regional';
   defaultDesignCode?: string;
   theme: EngineeringThemeOption;
   autoCollapseLandscape?: boolean;
@@ -74,7 +74,7 @@ export interface SavedHistoryItem {
   keyMetrics?: Array<{ label: string; value: string | number; unit?: string }>;
   inputs?: Record<string, any> | null;
   results?: Record<string, any> | null;
-  unitSystem?: 'SI' | 'Imperial';
+  unitSystem?: 'SI' | 'Imperial' | 'Regional';
   notes?: string;
   tags?: string[];
 }
@@ -127,15 +127,18 @@ export interface CivilLabContextType {
 // STORAGE KEYS & ROBUST DEFAULTS
 // ============================================================================
 
+export const CIVILLAB_CONTEXT_VERSION_KEY = 'pb_civillab_context_version';
+export const CURRENT_CIVILLAB_CONTEXT_VERSION = 'v3_clean';
+
 const STORAGE_KEYS = {
-  ACTIVE_PAGE: 'pb_civillab_active_page_v2',
-  ACTIVE_CALC_ID: 'pb_civillab_active_calc_id_v2',
-  IS_DOCK_COLLAPSED: 'pb_civillab_dock_collapsed_v2',
-  PINNED_TOOLS: 'pb_civillab_pinned_tools_v2',
-  SEARCH_HISTORY: 'pb_civillab_search_history_v2',
-  SAVED_HISTORY: 'pb_civillab_saved_history_v2',
-  USER_PROFILE: 'pb_civillab_user_profile_v2',
-  PDF_PRESET: 'pb_civillab_pdf_preset_v2',
+  ACTIVE_PAGE: 'pb_civillab_active_page_v3',
+  ACTIVE_CALC_ID: 'pb_civillab_active_calc_id_v3',
+  IS_DOCK_COLLAPSED: 'pb_civillab_dock_collapsed_v3',
+  PINNED_TOOLS: 'pb_civillab_pinned_tools_v3',
+  SEARCH_HISTORY: 'pb_civillab_search_history_v3',
+  SAVED_HISTORY: 'pb_civillab_saved_history_v3',
+  USER_PROFILE: 'pb_civillab_user_profile_v3',
+  PDF_PRESET: 'pb_civillab_pdf_preset_v3',
 };
 
 const DEFAULT_USER_PROFILE: CivilUserProfile = {
@@ -199,70 +202,9 @@ const DEFAULT_PINNED_TOOLS: string[] = [
   'boq-estimator',
 ];
 
-const DEFAULT_SEARCH_HISTORY: string[] = [
-  'beam flexure',
-  'bearing capacity',
-  'rebar bbs BS 8666',
-  'concrete mix ACI 211',
-  'manning hydraulics',
-  'STR-01',
-];
+const DEFAULT_SEARCH_HISTORY: string[] = [];
 
-const INITIAL_SAVED_HISTORY: SavedHistoryItem[] = [
-  {
-    id: 'saved-init-01',
-    type: 'calculation',
-    title: 'PBCL-2026-VIAD · Simply Supported Beam Flexure',
-    moduleId: 'beam-analysis',
-    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-    summary: 'Span: 6.0m, UDL: 25.0 kN/m, Max Moment: 112.5 kN·m, DCR: 68.2%',
-    status: 'nominal',
-    unitSystem: 'SI',
-    keyMetrics: [
-      { label: 'Max Moment', value: '112.50', unit: 'kN·m' },
-      { label: 'Max Shear', value: '75.00', unit: 'kN' },
-      { label: 'Deflection', value: '4.82', unit: 'mm' },
-      { label: 'DCR Ratio', value: '68.2%', unit: 'capacity' },
-    ],
-    notes: 'ACI 318-19 verification with simply-supported span. Serviceability deflection passes L/360 limit.',
-    tags: ['structural', 'beam', 'flexure'],
-  },
-  {
-    id: 'saved-init-02',
-    type: 'conversion',
-    title: 'Unit Conversion: 15.5 m ⇄ 50.853 ft',
-    moduleId: 'unit-converter',
-    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-    summary: 'Length: 15.5 meters converts to 50.853 feet (50\' - 10 1/4")',
-    status: 'valid',
-    unitSystem: 'SI',
-    keyMetrics: [
-      { label: 'Input', value: '15.5', unit: 'm' },
-      { label: 'Result', value: '50.853', unit: 'ft' },
-      { label: 'Architectural', value: "50' - 10 1/4\"", unit: 'feet-inch' },
-    ],
-    notes: 'Span measurement conversion for site verification.',
-    tags: ['converter', 'length', 'feet-inch'],
-  },
-  {
-    id: 'saved-init-03',
-    type: 'calculation',
-    title: 'PBCL-2026-MAT · Isolated Footing Bearing Capacity',
-    moduleId: 'bearing-capacity',
-    timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-    summary: 'Footing B: 2.5m, Df: 1.8m, Allowable Bearing: 285.4 kPa, FS: 3.0',
-    status: 'nominal',
-    unitSystem: 'SI',
-    keyMetrics: [
-      { label: 'Allowable q_all', value: '285.4', unit: 'kPa' },
-      { label: 'Ultimate q_ult', value: '856.2', unit: 'kPa' },
-      { label: 'Applied q_app', value: '192.0', unit: 'kPa' },
-      { label: 'Safety Factor', value: '3.00', unit: 'FS' },
-    ],
-    notes: 'Terzaghi general shear failure criteria for dense silty sand with water table at 3m depth.',
-    tags: ['geotechnical', 'foundation', 'bearing'],
-  },
-];
+const INITIAL_SAVED_HISTORY: SavedHistoryItem[] = [];
 
 // ============================================================================
 // CONTEXT CREATION & PROVIDER
@@ -271,6 +213,39 @@ const INITIAL_SAVED_HISTORY: SavedHistoryItem[] = [
 const CivilLabContext = createContext<CivilLabContextType | undefined>(undefined);
 
 export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Purge previous user logs on version mismatch while retaining system settings
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const storedVer = localStorage.getItem(CIVILLAB_CONTEXT_VERSION_KEY);
+      if (storedVer !== CURRENT_CIVILLAB_CONTEXT_VERSION) {
+        console.info('[CivilLabContext] Version mismatch detected. Purging previous user logs while retaining system settings.');
+        localStorage.removeItem('pb_civillab_saved_history_v2');
+        localStorage.removeItem('pb_civillab_saved_history_v1');
+        localStorage.removeItem('pb_civillab_search_history_v2');
+        localStorage.removeItem('pb_civillab_search_history_v1');
+        localStorage.removeItem(STORAGE_KEYS.SAVED_HISTORY);
+        localStorage.removeItem(STORAGE_KEYS.SEARCH_HISTORY);
+
+        // Migrate system settings if not already present in v3
+        const oldProfile = localStorage.getItem('pb_civillab_user_profile_v2');
+        if (oldProfile && !localStorage.getItem(STORAGE_KEYS.USER_PROFILE)) {
+          localStorage.setItem(STORAGE_KEYS.USER_PROFILE, oldProfile);
+        }
+        const oldPdf = localStorage.getItem('pb_civillab_pdf_preset_v2');
+        if (oldPdf && !localStorage.getItem(STORAGE_KEYS.PDF_PRESET)) {
+          localStorage.setItem(STORAGE_KEYS.PDF_PRESET, oldPdf);
+        }
+        const oldPinned = localStorage.getItem('pb_civillab_pinned_tools_v2');
+        if (oldPinned && !localStorage.getItem(STORAGE_KEYS.PINNED_TOOLS)) {
+          localStorage.setItem(STORAGE_KEYS.PINNED_TOOLS, oldPinned);
+        }
+
+        localStorage.setItem(CIVILLAB_CONTEXT_VERSION_KEY, CURRENT_CIVILLAB_CONTEXT_VERSION);
+      }
+    } catch (e) {
+      console.warn('[CivilLabContext] Purge error:', e);
+    }
+  }
   // 1. Active Page & Active Calculator
   const [activePage, setActivePageState] = useState<ActivePage>(() => {
     if (typeof window === 'undefined') return 'home';

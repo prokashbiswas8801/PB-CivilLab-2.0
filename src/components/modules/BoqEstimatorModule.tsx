@@ -270,59 +270,92 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold mb-1">Contingency (%)</label>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="block text-[11px] font-semibold truncate">Contingency (%)</label>
+              {activeWorkspace.boq.contingencyPercent === 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="0.5"
+              step="any"
               min="0"
               max="50"
               value={activeWorkspace.boq.contingencyPercent}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, contingencyPercent: val },
+                  boq: { ...ws.boq, contingencyPercent: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
+                activeWorkspace.boq.contingencyPercent === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
+              }`}
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold mb-1">CP&amp;OH Margin (%)</label>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="block text-[11px] font-semibold truncate">CP&amp;OH Margin (%)</label>
+              {activeWorkspace.boq.contractorOverheadPercent === 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="0.5"
+              step="any"
               min="0"
               max="60"
               value={activeWorkspace.boq.contractorOverheadPercent}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, contractorOverheadPercent: val },
+                  boq: { ...ws.boq, contractorOverheadPercent: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
+                activeWorkspace.boq.contractorOverheadPercent === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
+              }`}
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold mb-1">VAT / Tax (%)</label>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="block text-[11px] font-semibold truncate">VAT / Tax (%)</label>
+              {activeWorkspace.boq.vatTaxPercent === 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="0.5"
+              step="any"
               min="0"
               max="50"
               value={activeWorkspace.boq.vatTaxPercent}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, vatTaxPercent: val },
+                  boq: { ...ws.boq, vatTaxPercent: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
+                activeWorkspace.boq.vatTaxPercent === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
+              }`}
             />
           </div>
         </div>
@@ -451,14 +484,27 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold mb-1">Nos / Count</label>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="text-[11px] font-semibold">Nos / Count</label>
+              {itemMembers === 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              min="1"
-              step="1"
+              step="any"
               value={itemMembers}
-              onChange={(e) => setItemMembers(Number(e.target.value))}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setItemMembers(isNaN(val) ? 0 : val);
+              }}
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
+                itemMembers === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
+              }`}
             />
           </div>
         </div>
@@ -496,13 +542,27 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             step={0.01}
           />
           <div>
-            <label className="block text-[11px] font-semibold mb-1">Deduction</label>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="text-[11px] font-semibold">Deduction</label>
+              {itemDeduction === 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="0.01"
+              step="any"
               value={itemDeduction}
-              onChange={(e) => setItemDeduction(Number(e.target.value))}
-              className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setItemDeduction(isNaN(val) ? 0 : val);
+              }}
+              className={`w-full touch-target-48 px-2 rounded-lg border font-mono text-xs transition-colors ${
+                itemDeduction === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
+              }`}
             />
           </div>
         </div>
@@ -510,23 +570,46 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
         {/* Wastage & Unit Rate */}
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="block text-[11px] font-semibold mb-1">Wastage (%)</label>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="text-[11px] font-semibold">Wastage (%)</label>
+              {itemWastage === 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="0.5"
+              step="any"
               value={itemWastage}
-              onChange={(e) => setItemWastage(Number(e.target.value))}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setItemWastage(isNaN(val) ? 0 : val);
+              }}
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
+                itemWastage === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
+              }`}
             />
           </div>
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-semibold">Unit Rate ({getCurrencySymbol(activeWorkspace.boq.currency)})</label>
+            <div className="flex items-center justify-between mb-1 gap-1">
+              <div className="flex items-center gap-1 min-w-0">
+                <label className="text-[11px] font-semibold truncate">
+                  Unit Rate ({getCurrencySymbol(activeWorkspace.boq.currency)})
+                </label>
+                {itemUnitRate === 0 && (
+                  <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0">
+                    0 ACTIVE
+                  </span>
+                )}
+              </div>
               {rateAnalysisResult && (
                 <button
                   type="button"
                   onClick={() => setItemUnitRate(itemUnit === 'cft' ? rateAnalysisResult.unitRatePerCft : rateAnalysisResult.unitRatePerM3)}
-                  className="text-[10px] text-[var(--md-sys-color-primary)] font-bold underline cursor-pointer"
+                  className="text-[10px] text-[var(--md-sys-color-primary)] font-bold underline cursor-pointer shrink-0"
                   title="Import calculated rate from Rate Analysis Workbench"
                 >
                   Use Analysis ({itemUnit === 'cft' ? `${rateAnalysisResult.unitRatePerCft.toFixed(2)}/cft` : `${rateAnalysisResult.unitRatePerM3.toFixed(2)}/m³`})
@@ -535,10 +618,17 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             </div>
             <input
               type="number"
-              step="0.1"
+              step="any"
               value={itemUnitRate}
-              onChange={(e) => setItemUnitRate(Number(e.target.value))}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setItemUnitRate(isNaN(val) ? 0 : val);
+              }}
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
+                itemUnitRate === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
+              }`}
             />
           </div>
         </div>
@@ -1177,17 +1267,33 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
                                   )}
                                 </td>
                                 <td className="py-2 px-2 text-center">{it.numberOfMembers}</td>
-                                <td className="py-2 px-2 text-right">{it.lengthM > 0 ? it.lengthM.toFixed(2) : '-'}</td>
-                                <td className="py-2 px-2 text-right">{it.widthM > 0 ? it.widthM.toFixed(2) : '-'}</td>
-                                <td className="py-2 px-2 text-right">{it.heightM > 0 ? it.heightM.toFixed(2) : '-'}</td>
+                                <td className={`py-2 px-2 text-right ${it.lengthM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                                  {it.lengthM.toFixed(2)}
+                                </td>
+                                <td className={`py-2 px-2 text-right ${it.widthM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                                  {it.widthM.toFixed(2)}
+                                </td>
+                                <td className={`py-2 px-2 text-right ${it.heightM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                                  {it.heightM.toFixed(2)}
+                                </td>
                                 <td className="py-2 px-2 text-center font-bold">{it.unit}</td>
-                                <td className="py-2 px-2 text-right font-bold">
+                                <td className={`py-2 px-2 text-right font-bold ${it.totalBillableQty === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
                                   {it.totalBillableQty.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
+                                  {it.totalBillableQty === 0 && (
+                                    <span className="inline-block ml-1 px-1 py-0.2 text-[8px] font-mono font-bold rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                                      0
+                                    </span>
+                                  )}
                                 </td>
-                                <td className="py-2 px-2 text-right">
+                                <td className={`py-2 px-2 text-right ${it.unitRate === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
                                   {it.unitRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  {it.unitRate === 0 && (
+                                    <span className="inline-block ml-1 px-1 py-0.2 text-[8px] font-mono font-bold rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                                      0
+                                    </span>
+                                  )}
                                 </td>
-                                <td className="py-2 px-2 text-right font-bold text-[var(--md-sys-color-on-surface)] whitespace-nowrap">
+                                <td className={`py-2 px-2 text-right font-bold whitespace-nowrap ${it.itemTotalAmount === 0 ? 'text-amber-600 dark:text-amber-400' : 'text-[var(--md-sys-color-on-surface)]'}`}>
                                   {it.itemTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </td>
                                 <td className="py-2 px-2 text-center whitespace-nowrap">

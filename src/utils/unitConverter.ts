@@ -50,17 +50,23 @@ export const EXACT_CONVERSION = {
   CHHATAK_TO_M2: 4.1806368,    // 45 sq ft = 1/16 Katha
   KARA_TO_M2: 5.01676416,      // 54 sq ft = 1/4 Ganda
 
-  // Length: 1 ft = 0.3048 m, 1 in = 0.0254 m
+  // Length: 1 ft = 0.3048 m, 1 in = 0.0254 m, 1 suta = 1/8 in = 3.175 mm
   FT_TO_M: 0.3048,
   M_TO_FT: 1 / 0.3048, // ~3.2808398950131233
   IN_TO_M: 0.0254,
   M_TO_IN: 1 / 0.0254, // ~39.37007874015748
+  SUTA_TO_M: 0.003175, // 1/8 inch = 3.175 mm (Local Bangladesh rebar/timber sizing)
+  M_TO_SUTA: 1 / 0.003175, // ~314.96062992125985
   YD_TO_M: 0.9144,
   MI_TO_M: 1609.344,
   CHAIN_TO_M: 20.1168, // 66 ft (Gunter's Survey Chain)
   LINK_TO_M: 0.201168, // 7.92 in (1/100 chain)
   FATHOM_TO_M: 1.8288, // 6 ft
   ROD_TO_M: 5.0292,    // 16.5 ft (Perch / Pole)
+
+  // Volume: Cement bag nominal batch volume = 1.25 cft = 0.03539605824 m3 (BNBC/PWD standard)
+  BAG_CEMENT_VOL_M3: 1.25 * 0.028316846592, // 0.03539605824 m3
+
 
   // Force & Stress
   KN_TO_N: 1000,
@@ -158,12 +164,14 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'km', name: 'Kilometer', symbol: 'km', category: 'length', toBaseFactor: 1000.0, description: 'Highway alignment & chainage (1000 m)', system: 'metric' },
     { id: 'in', name: 'Inch', symbol: 'in', category: 'length', toBaseFactor: EXACT_CONVERSION.IN_TO_M, description: 'Imperial architectural inch (25.4 mm)', system: 'imperial' },
     { id: 'ft', name: 'Foot', symbol: 'ft', category: 'length', toBaseFactor: EXACT_CONVERSION.FT_TO_M, description: 'Imperial architectural foot (12 in = 0.3048 m)', system: 'imperial' },
+    { id: 'suta', name: 'Suta (সুতা / 1/8 inch)', symbol: 'suta', category: 'length', toBaseFactor: EXACT_CONVERSION.SUTA_TO_M, description: 'Bangladesh site rebar/timber unit (1 in = 8 suta, 1 suta = 3.175 mm)', isRegional: true, system: 'regional' },
+    { id: 'soot', name: 'Soot (Suta Alias)', symbol: 'suta', category: 'length', toBaseFactor: EXACT_CONVERSION.SUTA_TO_M, description: 'Subcontinental rebar suta alias (3.175 mm)', isRegional: true, system: 'regional' },
     { id: 'yd', name: 'Yard', symbol: 'yd', category: 'length', toBaseFactor: EXACT_CONVERSION.YD_TO_M, description: 'Survey yard (3 ft = 0.9144 m)', system: 'imperial' },
     { id: 'mi', name: 'Statute Mile', symbol: 'mi', category: 'length', toBaseFactor: EXACT_CONVERSION.MI_TO_M, description: 'Statute road mile (5,280 ft = 1,609.344 m)', system: 'imperial' },
     { id: 'mile', name: 'Mile (Statute)', symbol: 'mi', category: 'length', toBaseFactor: EXACT_CONVERSION.MI_TO_M, description: 'Statute road mile alias', system: 'imperial' },
-    { id: 'rft', name: 'Running Foot (RFT)', symbol: 'rft', category: 'length', toBaseFactor: EXACT_CONVERSION.FT_TO_M, description: 'Linear construction takeoff foot', system: 'imperial' },
+    { id: 'rft', name: 'Running Foot (RFT)', symbol: 'rft', category: 'length', toBaseFactor: EXACT_CONVERSION.FT_TO_M, description: 'Linear construction takeoff foot (0.3048 m)', system: 'imperial' },
     { id: 'rm', name: 'Running Meter (RMT)', symbol: 'rm', category: 'length', toBaseFactor: 1.0, description: 'Linear construction takeoff meter', system: 'metric' },
-    { id: 'ft-in', name: 'Feet-Inch (Arch)', symbol: `ft'-in"`, category: 'length', toBaseFactor: EXACT_CONVERSION.FT_TO_M, description: `Architectural composite notation (e.g. 12'-6 1/2")`, system: 'imperial' },
+    { id: 'ft-in', name: 'Feet-Inch (Arch / Site)', symbol: `ft'-in"`, category: 'length', toBaseFactor: EXACT_CONVERSION.FT_TO_M, description: `Architectural composite notation (e.g. 12'-6" or 12' 6" 4 suta)`, system: 'imperial' },
     { id: 'chain', name: "Gunter's Chain", symbol: 'ch', category: 'length', toBaseFactor: EXACT_CONVERSION.CHAIN_TO_M, description: 'Cadastral survey chain (66 ft = 20.1168 m = 100 links)', system: 'imperial' },
     { id: 'link', name: 'Survey Link', symbol: 'li', category: 'length', toBaseFactor: EXACT_CONVERSION.LINK_TO_M, description: 'Cadastral link (7.92 in = 0.201168 m)', system: 'imperial' },
     { id: 'fathom', name: 'Fathom', symbol: 'fath', category: 'length', toBaseFactor: EXACT_CONVERSION.FATHOM_TO_M, description: 'Marine/hydraulics sounding depth (6 ft = 1.8288 m)', system: 'imperial' },
@@ -175,7 +183,7 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'cm2', name: 'Square Centimeter', symbol: 'cm²', category: 'area', toBaseFactor: 1e-4, description: 'Metric section area', system: 'metric' },
     { id: 'km2', name: 'Square Kilometer', symbol: 'km²', category: 'area', toBaseFactor: 1e6, description: 'Catchment / watershed area (1 km² = 100 ha)', system: 'metric' },
     { id: 'ft2', name: 'Square Foot (SFT)', symbol: 'sq ft', category: 'area', toBaseFactor: EXACT_CONVERSION.SFT_TO_M2, description: 'Floor & slab plan area (0.092903 m²)', system: 'imperial' },
-    { id: 'sft', name: 'Square Foot (SFT)', symbol: 'sft', category: 'area', toBaseFactor: EXACT_CONVERSION.SFT_TO_M2, description: 'Traditional construction square foot', system: 'imperial' },
+    { id: 'sft', name: 'Square Foot (SFT)', symbol: 'sft', category: 'area', toBaseFactor: EXACT_CONVERSION.SFT_TO_M2, description: 'Traditional construction square foot (0.092903 m²)', system: 'imperial' },
     { id: 'sqft', name: 'Square Foot (sqft)', symbol: 'sq ft', category: 'area', toBaseFactor: EXACT_CONVERSION.SFT_TO_M2, description: 'Square foot alias', system: 'imperial' },
     { id: 'in2', name: 'Square Inch', symbol: 'sq in', category: 'area', toBaseFactor: EXACT_CONVERSION.IN2_TO_M2, description: 'Imperial rebar area', system: 'imperial' },
     { id: 'yd2', name: 'Square Yard', symbol: 'sq yd', category: 'area', toBaseFactor: EXACT_CONVERSION.YD2_TO_M2, description: 'Pavement surface area (9 sq ft)', system: 'imperial' },
@@ -188,23 +196,24 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'sqmi', name: 'Square Mile', symbol: 'sq mi', category: 'area', toBaseFactor: EXACT_CONVERSION.SQMI_TO_M2, description: '640 acres watershed area', system: 'imperial' },
 
     // South Asian Regional Land Units (Authoritative standards):
-    { id: 'decimal', name: 'Decimal (Satang/Shatak)', symbol: 'dec', category: 'area', toBaseFactor: EXACT_CONVERSION.DECIMAL_TO_M2, description: '1/100 Acre = 435.6 sq ft = 40.4686 m²', isRegional: true, system: 'regional' },
-    { id: 'katha', name: 'Katha (Bengal Standard)', symbol: 'katha', category: 'area', toBaseFactor: EXACT_CONVERSION.KATHA_TO_M2, description: '720 sq ft = 1.65289 Decimals = 66.8902 m²', isRegional: true, system: 'regional' },
-    { id: 'bigha', name: 'Bigha (Standard Bengal)', symbol: 'bigha', category: 'area', toBaseFactor: EXACT_CONVERSION.BIGHA_TO_M2, description: '20 Kathas = 14,400 sq ft = 33.0579 Decimals = 1,337.80 m²', isRegional: true, system: 'regional' },
+    { id: 'decimal', name: 'Decimal / Shatak (শতক / ডেসিমাল)', symbol: 'dec', category: 'area', toBaseFactor: EXACT_CONVERSION.DECIMAL_TO_M2, description: '1/100 Acre = 435.6 sq ft = 40.4686 m²', isRegional: true, system: 'regional' },
+    { id: 'katha', name: 'Katha (কাঠা / Bengal Standard)', symbol: 'katha', category: 'area', toBaseFactor: EXACT_CONVERSION.KATHA_TO_M2, description: '720 sq ft = 1.65289 Decimals = 66.8902 m²', isRegional: true, system: 'regional' },
+    { id: 'bigha', name: 'Bigha (বিঘা / Standard Bengal)', symbol: 'bigha', category: 'area', toBaseFactor: EXACT_CONVERSION.BIGHA_TO_M2, description: '20 Kathas = 14,400 sq ft = 33.0579 Decimals = 1,337.80 m²', isRegional: true, system: 'regional' },
+    { id: 'chhatak', name: 'Chattak (ছটাক)', symbol: 'chhatak', category: 'area', toBaseFactor: EXACT_CONVERSION.CHHATAK_TO_M2, description: '1/16 Katha = 45 sq ft = 4.1806 m²', isRegional: true, system: 'regional' },
+    { id: 'ganda', name: 'Ganda (গণ্ডা)', symbol: 'ganda', category: 'area', toBaseFactor: EXACT_CONVERSION.GANDA_TO_M2, description: '4 Karas = 216 sq ft = 20.0671 m²', isRegional: true, system: 'regional' },
+    { id: 'kara', name: 'Kara / Kranti (কড়া)', symbol: 'kara', category: 'area', toBaseFactor: EXACT_CONVERSION.KARA_TO_M2, description: '54 sq ft = 5.0168 m² (1/4 Ganda)', isRegional: true, system: 'regional' },
     { id: 'cent', name: 'Cent (South India)', symbol: 'cent', category: 'area', toBaseFactor: EXACT_CONVERSION.CENT_TO_M2, description: '1/100 Acre = 435.6 sq ft (Kerala / Tamil Nadu / AP)', isRegional: true, system: 'regional' },
     { id: 'guntha', name: 'Guntha (Gunta)', symbol: 'guntha', category: 'area', toBaseFactor: EXACT_CONVERSION.GUNTHA_TO_M2, description: '1/40 Acre = 1,089 sq ft (33 ft × 33 ft - MH/GJ/KA)', isRegional: true, system: 'regional' },
     { id: 'ground', name: 'Ground (Tamil Nadu)', symbol: 'ground', category: 'area', toBaseFactor: EXACT_CONVERSION.GROUND_TO_M2, description: 'Standard South Indian land unit = 2,400 sq ft = 222.97 m²', isRegional: true, system: 'regional' },
     { id: 'kanal', name: 'Kanal (North India)', symbol: 'kanal', category: 'area', toBaseFactor: EXACT_CONVERSION.KANAL_TO_M2, description: '1/8 Acre = 20 Marlas = 5,445 sq ft (Punjab/Haryana/J&K)', isRegional: true, system: 'regional' },
     { id: 'marla', name: 'Marla (Standard)', symbol: 'marla', category: 'area', toBaseFactor: EXACT_CONVERSION.MARLA_TO_M2, description: '1/160 Acre = 272.25 sq ft = 25.2929 m²', isRegional: true, system: 'regional' },
-    { id: 'ganda', name: 'Ganda (Bengal)', symbol: 'ganda', category: 'area', toBaseFactor: EXACT_CONVERSION.GANDA_TO_M2, description: '4 Karas = 216 sq ft = 20.0671 m²', isRegional: true, system: 'regional' },
-    { id: 'chhatak', name: 'Chhatak', symbol: 'chhatak', category: 'area', toBaseFactor: EXACT_CONVERSION.CHHATAK_TO_M2, description: '1/16 Katha = 45 sq ft = 4.1806 m²', isRegional: true, system: 'regional' },
-    { id: 'kara', name: 'Kara / Kranti', symbol: 'kara', category: 'area', toBaseFactor: EXACT_CONVERSION.KARA_TO_M2, description: '54 sq ft = 5.0168 m² (1/4 Ganda)', isRegional: true, system: 'regional' },
   ],
   volume: [
     { id: 'm3', name: 'Cubic Meter', symbol: 'm³', category: 'volume', toBaseFactor: 1.0, description: 'SI base volume unit', system: 'metric' },
     { id: 'cft', name: 'Cubic Foot (CFT)', symbol: 'cft', category: 'volume', toBaseFactor: EXACT_CONVERSION.CFT_TO_M3, description: 'Traditional concrete/sand volume (35.315 cft/m³)', system: 'imperial' },
     { id: 'ft3', name: 'Cubic Foot (Alias)', symbol: 'cu ft', category: 'volume', toBaseFactor: EXACT_CONVERSION.CFT_TO_M3, description: 'Imperial cubic foot', system: 'imperial' },
     { id: 'cum', name: 'Cubic Meter (cum)', symbol: 'cu m', category: 'volume', toBaseFactor: 1.0, description: 'Takeoff volume alias', system: 'metric' },
+    { id: 'bag_cement', name: 'Cement Bag (1.25 cft / 50kg)', symbol: 'bag', category: 'volume', toBaseFactor: EXACT_CONVERSION.BAG_CEMENT_VOL_M3, description: 'Standard cement bag volume in batching (1.25 cft = 0.0354 m³)', isRegional: true, system: 'regional' },
     { id: 'liter', name: 'Liter', symbol: 'L', category: 'volume', toBaseFactor: EXACT_CONVERSION.LITER_TO_M3, description: 'Water mixing volume (1 L = 0.001 m³)', system: 'metric' },
     { id: 'L', name: 'Liter (Alias)', symbol: 'L', category: 'volume', toBaseFactor: EXACT_CONVERSION.LITER_TO_M3, description: 'Water mixing volume', system: 'metric' },
     { id: 'ml', name: 'Milliliter', symbol: 'mL', category: 'volume', toBaseFactor: 1e-6, description: 'Admixture fluid measure (1 cm³)', system: 'metric' },
@@ -222,13 +231,13 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'ton_us', name: 'Short Ton (US)', symbol: 'ton (US)', category: 'mass', toBaseFactor: EXACT_CONVERSION.TON_US_TO_KG, description: '2,000 lbs short ton (907.185 kg)', system: 'imperial' },
     { id: 'ton_uk', name: 'Long Ton (UK)', symbol: 'ton (UK)', category: 'mass', toBaseFactor: EXACT_CONVERSION.TON_UK_TO_KG, description: '2,240 lbs long ton (1,016.05 kg)', system: 'imperial' },
     { id: 'bag50', name: 'Cement Bag (50 kg)', symbol: 'bag', category: 'mass', toBaseFactor: EXACT_CONVERSION.CEMENT_BAG_KG, description: 'Standard 50 kg Portland cement bag', system: 'universal' },
+    { id: 'maund', name: 'Maund / Mon (মণ)', symbol: 'mon', category: 'mass', toBaseFactor: EXACT_CONVERSION.MAUND_TO_KG, description: 'Regional agricultural/site weight (40 seers = 37.324 kg)', isRegional: true, system: 'regional' },
+    { id: 'seer', name: 'Seer / Sher (শের)', symbol: 'seer', category: 'mass', toBaseFactor: EXACT_CONVERSION.SEER_TO_KG, description: 'Traditional weight (0.9331 kg = 80 tolas)', isRegional: true, system: 'regional' },
     { id: 'lb', name: 'Pound (Avoirdupois)', symbol: 'lb', category: 'mass', toBaseFactor: EXACT_CONVERSION.LB_TO_KG, description: 'Imperial mass pound (0.453592 kg)', system: 'imperial' },
     { id: 'oz', name: 'Ounce (Avoirdupois)', symbol: 'oz', category: 'mass', toBaseFactor: EXACT_CONVERSION.OZ_TO_KG, description: '1/16 lb (28.3495 g)', system: 'imperial' },
     { id: 'g', name: 'Gram', symbol: 'g', category: 'mass', toBaseFactor: 0.001, description: 'Laboratory material mass', system: 'metric' },
     { id: 'mg', name: 'Milligram', symbol: 'mg', category: 'mass', toBaseFactor: 1e-6, description: 'Precision chemical additive mass', system: 'metric' },
     { id: 'quintal', name: 'Quintal', symbol: 'q', category: 'mass', toBaseFactor: 100.0, description: '100 kg bulk grain/steel weight', system: 'metric' },
-    { id: 'maund', name: 'Maund (Mon)', symbol: 'mon', category: 'mass', toBaseFactor: EXACT_CONVERSION.MAUND_TO_KG, description: 'Regional agricultural weight (40 seers = 37.324 kg)', isRegional: true, system: 'regional' },
-    { id: 'seer', name: 'Seer (Sher)', symbol: 'seer', category: 'mass', toBaseFactor: EXACT_CONVERSION.SEER_TO_KG, description: 'Traditional weight (0.9331 kg = 80 tolas)', isRegional: true, system: 'regional' },
     { id: 'tola', name: 'Tola', symbol: 'tola', category: 'mass', toBaseFactor: EXACT_CONVERSION.TOLA_TO_KG, description: 'Traditional precious metal/spice weight (11.6638 g)', isRegional: true, system: 'regional' },
   ],
   pressure: [
@@ -590,6 +599,16 @@ export function parseFeetInchString(rawInput: string): FeetInchParseResult {
     };
   }
 
+  // Translate Bengali numerals (০-৯) to Latin digits (0-9)
+  const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  clean = clean.replace(/[০-৯]/g, (d) => String(bengaliDigits.indexOf(d)));
+
+  // Normalize Bengali words for suta/feet/inch
+  clean = clean
+    .replace(/\b(?:সুতা|সূতা|সুত)\b/gi, 'suta')
+    .replace(/\b(?:ইঞ্চি|ইঞ্চ)\b/gi, 'in')
+    .replace(/\b(?:ফিট|ফুট)\b/gi, 'ft');
+
   // Handle negative sign
   let isNegative = false;
   if (clean.startsWith('-')) {
@@ -625,11 +644,50 @@ export function parseFeetInchString(rawInput: string): FeetInchParseResult {
   let totalInches = 0;
   let parsed = false;
 
-  // Pattern 1: Standalone fraction only: e.g. "3/4"", "1/2", "5/8 in"
-  const standaloneFractionMatch = clean.match(/^(\d+)\s*\/\s*(\d+)\s*(?:"|in|inch|inches)?$/i);
-  if (standaloneFractionMatch && standaloneFractionMatch[2] !== '0') {
-    totalInches = parseFloat(standaloneFractionMatch[1]) / parseFloat(standaloneFractionMatch[2]);
+  // Pattern 0: Pure Suta input (e.g. "4 suta", "4 soot", "4suta", "6.5 suta")
+  const pureSutaMatch = clean.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:suta|soot|sut)\b/i);
+  if (pureSutaMatch) {
+    const sutaVal = parseFloat(pureSutaMatch[1]);
+    totalInches = sutaVal / 8; // 1 suta = 1/8 inch
     parsed = true;
+  }
+
+  // Pattern 0b: Compound Feet - Inch - Suta with explicit markers
+  // e.g. "12' 6\" 4 suta", "12' 6\" 4", "12ft 6in 4suta", "12'-6\" 4 suta", "12-6-4 suta"
+  if (!parsed) {
+    const compoundSutaMatch = clean.match(
+      /^(\d+(?:\.\d+)?)\s*(?:'|ft|feet)?\s*[-–—\s]?\s*(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?\s*[-–—\s]?\s*(\d+(?:\.\d+)?)\s*(?:suta|soot|sut|s)?$/i
+    );
+    // Ensure it looks like a tri-part input with at least suta or feet/inch marker or 3 digits
+    if (compoundSutaMatch && (clean.includes('suta') || clean.includes('soot') || (clean.includes("'") && clean.includes('"')) || /^\d+\s*[-–—]\s*\d+\s*[-–—]\s*\d+/.test(clean))) {
+      const ft = parseFloat(compoundSutaMatch[1]);
+      const inches = parseFloat(compoundSutaMatch[2]);
+      const suta = parseFloat(compoundSutaMatch[3]);
+      totalInches = ft * 12 + inches + suta / 8;
+      parsed = true;
+    }
+  }
+
+  // Pattern 0c: Inch + Suta only (e.g. "6\" 4 suta", "6 in 4 suta", "6-4 suta")
+  if (!parsed) {
+    const inchSutaMatch = clean.match(
+      /^(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?\s*[-–—\s]?\s*(\d+(?:\.\d+)?)\s*(?:suta|soot|sut)\b/i
+    );
+    if (inchSutaMatch) {
+      const inches = parseFloat(inchSutaMatch[1]);
+      const suta = parseFloat(inchSutaMatch[2]);
+      totalInches = inches + suta / 8;
+      parsed = true;
+    }
+  }
+
+  // Pattern 1: Standalone fraction only: e.g. "3/4"", "1/2", "5/8 in"
+  if (!parsed) {
+    const standaloneFractionMatch = clean.match(/^(\d+)\s*\/\s*(\d+)\s*(?:"|in|inch|inches)?$/i);
+    if (standaloneFractionMatch && standaloneFractionMatch[2] !== '0') {
+      totalInches = parseFloat(standaloneFractionMatch[1]) / parseFloat(standaloneFractionMatch[2]);
+      parsed = true;
+    }
   }
 
   // Pattern 2: Standalone whole + fraction inches: e.g. "4 1/2"", "4-1/2 in", "4 1/2"
@@ -658,20 +716,26 @@ export function parseFeetInchString(rawInput: string): FeetInchParseResult {
       // Extract remaining inch portion
       const remainder = clean.substring(feetMatch[0].length).replace(/^[-–—\s]+/, '').trim();
       if (remainder) {
-        // Remainder with whole + fraction: e.g. "6 1/2"", "6-1/2""
-        const rWholeFrac = remainder.match(/^(\d+)\s*[-_ ]\s*(\d+)\s*\/\s*(\d+)\s*(?:"|in|inch|inches)?$/i);
-        if (rWholeFrac && rWholeFrac[3] !== '0') {
-          totalInches += parseFloat(rWholeFrac[1]) + parseFloat(rWholeFrac[2]) / parseFloat(rWholeFrac[3]);
+        // Remainder with suta: e.g. "6" 4 suta" or "6 4 suta"
+        const rSuta = remainder.match(/^(\d+(?:\.\d+)?)\s*(?:"|in)?\s*[-–—\s]?\s*(\d+(?:\.\d+)?)\s*(?:suta|soot|sut)\b/i);
+        if (rSuta) {
+          totalInches += parseFloat(rSuta[1]) + parseFloat(rSuta[2]) / 8;
         } else {
-          // Remainder with standalone fraction: e.g. "1/2""
-          const rFracOnly = remainder.match(/^(\d+)\s*\/\s*(\d+)\s*(?:"|in|inch|inches)?$/i);
-          if (rFracOnly && rFracOnly[2] !== '0') {
-            totalInches += parseFloat(rFracOnly[1]) / parseFloat(rFracOnly[2]);
+          // Remainder with whole + fraction: e.g. "6 1/2"", "6-1/2""
+          const rWholeFrac = remainder.match(/^(\d+)\s*[-_ ]\s*(\d+)\s*\/\s*(\d+)\s*(?:"|in|inch|inches)?$/i);
+          if (rWholeFrac && rWholeFrac[3] !== '0') {
+            totalInches += parseFloat(rWholeFrac[1]) + parseFloat(rWholeFrac[2]) / parseFloat(rWholeFrac[3]);
           } else {
-            // Remainder with decimal/integer: e.g. "6.5"", "6 in", "6"
-            const rNum = remainder.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?$/i);
-            if (rNum) {
-              totalInches += parseFloat(rNum[1]);
+            // Remainder with standalone fraction: e.g. "1/2""
+            const rFracOnly = remainder.match(/^(\d+)\s*\/\s*(\d+)\s*(?:"|in|inch|inches)?$/i);
+            if (rFracOnly && rFracOnly[2] !== '0') {
+              totalInches += parseFloat(rFracOnly[1]) / parseFloat(rFracOnly[2]);
+            } else {
+              // Remainder with decimal/integer: e.g. "6.5"", "6 in", "6"
+              const rNum = remainder.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?$/i);
+              if (rNum) {
+                totalInches += parseFloat(rNum[1]);
+              }
             }
           }
         }
@@ -812,7 +876,12 @@ function formatInchesResult(totalInches: number): FeetInchParseResult {
     fractionText = ` ${num}/${den}`;
   }
 
-  const fractionString = `${sign}${finalFt}'-${finalWholeInches}${fractionText}"`;
+  // Calculate local Bangladesh suta (1 inch = 8 suta)
+  const exactSutaTotal = remInches * 8;
+  const wholeSuta = Math.round(exactSutaTotal % 8);
+  const sutaNote = wholeSuta > 0 ? ` (${wholeSuta} suta)` : '';
+
+  const fractionString = `${sign}${finalFt}'-${finalWholeInches}${fractionText}"${sutaNote}`;
   const normalizedString = `${sign}${finalFt} ft ${remInches.toFixed(3)} in`;
   const decimalFeetString = `${sign}${Math.abs(totalFeet).toFixed(4)} ft`;
   const metricString = `${sign}${Math.abs(totalMeters).toFixed(4)} m`;

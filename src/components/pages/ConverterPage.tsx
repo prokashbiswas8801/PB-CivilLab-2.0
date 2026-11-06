@@ -53,6 +53,8 @@ export const ConverterPage: React.FC = () => {
     km: 1000,
     in: EXACT_CONVERSION.IN_TO_M,
     ft: EXACT_CONVERSION.FT_TO_M,
+    suta: EXACT_CONVERSION.SUTA_TO_M,
+    rft: EXACT_CONVERSION.FT_TO_M,
     yd: EXACT_CONVERSION.YD_TO_M,
     mi: EXACT_CONVERSION.MI_TO_M,
     chain: EXACT_CONVERSION.CHAIN_TO_M,
@@ -132,6 +134,7 @@ export const ConverterPage: React.FC = () => {
   const volFactors: Record<string, number> = {
     m3: 1,
     cft: EXACT_CONVERSION.CFT_TO_M3,
+    bag_cement: EXACT_CONVERSION.BAG_CEMENT_VOL_M3,
     liter: EXACT_CONVERSION.LITER_TO_M3,
     gal_us: EXACT_CONVERSION.GAL_US_TO_M3,
     gal_uk: EXACT_CONVERSION.GAL_UK_TO_M3,

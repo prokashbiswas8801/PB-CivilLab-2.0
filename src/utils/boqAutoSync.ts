@@ -6,6 +6,8 @@ import {
   CalculationEnvelope,
   RebarBBSResult,
   ConcreteMixResult,
+  MasonryResult,
+  PileCapacityResult,
 } from './calculations';
 
 export interface AutoSyncResult {
@@ -234,12 +236,403 @@ export function syncConcreteMixToBoq(
 }
 
 /**
+ * Synchronizes brickwork, wall plastering, and floor finishes from Masonry & Finishes module
+ * directly into the BOQ Estimator takeoff schedule.
+ */
+export function syncMasonryToBoq(
+  workspace: CivilWorkspace,
+  masonryEnvelope: CalculationEnvelope<MasonryResult>
+): AutoSyncResult {
+  const result = masonryEnvelope.result;
+  if (!result || (result.netWallVolumeM3 <= 0 && result.floorAreaM2 <= 0 && result.plasterAreaM2 <= 0)) {
+    return {
+      updatedWorkspace: workspace,
+      syncedItemsCount: 0,
+      syncedItemDescriptions: [],
+      message: 'No Masonry & Finishes volumetric data available to synchronize.',
+    };
+  }
+
+  const existingItems = [...workspace.boq.items];
+  const syncedDescriptions: string[] = [];
+
+  const syncEntries: {
+    key: string;
+    description: string;
+    category: 'masonry' | 'finishing';
+    unit: 'm3' | 'm2';
+    qty: number;
+    defaultRate: number;
+  }[] = [];
+
+  if (result.netWallVolumeM3 > 0) {
+    syncEntries.push({
+      key: 'brick-masonry',
+      description: `First Class Brickwork in 1:6 Cement-Sand Mortar (Net Vol: ${result.netWallVolumeM3.toFixed(2)} m³, ${result.bricksWithWastageCount} Bricks) — Auto-Synced from Masonry`,
+      category: 'masonry',
+      unit: 'm3',
+      qty: Number(result.netWallVolumeM3.toFixed(2)),
+      defaultRate: 7200,
+    });
+  }
+
+  if (result.plasterAreaM2 > 0) {
+    syncEntries.push({
+      key: 'wall-plaster',
+      description: `12mm / 15mm Cement Sand Plaster (1:4) to Wall Surfaces — Auto-Synced from Masonry`,
+      category: 'finishing',
+      unit: 'm2',
+      qty: Number(result.plasterAreaM2.toFixed(2)),
+      defaultRate: 210,
+    });
+  }
+
+  if (result.floorAreaM2 > 0) {
+    syncEntries.push({
+      key: 'floor-tiles',
+      description: `Homogeneous Floor Tiles with Neat Cement Grouting (${result.tilesWithWastageCount} Tiles) — Auto-Synced from Finishes`,
+      category: 'finishing',
+      unit: 'm2',
+      qty: Number(result.floorAreaM2.toFixed(2)),
+      defaultRate: 1850,
+    });
+  }
+
+  // Paint & Wall Putty Schedule
+  if (result.paintPuttySchedule && result.paintPuttySchedule.finishingSurfaceAreaM2 > 0) {
+    const p = result.paintPuttySchedule;
+    syncEntries.push({
+      key: 'wall-putty',
+      description: `Interior/Exterior Wall Putty Application (${p.puttyCoats} Coats, ${p.puttyKgRequired} kg / ${p.puttyBags20Kg} Bags) — Auto-Synced from Finishes`,
+      category: 'finishing',
+      unit: 'm2',
+      qty: Number(p.finishingSurfaceAreaM2.toFixed(2)),
+      defaultRate: 85,
+    });
+    syncEntries.push({
+      key: 'paint-finish',
+      description: `Weather-Shield / Plastic Emulsion Paint (${p.paintCoats} Coats, ${p.paintLitersRequired} Liters / ${p.paintGallons} Gal) — Auto-Synced from Finishes`,
+      category: 'finishing',
+      unit: 'm2',
+      qty: Number(p.finishingSurfaceAreaM2.toFixed(2)),
+      defaultRate: 145,
+    });
+  }
+
+  // MS Window/Veranda Grill Schedule
+  if (result.grillThaiSchedule && result.grillThaiSchedule.totalGrillWeightKg > 0) {
+    const g = result.grillThaiSchedule;
+    syncEntries.push({
+      key: 'ms-grill',
+      description: `MS Window & Veranda Protective Grills (${g.totalGrillAreaSft} SFT, ${g.totalGrillWeightMaund} Maund) — Auto-Synced from Finishes`,
+      category: 'finishing',
+      unit: 'm2',
+      qty: Number((g.totalGrillAreaSft * 0.092903).toFixed(2)), // m2
+      defaultRate: 1850, // per m2 (~170 BDT/sft)
+    });
+  }
+
+  // Thai Aluminum Window & Door Schedule
+  if (result.grillThaiSchedule && result.grillThaiSchedule.totalThaiAreaSft > 0) {
+    const t = result.grillThaiSchedule;
+    syncEntries.push({
+      key: 'thai-aluminum',
+      description: `Thai Aluminum Sliding Windows & Door Frames (${t.totalThaiAreaSft} SFT, ${t.totalThaiFrameRft} RFT frame) — Auto-Synced from Finishes`,
+      category: 'finishing',
+      unit: 'm2',
+      qty: Number((t.totalThaiAreaSft * 0.092903).toFixed(2)), // m2
+      defaultRate: 4800, // per m2 (~450 BDT/sft)
+    });
+  }
+
+  let currentItems = [...existingItems];
+
+  for (const entry of syncEntries) {
+    const existingIndex = currentItems.findIndex(
+      (it) => it.description.includes(entry.key) || it.description === entry.description
+    );
+    if (existingIndex >= 0) {
+      currentItems = currentItems.map((it, idx) =>
+        idx === existingIndex
+          ? {
+              ...it,
+              description: entry.description,
+              unit: entry.unit,
+              numberOfMembers: 1,
+              lengthM: entry.qty,
+              widthM: 1,
+              heightM: 1,
+              deductionQty: 0,
+              unitRate: it.unitRate > 0 ? it.unitRate : entry.defaultRate,
+            }
+          : it
+      );
+    } else {
+      const newItem: TakeoffLineItem = {
+        id: `sync-masonry-${entry.key}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        itemNo: `MS-${currentItems.length + 1}`,
+        description: entry.description,
+        category: entry.category,
+        numberOfMembers: 1,
+        lengthM: entry.qty,
+        widthM: 1,
+        heightM: 1,
+        deductionQty: 0,
+        unit: entry.unit,
+        wastagePercent: 3.0,
+        unitRate: entry.defaultRate,
+      };
+      currentItems.push(newItem);
+    }
+    syncedDescriptions.push(`${entry.description}: ${entry.qty} ${entry.unit}`);
+  }
+
+  const updatedWorkspace: CivilWorkspace = {
+    ...workspace,
+    boq: {
+      ...workspace.boq,
+      items: currentItems,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  return {
+    updatedWorkspace,
+    syncedItemsCount: syncEntries.length,
+    syncedItemDescriptions: syncedDescriptions,
+    message: `Successfully synchronized ${syncEntries.length} Masonry & Finish items into BOQ Takeoff Schedule.`,
+  };
+}
+
+/**
+ * Synchronizes Deep Pile Foundation concrete casting and boring quantities
+ * directly into the BOQ Estimator substructure schedule.
+ */
+export function syncPileCapacityToBoq(
+  workspace: CivilWorkspace,
+  pileEnvelope: CalculationEnvelope<PileCapacityResult>
+): AutoSyncResult {
+  const result = pileEnvelope.result;
+  if (!result || result.diameterM <= 0 || result.lengthM <= 0) {
+    return {
+      updatedWorkspace: workspace,
+      syncedItemsCount: 0,
+      syncedItemDescriptions: [],
+      message: 'No Pile Capacity geometric data available to synchronize.',
+    };
+  }
+
+  const totalPiles = result.pileGroupSummary?.totalPiles || 1;
+  const pileVol = Number((result.crossSectionAreaM2 * result.lengthM * totalPiles).toFixed(2));
+  const drillingM = Number((result.lengthM * totalPiles).toFixed(1));
+  const diaMm = Math.round(result.diameterM * 1000);
+
+  const existingItems = [...workspace.boq.items];
+  const syncedDescriptions: string[] = [];
+
+  const syncEntries: {
+    key: string;
+    description: string;
+    category: 'substructure';
+    unit: 'm3' | 'm';
+    qty: number;
+    defaultRate: number;
+  }[] = [
+    {
+      key: 'pile-casting',
+      description: `Cast-in-Situ RCC Bored Piles (${diaMm}mm Ø, ${totalPiles} Nos × ${result.lengthM}m Depth) — Auto-Synced from Pile Capacity`,
+      category: 'substructure',
+      unit: 'm3',
+      qty: pileVol,
+      defaultRate: 11500,
+    },
+    {
+      key: 'pile-boring',
+      description: `Boring / Drilling & Installation of Bored Piles (${diaMm}mm Ø) — Auto-Synced from Pile Capacity`,
+      category: 'substructure',
+      unit: 'm',
+      qty: drillingM,
+      defaultRate: 1800,
+    },
+  ];
+
+  let currentItems = [...existingItems];
+
+  for (const entry of syncEntries) {
+    const existingIndex = currentItems.findIndex(
+      (it) => it.description.includes(entry.key) || it.description === entry.description
+    );
+    if (existingIndex >= 0) {
+      currentItems = currentItems.map((it, idx) =>
+        idx === existingIndex
+          ? {
+              ...it,
+              description: entry.description,
+              unit: entry.unit,
+              numberOfMembers: 1,
+              lengthM: entry.qty,
+              widthM: 1,
+              heightM: 1,
+              deductionQty: 0,
+              unitRate: it.unitRate > 0 ? it.unitRate : entry.defaultRate,
+            }
+          : it
+      );
+    } else {
+      const newItem: TakeoffLineItem = {
+        id: `sync-pile-${entry.key}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        itemNo: `PL-${currentItems.length + 1}`,
+        description: entry.description,
+        category: entry.category,
+        numberOfMembers: 1,
+        lengthM: entry.qty,
+        widthM: 1,
+        heightM: 1,
+        deductionQty: 0,
+        unit: entry.unit,
+        wastagePercent: 3.0,
+        unitRate: entry.defaultRate,
+      };
+      currentItems.push(newItem);
+    }
+    syncedDescriptions.push(`${entry.description}: ${entry.qty} ${entry.unit}`);
+  }
+
+  const updatedWorkspace: CivilWorkspace = {
+    ...workspace,
+    boq: {
+      ...workspace.boq,
+      items: currentItems,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  return {
+    updatedWorkspace,
+    syncedItemsCount: syncEntries.length,
+    syncedItemDescriptions: syncedDescriptions,
+    message: `Successfully synchronized ${syncEntries.length} Deep Foundation items (${totalPiles} Piles, ${pileVol} m³ concrete, ${drillingM}m drilling) into BOQ Substructure Schedule.`,
+  };
+}
+
+/**
+ * Synchronizes surveying land area / earthwork directly into the BOQ Estimator.
+ */
+export function syncSurveyingEarthworkToBoq(
+  workspace: CivilWorkspace,
+  params: { landAreaSqM?: number; excavationVolumeM3?: number; description?: string }
+): AutoSyncResult {
+  const { landAreaSqM = 0, excavationVolumeM3 = 0, description } = params;
+  if (landAreaSqM <= 0 && excavationVolumeM3 <= 0) {
+    return {
+      updatedWorkspace: workspace,
+      syncedItemsCount: 0,
+      syncedItemDescriptions: [],
+      message: 'No Surveying land area or earthwork volume available to synchronize.',
+    };
+  }
+
+  const existingItems = [...workspace.boq.items];
+  const syncedDescriptions: string[] = [];
+  const syncEntries: {
+    key: string;
+    description: string;
+    category: 'substructure';
+    unit: 'm3' | 'm2';
+    qty: number;
+    defaultRate: number;
+  }[] = [];
+
+  if (landAreaSqM > 0) {
+    syncEntries.push({
+      key: 'site-clearing',
+      description: description || `Site Clearing, Grubbing & Topsoil Stripping (${landAreaSqM.toFixed(1)} m²) — Auto-Synced from Surveying`,
+      category: 'substructure',
+      unit: 'm2',
+      qty: Number(landAreaSqM.toFixed(1)),
+      defaultRate: 45,
+    });
+  }
+
+  if (excavationVolumeM3 > 0) {
+    syncEntries.push({
+      key: 'leveling-cut-fill',
+      description: `Site Grading & Profile Earthwork Cut/Fill (${excavationVolumeM3.toFixed(1)} m³) — Auto-Synced from Surveying`,
+      category: 'substructure',
+      unit: 'm3',
+      qty: Number(excavationVolumeM3.toFixed(1)),
+      defaultRate: 320,
+    });
+  }
+
+  let currentItems = [...existingItems];
+
+  for (const entry of syncEntries) {
+    const existingIndex = currentItems.findIndex(
+      (it) => it.description.includes(entry.key) || it.description === entry.description
+    );
+    if (existingIndex >= 0) {
+      currentItems = currentItems.map((it, idx) =>
+        idx === existingIndex
+          ? {
+              ...it,
+              description: entry.description,
+              unit: entry.unit,
+              numberOfMembers: 1,
+              lengthM: entry.qty,
+              widthM: 1,
+              heightM: 1,
+              deductionQty: 0,
+              unitRate: it.unitRate > 0 ? it.unitRate : entry.defaultRate,
+            }
+          : it
+      );
+    } else {
+      const newItem: TakeoffLineItem = {
+        id: `sync-surv-${entry.key}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        itemNo: `SV-${currentItems.length + 1}`,
+        description: entry.description,
+        category: entry.category,
+        numberOfMembers: 1,
+        lengthM: entry.qty,
+        widthM: 1,
+        heightM: 1,
+        deductionQty: 0,
+        unit: entry.unit,
+        wastagePercent: 0,
+        unitRate: entry.defaultRate,
+      };
+      currentItems.push(newItem);
+    }
+    syncedDescriptions.push(`${entry.description}: ${entry.qty} ${entry.unit}`);
+  }
+
+  const updatedWorkspace: CivilWorkspace = {
+    ...workspace,
+    boq: {
+      ...workspace.boq,
+      items: currentItems,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  return {
+    updatedWorkspace,
+    syncedItemsCount: syncEntries.length,
+    syncedItemDescriptions: syncedDescriptions,
+    message: `Successfully synchronized ${syncEntries.length} Surveying items into BOQ Substructure Schedule.`,
+  };
+}
+
+/**
  * Universal one-click multi-module synchronization directly into the BOQ Estimator takeoff schedule.
  */
 export function syncAllModulesToBoq(
   workspace: CivilWorkspace,
-  bbsEnvelope: CalculationEnvelope<RebarBBSResult>,
-  mixEnvelope: CalculationEnvelope<ConcreteMixResult>
+  bbsEnvelope?: CalculationEnvelope<RebarBBSResult>,
+  mixEnvelope?: CalculationEnvelope<ConcreteMixResult>,
+  masonryEnvelope?: CalculationEnvelope<MasonryResult>,
+  pileEnvelope?: CalculationEnvelope<PileCapacityResult>
 ): AutoSyncResult {
   let ws = workspace;
   const allSyncedDescriptions: string[] = [];
@@ -259,13 +652,27 @@ export function syncAllModulesToBoq(
     allSyncedDescriptions.push(...mixRes.syncedItemDescriptions);
   }
 
+  if (masonryEnvelope?.result && (masonryEnvelope.result.netWallVolumeM3 > 0 || masonryEnvelope.result.floorAreaM2 > 0)) {
+    const masRes = syncMasonryToBoq(ws, masonryEnvelope);
+    ws = masRes.updatedWorkspace;
+    totalCount += masRes.syncedItemsCount;
+    allSyncedDescriptions.push(...masRes.syncedItemDescriptions);
+  }
+
+  if (pileEnvelope?.result && pileEnvelope.result.diameterM > 0 && pileEnvelope.result.lengthM > 0) {
+    const pileRes = syncPileCapacityToBoq(ws, pileEnvelope);
+    ws = pileRes.updatedWorkspace;
+    totalCount += pileRes.syncedItemsCount;
+    allSyncedDescriptions.push(...pileRes.syncedItemDescriptions);
+  }
+
   return {
     updatedWorkspace: ws,
     syncedItemsCount: totalCount,
     syncedItemDescriptions: allSyncedDescriptions,
     message:
       totalCount > 0
-        ? `Successfully synchronized ${totalCount} items from Rebar BBS & Concrete Mix into BOQ Takeoff.`
-        : 'No valid data to synchronize from Rebar BBS or Concrete Mix.',
+        ? `Successfully synchronized ${totalCount} items from engineering modules into BOQ Takeoff Schedule.`
+        : 'No valid data to synchronize from active engineering modules.',
   };
 }

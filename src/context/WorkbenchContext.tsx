@@ -6,7 +6,7 @@ import { roundEng } from '../utils/mathEngine';
 // TYPES & DEFINITIONS
 // ============================================================================
 
-export type GlobalUnitSystem = 'SI' | 'Imperial';
+export type GlobalUnitSystem = 'SI' | 'Imperial' | 'Regional';
 
 export type EngineeringUnitCategory =
   | 'length'             // span: m <-> ft
@@ -211,12 +211,15 @@ export interface WorkbenchContextType {
 // STORAGE KEYS & DEFAULTS
 // ============================================================================
 
+export const WORKBENCH_VERSION_KEY = 'pb_civillab_workbench_version';
+export const CURRENT_WORKBENCH_VERSION = 'v3_clean';
+
 const STORAGE_KEYS = {
-  UNIT_SYSTEM: 'pb_civillab_global_unit_system_v1',
-  PROJECT_METADATA: 'pb_civillab_project_metadata_v1',
-  RECENT_TOOLS: 'pb_civillab_recent_tools_v1',
-  FAVORITE_TOOLS: 'pb_civillab_favorite_tools_v1',
-  CALC_HISTORY: 'pb_civillab_calc_history_v1',
+  UNIT_SYSTEM: 'pb_civillab_global_unit_system_v3',
+  PROJECT_METADATA: 'pb_civillab_project_metadata_v3',
+  RECENT_TOOLS: 'pb_civillab_recent_tools_v3',
+  FAVORITE_TOOLS: 'pb_civillab_favorite_tools_v3',
+  CALC_HISTORY: 'pb_civillab_calc_history_v3',
 };
 
 const DEFAULT_METADATA: ProjectMetadata = {
@@ -236,14 +239,7 @@ const DEFAULT_FAVORITES: EngineeringModuleId[] = [
   'boq-estimator',
 ];
 
-const DEFAULT_RECENT: EngineeringModuleId[] = [
-  'beam-analysis',
-  'bearing-capacity',
-  'concrete-mix',
-  'pipe-hydraulics',
-  'open-channel',
-  'boq-estimator',
-];
+const DEFAULT_RECENT: EngineeringModuleId[] = [];
 
 // ============================================================================
 // CONTEXT CREATION & HOOK
@@ -268,12 +264,40 @@ export interface WorkbenchProviderProps {
 }
 
 export const WorkbenchProvider: React.FC<WorkbenchProviderProps> = ({ children }) => {
+  // Purge previously persisted user logs/history on version mismatch while retaining system settings
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const storedVer = localStorage.getItem(WORKBENCH_VERSION_KEY);
+      if (storedVer !== CURRENT_WORKBENCH_VERSION) {
+        console.info('[WorkbenchContext] Version mismatch detected. Purging previous user calculations/history while retaining system settings.');
+        localStorage.removeItem('pb_civillab_calc_history_v1');
+        localStorage.removeItem('pb_civillab_calc_history_v2');
+        localStorage.removeItem('pb_civillab_recent_tools_v1');
+        localStorage.removeItem(STORAGE_KEYS.CALC_HISTORY);
+
+        // Retain system settings
+        const oldUnitSystem = localStorage.getItem('pb_civillab_global_unit_system_v1');
+        if (oldUnitSystem && !localStorage.getItem(STORAGE_KEYS.UNIT_SYSTEM)) {
+          localStorage.setItem(STORAGE_KEYS.UNIT_SYSTEM, oldUnitSystem);
+        }
+        const oldFavorites = localStorage.getItem('pb_civillab_favorite_tools_v1');
+        if (oldFavorites && !localStorage.getItem(STORAGE_KEYS.FAVORITE_TOOLS)) {
+          localStorage.setItem(STORAGE_KEYS.FAVORITE_TOOLS, oldFavorites);
+        }
+
+        localStorage.setItem(WORKBENCH_VERSION_KEY, CURRENT_WORKBENCH_VERSION);
+      }
+    } catch (e) {
+      console.warn('[WorkbenchContext] Purge error:', e);
+    }
+  }
+
   // 1. Global Unit System State
   const [unitSystem, setUnitSystemState] = useState<GlobalUnitSystem>(() => {
     if (typeof window === 'undefined') return 'SI';
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.UNIT_SYSTEM);
-      if (saved === 'Imperial' || saved === 'SI') return saved;
+      if (saved === 'Imperial' || saved === 'SI' || saved === 'Regional') return saved;
     } catch {
       // Fallback
     }
@@ -291,7 +315,7 @@ export const WorkbenchProvider: React.FC<WorkbenchProviderProps> = ({ children }
 
   const toggleUnitSystem = useCallback(() => {
     setUnitSystemState((prev) => {
-      const next: GlobalUnitSystem = prev === 'SI' ? 'Imperial' : 'SI';
+      const next: GlobalUnitSystem = prev === 'SI' ? 'Regional' : prev === 'Regional' ? 'Imperial' : 'SI';
       try {
         localStorage.setItem(STORAGE_KEYS.UNIT_SYSTEM, next);
       } catch {

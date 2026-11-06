@@ -209,10 +209,13 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const valStr = e.target.value;
 
-    // Metrological typing formatter: formats thousands commas while typing without cursor jumps
-    const typingResult = formatNumberWhileTyping(valStr);
-    const textToSet = typingResult.isArchitectural ? valStr : typingResult.formatted;
-    setRawText(textToSet);
+    // Maintain exact raw typed string while typing without cursor jumps or premature formatting
+    setRawText(valStr);
+
+    if (valStr.trim() === '') {
+      setArchitecturalPreview(null);
+      return;
+    }
 
     const parsed = parseSmartUnitInput(valStr, activeUnitInfo.id, category, customUnits);
     if (parsed.isValid) {
@@ -234,14 +237,29 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
   const handleBlur = () => {
     isFocusedRef.current = false;
+    const trimmed = rawText.trim();
+    if (trimmed === '') {
+      onChangeSI(0);
+      setRawText('0');
+      return;
+    }
     const mathVal = evaluateMathExpression(rawText);
     if (mathVal !== null && /[+\-*/^]/.test(rawText)) {
       const newSI = normalizeToBase(mathVal, activeUnitInfo.id, category, customUnits);
       onChangeSI(newSI);
-      setRawText(formatSmartNumber(mathVal));
+      setRawText(formatNumberWithSeparators(mathVal));
       return;
     }
-    setRawText(formattedDisplayValue);
+    const parsed = parseSmartUnitInput(rawText, activeUnitInfo.id, category, customUnits);
+    if (parsed.isValid) {
+      const newSI = normalizeToBase(parsed.parsedValue, parsed.detectedUnitId, category, customUnits);
+      onChangeSI(newSI);
+      // Immediately denormalize newSI to active unit to prevent stale blur-closure flickers
+      const immediateConverted = denormalizeFromBase(newSI, activeUnitInfo.id, category, customUnits);
+      setRawText(formatNumberWithSeparators(immediateConverted));
+    } else {
+      setRawText(formattedDisplayValue);
+    }
   };
 
   const handleFocus = () => {
@@ -262,6 +280,16 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     }
   };
 
+  // Explicit Zero (0) detection
+  const isZeroActive =
+    !disabled &&
+    (siValue === 0 ||
+      convertedNumericValue === 0 ||
+      rawText.trim() === '0' ||
+      rawText.trim() === '0.0' ||
+      rawText.trim() === '0.00' ||
+      rawText.trim() === '');
+
   // Real-Time Validation Assessment
   const validationResult = useMemo(() => {
     if (customValidation) {
@@ -270,7 +298,8 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     }
 
     if (validationRule) {
-      if (validationRule.minSI !== undefined && siValue < validationRule.minSI) {
+      // Clean zero baseline is flagged by isZeroActive rather than triggering minSI violation
+      if (siValue > 0 && validationRule.minSI !== undefined && siValue < validationRule.minSI) {
         return {
           status: 'error' as const,
           hint: validationRule.errorHint || `Value below physical minimum (${validationRule.minSI}).`,
@@ -282,7 +311,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           hint: validationRule.errorHint || `Value exceeds physical maximum (${validationRule.maxSI}).`,
         };
       }
-      if (validationRule.warningBelowSI !== undefined && siValue < validationRule.warningBelowSI) {
+      if (siValue > 0 && validationRule.warningBelowSI !== undefined && siValue < validationRule.warningBelowSI) {
         return {
           status: 'warning' as const,
           hint: validationRule.warningHint || `Value below recommended standard (${validationRule.warningBelowSI}).`,
@@ -307,6 +336,16 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate">
             {label}
           </label>
+
+          {/* Explicit 0 Value Active Badge */}
+          {isZeroActive && (
+            <span
+              className="px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0 select-none animate-fadeIn"
+              title="Parameter is currently set to zero (clean baseline or zeroed value)"
+            >
+              0 VALUE ACTIVE
+            </span>
+          )}
 
           {/* Interactive Engineering Guidance Tooltip Button */}
           {resolvedTooltip && (
@@ -388,6 +427,8 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         className={`relative flex items-center rounded-full overflow-hidden border bg-[var(--md-sys-color-surface)] shadow-xs transition-all duration-300 focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)] ${
           validationResult?.status === 'error'
             ? 'border-[var(--md-sys-color-error)] ring-2 ring-[var(--md-sys-color-error)]/40'
+            : isZeroActive
+            ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
             : validationResult?.status === 'warning'
             ? 'border-amber-500 ring-2 ring-amber-500/40'
             : isUnitFading

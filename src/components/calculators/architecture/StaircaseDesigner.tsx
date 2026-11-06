@@ -41,20 +41,63 @@ export interface StaircaseOutputs {
   factoredLoadKpa: number;
 }
 
-export const StaircaseDesigner: React.FC = () => {
+import { StaircaseParameters, RebarBBSParameters } from '../../../types/civil';
+
+export interface StaircaseDesignerProps {
+  initialValues?: Partial<StaircaseParameters>;
+  onChange?: (values: StaircaseParameters) => void;
+  onSendToRebarBbs?: (stairParams: Partial<RebarBBSParameters>) => void;
+}
+
+export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
+  initialValues,
+  onChange,
+  onSendToRebarBbs,
+}) => {
   // --- Input States ---
-  const [stairType, setStairType] = useState<StaircaseType>('dog-legged');
-  const [floorHeightMm, setFloorHeightMm] = useState<number>(3000); // 3.0 m (10 ft) standard floor height
-  const [stairwellLengthMm, setStairwellLengthMm] = useState<number>(4500); // 4.5 m
-  const [stairwellWidthMm, setStairwellWidthMm] = useState<number>(2400); // 2.4 m
-  const [preferredRiserMm, setPreferredRiserMm] = useState<number>(150); // 150 mm standard
-  const [preferredTreadMm, setPreferredTreadMm] = useState<number>(275); // 275 mm standard
-  const [waistSlabMm, setWaistSlabMm] = useState<number>(150); // 150 mm (6")
-  const [slabThicknessMm, setSlabThicknessMm] = useState<number>(150); // 150 mm
-  const [landingWidthMm, setLandingWidthMm] = useState<number>(1200); // 1.2 m
-  const [nosingMm, setNosingMm] = useState<number>(25); // 25 mm nosing
-  const [liveLoadKpa, setLiveLoadKpa] = useState<number>(3.0); // 3.0 kN/m² residential / 4.0 commercial
-  const [finishesLoadKpa, setFinishesLoadKpa] = useState<number>(1.0); // 1.0 kN/m² finishes
+  const [stairType, setStairType] = useState<StaircaseType>(initialValues?.stairType || 'dog-legged');
+  const [floorHeightMm, setFloorHeightMm] = useState<number>(initialValues?.floorHeightMm ?? 3000); // 3.0 m (10 ft) standard floor height
+  const [stairwellLengthMm, setStairwellLengthMm] = useState<number>(initialValues?.stairwellLengthMm ?? 4500); // 4.5 m
+  const [stairwellWidthMm, setStairwellWidthMm] = useState<number>(initialValues?.stairwellWidthMm ?? 2400); // 2.4 m
+  const [preferredRiserMm, setPreferredRiserMm] = useState<number>(initialValues?.preferredRiserMm ?? 150); // 150 mm standard
+  const [preferredTreadMm, setPreferredTreadMm] = useState<number>(initialValues?.preferredTreadMm ?? 275); // 275 mm standard
+  const [waistSlabMm, setWaistSlabMm] = useState<number>(initialValues?.waistSlabMm ?? 150); // 150 mm (6")
+  const [slabThicknessMm, setSlabThicknessMm] = useState<number>(initialValues?.slabThicknessMm ?? 150); // 150 mm
+  const [landingWidthMm, setLandingWidthMm] = useState<number>(initialValues?.landingWidthMm ?? 1200); // 1.2 m
+  const [nosingMm, setNosingMm] = useState<number>(initialValues?.nosingMm ?? 25); // 25 mm nosing
+  const [liveLoadKpa, setLiveLoadKpa] = useState<number>(initialValues?.liveLoadKpa ?? 3.0); // 3.0 kN/m² residential / 4.0 commercial
+  const [finishesLoadKpa, setFinishesLoadKpa] = useState<number>(initialValues?.finishesLoadKpa ?? 1.0); // 1.0 kN/m² finishes
+
+  React.useEffect(() => {
+    onChange?.({
+      stairType,
+      floorHeightMm,
+      stairwellLengthMm,
+      stairwellWidthMm,
+      preferredRiserMm,
+      preferredTreadMm,
+      waistSlabMm,
+      slabThicknessMm,
+      landingWidthMm,
+      nosingMm,
+      liveLoadKpa,
+      finishesLoadKpa,
+    });
+  }, [
+    stairType,
+    floorHeightMm,
+    stairwellLengthMm,
+    stairwellWidthMm,
+    preferredRiserMm,
+    preferredTreadMm,
+    waistSlabMm,
+    slabThicknessMm,
+    landingWidthMm,
+    nosingMm,
+    liveLoadKpa,
+    finishesLoadKpa,
+    onChange,
+  ]);
 
   // --- Calculations ---
   const calc = useMemo<StaircaseOutputs>(() => {
@@ -555,6 +598,26 @@ export const StaircaseDesigner: React.FC = () => {
               <FileDown className="w-4 h-4" />
               <span>Certified PDF</span>
             </button>
+            {onSendToRebarBbs && (
+              <button
+                type="button"
+                onClick={() =>
+                  onSendToRebarBbs({
+                    stairGoingM: Number((calc.goingLengthMm / 1000).toFixed(2)),
+                    stairTotalRiseM: Number((floorHeightMm / 1000).toFixed(2)),
+                    waistSlabThicknessMm: waistSlabMm,
+                    riserMm: Math.round(calc.actualRiserMm),
+                    treadMm: calc.actualTreadMm,
+                    landingLengthM: Number((landingWidthMm / 1000).toFixed(2)),
+                  })
+                }
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                title="Send staircase waist slab geometry directly to Rebar BBS module"
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span>Send to Rebar BBS</span>
+              </button>
+            )}
           </div>
         </div>
 

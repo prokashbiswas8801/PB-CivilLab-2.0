@@ -34,7 +34,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
   getFieldUnit,
   updateFieldUnit,
 }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'geometry' | 'strata' | 'loads' | 'settlement'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'geometry' | 'structural' | 'strata' | 'loads' | 'settlement'>('all');
   const [showMultiLayer, setShowMultiLayer] = useState<boolean>(
     Boolean(activeWorkspace.bearing.layers && activeWorkspace.bearing.layers.length > 0)
   );
@@ -144,6 +144,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
         {[
           { id: 'all', label: 'All Inputs' },
           { id: 'geometry', label: 'Pad Geometry & Solver' },
+          { id: 'structural', label: 'Column & Punching Shear' },
           { id: 'strata', label: 'Soil Strata & GWT' },
           { id: 'loads', label: 'Load & Safety FS' },
           { id: 'settlement', label: 'Settlement & OCR' },
@@ -296,6 +297,145 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               recommendedRange="1.0 m – 2.5 m"
               designTip="Surcharge term q = γ · Df directly contributes to bearing capacity through bearing factor Nq."
             />
+          </div>
+        </div>
+      )}
+
+      {/* Tab Group: Axial Column & Footing Punching Shear (BNBC-2020 / ACI 318) */}
+      {(activeTab === 'all' || activeTab === 'structural') && (
+        <div className="space-y-2.5 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+              Axial Column &amp; Footing Section (BNBC-2020 / ACI 318 Punching &amp; Beam Shear)
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
+              ACI 318 Clause 13.2 / 22.6
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <div>
+              <label className="block text-xs font-semibold mb-1">Footing Depth hf (mm)</label>
+              <input
+                type="number"
+                step="25"
+                min="150"
+                max="2500"
+                value={activeWorkspace.bearing.footingThicknessMm ?? 450}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, footingThicknessMm: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">Total pad thickness</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Col Width cx (mm)</label>
+              <input
+                type="number"
+                step="25"
+                min="150"
+                max="2000"
+                value={activeWorkspace.bearing.colWidthMm ?? 300}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, colWidthMm: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">Along X-axis</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Col Depth cy (mm)</label>
+              <input
+                type="number"
+                step="25"
+                min="150"
+                max="2000"
+                value={activeWorkspace.bearing.colDepthMm ?? 300}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, colDepthMm: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">Along Y-axis</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Concrete f'c (MPa)</label>
+              <select
+                value={activeWorkspace.bearing.fckMpa ?? 21}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, fckMpa: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              >
+                <option value="17">17 MPa (2500 psi)</option>
+                <option value="21">21 MPa (3000 psi - BNBC)</option>
+                <option value="25">25 MPa (3600 psi)</option>
+                <option value="28">28 MPa (4000 psi)</option>
+                <option value="35">35 MPa (5000 psi)</option>
+              </select>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">Cylinder strength</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Rebar Yield fy (MPa)</label>
+              <select
+                value={activeWorkspace.bearing.fyMpa ?? 420}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, fyMpa: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              >
+                <option value="300">300 MPa (Grade 40)</option>
+                <option value="420">420 MPa (Grade 60 - 500W)</option>
+                <option value="500">500 MPa (Grade 72 / 500D)</option>
+                <option value="550">550 MPa (Grade 80)</option>
+              </select>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">Steel yield</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1">Clear Cover (mm)</label>
+              <input
+                type="number"
+                step="5"
+                min="50"
+                max="125"
+                value={activeWorkspace.bearing.clearCoverMm ?? 75}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    bearing: { ...ws.bearing, clearCoverMm: val },
+                  }));
+                }}
+                className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">Soil contact ≥ 75mm</span>
+            </div>
           </div>
         </div>
       )}
@@ -962,6 +1102,79 @@ export const BearingCapacityMetrics: React.FC<BearingCapacityMetricsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Footing Structural Punching & One-Way Shear (BNBC-2020 / ACI 318) */}
+      <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>Footing Punching &amp; One-Way Shear Checks (BNBC-2020 Part 6 / ACI 318-19)</span>
+          </div>
+          <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${result.footingStructuralPass ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-rose-500/10 text-rose-600 border-rose-500/30'}`}>
+            {result.footingStructuralPass ? 'STRUCTURAL PASS' : 'SHEAR CAPACITY EXCEEDED'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
+          {/* Two-Way Punching Shear */}
+          <div className={`p-3 rounded-lg border ${result.punchingShearPass ? 'bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline-variant)]' : 'bg-rose-500/5 border-rose-500/40'}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-bold text-[var(--md-sys-color-on-surface)]">Two-Way Punching Shear</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${result.punchingShearPass ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/20 text-rose-600'}`}>
+                {result.punchingShearPass ? 'PASS' : 'FAIL'}
+              </span>
+            </div>
+            <div className="space-y-1 text-[var(--md-sys-color-on-surface-variant)] text-[11px]">
+              <div className="flex justify-between">
+                <span>Factored Punching Demand (Vu,p):</span>
+                <strong className="text-[var(--md-sys-color-on-surface)]">{(result.punchingShearVuKn ?? 0).toFixed(1)} kN</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Design Concrete Capacity (φVc,p):</span>
+                <strong className="text-[var(--md-sys-color-on-surface)]">{(result.punchingShearPhiVcKn ?? 0).toFixed(1)} kN</strong>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-[var(--md-sys-color-outline-variant)]/50">
+                <span className="font-semibold">Punching DCR (Vu/φVc):</span>
+                <span className={`font-bold ${result.punchingShearPass ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {((result.punchingShearDcr ?? 0) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] pt-1">
+                Crit. perimeter bo = {result.punchingPerimeterBoMm ?? 0} mm (at d/2 = {((result.effectiveDepthMm ?? 375) / 2).toFixed(0)} mm)
+              </div>
+            </div>
+          </div>
+
+          {/* One-Way Beam Shear */}
+          <div className={`p-3 rounded-lg border ${result.oneWayShearPass ? 'bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline-variant)]' : 'bg-rose-500/5 border-rose-500/40'}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-bold text-[var(--md-sys-color-on-surface)]">One-Way Wide Beam Shear</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${result.oneWayShearPass ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/20 text-rose-600'}`}>
+                {result.oneWayShearPass ? 'PASS' : 'FAIL'}
+              </span>
+            </div>
+            <div className="space-y-1 text-[var(--md-sys-color-on-surface-variant)] text-[11px]">
+              <div className="flex justify-between">
+                <span>Factored Beam Shear (Vu,1):</span>
+                <strong className="text-[var(--md-sys-color-on-surface)]">{(result.oneWayShearVuKn ?? 0).toFixed(1)} kN</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Design Concrete Capacity (φVc,1):</span>
+                <strong className="text-[var(--md-sys-color-on-surface)]">{(result.oneWayShearPhiVcKn ?? 0).toFixed(1)} kN</strong>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-[var(--md-sys-color-outline-variant)]/50">
+                <span className="font-semibold">Beam Shear DCR (Vu/φVc):</span>
+                <span className={`font-bold ${result.oneWayShearPass ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {((result.oneWayShearDcr ?? 0) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] pt-1">
+                Effective depth d = {result.effectiveDepthMm ?? 0} mm (hf = {result.footingThicknessMm ?? 0} mm, cover = 75 mm)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Safety & DCR Verification Banner */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono">

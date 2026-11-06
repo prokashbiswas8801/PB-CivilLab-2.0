@@ -105,7 +105,7 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               onUnitChange={(u) => updateFieldUnit('rate.vol', u)}
               customUnits={customUnits}
               step={0.5}
-              min={0.1}
+              min={0}
             />
           </div>
           <div>
@@ -326,75 +326,123 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
         </div>
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Cement ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/50kg bag)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+                Cement ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/50kg bag)
+              </label>
+              {activeWorkspace.rateAnalysis.cementPricePerBag === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="10"
+              step="any"
+              min="0"
               value={activeWorkspace.rateAnalysis.cementPricePerBag}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, cementPricePerBag: val },
+                  rateAnalysis: { ...ws.rateAnalysis, cementPricePerBag: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
+              className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
+                activeWorkspace.rateAnalysis.cementPricePerBag === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Coarse Sand ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+                Coarse Sand ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
+              </label>
+              {activeWorkspace.rateAnalysis.sandPricePerM3 === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="50"
+              step="any"
+              min="0"
               value={activeWorkspace.rateAnalysis.sandPricePerM3}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, sandPricePerM3: val },
+                  rateAnalysis: { ...ws.rateAnalysis, sandPricePerM3: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
+              className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
+                activeWorkspace.rateAnalysis.sandPricePerM3 === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Stone Chips ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+                Stone Chips ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
+              </label>
+              {activeWorkspace.rateAnalysis.stoneChipsPricePerM3 === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="50"
+              step="any"
+              min="0"
               value={activeWorkspace.rateAnalysis.stoneChipsPricePerM3}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, stoneChipsPricePerM3: val },
+                  rateAnalysis: { ...ws.rateAnalysis, stoneChipsPricePerM3: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
+              className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
+                activeWorkspace.rateAnalysis.stoneChipsPricePerM3 === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Rebar Steel ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/kg)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+                Rebar Steel ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/kg)
+              </label>
+              {activeWorkspace.rateAnalysis.rebarPricePerKg === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="2"
+              step="any"
+              min="0"
               value={activeWorkspace.rateAnalysis.rebarPricePerKg}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, rebarPricePerKg: val },
+                  rateAnalysis: { ...ws.rateAnalysis, rebarPricePerKg: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
+              className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
+                activeWorkspace.rateAnalysis.rebarPricePerKg === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
             />
           </div>
         </div>
@@ -402,39 +450,63 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
         {activeWorkspace.rateAnalysis.workType.startsWith('rcc') && (
           <div className="grid grid-cols-2 gap-2.5 pt-1">
             <div>
-              <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-                Rebar Allowance (kg/m³ concrete)
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+                  Rebar Allowance (kg/m³ concrete)
+                </label>
+                {activeWorkspace.rateAnalysis.rebarAllowanceKgPerM3 === 0 && (
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                    0 ACTIVE
+                  </span>
+                )}
+              </div>
               <input
                 type="number"
-                step="10"
+                step="any"
+                min="0"
                 value={activeWorkspace.rateAnalysis.rebarAllowanceKgPerM3}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const val = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, rebarAllowanceKgPerM3: val },
+                    rateAnalysis: { ...ws.rateAnalysis, rebarAllowanceKgPerM3: isNaN(val) ? 0 : val },
                   }));
                 }}
-                className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
+                className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
+                  activeWorkspace.rateAnalysis.rebarAllowanceKgPerM3 === 0
+                    ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                    : 'border-[var(--md-sys-color-outline)]'
+                }`}
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-                Admixture Price ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/kg)
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+                  Admixture Price ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/kg)
+                </label>
+                {(activeWorkspace.rateAnalysis.admixturePricePerKg ?? 0) === 0 && (
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                    0 ACTIVE
+                  </span>
+                )}
+              </div>
               <input
                 type="number"
-                step="20"
-                value={activeWorkspace.rateAnalysis.admixturePricePerKg || 250}
+                step="any"
+                min="0"
+                value={activeWorkspace.rateAnalysis.admixturePricePerKg ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const val = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, admixturePricePerKg: val },
+                    rateAnalysis: { ...ws.rateAnalysis, admixturePricePerKg: isNaN(val) ? 0 : val },
                   }));
                 }}
-                className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
+                className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
+                  (activeWorkspace.rateAnalysis.admixturePricePerKg ?? 0) === 0
+                    ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                    : 'border-[var(--md-sys-color-outline)]'
+                }`}
               />
             </div>
           </div>
@@ -442,21 +514,33 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
 
         {activeWorkspace.rateAnalysis.workType === 'brickwork-1-6' && (
           <div className="pt-1">
-            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Clay Brick Price ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)} per 1000 Nos)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+                Clay Brick Price ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)} per 1000 Nos)
+              </label>
+              {(activeWorkspace.rateAnalysis.brickPricePer1000 ?? 0) === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
-              step="500"
-              value={activeWorkspace.rateAnalysis.brickPricePer1000 || 12000}
+              step="any"
+              min="0"
+              value={activeWorkspace.rateAnalysis.brickPricePer1000 ?? 0}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, brickPricePer1000: val },
+                  rateAnalysis: { ...ws.rateAnalysis, brickPricePer1000: isNaN(val) ? 0 : val },
                 }));
               }}
-              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
+              className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
+                (activeWorkspace.rateAnalysis.brickPricePer1000 ?? 0) === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
             />
           </div>
         )}

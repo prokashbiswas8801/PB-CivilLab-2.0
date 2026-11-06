@@ -137,24 +137,36 @@ export const Topbar: React.FC<TopbarProps> = ({
       {/* Right Zone: Controls, Unit System Toggle, Project Quick-Edit, Theme Toggle */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 
-        {/* Global SI / Imperial Unit System Toggle Switch — Tactile Pill */}
+        {/* Global SI / BD (Site) / Imperial Unit System Toggle Switch — Tactile Pill */}
         <div className="flex items-center bg-[var(--md-sys-color-surface-container-low)] p-0.5 rounded-full border border-[var(--md-sys-color-outline)] shadow-xs">
           <button
             type="button"
             onClick={() => workbench.setUnitSystem('SI')}
-            className={`px-3 py-1 text-xs font-mono font-bold rounded-full transition-all cursor-pointer ${
+            className={`px-2.5 py-1 text-xs font-mono font-bold rounded-full transition-all cursor-pointer ${
               workbench.unitSystem === 'SI'
                 ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                 : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
             }`}
-            title="Switch to Metric (SI) Units (m, mm, kN, MPa, m³)"
+            title="Switch to Metric (SI) Units (m, mm, kN, MPa, m³, L/s)"
           >
             SI
           </button>
           <button
             type="button"
+            onClick={() => workbench.setUnitSystem('Regional')}
+            className={`px-2.5 py-1 text-xs font-mono font-bold rounded-full transition-all cursor-pointer ${
+              workbench.unitSystem === 'Regional'
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
+                : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+            }`}
+            title="Switch to Bangladesh Standard / Site (ft, in, Suta, RFT, SFT, CFT, Decimal, Katha, 50kg Bag, Maund)"
+          >
+            BD (Site)
+          </button>
+          <button
+            type="button"
             onClick={() => workbench.setUnitSystem('Imperial')}
-            className={`px-3 py-1 text-xs font-mono font-bold rounded-full transition-all cursor-pointer ${
+            className={`px-2.5 py-1 text-xs font-mono font-bold rounded-full transition-all cursor-pointer ${
               workbench.unitSystem === 'Imperial'
                 ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                 : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'

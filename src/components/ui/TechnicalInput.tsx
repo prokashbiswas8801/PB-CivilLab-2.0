@@ -151,6 +151,7 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
   const autoId = useId();
   const inputId = id || autoId;
   const inputRef = useRef<HTMLInputElement>(null);
+  const isFocusedRef = useRef(false);
 
   // Format initial display
   const formatVal = (v: number | string): string => {
@@ -166,12 +167,15 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [evalSuccess, setEvalSuccess] = useState<boolean>(false);
 
-  // Synchronize when external value updates
+  // Synchronize when external value updates, only if user is not actively editing
   useEffect(() => {
-    setTextVal(formatVal(value));
+    if (!isFocusedRef.current) {
+      setTextVal(formatVal(value));
+    }
   }, [value, precision]);
 
   const commitEvaluation = () => {
+    isFocusedRef.current = false;
     const raw = textVal.trim();
     if (!raw) {
       onChange(0);
@@ -205,10 +209,14 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
     const hasMathOp = /[+\-*/^()]/.test(v);
     setIsEvaluating(hasMathOp);
 
-    // If it's a direct valid number, update immediately
-    if (!hasMathOp && v !== '' && !isNaN(Number(v))) {
+    // If it's a direct valid number or decimal, update numeric state cleanly
+    if (!hasMathOp && v.trim() !== '' && !isNaN(Number(v))) {
       onChange(Number(v));
     }
+  };
+
+  const handleFocus = () => {
+    isFocusedRef.current = true;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -223,13 +231,23 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
     }
   };
 
+  const isZeroActive =
+    !disabled &&
+    (Number(value) === 0 ||
+      textVal.trim() === '0' ||
+      textVal.trim() === '0.0' ||
+      textVal.trim() === '0.00' ||
+      textVal.trim() === '');
+
   return (
     <div className={`relative flex items-stretch rounded-full overflow-hidden border transition-all ${
       error
         ? 'border-red-500 bg-red-50/10'
         : evalSuccess
           ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)]'
-          : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]'
+          : isZeroActive
+            ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+            : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]'
     } bg-[var(--md-sys-color-surface)] ${className}`}>
       {/* Left Mathematical Symbol Badge */}
       {symbol && (
@@ -246,6 +264,7 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
         inputMode="decimal"
         value={textVal}
         onChange={handleChange}
+        onFocus={handleFocus}
         onBlur={commitEvaluation}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
@@ -292,19 +311,35 @@ export const TechnicalFormField: React.FC<TechnicalFormFieldProps> = ({
   error,
   ...inputProps
 }) => {
+  const isZeroActive =
+    !inputProps.disabled &&
+    (Number(inputProps.value) === 0 ||
+      String(inputProps.value).trim() === '0' ||
+      String(inputProps.value).trim() === '');
+
   return (
     <div className={`space-y-1 ${containerClassName}`}>
       <div className="flex items-center justify-between gap-1.5">
-        <label
-          htmlFor={inputProps.id}
-          className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1 cursor-pointer select-none"
-        >
-          <span>{label}</span>
-          {required && <span className="text-red-500">*</span>}
-        </label>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <label
+            htmlFor={inputProps.id}
+            className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1 cursor-pointer select-none truncate"
+          >
+            <span>{label}</span>
+            {required && <span className="text-red-500">*</span>}
+          </label>
+          {isZeroActive && (
+            <span
+              className="px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0 select-none animate-fadeIn"
+              title="Parameter is currently set to zero (clean baseline or zeroed value)"
+            >
+              0 VALUE ACTIVE
+            </span>
+          )}
+        </div>
         {tooltip && (
           <span
-            className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-0.5 hover:text-[var(--md-sys-color-primary)] cursor-help"
+            className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-0.5 hover:text-[var(--md-sys-color-primary)] cursor-help shrink-0"
             title={tooltip}
           >
             <Info className="w-3 h-3" />

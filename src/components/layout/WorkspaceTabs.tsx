@@ -28,6 +28,7 @@ export interface WorkspaceTabsProps {
   projectCode: string;
   onSaveSnapshot: () => void;
   onOpenProjectMetadata?: () => void;
+  onOpenToolPicker?: () => void;
 }
 
 export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
@@ -39,6 +40,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
   projectCode,
   onSaveSnapshot,
   onOpenProjectMetadata,
+  onOpenToolPicker,
 }) => {
   return (
     <div className="h-10 shrink-0 border-b border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-lowest)] flex items-center justify-between px-2 gap-2 select-none overflow-x-auto no-scrollbar print:hidden">
@@ -53,9 +55,9 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
             <div
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`group relative h-9 px-3 flex items-center gap-2 rounded-t text-xs font-mono transition-colors cursor-pointer border-t border-x ${
+              className={`group relative h-9 px-3 flex items-center gap-2 rounded-t text-xs font-sans transition-colors cursor-pointer border-t border-x ${
                 isActive
-                  ? 'bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface)] font-bold shadow-xs z-10'
+                  ? 'bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface)] font-semibold shadow-xs z-10'
                   : 'bg-[var(--md-sys-color-surface-container-low)] border-transparent text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
               }`}
               title={tab.title}
@@ -99,6 +101,19 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
             </div>
           );
         })}
+
+        {/* + Open Tool Quick Button */}
+        {onOpenToolPicker && (
+          <button
+            type="button"
+            onClick={onOpenToolPicker}
+            className="h-8 px-2.5 rounded-t text-xs font-sans font-medium flex items-center gap-1.5 text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer border border-dashed border-[var(--md-sys-color-outline-variant)] shrink-0"
+            title="Open an engineering module (Ctrl+K)"
+          >
+            <Plus className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+            <span className="hidden sm:inline">Open Tool</span>
+          </button>
+        )}
       </div>
 
       {/* RIGHT: Compact Breadcrumbs, Project Badge & Save Snapshot Action */}

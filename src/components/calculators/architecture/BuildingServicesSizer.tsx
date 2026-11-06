@@ -17,30 +17,54 @@ import {
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 
+import { WaterTankParameters, SepticTankParameters, TakeoffLineItem } from '../../../types/civil';
+
 export type ServiceTab = 'water-reservoirs' | 'septic-system';
 
-export const BuildingServicesSizer: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ServiceTab>('water-reservoirs');
+export interface BuildingServicesSizerProps {
+  initialTab?: ServiceTab;
+  initialWaterValues?: Partial<WaterTankParameters>;
+  initialSepticValues?: Partial<SepticTankParameters>;
+  onWaterChange?: (values: WaterTankParameters) => void;
+  onSepticChange?: (values: SepticTankParameters) => void;
+  onSendToBOQ?: (items: TakeoffLineItem[]) => void;
+}
+
+export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
+  initialTab = 'water-reservoirs',
+  initialWaterValues,
+  initialSepticValues,
+  onWaterChange,
+  onSepticChange,
+  onSendToBOQ,
+}) => {
+  const [activeTab, setActiveTab] = useState<ServiceTab>(initialTab);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // =========================================================================
   // 1. WATER RESERVOIRS (UGWR & OHT) STATE
   // =========================================================================
-  const [calcMode, setCalcMode] = useState<'occupants' | 'building'>('building');
-  const [numFloors, setNumFloors] = useState<number>(6); // G + 5
-  const [unitsPerFloor, setUnitsPerFloor] = useState<number>(2); // 2 units/floor
-  const [personsPerUnit, setPersonsPerUnit] = useState<number>(5); // 5 persons/unit
-  const [directOccupants, setDirectOccupants] = useState<number>(50);
-  const [floatingPopulation, setFloatingPopulation] = useState<number>(5);
-  const [lpcd, setLpcd] = useState<number>(135); // Litres Per Capita Daily (135 LPCD BNBC)
-  const [storageDays, setStorageDays] = useState<number>(1.0); // 1.0 day buffer
-  const [fireReserveL, setFireReserveL] = useState<number>(10000); // 10,000 L fire reserve
-  const [ugwrSharePercent, setUgwrSharePercent] = useState<number>(65); // 65% UGWR / 35% OHT
-  const [ugwrWaterDepthM, setUgwrWaterDepthM] = useState<number>(2.0); // 2.0 m
-  const [ugwrLwRatio, setUgwrLwRatio] = useState<number>(1.5); // L : W = 1.5 : 1
-  const [ohtWaterDepthM, setOhtWaterDepthM] = useState<number>(1.6); // 1.6 m
-  const [ohtLwRatio, setOhtLwRatio] = useState<number>(1.3); // L : W = 1.3 : 1
-  const [pumpFillHours, setPumpFillHours] = useState<number>(2.0); // 2 hours fill time
-  const [totalHeadM, setTotalHeadM] = useState<number>(28); // 28m delivery head
+  const [calcMode, setCalcMode] = useState<'occupants' | 'building'>(initialWaterValues?.calcMode || 'building');
+  const [numFloors, setNumFloors] = useState<number>(initialWaterValues?.numFloors ?? 6); // G + 5
+  const [unitsPerFloor, setUnitsPerFloor] = useState<number>(initialWaterValues?.unitsPerFloor ?? 2); // 2 units/floor
+  const [personsPerUnit, setPersonsPerUnit] = useState<number>(initialWaterValues?.personsPerUnit ?? 5); // 5 persons/unit
+  const [directOccupants, setDirectOccupants] = useState<number>(initialWaterValues?.directOccupants ?? 50);
+  const [floatingPopulation, setFloatingPopulation] = useState<number>(initialWaterValues?.floatingPopulation ?? 5);
+  const [lpcd, setLpcd] = useState<number>(initialWaterValues?.lpcd ?? 135); // Litres Per Capita Daily (135 LPCD BNBC)
+  const [storageDays, setStorageDays] = useState<number>(initialWaterValues?.storageDays ?? 1.0); // 1.0 day buffer
+  const [fireReserveL, setFireReserveL] = useState<number>(initialWaterValues?.fireReserveL ?? 10000); // 10,000 L fire reserve
+  const [ugwrSharePercent, setUgwrSharePercent] = useState<number>(initialWaterValues?.ugwrSharePercent ?? 65); // 65% UGWR / 35% OHT
+  const [ugwrWaterDepthM, setUgwrWaterDepthM] = useState<number>(initialWaterValues?.ugwrWaterDepthM ?? 2.0); // 2.0 m
+  const [ugwrLwRatio, setUgwrLwRatio] = useState<number>(initialWaterValues?.ugwrLwRatio ?? 1.5); // L : W = 1.5 : 1
+  const [ohtWaterDepthM, setOhtWaterDepthM] = useState<number>(initialWaterValues?.ohtWaterDepthM ?? 1.6); // 1.6 m
+  const [ohtLwRatio, setOhtLwRatio] = useState<number>(initialWaterValues?.ohtLwRatio ?? 1.3); // L : W = 1.3 : 1
+  const [pumpFillHours, setPumpFillHours] = useState<number>(initialWaterValues?.pumpFillHours ?? 2.0); // 2 hours fill time
+  const [totalHeadM, setTotalHeadM] = useState<number>(initialWaterValues?.totalHeadM ?? 28); // 28m delivery head
 
   // Calculations for Water Reservoirs
   const waterCalc = useMemo(() => {
@@ -137,14 +161,139 @@ export const BuildingServicesSizer: React.FC = () => {
   // =========================================================================
   // 2. SEPTIC TANK & SOAK PIT STATE
   // =========================================================================
-  const [septicUsers, setSepticUsers] = useState<number>(35);
-  const [sewageRateLpcd, setSewageRateLpcd] = useState<number>(90); // 90 LPCD (80-90% of water demand)
-  const [detentionHours, setDetentionHours] = useState<number>(24); // 24-48 hrs retention
-  const [desludgingYears, setDesludgingYears] = useState<number>(2.0); // 2 years desludging interval
-  const [septicDepthM, setSepticDepthM] = useState<number>(1.6); // 1.6m liquid depth
-  const [septicLwRatio, setSepticLwRatio] = useState<number>(2.5); // 2.5 : 1
-  const [soilPercolationRate, setSoilPercolationRate] = useState<number>(30); // 30 L/m²/day percolation rate
-  const [soakPitDiaM, setSoakPitDiaM] = useState<number>(1.8); // 1.8m internal dia
+  const [septicUsers, setSepticUsers] = useState<number>(initialSepticValues?.septicUsers ?? 35);
+  const [sewageRateLpcd, setSewageRateLpcd] = useState<number>(initialSepticValues?.sewageRateLpcd ?? 90); // 90 LPCD (80-90% of water demand)
+  const [detentionHours, setDetentionHours] = useState<number>(initialSepticValues?.detentionHours ?? 24); // 24-48 hrs retention
+  const [desludgingYears, setDesludgingYears] = useState<number>(initialSepticValues?.desludgingYears ?? 2.0); // 2 years desludging interval
+  const [septicDepthM, setSepticDepthM] = useState<number>(initialSepticValues?.septicDepthM ?? 1.6); // 1.6m liquid depth
+  const [septicLwRatio, setSepticLwRatio] = useState<number>(initialSepticValues?.septicLwRatio ?? 2.5); // 2.5 : 1
+  const [soilPercolationRate, setSoilPercolationRate] = useState<number>(initialSepticValues?.soilPercolationRate ?? 30); // 30 L/m²/day percolation rate
+  const [soakPitDiaM, setSoakPitDiaM] = useState<number>(initialSepticValues?.soakPitDiaM ?? 1.8); // 1.8m internal dia
+
+  React.useEffect(() => {
+    onWaterChange?.({
+      calcMode,
+      numFloors,
+      unitsPerFloor,
+      personsPerUnit,
+      directOccupants,
+      floatingPopulation,
+      lpcd,
+      storageDays,
+      fireReserveL,
+      ugwrSharePercent,
+      ugwrWaterDepthM,
+      ugwrLwRatio,
+      ohtWaterDepthM,
+      ohtLwRatio,
+      pumpFillHours,
+      totalHeadM,
+    });
+  }, [
+    calcMode,
+    numFloors,
+    unitsPerFloor,
+    personsPerUnit,
+    directOccupants,
+    floatingPopulation,
+    lpcd,
+    storageDays,
+    fireReserveL,
+    ugwrSharePercent,
+    ugwrWaterDepthM,
+    ugwrLwRatio,
+    ohtWaterDepthM,
+    ohtLwRatio,
+    pumpFillHours,
+    totalHeadM,
+    onWaterChange,
+  ]);
+
+  React.useEffect(() => {
+    onSepticChange?.({
+      septicUsers,
+      sewageRateLpcd,
+      detentionHours,
+      desludgingYears,
+      septicDepthM,
+      septicLwRatio,
+      soilPercolationRate,
+      soakPitDiaM,
+    });
+  }, [
+    septicUsers,
+    sewageRateLpcd,
+    detentionHours,
+    desludgingYears,
+    septicDepthM,
+    septicLwRatio,
+    soilPercolationRate,
+    soakPitDiaM,
+    onSepticChange,
+  ]);
+
+  const handleSendToBOQ = () => {
+    if (!onSendToBOQ) return;
+    const items: TakeoffLineItem[] = [
+      {
+        id: `takeoff-ugwr-${Date.now().toString().slice(-6)}`,
+        itemNo: '210.01',
+        description: `RCC (1:1.5:3) with waterproofing in Underground Water Reservoir (UGWR ${Math.round(waterCalc.ugwrTotalL).toLocaleString()}L - ${waterCalc.ugwrLengthM.toFixed(1)}m x ${waterCalc.ugwrWidthM.toFixed(1)}m x ${waterCalc.ugwrTotalHeightM.toFixed(1)}m) Base, Walls & Roof`,
+        category: 'substructure',
+        numberOfMembers: 1,
+        lengthM: Number(waterCalc.ugwrLengthM.toFixed(2)),
+        widthM: Number(waterCalc.ugwrWidthM.toFixed(2)),
+        heightM: Number(waterCalc.ugwrTotalHeightM.toFixed(2)),
+        deductionQty: 0,
+        unit: 'm3',
+        wastagePercent: 3.0,
+        unitRate: 14500,
+      },
+      {
+        id: `takeoff-oht-${Date.now().toString().slice(-6)}`,
+        itemNo: '210.02',
+        description: `RCC (1:1.5:3) with waterproofing in Overhead Water Tank (OHT ${Math.round(waterCalc.ohtTotalL).toLocaleString()}L - ${waterCalc.ohtLengthM.toFixed(1)}m x ${waterCalc.ohtWidthM.toFixed(1)}m x ${waterCalc.ohtTotalHeightM.toFixed(1)}m) Base, Walls & Roof Slab`,
+        category: 'superstructure',
+        numberOfMembers: 1,
+        lengthM: Number(waterCalc.ohtLengthM.toFixed(2)),
+        widthM: Number(waterCalc.ohtWidthM.toFixed(2)),
+        heightM: Number(waterCalc.ohtTotalHeightM.toFixed(2)),
+        deductionQty: 0,
+        unit: 'm3',
+        wastagePercent: 3.0,
+        unitRate: 16500,
+      },
+      {
+        id: `takeoff-septic-${Date.now().toString().slice(-6)}`,
+        itemNo: '220.01',
+        description: `First Class Brickwork (1:4 cement-sand) in Septic Tank (${Math.round(septicCalc.totalSepticVolumeL).toLocaleString()}L - ${septicCalc.tankLengthM.toFixed(1)}m x ${septicCalc.tankWidthM.toFixed(1)}m x ${septicCalc.totalTankHeightM.toFixed(1)}m) with plaster & neat cement finish`,
+        category: 'substructure',
+        numberOfMembers: 1,
+        lengthM: Number(septicCalc.tankLengthM.toFixed(2)),
+        widthM: Number(septicCalc.tankWidthM.toFixed(2)),
+        heightM: Number(septicCalc.totalTankHeightM.toFixed(2)),
+        deductionQty: 0,
+        unit: 'm3',
+        wastagePercent: 4.0,
+        unitRate: 8500,
+      },
+      {
+        id: `takeoff-soakpit-${Date.now().toString().slice(-6)}`,
+        itemNo: '220.02',
+        description: `Honeycomb Brickwork & Gravel Packing in Absorption Soak Well (Dia ${soakPitDiaM.toFixed(1)}m x Depth ${septicCalc.soakPitTotalDepthM.toFixed(1)}m)`,
+        category: 'substructure',
+        numberOfMembers: 1,
+        lengthM: Number(soakPitDiaM.toFixed(2)),
+        widthM: Number(soakPitDiaM.toFixed(2)),
+        heightM: Number(septicCalc.soakPitTotalDepthM.toFixed(2)),
+        deductionQty: 0,
+        unit: 'm3',
+        wastagePercent: 5.0,
+        unitRate: 7800,
+      },
+    ];
+    onSendToBOQ(items);
+  };
 
   // Calculations for Septic Tank & Soak Pit
   const septicCalc = useMemo(() => {
@@ -384,6 +533,17 @@ export const BuildingServicesSizer: React.FC = () => {
               <FileDown className="w-4 h-4" />
               <span>Certified PDF</span>
             </button>
+            {onSendToBOQ && (
+              <button
+                type="button"
+                onClick={handleSendToBOQ}
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                title="Send Tank Concrete & Brickwork quantities directly to Quantity Takeoff & BOQ Estimator"
+              >
+                <Layers className="w-4 h-4" />
+                <span>Send to BOQ</span>
+              </button>
+            )}
           </div>
         </div>
 

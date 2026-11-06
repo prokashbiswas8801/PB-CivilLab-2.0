@@ -50,6 +50,13 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
 
   const renderStatusBadge = (st: string) => {
     switch (st) {
+      case 'zero_baseline':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            <Info className="w-3 h-3 text-amber-500" />
+            <span>0 BASELINE ACTIVE</span>
+          </span>
+        );
       case 'valid':
       case 'nominal':
         return (
@@ -93,8 +100,18 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
     );
   }
 
+  const hasZeroBaseline = (currentEnvelope.status as string) === 'zero_baseline' || currentEnvelope.issues.some((iss) => iss.message.includes('Zero Baseline') || iss.message.includes('currently 0'));
+
   return (
     <div className={`space-y-3 font-mono ${className}`}>
+      {hasZeroBaseline && (
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-mono">
+          <Info className="w-4 h-4 shrink-0 text-amber-500" />
+          <div className="flex-1">
+            <span className="font-bold">[0 VALUE ACTIVE]</span> Baseline Standby: One or more parameters are currently zero. Enter structural dimensions or load standard preset to run full capacity simulation.
+          </div>
+        </div>
+      )}
       {/* 1. BEAM ANALYSIS DENSE SCHEDULE */}
       {activeModule === 'beam-analysis' && (() => {
         const beamRes = result as BeamAnalysisResult;

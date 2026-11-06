@@ -8,7 +8,26 @@ import {
 import { BeamAnalysisResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Activity, Wind, ChevronDown, ChevronUp, ArrowDownToLine, Check } from 'lucide-react';
+
+const BANGLADESH_DISTRICT_LOADS: Record<string, {
+  basicWindSpeedMs: number;
+  seismicZone: 'Zone 1 (Z=0.12)' | 'Zone 2 (Z=0.20)' | 'Zone 3 (Z=0.28)' | 'Zone 4 (Z=0.36)';
+  zVal: number;
+}> = {
+  Dhaka: { basicWindSpeedMs: 65.7, seismicZone: 'Zone 2 (Z=0.20)', zVal: 0.20 },
+  Chittagong: { basicWindSpeedMs: 80.0, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
+  "Cox's Bazar": { basicWindSpeedMs: 80.0, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
+  Sylhet: { basicWindSpeedMs: 61.1, seismicZone: 'Zone 4 (Z=0.36)', zVal: 0.36 },
+  Khulna: { basicWindSpeedMs: 73.3, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
+  Rajshahi: { basicWindSpeedMs: 49.3, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
+  Barisal: { basicWindSpeedMs: 78.7, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
+  Mymensingh: { basicWindSpeedMs: 67.4, seismicZone: 'Zone 4 (Z=0.36)', zVal: 0.36 },
+  Rangpur: { basicWindSpeedMs: 57.4, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
+  Comilla: { basicWindSpeedMs: 66.7, seismicZone: 'Zone 2 (Z=0.20)', zVal: 0.20 },
+  Bogra: { basicWindSpeedMs: 61.9, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
+  Jessore: { basicWindSpeedMs: 65.0, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
+};
 
 export interface BeamAnalysisInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -26,6 +45,8 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
   updateFieldUnit,
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'geometry' | 'loads' | 'section'>('all');
+  const [showSeismicWindHelper, setShowSeismicWindHelper] = useState(false);
+  const [appliedNotice, setAppliedNotice] = useState<string | null>(null);
 
   const applyBeamPreset = (span: number, w: number, P: number, Ppos: number, cond: SupportCondition) => {
     updateActiveWorkspace((ws) => ({
@@ -246,6 +267,311 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
           </div>
         </div>
       )}
+
+      {/* BNBC-2020 Seismic Zone & Wind Load Quick Estimator Panel */}
+      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]/80 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowSeismicWindHelper(!showSeismicWindHelper)}
+          className="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-[var(--md-sys-color-primary)]/10 text-[var(--md-sys-color-primary)]">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold font-mono text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                <span>BNBC-2020 Seismic Zone &amp; Wind Load Quick Estimator</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30">
+                  Part 6 Ch 2
+                </span>
+              </div>
+              <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                Auto-calculate lateral seismic base shear (Vb) &amp; design wind UDL by Bangladesh district
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {appliedNotice && (
+              <span className="text-[11px] font-mono text-emerald-600 font-bold flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" />
+                <span>{appliedNotice}</span>
+              </span>
+            )}
+            {showSeismicWindHelper ? (
+              <ChevronUp className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)]" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)]" />
+            )}
+          </div>
+        </button>
+
+        {showSeismicWindHelper && (() => {
+          const selDistrict = activeWorkspace.beam.windDistrict || 'Dhaka';
+          const distData = BANGLADESH_DISTRICT_LOADS[selDistrict] || BANGLADESH_DISTRICT_LOADS.Dhaka;
+          const currentZone = activeWorkspace.beam.seismicZone || distData.seismicZone;
+          let zVal = distData.zVal;
+          if (currentZone.includes('0.12') || currentZone.includes('Zone 1')) zVal = 0.12;
+          else if (currentZone.includes('0.20') || currentZone.includes('Zone 2')) zVal = 0.20;
+          else if (currentZone.includes('0.28') || currentZone.includes('Zone 3')) zVal = 0.28;
+          else if (currentZone.includes('0.36') || currentZone.includes('Zone 4')) zVal = 0.36;
+
+          const soilClass = activeWorkspace.beam.siteSoilClass || 'SC';
+          const soilFactorS = soilClass === 'SA' ? 1.0 : soilClass === 'SB' ? 1.2 : soilClass === 'SC' ? 1.15 : soilClass === 'SD' ? 1.35 : 1.40;
+          const importanceI = activeWorkspace.beam.seismicImportanceI ?? 1.0;
+          const reductionR = Math.max(1.0, activeWorkspace.beam.responseReductionR ?? 5.0);
+          const seismicWeightW = Math.max(0, activeWorkspace.beam.buildingSeismicWeightKn ?? 5000);
+
+          const seismicCs = (2 / 3) * (zVal * importanceI / reductionR) * soilFactorS;
+          const baseShearVbKn = Number((seismicCs * seismicWeightW).toFixed(1));
+
+          const windV0 = activeWorkspace.beam.basicWindSpeedMs ?? distData.basicWindSpeedMs;
+          const buildingHeight = Math.max(3, activeWorkspace.beam.buildingHeightM ?? 20);
+          const tribWidth = Math.max(0.5, activeWorkspace.beam.tributaryWidthM ?? 5.0);
+
+          const kz = Number(Math.min(1.8, Math.max(0.70, 2.01 * Math.pow(Math.min(300, buildingHeight) / 365, 2 / 7))).toFixed(2));
+          const qzKpa = Number((0.000613 * kz * Math.pow(windV0, 2)).toFixed(3));
+          const designWindPressKpa = Number((qzKpa * 1.105).toFixed(2));
+          const beamWindUdlKnPerM = Number((designWindPressKpa * tribWidth).toFixed(2));
+
+          return (
+            <div className="p-3.5 border-t border-[var(--md-sys-color-outline-variant)] space-y-3 bg-[var(--md-sys-color-surface)]">
+              {/* Controls Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Bangladesh District</label>
+                  <select
+                    value={selDistrict}
+                    onChange={(e) => {
+                      const district = e.target.value;
+                      const entry = BANGLADESH_DISTRICT_LOADS[district];
+                      if (entry) {
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          beam: {
+                            ...ws.beam,
+                            windDistrict: district,
+                            basicWindSpeedMs: entry.basicWindSpeedMs,
+                            seismicZone: entry.seismicZone,
+                          },
+                        }));
+                      }
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  >
+                    {Object.keys(BANGLADESH_DISTRICT_LOADS).map((d) => (
+                      <option key={d} value={d}>
+                        {d} ({BANGLADESH_DISTRICT_LOADS[d].seismicZone.split(' ')[0]}, {BANGLADESH_DISTRICT_LOADS[d].basicWindSpeedMs} m/s)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Seismic Zone</label>
+                  <select
+                    value={currentZone}
+                    onChange={(e) => {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, seismicZone: e.target.value as any },
+                      }));
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  >
+                    <option value="Zone 1 (Z=0.12)">Zone 1: Z = 0.12 (Khulna, Rajshahi, Barisal)</option>
+                    <option value="Zone 2 (Z=0.20)">Zone 2: Z = 0.20 (Dhaka, Comilla, Faridpur)</option>
+                    <option value="Zone 3 (Z=0.28)">Zone 3: Z = 0.28 (Chittagong, Cox's Bazar, Rangpur)</option>
+                    <option value="Zone 4 (Z=0.36)">Zone 4: Z = 0.36 (Sylhet, Mymensingh, Kurigram)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Site Soil Class</label>
+                  <select
+                    value={soilClass}
+                    onChange={(e) => {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, siteSoilClass: e.target.value as any },
+                      }));
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  >
+                    <option value="SA">SA: Hard Rock (S = 1.0)</option>
+                    <option value="SB">SB: Dense Sand / Rock (S = 1.2)</option>
+                    <option value="SC">SC: Stiff Clay / Dense Sand (S = 1.15)</option>
+                    <option value="SD">SD: Medium Stiff Soil (S = 1.35)</option>
+                    <option value="SE">SE: Soft Clay (S = 1.40)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Building Seismic W (kN)</label>
+                  <input
+                    type="number"
+                    step="500"
+                    min="100"
+                    max="100000"
+                    value={activeWorkspace.beam.buildingSeismicWeightKn ?? 5000}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, buildingSeismicWeightKn: val },
+                      }));
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Basic Wind Speed V0 (m/s)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="30"
+                    max="100"
+                    value={activeWorkspace.beam.basicWindSpeedMs ?? distData.basicWindSpeedMs}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, basicWindSpeedMs: val },
+                      }));
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  />
+                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{((activeWorkspace.beam.basicWindSpeedMs ?? distData.basicWindSpeedMs) * 3.6).toFixed(0)} km/h</span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Building Height H (m)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="3"
+                    max="150"
+                    value={activeWorkspace.beam.buildingHeightM ?? 20}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, buildingHeightM: val },
+                      }));
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Tributary Width B (m)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="20"
+                    value={activeWorkspace.beam.tributaryWidthM ?? 5.0}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, tributaryWidthM: val },
+                      }));
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Frame Type (R)</label>
+                  <select
+                    value={activeWorkspace.beam.responseReductionR ?? 5.0}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, responseReductionR: val },
+                      }));
+                    }}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
+                  >
+                    <option value="8.0">SMFR - Special Moment Frame (R = 8)</option>
+                    <option value="5.0">IMFR - Intermediate Frame (R = 5)</option>
+                    <option value="3.0">OMFR - Ordinary Frame (R = 3)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Calculated Results & Action Bar */}
+              <div className="p-3 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono mb-2.5">
+                  <div className="p-2 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]/60">
+                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Seismic Coeff Cs</span>
+                    <strong className="text-amber-600 dark:text-amber-400 text-sm">{seismicCs.toFixed(4)}</strong>
+                  </div>
+                  <div className="p-2 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]/60">
+                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Seismic Base Shear Vb</span>
+                    <strong className="text-amber-600 dark:text-amber-400 text-sm">{baseShearVbKn} kN</strong>
+                  </div>
+                  <div className="p-2 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]/60">
+                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Velocity Pressure qz</span>
+                    <strong className="text-sky-600 dark:text-sky-400 text-sm">{qzKpa} kPa</strong>
+                  </div>
+                  <div className="p-2 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]/60">
+                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Tributary Wind UDL</span>
+                    <strong className="text-sky-600 dark:text-sky-400 text-sm">{beamWindUdlKnPerM} kN/m</strong>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[var(--md-sys-color-outline-variant)]/40">
+                  <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mr-1">
+                    Direct Load Transfer:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: {
+                          ...ws.beam,
+                          uniformLoadKnPerM: beamWindUdlKnPerM,
+                        },
+                      }));
+                      setAppliedNotice(`Applied Wind UDL (${beamWindUdlKnPerM} kN/m)`);
+                      setTimeout(() => setAppliedNotice(null), 3000);
+                    }}
+                    className="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-700 text-white text-xs font-mono font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Wind className="w-3.5 h-3.5" />
+                    <span>Apply Wind UDL to Beam ({beamWindUdlKnPerM} kN/m)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: {
+                          ...ws.beam,
+                          pointLoadKn: baseShearVbKn,
+                          pointLoadPositionM: Number((activeWorkspace.beam.spanLengthM * 0.5).toFixed(2)),
+                        },
+                      }));
+                      setAppliedNotice(`Applied Seismic Vb (${baseShearVbKn} kN) at mid-span`);
+                      setTimeout(() => setAppliedNotice(null), 3000);
+                    }}
+                    className="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white text-xs font-mono font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>Apply Seismic Vb as Point Load ({baseShearVbKn} kN)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
 
       {/* Tab Group 3: Cross Section & Material Properties */}
       {(activeTab === 'all' || activeTab === 'section') && (

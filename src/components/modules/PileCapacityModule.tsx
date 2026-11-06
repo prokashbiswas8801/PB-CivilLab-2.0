@@ -230,43 +230,85 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Diameter D (m)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
+                Diameter D (m)
+              </label>
+              {pile.diameterM === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
               value={pile.diameterM}
-              onChange={(e) => updatePile({ diameterM: Math.max(0.2, Number(e.target.value) || 0.6) })}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="0.05"
-              min="0.2"
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                updatePile({ diameterM: isNaN(val) ? 0 : val });
+              }}
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                pile.diameterM === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
+              step="any"
+              min="0"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Length L (m)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
+                Length L (m)
+              </label>
+              {pile.lengthM === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
               value={pile.lengthM}
-              onChange={(e) => updatePile({ lengthM: Math.max(1.0, Number(e.target.value) || 20) })}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="1.0"
-              min="1.0"
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                updatePile({ lengthM: isNaN(val) ? 0 : val });
+              }}
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                pile.lengthM === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
+              step="any"
+              min="0"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              Single Axial Load P (kN)
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
+                Single Axial Load P (kN)
+              </label>
+              {pile.appliedLoadKn === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <input
               type="number"
               value={pile.appliedLoadKn}
-              onChange={(e) => updatePile({ appliedLoadKn: Math.max(0, Number(e.target.value) || 0) })}
-              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="50"
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                updatePile({ appliedLoadKn: isNaN(val) ? 0 : val });
+              }}
+              className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
+                pile.appliedLoadKn === 0
+                  ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                  : 'border-[var(--md-sys-color-outline)]'
+              }`}
+              step="any"
               min="0"
             />
           </div>

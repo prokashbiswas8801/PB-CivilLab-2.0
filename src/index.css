@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Georgia', 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Georgia', 'Times New Roman', serif;
-  --font-mono: 'Times New Roman', 'Georgia', serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @layer base {
@@ -13,9 +13,9 @@
   .theme-cad-charcoal,
   .theme-blueprint-navy,
   .dark {
-    --font-sans: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Georgia', 'Times New Roman', serif;
-    --font-mono: 'Times New Roman', 'Georgia', serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     /* THEME 1: Obsidian Gold (Default Dark Workbench) */
     --md-sys-color-background: #121110;
@@ -69,9 +69,9 @@
   /* THEME 2: Terracotta Studio (Espresso Dark Earthen Masonry) */
   .theme-terracotta-studio,
   [data-theme="terracotta-studio"] {
-    --font-sans: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Georgia', 'Times New Roman', serif;
-    --font-mono: 'Times New Roman', 'Georgia', serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     --md-sys-color-background: #161210;
     --md-sys-color-on-background: #FFFBEB;
@@ -125,9 +125,9 @@
   .theme-editorial-parchment,
   [data-theme="editorial-parchment"],
   .theme-calcpad-paper {
-    --font-sans: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Georgia', 'Times New Roman', serif;
-    --font-mono: 'Times New Roman', 'Georgia', serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     --md-sys-color-background: #F7F4EF; /* Cream Archival Parchment */
     --md-sys-color-on-background: #1C1917;
@@ -182,9 +182,9 @@
   [data-theme="solar-amber"],
   .theme-site-daylight,
   .sunlight-mode {
-    --font-sans: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Georgia', 'Times New Roman', serif;
-    --font-mono: 'Times New Roman', 'Georgia', serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     --md-sys-color-background: #FFFFFF;
     --md-sys-color-on-background: #090D16;
@@ -238,9 +238,9 @@
   .theme-emerald-botanical,
   [data-theme="emerald-botanical"],
   .theme-emerald-matrix {
-    --font-sans: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Georgia', 'Times New Roman', serif;
-    --font-mono: 'Times New Roman', 'Georgia', serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     --md-sys-color-background: #071712;
     --md-sys-color-on-background: #ECFDF5;
@@ -290,17 +290,21 @@
     color-scheme: dark;
   }
 
-  /* Global Typography Hierarchy: Georgia for Headings & Controls, Times New Roman for Numerals & Body */
+  /* Global Typography Hierarchy: Clean Modern Sans-Serif for UI & Monospace for Numbers/Calculations */
   h1, h2, h3, h4, h5, h6, nav, button, [role="tab"], .font-sans, .badge, .badge-unit {
-    font-family: 'Georgia', 'Times New Roman', serif;
-    letter-spacing: 0.015em;
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
   }
 
-  body, p, span, input, select, textarea, table, th, td, code, pre, .font-mono, .tabular-nums, .stat-value, .coordinate-value {
-    font-family: 'Times New Roman', 'Georgia', serif;
+  body, p, span, input, select, textarea {
+    font-family: var(--font-sans);
+  }
+
+  table, th, td, code, pre, .font-mono, .tabular-nums, .stat-value, .coordinate-value {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' 1;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.005em;
   }
 
   body {

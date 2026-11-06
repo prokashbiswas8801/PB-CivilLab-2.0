@@ -47,7 +47,7 @@ export const SYSTEM_PRESET_UNITS: Record<'metric' | 'imperial' | 'regional', Rec
     moment: 'kN.m',
     slope: 'percent',
     velocity: 'm/s',
-    flow_rate: 'm3/s',
+    flow_rate: 'L/s',
   },
   imperial: {
     length: 'ft',
@@ -65,7 +65,7 @@ export const SYSTEM_PRESET_UNITS: Record<'metric' | 'imperial' | 'regional', Rec
   },
   regional: {
     length: 'ft',
-    area: 'katha',
+    area: 'sft',
     volume: 'cft',
     mass: 'bag50',
     force: 'kN',
@@ -75,7 +75,7 @@ export const SYSTEM_PRESET_UNITS: Record<'metric' | 'imperial' | 'regional', Rec
     moment: 'kN.m',
     slope: 'percent',
     velocity: 'm/s',
-    flow_rate: 'm3/s',
+    flow_rate: 'L/s',
   },
 };
 
@@ -142,7 +142,9 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     // Length
     m: 'ft',
     ft: 'm',
-    mm: 'in',
+    mm: 'suta',
+    suta: 'mm',
+    soot: 'mm',
     in: 'mm',
     cm: 'in',
     km: 'mile',
@@ -191,6 +193,7 @@ export function getCounterpartUnitId(unitId: string, category: UnitCategoryKey):
     cft: 'm3',
     cum: 'cft',
     ft3: 'm3',
+    bag_cement: 'm3',
     in3: 'cm3',
     yd3: 'm3',
     liter: 'gal_us',
@@ -329,17 +332,25 @@ export function parseSmartUnitInput(
     return { parsedValue: 0, detectedUnitId: currentUnitId, isValid: false, errorMessage: 'Empty input' };
   }
 
-  // 1. If length and contains architectural symbols ', " or ft/in or architectural hyphen/space format (e.g. 12-6 1/2)
+  // 1. If length and contains architectural symbols ', " or ft/in or architectural hyphen/space format (e.g. 12-6 1/2) or suta/সুতা
   if (
     category === 'length' &&
     (/['"]/.test(trimmed) ||
-      /\b(?:ft|feet|in|inch|inches)\b/i.test(trimmed) ||
+      /\b(?:ft|feet|in|inch|inches|suta|soot|sut|সুতা|সূতা)\b/i.test(trimmed) ||
       /^\d+\s*[-–—]\s*\d+/.test(trimmed) ||
       /^\d+\s+\d+\s+\d+\/\d+/.test(trimmed) ||
       /^\d+\/\d+/.test(trimmed))
   ) {
     const feetInchResult = parseFeetInchString(trimmed);
     if (feetInchResult.isValid) {
+      if (currentUnitId === 'suta' || currentUnitId === 'soot') {
+        return {
+          parsedValue: feetInchResult.totalInches * 8,
+          detectedUnitId: currentUnitId,
+          isValid: true,
+          architecturalResult: feetInchResult,
+        };
+      }
       if (currentUnitId === 'm') {
         return {
           parsedValue: feetInchResult.totalMeters,
@@ -360,6 +371,14 @@ export function parseSmartUnitInput(
         return {
           parsedValue: feetInchResult.totalInches,
           detectedUnitId: 'in',
+          isValid: true,
+          architecturalResult: feetInchResult,
+        };
+      }
+      if (currentUnitId === 'rft') {
+        return {
+          parsedValue: feetInchResult.totalFeet,
+          detectedUnitId: 'rft',
           isValid: true,
           architecturalResult: feetInchResult,
         };

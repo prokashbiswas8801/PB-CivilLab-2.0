@@ -34,7 +34,9 @@ import { useOfflineSync } from './OfflineSyncContext';
 // CONSTANTS & INITIAL DATA SCHEMAS
 // ============================================================================
 
-const STORAGE_KEY_PREFIX = 'pbcivillab_site_erp_v1_';
+export const SITE_VERSION_KEY = 'pbcivillab_site_version';
+export const CURRENT_SITE_VERSION = 'v3_clean';
+const STORAGE_KEY_PREFIX = 'pbcivillab_site_erp_v3_clean_';
 const DEFAULT_PROJECT_ID = 'PROJ-DEFAULT-01';
 
 /**
@@ -718,6 +720,25 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
   // PERSISTENCE ENGINE: LOAD & SAVE WITH SCHEMA MIGRATION & ERROR RECOVERY
   // --------------------------------------------------------------------------
   useEffect(() => {
+    // Purge legacy site records on version mismatch while retaining system settings
+    try {
+      const storedVer = localStorage.getItem(SITE_VERSION_KEY);
+      if (storedVer !== CURRENT_SITE_VERSION) {
+        console.info('[SiteManagement] Version mismatch detected. Purging previous site logs.');
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('pbcivillab_site_erp_v1_') || key.startsWith('pbcivillab_site_erp_v2_'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+        localStorage.setItem(SITE_VERSION_KEY, CURRENT_SITE_VERSION);
+      }
+    } catch (err) {
+      console.warn('[SiteManagement] Purge error:', err);
+    }
+
     const storageKey = `${STORAGE_KEY_PREFIX}${activeProjectId}`;
     try {
       const raw = localStorage.getItem(storageKey);
@@ -743,14 +764,14 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         };
         setSiteData(sanitized);
       } else {
-        // If brand-new project with no record, check if it's default and seed initial sample data
-        const sample = createSampleSiteData(activeProjectId);
-        setSiteData(sample);
-        localStorage.setItem(storageKey, JSON.stringify(sample));
+        // Brand-new project starts with clean zero baseline
+        const clean = createInitialSiteData(activeProjectId);
+        setSiteData(clean);
+        localStorage.setItem(storageKey, JSON.stringify(clean));
       }
     } catch (err) {
       console.warn(`[SiteManagement] Failed to parse localStorage for ${storageKey}. Recovering clean state:`, err);
-      const clean = createSampleSiteData(activeProjectId);
+      const clean = createInitialSiteData(activeProjectId);
       setSiteData(clean);
     } finally {
       setIsLoaded(true);

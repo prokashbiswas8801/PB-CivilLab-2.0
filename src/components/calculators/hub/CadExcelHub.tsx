@@ -68,6 +68,10 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
 
   const [activeTab, setActiveTab] = useState<CadHubTab>(mapInitialTab(initialTab));
 
+  React.useEffect(() => {
+    setActiveTab(mapInitialTab(initialTab));
+  }, [initialTab]);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLispCategory, setSelectedLispCategory] = useState<string>('all');

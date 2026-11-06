@@ -268,6 +268,17 @@ export interface BeamParameters {
   supportCondition: SupportCondition;
   allowableStressMpa: number;
   sectionDepthMm: number;
+  // BNBC-2020 Seismic & Wind Load Quick Estimator Helper
+  seismicZone?: 'Zone 1 (Z=0.12)' | 'Zone 2 (Z=0.20)' | 'Zone 3 (Z=0.28)' | 'Zone 4 (Z=0.36)';
+  seismicImportanceI?: number;
+  responseReductionR?: number;
+  buildingSeismicWeightKn?: number;
+  siteSoilClass?: 'SA' | 'SB' | 'SC' | 'SD' | 'SE';
+  windDistrict?: string;
+  basicWindSpeedMs?: number;
+  buildingHeightM?: number;
+  tributaryWidthM?: number;
+  windExposureCategory?: 'A' | 'B' | 'C';
 }
 
 /* Module 2: Bearing Capacity */
@@ -295,6 +306,13 @@ export interface BearingParameters {
   overconsolidationRatioOcr?: number;
   permissibleSettlementMm?: number;
   layers?: SoilLayer[];
+  // Column Axial & Footing Punching/Beam Shear Check Parameters (BNBC-2020 / ACI 318)
+  footingThicknessMm?: number;
+  colWidthMm?: number;
+  colDepthMm?: number;
+  fckMpa?: number;
+  fyMpa?: number;
+  clearCoverMm?: number;
 }
 
 export type EnvironmentalExposureClass =
@@ -435,7 +453,7 @@ export type PipeMaterialType =
   | 'galvanized-steel'
   | 'corrugated-steel';
 
-export type PipeServiceType = 'pressure' | 'gravity-storm';
+export type PipeServiceType = 'pressure' | 'gravity-storm' | 'tubewell-plumbing';
 
 export interface PipeHydraulicsParameters {
   serviceType?: PipeServiceType;
@@ -451,6 +469,22 @@ export interface PipeHydraulicsParameters {
   minorLossCoefficientK: number;
   waterTempC: number;
   stormFillingRatio?: number;
+  // Deep Tubewell, Pump HP & uPVC Plumbing Sizer Sub-Mode (BNBC-2020 Part 8)
+  tubewellDepthM?: number;
+  staticWaterLevelM?: number;
+  drawdownM?: number;
+  deliveryHeadM?: number;
+  pumpEfficiencyPercent?: number;
+  motorEfficiencyPercent?: number;
+  upvcClass?: 'Class B (6 bar)' | 'Class C (9 bar)' | 'Class D (12 bar)' | 'Class E (15 bar)';
+  // BNBC Plumbing Fixture Units (WSFU / DFU Schedule):
+  fixtureWaterClosets?: number;
+  fixtureWashBasins?: number;
+  fixtureShowers?: number;
+  fixtureKitchenSinks?: number;
+  fixtureFloorDrains?: number; // FD (strainer floor drain)
+  fixtureFloorTraps?: number; // FT (water seal P-trap / floor trap)
+  fixtureUrinals?: number;
 }
 
 export interface ConcreteMemberItem {
@@ -488,13 +522,16 @@ export interface ConcreteMaterialParameters {
 /* Module 6: Bar Bending Schedule (BBS) */
 export type StructuralElementType =
   | 'slab'
+  | 'beam'
   | 'column'
   | 'column-rect'
   | 'circular-column'
   | 'column-circ'
   | 'footing'
   | 'staircase'
-  | 'staircase-waist';
+  | 'staircase-waist'
+  | 'lintel-chajja'
+  | 'pile-cage';
 
 export interface RebarBBSParameters {
   elementType: StructuralElementType;
@@ -508,6 +545,19 @@ export interface RebarBBSParameters {
   mainBarSpacingMm: number;
   distBarDiaMm: number;
   distBarSpacingMm: number;
+  // Lapping & 12m Commercial Bar Stock Optimizer
+  lappingFactorD?: number; // e.g. 50 (50d) or 60 (60d) for bars exceeding 12m
+  commercialBarStockLengthM?: number; // default 12.0m (39.37 ft)
+  // Beam BBS fields
+  beamLengthM?: number;
+  beamWidthMm?: number;
+  beamDepthMm?: number;
+  beamMainBarDiaMm?: number;
+  beamTopBarCount?: number;
+  beamBotBarCount?: number;
+  beamStirrupDiaMm?: number;
+  beamStirrupSpacingMm?: number;
+  // Column fields
   colLengthMm: number;
   colWidthMm: number;
   colHeightM: number;
@@ -536,6 +586,32 @@ export interface RebarBBSParameters {
   stairMainBarSpacingMm: number;
   stairDistBarDiaMm: number;
   stairDistBarSpacingMm: number;
+  // Lintel & Chajja / Sunshade fields
+  lintelLengthM?: number;
+  lintelWidthMm?: number;
+  lintelDepthMm?: number;
+  lintelMainBarDiaMm?: number;
+  lintelTopBarCount?: number;
+  lintelBotBarCount?: number;
+  lintelStirrupDiaMm?: number;
+  lintelStirrupSpacingMm?: number;
+  chajjaProjectionM?: number;
+  chajjaRootThicknessMm?: number;
+  chajjaTipThicknessMm?: number;
+  chajjaMainBarDiaMm?: number;
+  chajjaMainBarSpacingMm?: number;
+  chajjaDistBarDiaMm?: number;
+  chajjaDistBarSpacingMm?: number;
+  // Bored Cast-in-Situ Pile Cage fields
+  pileDiaMm?: number;
+  pileLengthM?: number;
+  pileMainBarDiaMm?: number;
+  pileMainBarCount?: number;
+  pileSpiralDiaMm?: number;
+  pileSpiralPitchMm?: number;
+  pileStiffenerBarDiaMm?: number;
+  pileStiffenerSpacingM?: number;
+  pileCutoffEmbedmentM?: number;
 }
 
 /* Module 7: Masonry & Finishes */
@@ -545,6 +621,9 @@ export interface MasonryOpening {
   widthM: number;
   heightM: number;
   count: number;
+  type?: 'window' | 'door' | 'veranda-grill' | 'ventilator';
+  includeGrill?: boolean;
+  includeThaiAluminum?: boolean;
 }
 
 export interface MasonryParameters {
@@ -576,6 +655,17 @@ export interface MasonryParameters {
   skirtingHeightMm?: number;
   groutJointWidthMm?: number;
   groutDensityKgPerM3?: number;
+  // Paint, Wall Putty & Primer Schedule
+  puttyCoats?: number;
+  puttyCoverageKgPerM2?: number; // default ~0.90 kg/m2
+  primerCoverageM2PerL?: number; // default ~11.0 m2/L
+  paintCoats?: number;
+  paintCoverageM2PerL?: number; // default ~6.5 m2/L
+  paintWastagePercent?: number;
+  // MS Window/Veranda Grill & Thai Aluminum Schedule
+  grillWeightKgPerSft?: number; // default 1.40 kg/sft
+  includeGrillSchedule?: boolean;
+  includeThaiSchedule?: boolean;
 }
 
 /* Module 8: Earthwork & Road Alignment */
@@ -651,6 +741,81 @@ export interface CalculationRecord {
   inputsSnapshot: Record<string, unknown>;
 }
 
+/* -------------------------------------------------------------
+   ARCHITECTURE, SPACE PLANNING & BY-LAWS PARAMETERS (BNBC 2020)
+------------------------------------------------------------- */
+export interface FarMgcParameters {
+  landUnit: 'katha' | 'decimal' | 'sqft' | 'sqm';
+  landAreaValue: number;
+  customKathaSqFt: number;
+  occupancy: 'residential' | 'commercial' | 'mixed' | 'educational' | 'industrial';
+  roadWidthM: number;
+  frontageM: number;
+  plotDepthM: number;
+  isAutoDimension: boolean;
+  enableOverride: boolean;
+  overrideFar: number;
+  overrideMgc: number;
+  overrideSetbacks: {
+    front: number;
+    rear: number;
+    side1: number;
+    side2: number;
+  };
+}
+
+export interface StaircaseParameters {
+  stairType: 'dog-legged' | 'straight' | 'open-well';
+  floorHeightMm: number;
+  stairwellLengthMm: number;
+  stairwellWidthMm: number;
+  preferredRiserMm: number;
+  preferredTreadMm: number;
+  waistSlabMm: number;
+  slabThicknessMm: number;
+  landingWidthMm: number;
+  nosingMm: number;
+  liveLoadKpa: number;
+  finishesLoadKpa: number;
+}
+
+export interface WaterTankParameters {
+  calcMode: 'occupants' | 'building';
+  numFloors: number;
+  unitsPerFloor: number;
+  personsPerUnit: number;
+  directOccupants: number;
+  floatingPopulation: number;
+  lpcd: number;
+  storageDays: number;
+  fireReserveL: number;
+  ugwrSharePercent: number;
+  ugwrWaterDepthM: number;
+  ugwrLwRatio: number;
+  ohtWaterDepthM: number;
+  ohtLwRatio: number;
+  pumpFillHours: number;
+  totalHeadM: number;
+}
+
+export interface SepticTankParameters {
+  septicUsers: number;
+  sewageRateLpcd: number;
+  detentionHours: number;
+  desludgingYears: number;
+  septicDepthM: number;
+  septicLwRatio: number;
+  soilPercolationRate: number;
+  soakPitDiaM: number;
+}
+
+export interface ArchitectureParameters {
+  farMgc: FarMgcParameters;
+  staircase: StaircaseParameters;
+  waterTank: WaterTankParameters;
+  septicTank: SepticTankParameters;
+}
+
 export interface CivilWorkspace {
   id: string;
   name: string;
@@ -678,6 +843,7 @@ export interface CivilWorkspace {
   pile?: PileCapacityParameters;
   pipe?: PipeHydraulicsParameters;
   unitPreferences?: WorkspaceUnitPreferences;
+  architecture?: ArchitectureParameters;
 }
 
 /* -------------------------------------------------------------
@@ -764,11 +930,15 @@ export interface EngineeringPreset {
     masonry?: Partial<MasonryParameters>;
     rebarBbs?: Partial<RebarBBSParameters>;
     boq?: Partial<BOQParameters>;
+    continuousBeam?: Partial<ContinuousBeamParameters>;
+    pile?: Partial<PileCapacityParameters>;
+    pipe?: Partial<PipeHydraulicsParameters>;
+    surveying?: Partial<SurveyingParameters>;
   };
 }
 
 export interface CivilLabSchemaV2 {
-  schemaVersion: 2;
+  schemaVersion: 2 | 3;
   lastMigratedAt: string;
   migratedFromVersion: number | null;
   themePreference: ThemePreference;
@@ -783,6 +953,8 @@ export interface CivilLabSchemaV2 {
   userPreferences?: UserCustomPreferences;
   presets?: EngineeringPreset[];
 }
+
+export type CivilLabSchemaV3 = CivilLabSchemaV2;
 
 export interface LegacySchemaV1 {
   schemaVersion?: 1;

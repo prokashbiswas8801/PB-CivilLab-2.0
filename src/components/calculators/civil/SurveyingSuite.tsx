@@ -14,6 +14,10 @@ import {
   Layers,
   Settings2,
   Table,
+  RotateCcw,
+  Sparkles,
+  Printer,
+  History,
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 
@@ -36,7 +40,19 @@ export interface PolygonPoint {
   y: number; // Northing / Y (m or ft)
 }
 
-export const SurveyingSuite: React.FC = () => {
+export interface SurveyingSuiteProps {
+  onQuickPrint?: () => void;
+  onExportPdf?: () => void;
+  onExportCsv?: () => void;
+  onSaveToHistory?: (record?: any) => void;
+}
+
+export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
+  onQuickPrint,
+  onExportPdf,
+  onExportCsv,
+  onSaveToHistory,
+}) => {
   const [activeTab, setActiveTab] = useState<'land-area' | 'leveling-sheet'>('land-area');
 
   /* -------------------------------------------------------------------------
@@ -411,6 +427,49 @@ export const SurveyingSuite: React.FC = () => {
     setPolygonPoints(polygonPoints.filter((p) => p.id !== id));
   };
 
+  const handleResetToZero = () => {
+    setSideA(0);
+    setSideB(0);
+    setSideC(0);
+    setQuadSide1(0);
+    setQuadSide2(0);
+    setQuadSide3(0);
+    setQuadSide4(0);
+    setQuadDiagonal(0);
+    setPolygonPoints([]);
+    setInitialBenchmarkRL(0);
+    setLevelingRows([
+      { id: 'st-01', station: 'BM 1', backsight: 0, intermediateSight: undefined, foresight: undefined, heightOfInstrument: 0, rise: undefined, fall: undefined, reducedLevel: 0, remarks: 'Datum benchmark' },
+    ]);
+  };
+
+  const handleLoadStandardPreset = () => {
+    setSideA(120);
+    setSideB(150);
+    setSideC(180);
+    setQuadSide1(85);
+    setQuadSide2(110);
+    setQuadSide3(90);
+    setQuadSide4(105);
+    setQuadDiagonal(140);
+    setPolygonPoints([
+      { id: 'p1', x: 0, y: 0 },
+      { id: 'p2', x: 120, y: 15 },
+      { id: 'p3', x: 150, y: 110 },
+      { id: 'p4', x: 45, y: 130 },
+      { id: 'p5', x: 0, y: 80 },
+    ]);
+    setInitialBenchmarkRL(100.0);
+    setLevelingRows([
+      { id: 'st-01', station: 'BM 1', backsight: 1.450, intermediateSight: undefined, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: undefined, reducedLevel: 100.0, remarks: 'Benchmark on culvert parapet' },
+      { id: 'st-02', station: 'CH 0+000', backsight: undefined, intermediateSight: 1.820, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.370, reducedLevel: 99.630, remarks: 'Centerline road start' },
+      { id: 'st-03', station: 'CH 0+020', backsight: undefined, intermediateSight: 2.150, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.330, reducedLevel: 99.300, remarks: 'Natural ground' },
+      { id: 'st-04', station: 'CP 1', backsight: 2.380, intermediateSight: undefined, foresight: 2.890, heightOfInstrument: 100.940, rise: undefined, fall: 0.740, reducedLevel: 98.560, remarks: 'Change Point on peg' },
+      { id: 'st-05', station: 'CH 0+040', backsight: undefined, intermediateSight: 1.620, foresight: undefined, heightOfInstrument: 100.940, rise: 0.760, fall: undefined, reducedLevel: 99.320, remarks: 'Drain bed invert' },
+      { id: 'st-06', station: 'TBM 2', backsight: undefined, intermediateSight: undefined, foresight: 1.250, heightOfInstrument: 100.940, rise: 0.370, fall: undefined, reducedLevel: 99.690, remarks: 'Closing temporary BM' },
+    ]);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner & Header */}
@@ -419,7 +478,7 @@ export const SurveyingSuite: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] uppercase">
-                Phase 4 Module
+                Clean Slate Baseline
               </span>
               <h2 className="text-lg md:text-xl font-bold text-[var(--md-sys-color-on-surface)]">
                 Surveying &amp; Land Measurement Suite
@@ -433,20 +492,78 @@ export const SurveyingSuite: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleExportLevelingCSV}
+              onClick={handleResetToZero}
+              className="px-2.5 py-2 rounded-lg text-xs font-semibold border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-error-container)]/30 hover:text-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Reset surveying inputs to clean zero baseline"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[var(--md-sys-color-error)]" />
+              <span>Reset to Zero</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLoadStandardPreset}
+              className="px-2.5 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 flex items-center gap-1.5 transition-opacity cursor-pointer shadow-xs"
+              title="Load standard engineering preset for surveying"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Load Preset</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (onQuickPrint) {
+                  onQuickPrint();
+                } else {
+                  window.print();
+                }
+              }}
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Quick Print A4 submittal report"
+            >
+              <Printer className="w-4 h-4 text-amber-500" />
+              <span>Quick Print A4</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (onExportCsv) {
+                  onExportCsv();
+                } else {
+                  handleExportLevelingCSV();
+                }
+              }}
               className="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Export Leveling and Surveying schedule as CSV"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Export CSV</span>
             </button>
             <button
               type="button"
-              onClick={handleExportSurveyingPDF}
-              className="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] flex items-center gap-1.5 transition-opacity cursor-pointer shadow-xs"
+              onClick={() => {
+                if (onExportPdf) {
+                  onExportPdf();
+                } else {
+                  handleExportSurveyingPDF();
+                }
+              }}
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-opacity cursor-pointer shadow-xs"
+              title="Export certified engineering PDF submittal"
             >
-              <FileDown className="w-4 h-4" />
+              <FileDown className="w-4 h-4 text-blue-500" />
               <span>Certified PDF</span>
             </button>
+            {onSaveToHistory && (
+              <button
+                type="button"
+                onClick={() => onSaveToHistory()}
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Save snapshot to calculation history ledger"
+              >
+                <History className="w-4 h-4 text-emerald-500" />
+                <span>Save to History</span>
+              </button>
+            )}
           </div>
         </div>
 

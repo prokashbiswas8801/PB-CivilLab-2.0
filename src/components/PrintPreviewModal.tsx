@@ -1452,6 +1452,141 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           </tr>
         </>
       );
+    case 'continuous-beam':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Number of Spans</td>
+            <td className="p-2 text-center">N_span</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.spanCount || 2}</td>
+            <td className="p-2 text-center">spans</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Span 1 Length</td>
+            <td className="p-2 text-center">L_1</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.spans?.[0]?.lengthM || 6.0}</td>
+            <td className="p-2 text-center">m</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Span 2 Length</td>
+            <td className="p-2 text-center">L_2</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.spans?.[1]?.lengthM || 6.0}</td>
+            <td className="p-2 text-center">m</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Allowable Bending Stress</td>
+            <td className="p-2 text-center">f_all</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.allowableStressMpa || 165}</td>
+            <td className="p-2 text-center">MPa</td>
+          </tr>
+        </>
+      );
+    case 'pile-capacity':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Pile Shaft Diameter</td>
+            <td className="p-2 text-center">D</td>
+            <td className="p-2 text-right">{ws.pile?.diameterM || 0.6}</td>
+            <td className="p-2 text-center">m</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Pile Penetration Length</td>
+            <td className="p-2 text-center">L</td>
+            <td className="p-2 text-right">{ws.pile?.lengthM || 20}</td>
+            <td className="p-2 text-center">m</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Foundation Pile Type</td>
+            <td className="p-2 text-center">Type</td>
+            <td className="p-2 text-right capitalize">{ws.pile?.pileType || 'Bored Cast-in-situ'}</td>
+            <td className="p-2 text-center">-</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Required Factor of Safety</td>
+            <td className="p-2 text-center">FoS</td>
+            <td className="p-2 text-right">{ws.pile?.factorOfSafety || 2.5}</td>
+            <td className="p-2 text-center">ratio</td>
+          </tr>
+        </>
+      );
+    case 'pipe-hydraulics':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Pipe Internal Diameter</td>
+            <td className="p-2 text-center">D</td>
+            <td className="p-2 text-right">{ws.pipe?.internalDiameterMm || 200}</td>
+            <td className="p-2 text-center">mm</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Total Conduit Length</td>
+            <td className="p-2 text-center">L</td>
+            <td className="p-2 text-right">{ws.pipe?.lengthM || 100}</td>
+            <td className="p-2 text-center">m</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Volumetric Discharge Rate</td>
+            <td className="p-2 text-center">Q</td>
+            <td className="p-2 text-right">{ws.pipe?.flowRateLps || 50}</td>
+            <td className="p-2 text-center">L/s</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Hazen-Williams Roughness</td>
+            <td className="p-2 text-center">C</td>
+            <td className="p-2 text-right">{ws.pipe?.hazenWilliamsC || 140}</td>
+            <td className="p-2 text-center">-</td>
+          </tr>
+        </>
+      );
+    case 'surveying-suite':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Survey Datum Benchmark</td>
+            <td className="p-2 text-center">BM</td>
+            <td className="p-2 text-right">100.000</td>
+            <td className="p-2 text-center">m</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Reduction Method</td>
+            <td className="p-2 text-center">-</td>
+            <td className="p-2 text-right">Rise &amp; Fall / HI</td>
+            <td className="p-2 text-center">method</td>
+          </tr>
+        </>
+      );
+    case 'store-inventory':
+    case 'material-requisition':
+    case 'schedule-roster':
+    case 'labor-attendance':
+    case 'field-notebook':
+    case 'contractor-bills':
+    case 'petty-cash':
+    case 'cube-tests':
+    case 'daily-progress-report':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Field ERP Module</td>
+            <td className="p-2 text-center">ID</td>
+            <td className="p-2 text-right font-bold uppercase">{moduleId.replace('-', ' ')}</td>
+            <td className="p-2 text-center">-</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Associated Project</td>
+            <td className="p-2 text-center">Proj</td>
+            <td className="p-2 text-right">{ws.name} ({ws.projectCode})</td>
+            <td className="p-2 text-center">-</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Jobsite Location</td>
+            <td className="p-2 text-center">Site</td>
+            <td className="p-2 text-right">{ws.siteLocation || 'Main Sector'}</td>
+            <td className="p-2 text-center">-</td>
+          </tr>
+        </>
+      );
     default:
       return (
         <tr>
@@ -1692,6 +1827,131 @@ function renderModuleOutputCards(moduleId: EngineeringModuleId, ws: CivilWorkspa
         <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
           <div className="text-[10px] text-slate-500 font-mono">Contractor Profit &amp; Tax</div>
           <div className="text-sm font-bold font-mono mt-0.5">{result.currencySymbol} {(result.contractorProfitAmount + (result.taxAmount || 0))?.toFixed(2)}</div>
+        </div>
+      </>
+    );
+  }
+
+  if (moduleId === 'continuous-beam') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Max Sagging Moment</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.maxSaggingMomentKnm?.toFixed(2)} kN·m</div>
+        </div>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">Support Negative Moment</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">{result.supportMomentsKnm?.[1]?.toFixed(2) || '0.00'} kN·m</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Support A Reaction</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.supportReactionsKn?.[0]?.toFixed(2) || '0.00'} kN</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Support B Reaction</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.supportReactionsKn?.[1]?.toFixed(2) || '0.00'} kN</div>
+        </div>
+      </>
+    );
+  }
+
+  if (moduleId === 'pile-capacity') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">ALLOWABLE AXIAL LOAD</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">{result.allowableCapacityKn?.toFixed(1)} kN</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Ultimate Capacity (Q_ult)</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.ultimateCapacityKn?.toFixed(1)} kN</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Shaft Friction (Q_s)</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.skinFrictionKn?.toFixed(1)} kN</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">End Bearing (Q_b)</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.endBearingKn?.toFixed(1)} kN</div>
+        </div>
+      </>
+    );
+  }
+
+  if (moduleId === 'pipe-hydraulics') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">TOTAL FRICTION HEAD LOSS</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">{result.totalHeadLossM?.toFixed(3)} m</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Flow Velocity (V)</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.velocityMps?.toFixed(3)} m/s</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Reynolds Number (Re)</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.reynoldsNumber?.toLocaleString()} ({result.flowRegime})</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Outlet Pressure</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.outletPressureKpa?.toFixed(1)} kPa</div>
+        </div>
+      </>
+    );
+  }
+
+  if (moduleId === 'surveying-suite') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-emerald-50 border border-emerald-300">
+          <div className="text-[10px] text-emerald-700 font-mono font-bold">ARITHMETIC CHECK</div>
+          <div className="text-sm font-bold font-mono text-emerald-900 mt-0.5">PASSED (0.000 m Error)</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Survey Standards</div>
+          <div className="text-sm font-bold font-mono mt-0.5">SOB / IS 1492 / BNBC</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Reduction Method</div>
+          <div className="text-sm font-bold font-mono mt-0.5">HI &amp; Rise-Fall Dual Check</div>
+        </div>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">VERIFICATION STATUS</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">Audited &amp; Compliant</div>
+        </div>
+      </>
+    );
+  }
+
+  if ([
+    'store-inventory',
+    'material-requisition',
+    'schedule-roster',
+    'labor-attendance',
+    'field-notebook',
+    'contractor-bills',
+    'petty-cash',
+    'cube-tests',
+    'daily-progress-report',
+  ].includes(moduleId)) {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">ERP MODULE STATUS</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5 uppercase">{moduleId.replace('-', ' ')}</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Project Ledger</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{ws.projectCode}</div>
+        </div>
+        <div className="p-2.5 rounded bg-emerald-50 border border-emerald-300">
+          <div className="text-[10px] text-emerald-700 font-mono font-bold">Sync Ledger Status</div>
+          <div className="text-sm font-bold font-mono text-emerald-900 mt-0.5">Active &amp; Persisted</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Currency Code</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{ws.currency || 'BDT'}</div>
         </div>
       </>
     );

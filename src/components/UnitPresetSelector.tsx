@@ -17,9 +17,9 @@ export const UnitPresetSelector: React.FC<UnitPresetSelectorProps> = ({
   className = '',
 }) => {
   const presets: { id: UnitSystemPreset; label: string; tooltip: string }[] = [
-    { id: 'metric', label: 'Metric (SI)', tooltip: 'm, mm, kN, MPa, m³, kg' },
-    { id: 'imperial', label: 'Imperial / US', tooltip: 'ft, in, kips, psi, cft, lb' },
-    { id: 'regional', label: 'Regional', tooltip: 'ft, in, CFT, Katha, 50kg bags' },
+    { id: 'metric', label: 'SI (Metric)', tooltip: 'SI Standard: m, mm, m², m³, kg, MT, kN, kPa, MPa, L/s' },
+    { id: 'regional', label: 'Bangladesh (Site)', tooltip: 'BNBC / Site: ft, in, Suta, RFT, SFT, CFT, Decimal, Katha, 50kg Bag, Maund' },
+    { id: 'imperial', label: 'Imperial (US)', tooltip: 'US Customary: ft, in, sq ft, cu yd, kips, psi, cft, lb' },
   ];
 
   return (

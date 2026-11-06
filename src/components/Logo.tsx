@@ -1,7 +1,6 @@
 import React from 'react';
-import brandLogoImg from '../assets/images/civil_lab_logo_1792487018872.jpg';
 
-export const BRAND_LOGO_SRC = brandLogoImg || '/logo.jpg';
+export const BRAND_LOGO_SRC = '/logo.svg';
 
 export interface LogoProps {
   /** Variant of the logo display */

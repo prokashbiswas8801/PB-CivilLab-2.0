@@ -25,11 +25,22 @@ interface WorkflowCrossLinkBannerProps {
   onTransferEarthworkToBoq: () => void;
   onApplyRateToBoq: () => void;
   onTransferContinuousBeamToRebar?: () => void;
+  onTransferBeamToRebar?: () => void;
+  onTransferMasonryToBoq?: () => void;
+  onTransferPileToBoq?: () => void;
+  onTransferSurveyingToBoq?: () => void;
   onTransferPipeToBoq?: () => void;
   bbsSteelWeightKg?: number;
   bearingFootingWidthM?: number;
   bearingEmbedmentDepthM?: number;
   bearingAppliedLoadKn?: number;
+  beamSpanM?: number;
+  beamMaxMomentKnm?: number;
+  masonryNetVolumeM3?: number;
+  masonryBricksCount?: number;
+  pileTotalCount?: number;
+  pileConcreteVolumeM3?: number;
+  surveyingLandAreaSqM?: number;
   mixBatchVolumeM3?: number;
   matConcreteVolumeM3?: number;
   earthworkBankVolumeM3?: number;
@@ -53,11 +64,22 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   onTransferEarthworkToBoq,
   onApplyRateToBoq,
   onTransferContinuousBeamToRebar,
+  onTransferBeamToRebar,
+  onTransferMasonryToBoq,
+  onTransferPileToBoq,
+  onTransferSurveyingToBoq,
   onTransferPipeToBoq,
   bbsSteelWeightKg,
   bearingFootingWidthM,
   bearingEmbedmentDepthM,
   bearingAppliedLoadKn,
+  beamSpanM,
+  beamMaxMomentKnm,
+  masonryNetVolumeM3,
+  masonryBricksCount,
+  pileTotalCount,
+  pileConcreteVolumeM3,
+  surveyingLandAreaSqM,
   mixBatchVolumeM3,
   matConcreteVolumeM3,
   earthworkBankVolumeM3,
@@ -360,6 +382,142 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
         >
           <FileSpreadsheet className="w-3.5 h-3.5" />
           <span>Add Pipeline to BOQ</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+        </button>
+      </div>
+    );
+  }
+
+  // 9. Single Beam Analysis -> Rebar BBS
+  if (activeModule === 'beam-analysis' && beamSpanM && beamSpanM > 0 && onTransferBeamToRebar) {
+    return (
+      <div className="bg-gradient-to-r from-blue-900/10 via-sky-900/10 to-transparent border border-blue-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-blue-600/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <SlidersHorizontal className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+              <span>One-Click Cross-Link: Beam Flexure Design → Rebar BBS Schedule</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded">
+                Beam Reinforcement
+              </span>
+            </div>
+            <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
+              Transfer span (<strong>{beamSpanM}m</strong>) and max moment <strong>{beamMaxMomentKnm ? `${beamMaxMomentKnm.toFixed(1)} kN·m` : '0 kN·m'}</strong> into Beam BBS reinforcement detailing.
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onTransferBeamToRebar}
+          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+        >
+          <Hammer className="w-3.5 h-3.5" />
+          <span>Pass to Beam Rebar BBS</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+        </button>
+      </div>
+    );
+  }
+
+  // 10. Masonry & Finishes -> BOQ Estimator
+  if (activeModule === 'masonry-finishes' && ((masonryNetVolumeM3 && masonryNetVolumeM3 > 0) || (masonryBricksCount && masonryBricksCount > 0)) && onTransferMasonryToBoq) {
+    return (
+      <div className="bg-gradient-to-r from-orange-900/10 via-amber-900/10 to-transparent border border-orange-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-orange-600/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+            <Boxes className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+              <span>One-Click Cross-Link: Masonry Brickwork &amp; Plaster → BOQ Takeoff</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded">
+                Takeoff Sync
+              </span>
+            </div>
+            <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
+              Sync <strong>{masonryNetVolumeM3 ? `${masonryNetVolumeM3.toFixed(2)} m³` : ''}</strong> brickwork ({masonryBricksCount || 0} bricks) and wall plaster into BOQ Takeoff Schedule.
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onTransferMasonryToBoq}
+          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-orange-600 text-white font-semibold hover:bg-orange-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          <span>Send Masonry to BOQ</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+        </button>
+      </div>
+    );
+  }
+
+  // 11. Deep Pile Capacity -> BOQ Substructure
+  if (activeModule === 'pile-capacity' && pileConcreteVolumeM3 && pileConcreteVolumeM3 > 0 && onTransferPileToBoq) {
+    return (
+      <div className="bg-gradient-to-r from-indigo-900/10 via-violet-900/10 to-transparent border border-indigo-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Layers className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+              <span>One-Click Cross-Link: Deep Pile Foundation → BOQ Substructure</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded">
+                Pile Substructure
+              </span>
+            </div>
+            <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
+              Transfer <strong>{pileTotalCount || 1} Piles</strong> ({pileConcreteVolumeM3.toFixed(1)} m³ concrete and drilling depth) into Substructure BOQ Schedule.
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onTransferPileToBoq}
+          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          <span>Send Piles to BOQ</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+        </button>
+      </div>
+    );
+  }
+
+  // 12. Surveying Suite -> BOQ Site Work
+  if (activeModule === 'surveying-suite' && surveyingLandAreaSqM && surveyingLandAreaSqM > 0 && onTransferSurveyingToBoq) {
+    return (
+      <div className="bg-gradient-to-r from-emerald-900/10 via-teal-900/10 to-transparent border border-emerald-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <Shovel className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+              <span>One-Click Cross-Link: Surveying Site Area → BOQ Site Preparation</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded">
+                Site Works
+              </span>
+            </div>
+            <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
+              Transfer measured site area <strong>{surveyingLandAreaSqM.toFixed(1)} m²</strong> to Site Clearing and Grading in BOQ.
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onTransferSurveyingToBoq}
+          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          <span>Send Site Area to BOQ</span>
           <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
         </button>
       </div>

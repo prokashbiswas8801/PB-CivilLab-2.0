@@ -106,7 +106,7 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
             designTip: 'Design strength includes required overdesign margin (fcr = fc + 8.3 MPa for fc ≤ 35 MPa).',
           }}
           validationRule={{
-            minSI: 10 * 1e6,
+            minSI: 0,
             maxSI: 100 * 1e6,
             warningBelowSI: 17 * 1e6,
             warningAboveSI: 60 * 1e6,
@@ -142,7 +142,7 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
         <UnitInput
           label="Target Batch Volume"
           category="volume"
-          siValue={activeWorkspace.concrete.batchVolumeM3 || 1.0}
+          siValue={activeWorkspace.concrete.batchVolumeM3 ?? 0}
           onChangeSI={(val) => {
             updateActiveWorkspace((ws) => ({
               ...ws,
@@ -164,27 +164,39 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
         {/* W/C Ratio with Presets & Guidance */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
-              Water-Cement Ratio (w/c)
-            </label>
+            <div className="flex items-center gap-1.5">
+              <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
+                Water-Cement Ratio (w/c)
+              </label>
+              {activeWorkspace.concrete.waterCementRatio === 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wider">
+                  0 ACTIVE
+                </span>
+              )}
+            </div>
             <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] font-bold">
-              {wcValue <= 0.42 ? 'High Durability' : wcValue <= 0.50 ? 'Normal RCC' : 'High Porosity'}
+              {wcValue === 0 ? 'Standby' : wcValue <= 0.42 ? 'High Durability' : wcValue <= 0.50 ? 'Normal RCC' : 'High Porosity'}
             </span>
           </div>
           <input
             type="number"
-            step="0.01"
-            min="0.30"
+            step="any"
+            min="0"
             max="0.75"
             value={activeWorkspace.concrete.waterCementRatio}
             onChange={(e) => {
-              const val = Number(e.target.value);
+              const raw = e.target.value;
+              const val = raw === '' ? 0 : Number(raw);
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                concrete: { ...ws.concrete, waterCementRatio: val },
+                concrete: { ...ws.concrete, waterCementRatio: isNaN(val) ? 0 : val },
               }));
             }}
-            className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:border-[var(--md-sys-color-primary)] focus:ring-1 focus:ring-[var(--md-sys-color-primary)]"
+            className={`w-full min-h-[48px] touch-target-48 px-3 rounded-lg border font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] transition-all ${
+              activeWorkspace.concrete.waterCementRatio === 0
+                ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+                : 'border-[var(--md-sys-color-outline)] focus:border-[var(--md-sys-color-primary)] focus:ring-1 focus:ring-[var(--md-sys-color-primary)]'
+            }`}
           />
           {/* Quick w/c presets */}
           <div className="flex items-center gap-1 flex-wrap pt-0.5">

@@ -26,27 +26,70 @@ export interface SetbackValues {
   side2: number; // meters
 }
 
-export const FarMgcCalculator: React.FC = () => {
+import { FarMgcParameters } from '../../../types/civil';
+
+export interface FarMgcCalculatorProps {
+  initialValues?: Partial<FarMgcParameters>;
+  onChange?: (values: FarMgcParameters) => void;
+}
+
+export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
+  initialValues,
+  onChange,
+}) => {
   // Input States
-  const [landUnit, setLandUnit] = useState<LandUnit>('katha');
-  const [landAreaValue, setLandAreaValue] = useState<number>(5.0); // 5 Katha default
-  const [customKathaSqFt, setCustomKathaSqFt] = useState<number>(720); // 720 standard Bangladesh/Bengal
-  const [occupancy, setOccupancy] = useState<OccupancyType>('residential');
-  const [roadWidthM, setRoadWidthM] = useState<number>(9.14); // 30 ft (9.14 m)
-  const [frontageM, setFrontageM] = useState<number>(14.5);
-  const [plotDepthM, setPlotDepthM] = useState<number>(23.0);
-  const [isAutoDimension, setIsAutoDimension] = useState<boolean>(true);
+  const [landUnit, setLandUnit] = useState<LandUnit>(initialValues?.landUnit || 'katha');
+  const [landAreaValue, setLandAreaValue] = useState<number>(initialValues?.landAreaValue ?? 5.0); // 5 Katha default
+  const [customKathaSqFt, setCustomKathaSqFt] = useState<number>(initialValues?.customKathaSqFt ?? 720); // 720 standard Bangladesh/Bengal
+  const [occupancy, setOccupancy] = useState<OccupancyType>(initialValues?.occupancy || 'residential');
+  const [roadWidthM, setRoadWidthM] = useState<number>(initialValues?.roadWidthM ?? 9.14); // 30 ft (9.14 m)
+  const [frontageM, setFrontageM] = useState<number>(initialValues?.frontageM ?? 14.5);
+  const [plotDepthM, setPlotDepthM] = useState<number>(initialValues?.plotDepthM ?? 23.0);
+  const [isAutoDimension, setIsAutoDimension] = useState<boolean>(initialValues?.isAutoDimension ?? true);
 
   // Custom Override States
-  const [enableOverride, setEnableOverride] = useState<boolean>(false);
-  const [overrideFar, setOverrideFar] = useState<number>(3.5);
-  const [overrideMgc, setOverrideMgc] = useState<number>(60);
-  const [overrideSetbacks, setOverrideSetbacks] = useState<SetbackValues>({
-    front: 1.5,
-    rear: 2.0,
-    side1: 1.25,
-    side2: 1.25,
-  });
+  const [enableOverride, setEnableOverride] = useState<boolean>(initialValues?.enableOverride ?? false);
+  const [overrideFar, setOverrideFar] = useState<number>(initialValues?.overrideFar ?? 3.5);
+  const [overrideMgc, setOverrideMgc] = useState<number>(initialValues?.overrideMgc ?? 60);
+  const [overrideSetbacks, setOverrideSetbacks] = useState<SetbackValues>(
+    initialValues?.overrideSetbacks || {
+      front: 1.5,
+      rear: 2.0,
+      side1: 1.25,
+      side2: 1.25,
+    }
+  );
+
+  React.useEffect(() => {
+    onChange?.({
+      landUnit,
+      landAreaValue,
+      customKathaSqFt,
+      occupancy,
+      roadWidthM,
+      frontageM,
+      plotDepthM,
+      isAutoDimension,
+      enableOverride,
+      overrideFar,
+      overrideMgc,
+      overrideSetbacks,
+    });
+  }, [
+    landUnit,
+    landAreaValue,
+    customKathaSqFt,
+    occupancy,
+    roadWidthM,
+    frontageM,
+    plotDepthM,
+    isAutoDimension,
+    enableOverride,
+    overrideFar,
+    overrideMgc,
+    overrideSetbacks,
+    onChange,
+  ]);
 
   // Convert land area to standard m² and ft²
   const { areaSqm, areaSqft } = useMemo(() => {

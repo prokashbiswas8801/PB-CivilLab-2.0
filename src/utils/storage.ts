@@ -10,12 +10,15 @@ import {
   UserProfile,
   UserCustomPreferences,
   EngineeringPreset,
+  EngineeringModuleId,
+  ArchitectureParameters,
 } from '../types/civil';
 import { persistToIndexedDB, clearIndexedDB, loadFromIndexedDB } from './indexedStorage';
 
-export const STORAGE_KEY = 'pb_civillab_state_v2';
+export const STORAGE_KEY = 'pb_civillab_state_v3_clean';
+export const LEGACY_V2_KEY = 'pb_civillab_state_v2';
 export const LEGACY_V1_KEY = 'pb_civillab_state_v1';
-export const CURRENT_SCHEMA_VERSION = 2 as const;
+export const CURRENT_SCHEMA_VERSION = 3 as const;
 
 export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -180,6 +183,67 @@ export function createSampleBOQItems(): TakeoffLineItem[] {
   ];
 }
 
+export function createDefaultArchitectureParameters(): ArchitectureParameters {
+  return {
+    farMgc: {
+      landUnit: 'katha',
+      landAreaValue: 5.0,
+      customKathaSqFt: 720,
+      occupancy: 'residential',
+      roadWidthM: 9.14,
+      frontageM: 14.5,
+      plotDepthM: 23.0,
+      isAutoDimension: true,
+      enableOverride: false,
+      overrideFar: 3.5,
+      overrideMgc: 60,
+      overrideSetbacks: { front: 1.5, rear: 2.0, side1: 1.25, side2: 1.25 },
+    },
+    staircase: {
+      stairType: 'dog-legged',
+      floorHeightMm: 3000,
+      stairwellLengthMm: 4500,
+      stairwellWidthMm: 2400,
+      preferredRiserMm: 150,
+      preferredTreadMm: 275,
+      waistSlabMm: 150,
+      slabThicknessMm: 150,
+      landingWidthMm: 1200,
+      nosingMm: 25,
+      liveLoadKpa: 3.0,
+      finishesLoadKpa: 1.0,
+    },
+    waterTank: {
+      calcMode: 'building',
+      numFloors: 6,
+      unitsPerFloor: 2,
+      personsPerUnit: 5,
+      directOccupants: 50,
+      floatingPopulation: 5,
+      lpcd: 135,
+      storageDays: 1.0,
+      fireReserveL: 10000,
+      ugwrSharePercent: 65,
+      ugwrWaterDepthM: 2.0,
+      ugwrLwRatio: 1.5,
+      ohtWaterDepthM: 1.6,
+      ohtLwRatio: 1.3,
+      pumpFillHours: 2.0,
+      totalHeadM: 28,
+    },
+    septicTank: {
+      septicUsers: 35,
+      sewageRateLpcd: 90,
+      detentionHours: 24,
+      desludgingYears: 2.0,
+      septicDepthM: 1.6,
+      septicLwRatio: 2.5,
+      soilPercolationRate: 30,
+      soakPitDiaM: 1.8,
+    },
+  };
+}
+
 export function createDefaultWorkspaces(): CivilWorkspace[] {
   const now = new Date().toISOString();
   return [
@@ -196,280 +260,325 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
       currency: 'BDT',
       boq: {
         currency: 'BDT',
-        contingencyPercent: 3.0,
-        contractorOverheadPercent: 10.0,
-        vatTaxPercent: 7.5,
+        contingencyPercent: 0,
+        contractorOverheadPercent: 0,
+        vatTaxPercent: 0,
         items: [],
       },
       rateAnalysis: {
         workType: 'rcc-1-1.5-3',
-        basisVolumeM3: 1.0,
+        basisVolumeM3: 0,
         currency: 'BDT',
-        cementPricePerBag: 560,
-        sandPricePerM3: 1800,
-        stoneChipsPricePerM3: 6200,
-        rebarPricePerKg: 108,
-        rebarAllowanceKgPerM3: 100,
-        admixturePricePerKg: 220,
-        admixtureDoseKgPerM3: 2.5,
-        brickPricePer1000: 12500,
-        masonDailyWage: 1100,
-        masonDaysRequired: 0.35,
-        laborerDailyWage: 650,
-        laborerDaysRequired: 1.8,
-        barBenderDailyWage: 950,
-        barBenderDaysRequired: 0.45,
-        mixerHirePerM3: 350,
-        vibratorHirePerM3: 180,
-        shutteringScaffoldingPerM3: 1400,
-        waterElectricityPercent: 1.5,
-        contractorProfitPercent: 10.0,
+        cementPricePerBag: 0,
+        sandPricePerM3: 0,
+        stoneChipsPricePerM3: 0,
+        rebarPricePerKg: 0,
+        rebarAllowanceKgPerM3: 0,
+        admixturePricePerKg: 0,
+        admixtureDoseKgPerM3: 0,
+        brickPricePer1000: 0,
+        masonDailyWage: 0,
+        masonDaysRequired: 0,
+        laborerDailyWage: 0,
+        laborerDaysRequired: 0,
+        barBenderDailyWage: 0,
+        barBenderDaysRequired: 0,
+        mixerHirePerM3: 0,
+        vibratorHirePerM3: 0,
+        shutteringScaffoldingPerM3: 0,
+        waterElectricityPercent: 0,
+        contractorProfitPercent: 0,
       },
       converter: {
         category: 'volume',
         fromUnit: 'm3',
         toUnit: 'cft',
-        inputValue: 15.0,
-        feetInchRawString: "12'--4 1/2\"",
+        inputValue: 0,
+        feetInchRawString: '',
       },
       beam: {
-        spanLengthM: 12.5,
-        uniformLoadKnPerM: 28.0,
-        pointLoadKn: 85.0,
-        pointLoadPositionM: 6.25,
+        spanLengthM: 0,
+        uniformLoadKnPerM: 0,
+        pointLoadKn: 0,
+        pointLoadPositionM: 0,
         elasticModulusGpa: 200,
-        momentOfInertiaCm4: 118000,
+        momentOfInertiaCm4: 0,
         supportCondition: 'simply-supported',
         allowableStressMpa: 250,
-        sectionDepthMm: 600,
+        sectionDepthMm: 0,
+        seismicZone: 'Zone 2 (Z=0.20)',
+        seismicImportanceI: 1.0,
+        responseReductionR: 5.0,
+        buildingSeismicWeightKn: 5000,
+        siteSoilClass: 'SC',
+        windDistrict: 'Dhaka',
+        basicWindSpeedMs: 65.7,
+        buildingHeightM: 20,
+        tributaryWidthM: 5,
+        windExposureCategory: 'B',
       },
       bearing: {
         footingShape: 'square',
-        footingWidthM: 3.2,
-        embedmentDepthM: 1.8,
-        soilCohesionKpa: 24,
-        frictionAngleDeg: 32,
-        unitWeightKnPerM3: 18.5,
-        waterTableDepthM: 3.5,
+        footingWidthM: 0,
+        embedmentDepthM: 0,
+        soilCohesionKpa: 0,
+        frictionAngleDeg: 0,
+        unitWeightKnPerM3: 0,
+        waterTableDepthM: 0,
         factorOfSafety: 3.0,
-        appliedColumnLoadKn: 2450,
+        appliedColumnLoadKn: 0,
+        footingThicknessMm: 450,
+        colWidthMm: 300,
+        colDepthMm: 300,
+        fckMpa: 21,
+        fyMpa: 420,
+        clearCoverMm: 75,
       },
       concrete: {
-        targetStrengthMpa: 40,
-        waterCementRatio: 0.42,
-        slumpMm: 100,
+        targetStrengthMpa: 0,
+        waterCementRatio: 0,
+        slumpMm: 0,
         maxAggregateSizeMm: 20,
         cementSpecificGravity: 3.15,
         fineAggSpecificGravity: 2.65,
         coarseAggSpecificGravity: 2.7,
-        airEntrainmentPercent: 2.0,
-        batchVolumeM3: 1.0,
+        airEntrainmentPercent: 0,
+        batchVolumeM3: 0,
       },
       channel: {
-        bottomWidthM: 2.4,
-        sideSlopeZ: 1.5,
-        flowDepthM: 1.35,
-        bedSlope: 0.0018,
+        bottomWidthM: 0,
+        sideSlopeZ: 0,
+        flowDepthM: 0,
+        bedSlope: 0,
         manningN: 0.015,
-        freeboardRequirementM: 0.45,
+        freeboardRequirementM: 0,
       },
       concreteMaterials: {
         code: 'BNBC-2020',
-        wetVolumeM3: 25.0,
+        wetVolumeM3: 0,
         ratioCement: 1,
-        ratioSand: 1.5,
-        ratioAggregate: 3,
+        ratioSand: 0,
+        ratioAggregate: 0,
         waterCementRatio: 0.45,
         cementBagWeightKg: 50,
         cementBulkDensityKgPerM3: 1440,
         sandBulkDensityKgPerM3: 1600,
         aggregateBulkDensityKgPerM3: 1520,
         customDryFactor: 1.54,
-        wastagePercent: 3.0,
+        wastagePercent: 0,
       },
       rebarBbs: {
         elementType: 'slab',
-        clearCoverMm: 20,
+        clearCoverMm: 0,
         rebarDensityKgPerM3: 7850,
         hookAngle: '90',
-        slabLengthM: 6.0,
-        slabWidthM: 4.5,
-        slabThicknessMm: 150,
-        mainBarDiaMm: 12,
-        mainBarSpacingMm: 150,
-        distBarDiaMm: 10,
-        distBarSpacingMm: 175,
-        colLengthMm: 450,
-        colWidthMm: 450,
-        colHeightM: 3.6,
-        colMainBarDiaMm: 20,
-        colMainBarCount: 8,
-        tieBarDiaMm: 10,
-        tieSpacingMm: 150,
-        circColDiaMm: 500,
-        circColHeightM: 3.6,
-        circMainBarDiaMm: 20,
-        circMainBarCount: 8,
-        spiralTieDiaMm: 10,
-        spiralPitchMm: 75,
-        footingLengthM: 2.5,
-        footingWidthM: 2.5,
-        footingDepthMm: 600,
-        footingBarDiaMm: 16,
-        footingBarSpacingMm: 150,
-        stairGoingM: 3.0,
-        stairTotalRiseM: 1.8,
-        waistSlabThicknessMm: 150,
-        riserMm: 150,
-        treadMm: 250,
-        landingLengthM: 1.2,
-        stairMainBarDiaMm: 12,
-        stairMainBarSpacingMm: 125,
-        stairDistBarDiaMm: 10,
-        stairDistBarSpacingMm: 150,
+        slabLengthM: 0,
+        slabWidthM: 0,
+        slabThicknessMm: 0,
+        mainBarDiaMm: 0,
+        mainBarSpacingMm: 0,
+        distBarDiaMm: 0,
+        distBarSpacingMm: 0,
+        colLengthMm: 0,
+        colWidthMm: 0,
+        colHeightM: 0,
+        colMainBarDiaMm: 0,
+        colMainBarCount: 0,
+        tieBarDiaMm: 0,
+        tieSpacingMm: 0,
+        circColDiaMm: 0,
+        circColHeightM: 0,
+        circMainBarDiaMm: 0,
+        circMainBarCount: 0,
+        spiralTieDiaMm: 0,
+        spiralPitchMm: 0,
+        footingLengthM: 0,
+        footingWidthM: 0,
+        footingDepthMm: 0,
+        footingBarDiaMm: 0,
+        footingBarSpacingMm: 0,
+        stairGoingM: 0,
+        stairTotalRiseM: 0,
+        waistSlabThicknessMm: 0,
+        riserMm: 0,
+        treadMm: 0,
+        landingLengthM: 0,
+        stairMainBarDiaMm: 0,
+        stairMainBarSpacingMm: 0,
+        stairDistBarDiaMm: 0,
+        stairDistBarSpacingMm: 0,
+        // Lapping & 12m Commercial Bar Stock
+        lappingFactorD: 50,
+        commercialBarStockLengthM: 12.0,
+        // Lintel & Chajja defaults
+        lintelLengthM: 2.1,
+        lintelWidthMm: 250,
+        lintelDepthMm: 150,
+        lintelMainBarDiaMm: 12,
+        lintelTopBarCount: 2,
+        lintelBotBarCount: 2,
+        lintelStirrupDiaMm: 8,
+        lintelStirrupSpacingMm: 150,
+        chajjaProjectionM: 0.6,
+        chajjaRootThicknessMm: 100,
+        chajjaTipThicknessMm: 75,
+        chajjaMainBarDiaMm: 10,
+        chajjaMainBarSpacingMm: 150,
+        chajjaDistBarDiaMm: 8,
+        chajjaDistBarSpacingMm: 200,
+        // Bored Pile Cage defaults
+        pileDiaMm: 500,
+        pileLengthM: 18.0,
+        pileMainBarDiaMm: 16,
+        pileMainBarCount: 7,
+        pileSpiralDiaMm: 8,
+        pileSpiralPitchMm: 150,
+        pileStiffenerBarDiaMm: 12,
+        pileStiffenerSpacingM: 2.0,
+        pileCutoffEmbedmentM: 0.75,
       },
       masonry: {
-        wallLengthM: 12.0,
-        wallHeightM: 3.2,
-        wallThicknessM: 0.25,
+        wallLengthM: 0,
+        wallHeightM: 0,
+        wallThicknessM: 0,
         brickLengthMm: 240,
         brickWidthMm: 115,
         brickHeightMm: 70,
         mortarJointMm: 10,
         mortarRatioCement: 1,
-        mortarRatioSand: 5,
-        brickWastagePercent: 5,
-        openings: [
-          { id: 'op-1', name: 'Main Entry Door (D1)', widthM: 1.2, heightM: 2.1, count: 1 },
-          { id: 'op-2', name: 'Standard Window (W1)', widthM: 1.5, heightM: 1.35, count: 2 },
-        ],
-        plasterThicknessMm: 12,
-        plasterSides: 2,
+        mortarRatioSand: 0,
+        brickWastagePercent: 0,
+        openings: [],
+        plasterThicknessMm: 0,
+        plasterSides: 0,
         plasterRatioCement: 1,
-        plasterRatioSand: 4,
-        floorLengthM: 8.0,
-        floorWidthM: 6.0,
-        tileLengthMm: 600,
-        tileWidthMm: 600,
-        tilesPerBox: 4,
-        tileWastagePercent: 5,
+        plasterRatioSand: 0,
+        floorLengthM: 0,
+        floorWidthM: 0,
+        tileLengthMm: 0,
+        tileWidthMm: 0,
+        tilesPerBox: 0,
+        tileWastagePercent: 0,
+        puttyCoats: 2,
+        puttyCoverageKgPerM2: 0.90,
+        primerCoverageM2PerL: 11.0,
+        paintCoats: 2,
+        paintCoverageM2PerL: 6.5,
+        paintWastagePercent: 5,
+        grillWeightKgPerSft: 1.40,
+        includeGrillSchedule: true,
+        includeThaiSchedule: true,
       },
       earthwork: {
         calculationType: 'pit-excavation',
         soilType: 'common-earth',
-        pitTopLengthM: 14.0,
-        pitTopWidthM: 10.0,
-        pitDepthM: 2.8,
-        pitSideSlopeH: 0.5,
-        trenchLengthM: 45.0,
-        trenchBottomWidthM: 1.5,
-        trenchDepthM: 1.8,
-        trenchSideSlopeH: 0.5,
-        roadLengthM: 120.0,
-        formationWidthM: 10.0,
-        sideSlopeS: 1.5,
-        depthStation1M: 1.2,
-        depthStation2M: 2.1,
-        depthStation3M: 1.6,
-        customSwellPercent: 25,
-        customShrinkagePercent: 80,
+        pitTopLengthM: 0,
+        pitTopWidthM: 0,
+        pitDepthM: 0,
+        pitSideSlopeH: 0,
+        trenchLengthM: 0,
+        trenchBottomWidthM: 0,
+        trenchDepthM: 0,
+        trenchSideSlopeH: 0,
+        roadLengthM: 0,
+        formationWidthM: 0,
+        sideSlopeS: 0,
+        depthStation1M: 0,
+        depthStation2M: 0,
+        depthStation3M: 0,
+        customSwellPercent: 0,
+        customShrinkagePercent: 0,
       },
       continuousBeam: {
-        spanCount: 3,
+        spanCount: 2,
         spans: [
           {
             id: 'span-1',
             spanIndex: 0,
-            lengthM: 6.0,
-            momentOfInertiaCm4: 120000,
+            lengthM: 0,
+            momentOfInertiaCm4: 0,
             elasticModulusGpa: 200,
-            udlKnPerM: 25.0,
-            pointLoadKn: 40.0,
-            pointLoadPositionM: 3.0,
+            udlKnPerM: 0,
+            pointLoadKn: 0,
+            pointLoadPositionM: 0,
           },
           {
             id: 'span-2',
             spanIndex: 1,
-            lengthM: 7.5,
-            momentOfInertiaCm4: 120000,
+            lengthM: 0,
+            momentOfInertiaCm4: 0,
             elasticModulusGpa: 200,
-            udlKnPerM: 30.0,
-            pointLoadKn: 60.0,
-            pointLoadPositionM: 3.75,
-          },
-          {
-            id: 'span-3',
-            spanIndex: 2,
-            lengthM: 5.5,
-            momentOfInertiaCm4: 120000,
-            elasticModulusGpa: 200,
-            udlKnPerM: 20.0,
-            pointLoadKn: 30.0,
-            pointLoadPositionM: 2.75,
+            udlKnPerM: 0,
+            pointLoadKn: 0,
+            pointLoadPositionM: 0,
           },
         ],
         leftSupport: 'pin',
         rightSupport: 'pin',
         allowableStressMpa: 250,
-        sectionDepthMm: 600,
+        sectionDepthMm: 0,
       },
       pile: {
         pileType: 'bored-cast-in-situ',
-        diameterM: 0.6,
-        lengthM: 22.0,
-        groundwaterDepthM: 3.0,
-        appliedLoadKn: 1650,
+        diameterM: 0,
+        lengthM: 0,
+        groundwaterDepthM: 0,
+        appliedLoadKn: 0,
         factorOfSafety: 2.5,
-        layers: [
-          {
-            id: 'layer-1',
-            name: 'Soft Silty Clay (Overburden)',
-            thicknessM: 6.0,
-            soilType: 'clay',
-            cohesionKpa: 28,
-            frictionAngleDeg: 0,
-            unitWeightKnPerM3: 17.5,
-          },
-          {
-            id: 'layer-2',
-            name: 'Medium Dense Silty Sand',
-            thicknessM: 8.0,
-            soilType: 'sand',
-            cohesionKpa: 0,
-            frictionAngleDeg: 30,
-            unitWeightKnPerM3: 18.5,
-          },
-          {
-            id: 'layer-3',
-            name: 'Dense Bearing Sand & Gravel',
-            thicknessM: 10.0,
-            soilType: 'sand',
-            cohesionKpa: 0,
-            frictionAngleDeg: 36,
-            unitWeightKnPerM3: 20.0,
-          },
-        ],
+        layers: [],
         tipBearingCohesionKpa: 0,
-        tipBearingFrictionDeg: 36,
-        tipBearingUnitWeightKnPerM3: 20.0,
+        tipBearingFrictionDeg: 0,
+        tipBearingUnitWeightKnPerM3: 0,
       },
       pipe: {
+        serviceType: 'pressure',
         pipeMaterial: 'pvc-hdpe',
         hazenWilliamsC: 150,
-        internalDiameterMm: 250,
-        lengthM: 180,
-        flowRateLps: 45,
-        inletElevationM: 25.0,
-        outletElevationM: 18.0,
-        inletPressureKpa: 300,
-        minorLossCoefficientK: 2.0,
+        internalDiameterMm: 0,
+        lengthM: 0,
+        flowRateLps: 0,
+        inletElevationM: 0,
+        outletElevationM: 0,
+        inletPressureKpa: 0,
+        minorLossCoefficientK: 0,
         waterTempC: 20,
+        tubewellDepthM: 60,
+        staticWaterLevelM: 25,
+        drawdownM: 6,
+        deliveryHeadM: 20,
+        pumpEfficiencyPercent: 70,
+        motorEfficiencyPercent: 85,
+        upvcClass: 'Class C (9 bar)',
+        fixtureWaterClosets: 6,
+        fixtureWashBasins: 6,
+        fixtureShowers: 4,
+        fixtureKitchenSinks: 2,
+        fixtureFloorDrains: 4,
+        fixtureFloorTraps: 4,
+        fixtureUrinals: 0,
+      },
+      surveying: {
+        method: 'height-of-instrument',
+        benchmarkRL: 0,
+        stations: [],
+        degrees: 0,
+        minutes: 0,
+        seconds: 0,
+        decimalDegreeOutput: 0,
+        inputDecimalDegrees: 0,
+        station1Name: '',
+        easting1M: 0,
+        northing1M: 0,
+        station2Name: '',
+        easting2M: 0,
+        northing2M: 0,
       },
       unitPreferences: {
         systemPreset: 'metric',
         fieldUnits: {},
         outputUnits: {},
       },
+      architecture: createDefaultArchitectureParameters(),
     },
   ];
 }
@@ -875,7 +984,361 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
         },
       },
     },
+    {
+      id: 'preset-boq-substructure-standard',
+      name: 'Standard Substructure Takeoff (PWD / BNBC)',
+      description: 'Comprehensive baseline BOQ for footings, lean bedding, pedestal columns, rebar, and brickwork.',
+      category: 'complete-workspace',
+      tags: ['BOQ', 'Takeoff', 'Substructure', 'Standard'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'PB CivilLab Standards',
+      payload: {
+        targetModule: 'boq-estimator',
+        boq: {
+          currency: 'BDT',
+          contingencyPercent: 3.0,
+          contractorOverheadPercent: 10.0,
+          vatTaxPercent: 7.5,
+          items: createSampleBOQItems(),
+        },
+      },
+    },
+    {
+      id: 'preset-rebar-two-way-slab',
+      name: 'Two-Way RCC Slab Schedule (6.0m × 4.5m × 150mm)',
+      description: 'BNBC 2020 two-way suspended floor slab with Ø12mm main rebar @ 150mm c/c and Ø10mm distribution @ 175mm c/c.',
+      category: 'complete-workspace',
+      tags: ['Rebar', 'BBS', 'Slab', 'BNBC-2020'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Structural Standards',
+      payload: {
+        targetModule: 'rebar-bbs',
+        rebarBbs: {
+          elementType: 'slab',
+          clearCoverMm: 20,
+          rebarDensityKgPerM3: 7850,
+          hookAngle: '90',
+          slabLengthM: 6.0,
+          slabWidthM: 4.5,
+          slabThicknessMm: 150,
+          mainBarDiaMm: 12,
+          mainBarSpacingMm: 150,
+          distBarDiaMm: 10,
+          distBarSpacingMm: 175,
+        },
+      },
+    },
+    {
+      id: 'preset-masonry-standard-wall',
+      name: 'Standard 10" Exterior Wall with Openings & Plaster',
+      description: '10" brick masonry wall (1:5 mortar) with D1 entry door, W1 windows, and 12mm dual-sided cement plaster (1:4).',
+      category: 'complete-workspace',
+      tags: ['Masonry', 'Plaster', 'Brickwork', 'Tiles'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Finishes Standards',
+      payload: {
+        targetModule: 'masonry-finishes',
+        masonry: {
+          wallLengthM: 12.0,
+          wallHeightM: 3.2,
+          wallThicknessM: 0.25,
+          brickLengthMm: 240,
+          brickWidthMm: 115,
+          brickHeightMm: 70,
+          mortarJointMm: 10,
+          mortarRatioCement: 1,
+          mortarRatioSand: 5,
+          brickWastagePercent: 5,
+          openings: [
+            { id: 'op-1', name: 'Main Entry Door (D1)', widthM: 1.2, heightM: 2.1, count: 1 },
+            { id: 'op-2', name: 'Standard Window (W1)', widthM: 1.5, heightM: 1.35, count: 2 },
+          ],
+          plasterThicknessMm: 12,
+          plasterSides: 2,
+          plasterRatioCement: 1,
+          plasterRatioSand: 4,
+          floorLengthM: 8.0,
+          floorWidthM: 6.0,
+          tileLengthMm: 600,
+          tileWidthMm: 600,
+          tilesPerBox: 4,
+          tileWastagePercent: 5,
+        },
+      },
+    },
+    {
+      id: 'preset-earthwork-foundation-pit',
+      name: 'Deep Foundation Pit Excavation (14m × 10m × 2.8m)',
+      description: 'Prismoidal pit excavation in common earth with 0.5:1 safe bank slope, 25% swell, and 80% shrinkage.',
+      category: 'earthwork-hydraulics',
+      tags: ['Earthwork', 'Excavation', 'Foundations'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Geotech Standards',
+      payload: {
+        targetModule: 'earthwork-alignment',
+        earthwork: {
+          calculationType: 'pit-excavation',
+          soilType: 'common-earth',
+          pitTopLengthM: 14.0,
+          pitTopWidthM: 10.0,
+          pitDepthM: 2.8,
+          pitSideSlopeH: 0.5,
+          trenchLengthM: 45.0,
+          trenchBottomWidthM: 1.5,
+          trenchDepthM: 1.8,
+          trenchSideSlopeH: 0.5,
+          roadLengthM: 120.0,
+          formationWidthM: 10.0,
+          sideSlopeS: 1.5,
+          depthStation1M: 1.2,
+          depthStation2M: 2.1,
+          depthStation3M: 1.6,
+          customSwellPercent: 25,
+          customShrinkagePercent: 80,
+        },
+      },
+    },
+    {
+      id: 'preset-continuous-beam-3span',
+      name: '3-Span Continuous Bridge Girder (6m + 7.5m + 5.5m)',
+      description: 'Multi-span indeterminate girder with combined uniform dead/live load and point axle loads under 3-moment analysis.',
+      category: 'structural-beam',
+      tags: ['Continuous Beam', '3-Moment', 'Bridge Girder', 'Structural'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Structural Standards',
+      payload: {
+        targetModule: 'continuous-beam',
+        continuousBeam: {
+          spanCount: 3,
+          spans: [
+            {
+              id: 'span-1',
+              spanIndex: 0,
+              lengthM: 6.0,
+              momentOfInertiaCm4: 120000,
+              elasticModulusGpa: 200,
+              udlKnPerM: 25.0,
+              pointLoadKn: 40.0,
+              pointLoadPositionM: 3.0,
+            },
+            {
+              id: 'span-2',
+              spanIndex: 1,
+              lengthM: 7.5,
+              momentOfInertiaCm4: 120000,
+              elasticModulusGpa: 200,
+              udlKnPerM: 30.0,
+              pointLoadKn: 60.0,
+              pointLoadPositionM: 3.75,
+            },
+            {
+              id: 'span-3',
+              spanIndex: 2,
+              lengthM: 5.5,
+              momentOfInertiaCm4: 120000,
+              elasticModulusGpa: 200,
+              udlKnPerM: 20.0,
+              pointLoadKn: 30.0,
+              pointLoadPositionM: 2.75,
+            },
+          ],
+          leftSupport: 'pin',
+          rightSupport: 'pin',
+          allowableStressMpa: 250,
+          sectionDepthMm: 600,
+        },
+      },
+    },
+    {
+      id: 'preset-pile-bored-deep',
+      name: '600mm × 22m Deep Bored Cast-in-Situ Pile',
+      description: 'BNBC 2020 bored pile through soft alluvial clay and silty sand terminating in dense bearing gravel layer.',
+      category: 'bearing-soil',
+      tags: ['Piles', 'Deep Foundations', 'Bored Pile', 'BNBC'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Geotech Standards',
+      payload: {
+        targetModule: 'pile-capacity',
+        pile: {
+          pileType: 'bored-cast-in-situ',
+          diameterM: 0.6,
+          lengthM: 22.0,
+          groundwaterDepthM: 3.0,
+          appliedLoadKn: 1650,
+          factorOfSafety: 2.5,
+          layers: [
+            {
+              id: 'layer-1',
+              name: 'Soft Silty Clay (Overburden)',
+              thicknessM: 6.0,
+              soilType: 'clay',
+              cohesionKpa: 28,
+              frictionAngleDeg: 0,
+              unitWeightKnPerM3: 17.5,
+            },
+            {
+              id: 'layer-2',
+              name: 'Medium Dense Silty Sand',
+              thicknessM: 8.0,
+              soilType: 'sand',
+              cohesionKpa: 0,
+              frictionAngleDeg: 30,
+              unitWeightKnPerM3: 18.5,
+            },
+            {
+              id: 'layer-3',
+              name: 'Dense Bearing Sand & Gravel',
+              thicknessM: 10.0,
+              soilType: 'sand',
+              cohesionKpa: 0,
+              frictionAngleDeg: 36,
+              unitWeightKnPerM3: 20.0,
+            },
+          ],
+          tipBearingCohesionKpa: 0,
+          tipBearingFrictionDeg: 36,
+          tipBearingUnitWeightKnPerM3: 20.0,
+        },
+      },
+    },
+    {
+      id: 'preset-pipe-pvc-gravity',
+      name: '250mm High-Capacity PVC Storm Drainage Main',
+      description: 'Hazen-Williams C=150 gravity stormwater discharge line (45 L/s, 180m length, 7m head drop).',
+      category: 'earthwork-hydraulics',
+      tags: ['Hydraulics', 'Pipes', 'Hazen-Williams', 'Water'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Hydraulics Standards',
+      payload: {
+        targetModule: 'pipe-hydraulics',
+        pipe: {
+          pipeMaterial: 'pvc-hdpe',
+          hazenWilliamsC: 150,
+          internalDiameterMm: 250,
+          lengthM: 180,
+          flowRateLps: 45,
+          inletElevationM: 25.0,
+          outletElevationM: 18.0,
+          inletPressureKpa: 300,
+          minorLossCoefficientK: 2.0,
+          waterTempC: 20,
+        },
+      },
+    },
+    {
+      id: 'preset-surveying-loop-standard',
+      name: 'Bench Mark Fly Leveling Loop (BM RL 100.000m)',
+      description: '4-station height-of-instrument leveling run with back-sight, intermediate, and foresight checks.',
+      category: 'complete-workspace',
+      tags: ['Surveying', 'Leveling', 'Benchmark', 'HI'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Surveying Standards',
+      payload: {
+        targetModule: 'surveying-suite',
+        surveying: {
+          method: 'height-of-instrument',
+          benchmarkRL: 100.0,
+          stations: [
+            { id: 'stn-bm', stationName: 'BM-01', backsight: 1.455, reducedLevel: 100.0, remarks: 'Permanent Bench Mark' },
+            { id: 'stn-1', stationName: 'CP-1', intermediateSight: 1.82, reducedLevel: 99.635, remarks: 'Culvert Invert' },
+            { id: 'stn-2', stationName: 'CP-2', foresight: 2.14, reducedLevel: 99.315, remarks: 'Formation Level' },
+          ],
+          degrees: 45,
+          minutes: 30,
+          seconds: 15,
+          decimalDegreeOutput: 45.50417,
+          inputDecimalDegrees: 45.50417,
+          station1Name: 'Stn A',
+          easting1M: 1000,
+          northing1M: 2000,
+          station2Name: 'Stn B',
+          easting2M: 1350,
+          northing2M: 2450,
+        },
+      },
+    },
   ];
+}
+
+export function getOfficialModulePreset(moduleId: EngineeringModuleId): EngineeringPreset | null {
+  const allPresets = createDefaultEngineeringPresets();
+  const match = allPresets.find((p) => p.payload.targetModule === moduleId);
+  if (match) return match;
+
+  // Category fallback matching
+  if (moduleId === 'concrete-materials') {
+    return allPresets.find((p) => p.id === 'preset-concrete-m20-nominal') || null;
+  }
+  if (moduleId === 'concrete-mix') {
+    return allPresets.find((p) => p.id === 'preset-concrete-m25-structural') || null;
+  }
+  if (moduleId === 'rate-analysis') {
+    return allPresets.find((p) => p.id === 'preset-rates-pwd-2024') || null;
+  }
+  if (moduleId === 'beam-analysis') {
+    return allPresets.find((p) => p.id === 'preset-beam-w24-transfer') || null;
+  }
+  if (moduleId === 'bearing-capacity') {
+    return allPresets.find((p) => p.id === 'preset-soil-deltaic-clay') || null;
+  }
+  if (moduleId === 'open-channel') {
+    return allPresets.find((p) => p.id === 'preset-channel-lined-drain') || null;
+  }
+  return null;
+}
+
+export function getZeroBaselineForModule(moduleId: EngineeringModuleId): Partial<CivilWorkspace> {
+  const zeroWs = createDefaultWorkspaces()[0];
+  switch (moduleId) {
+    case 'boq-estimator':
+      return { boq: zeroWs.boq };
+    case 'rate-analysis':
+      return { rateAnalysis: zeroWs.rateAnalysis };
+    case 'unit-converter':
+      return { converter: zeroWs.converter };
+    case 'beam-analysis':
+      return { beam: zeroWs.beam };
+    case 'bearing-capacity':
+      return { bearing: zeroWs.bearing };
+    case 'concrete-mix':
+      return { concrete: zeroWs.concrete };
+    case 'open-channel':
+      return { channel: zeroWs.channel };
+    case 'concrete-materials':
+      return { concreteMaterials: zeroWs.concreteMaterials };
+    case 'rebar-bbs':
+      return { rebarBbs: zeroWs.rebarBbs };
+    case 'masonry-finishes':
+      return { masonry: zeroWs.masonry };
+    case 'earthwork-alignment':
+      return { earthwork: zeroWs.earthwork };
+    case 'continuous-beam':
+      return { continuousBeam: zeroWs.continuousBeam };
+    case 'pile-capacity':
+      return { pile: zeroWs.pile };
+    case 'pipe-hydraulics':
+      return { pipe: zeroWs.pipe };
+    case 'surveying-suite':
+      return { surveying: zeroWs.surveying };
+    default:
+      return {};
+  }
 }
 
 export function createCleanSchemaV2(): CivilLabSchemaV2 {
@@ -889,7 +1352,7 @@ export function createCleanSchemaV2(): CivilLabSchemaV2 {
     splitRatioPercent: 44,
     activeWorkspaceId: workspaces[0].id,
     customUnits: createDefaultCustomUnits(),
-    commandRecentQueries: ['cft', 'katha', 'rebar', '12-4 1/2'],
+    commandRecentQueries: [],
     workspaces,
     calculationHistory: [],
     userProfile: createDefaultUserProfile(),
@@ -1004,6 +1467,14 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
             fieldUnits: ws.unitPreferences?.fieldUnits || {},
             outputUnits: ws.unitPreferences?.outputUnits || {},
           },
+          architecture: ws.architecture
+            ? {
+                farMgc: { ...(fallback.workspaces[0].architecture?.farMgc || createDefaultArchitectureParameters().farMgc), ...(ws.architecture.farMgc || {}) },
+                staircase: { ...(fallback.workspaces[0].architecture?.staircase || createDefaultArchitectureParameters().staircase), ...(ws.architecture.staircase || {}) },
+                waterTank: { ...(fallback.workspaces[0].architecture?.waterTank || createDefaultArchitectureParameters().waterTank), ...(ws.architecture.waterTank || {}) },
+                septicTank: { ...(fallback.workspaces[0].architecture?.septicTank || createDefaultArchitectureParameters().septicTank), ...(ws.architecture.septicTank || {}) },
+              }
+            : fallback.workspaces[0].architecture || createDefaultArchitectureParameters(),
         }))
       : fallback.workspaces;
 
@@ -1156,26 +1627,40 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
   };
 }
 
-export function loadPersistedState(): CivilLabSchemaV2 {
+export function purgeLegacyStorage(): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
   try {
-    const rawLegacyV1 = localStorage.getItem(LEGACY_V1_KEY);
-    const rawV2 = localStorage.getItem(STORAGE_KEY);
+    const hasLegacyV1 = localStorage.getItem(LEGACY_V1_KEY);
+    const hasLegacyV2 = localStorage.getItem(LEGACY_V2_KEY);
+    const hasV3 = localStorage.getItem(STORAGE_KEY);
 
-    if (rawLegacyV1 && !rawV2) {
-      const parsedV1 = JSON.parse(rawLegacyV1);
-      const migrated = migrateToSchemaV2(parsedV1, 1);
-      savePersistedState(migrated);
+    if (hasLegacyV1 !== null || hasLegacyV2 !== null || !hasV3) {
+      console.info('[PB CivilLab] Purging legacy storage keys (pb_civillab_state_v1, pb_civillab_state_v2) and stale IndexedDB snapshots.');
       localStorage.removeItem(LEGACY_V1_KEY);
-      return migrated;
+      localStorage.removeItem(LEGACY_V2_KEY);
+      clearIndexedDB().catch((err) => {
+        console.warn('[PB CivilLab] Error clearing stale IndexedDB snapshot on initial boot:', err);
+      });
     }
+  } catch (err) {
+    console.warn('[PB CivilLab] Purge error:', err);
+  }
+}
 
-    if (!rawV2) {
+export function loadPersistedState(): CivilLabSchemaV2 {
+  // Purge legacy storage and stale IndexedDB on initial boot
+  purgeLegacyStorage();
+
+  try {
+    const rawV3 = localStorage.getItem(STORAGE_KEY);
+
+    if (!rawV3) {
       const initial = createDefaultSchemaV2();
       savePersistedState(initial);
       return initial;
     }
 
-    const parsed = JSON.parse(rawV2);
+    const parsed = JSON.parse(rawV3);
     const detectedVersion =
       typeof parsed?.schemaVersion === 'number'
         ? parsed.schemaVersion
@@ -1184,14 +1669,18 @@ export function loadPersistedState(): CivilLabSchemaV2 {
           : 0;
 
     if (detectedVersion !== CURRENT_SCHEMA_VERSION) {
-      const migrated = migrateToSchemaV2(parsed, detectedVersion || 1);
-      savePersistedState(migrated);
-      return migrated;
+      // Version mismatch: wipe previously entered user logs and reset to clean baseline while preserving system settings
+      const clean = createDefaultSchemaV2();
+      if (parsed.themePreference) clean.themePreference = parsed.themePreference;
+      if (parsed.userProfile) clean.userProfile = { ...clean.userProfile, ...parsed.userProfile };
+      if (parsed.userPreferences) clean.userPreferences = { ...clean.userPreferences, ...parsed.userPreferences };
+      savePersistedState(clean);
+      return clean;
     }
 
     return validateAndNormalizeV2(parsed);
   } catch (err) {
-    console.error('[PB CivilLab] Failed to parse localStorage state; falling back to clean schema v2:', err);
+    console.error('[PB CivilLab] Failed to parse localStorage state; falling back to clean schema v3:', err);
     const recovered = createDefaultSchemaV2();
     savePersistedState(recovered);
     return recovered;
@@ -1240,6 +1729,7 @@ export function simulateV1MigrationSample(): CivilLabSchemaV2 {
 
 export function clearAndResetStorage(mode: 'clean' | 'demo' = 'clean'): CivilLabSchemaV2 {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LEGACY_V2_KEY);
   localStorage.removeItem(LEGACY_V1_KEY);
   clearIndexedDB().catch((err) => {
     console.warn('[PB CivilLab] Failed clearing IndexedDB during reset:', err);

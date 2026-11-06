@@ -14,6 +14,8 @@ import {
   History,
   Printer,
   Sparkles,
+  FileSpreadsheet,
+  FileDown,
 } from 'lucide-react';
 import { EngineeringModuleId, CalculationRecord } from '../../types/civil';
 import { useSiteManagement } from '../../context/SiteManagementContext';
@@ -35,6 +37,9 @@ export interface SiteManagementHubProps {
   activeTab: EngineeringModuleId;
   onSelectTab: (tab: EngineeringModuleId) => void;
   onSaveToHistory?: (record: CalculationRecord) => void;
+  onQuickPrint?: () => void;
+  onExportPdf?: () => void;
+  onExportCsv?: () => void;
   workspaceId?: string;
   projectName?: string;
   currency?: string;
@@ -118,6 +123,9 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
   activeTab,
   onSelectTab,
   onSaveToHistory,
+  onQuickPrint,
+  onExportPdf,
+  onExportCsv,
   workspaceId = 'default',
   projectName = 'Main Civil Project',
   currency = 'BDT',
@@ -314,13 +322,47 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
 
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() => {
+                if (onQuickPrint) {
+                  onQuickPrint();
+                } else {
+                  window.print();
+                }
+              }}
               className="px-3.5 py-1.5 rounded-full text-xs font-sans font-bold inline-flex items-center gap-1.5 border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 transition-colors shadow-2xs cursor-pointer"
               title="Print active module sheet or submittal"
             >
               <Printer className="w-3.5 h-3.5 text-amber-500" />
-              <span>Print Sheet</span>
+              <span>Quick Print A4</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onExportCsv) {
+                  onExportCsv();
+                } else {
+                  handleExportBackup();
+                }
+              }}
+              className="px-3.5 py-1.5 rounded-full text-xs font-sans font-bold inline-flex items-center gap-1.5 border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 transition-colors shadow-2xs cursor-pointer"
+              title="Export active ERP module schedule as CSV"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Export CSV</span>
+            </button>
+
+            {onExportPdf && (
+              <button
+                type="button"
+                onClick={() => onExportPdf()}
+                className="px-3.5 py-1.5 rounded-full text-xs font-sans font-bold inline-flex items-center gap-1.5 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 transition-colors shadow-2xs cursor-pointer"
+                title="Generate verified engineering PDF submittal"
+              >
+                <FileDown className="w-3.5 h-3.5 text-blue-500" />
+                <span>Export PDF</span>
+              </button>
+            )}
 
             <AboutThisToolButton
               toolId={activeTab}

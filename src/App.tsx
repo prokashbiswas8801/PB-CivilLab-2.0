@@ -117,6 +117,9 @@ import {
   createDefaultUserProfile,
   createDefaultUserPreferences,
   createDefaultEngineeringPresets,
+  getOfficialModulePreset,
+  getZeroBaselineForModule,
+  createDefaultArchitectureParameters,
 } from './utils/storage';
 import { getIndexedDBStats, isIndexedDBSupported, persistToIndexedDB } from './utils/indexedStorage';
 import {
@@ -178,7 +181,14 @@ import { exportCertifiedEngineeringPdf, PdfExportProgress } from './utils/pdfExp
 import { exportCertifiedReportPDF, exportModuleCSV, exportBoqCSV } from './utils/exportEngine';
 import { exportTenderBoqPdf } from './utils/tenderExport';
 import { PdfExportProgressModal } from './components/PdfExportProgressModal';
-import { syncAllModulesToBoq, syncRebarBbsToBoq, syncConcreteMixToBoq } from './utils/boqAutoSync';
+import {
+  syncAllModulesToBoq,
+  syncRebarBbsToBoq,
+  syncConcreteMixToBoq,
+  syncMasonryToBoq,
+  syncPileCapacityToBoq,
+  syncSurveyingEarthworkToBoq,
+} from './utils/boqAutoSync';
 import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
 import {
   WorkspaceManagerModal,
@@ -734,6 +744,7 @@ export default function App() {
     rightSupport: 'pin' as const,
     allowableStressMpa: 250,
     sectionDepthMm: 600,
+    sectionWidthMm: 300,
   }), []);
 
   const defaultPile = useMemo(() => ({
@@ -808,6 +819,24 @@ export default function App() {
           result: {
             title: 'Surveying Field Leveling & Land Area',
             summary: 'Differential Leveling Arithmetic Check & Irregular Area Computations',
+            status: 'valid',
+          },
+        };
+      case 'store-inventory':
+      case 'material-requisition':
+      case 'schedule-roster':
+      case 'labor-attendance':
+      case 'field-notebook':
+      case 'contractor-bills':
+      case 'petty-cash':
+      case 'cube-tests':
+      case 'daily-progress-report':
+        return {
+          status: 'valid' as const,
+          issues: [],
+          result: {
+            moduleId: activeModule,
+            title: MODULE_META[activeModule]?.label || 'Site Management ERP',
             status: 'valid',
           },
         };
@@ -990,8 +1019,8 @@ export default function App() {
       },
       earthwork: {
         ...ws.earthwork,
-        pitWidthM: Math.round((b + 0.6) * 10) / 10,
-        pitLengthM: Math.round((b + 0.6) * 10) / 10,
+        pitTopWidthM: Math.round((b + 0.6) * 10) / 10,
+        pitTopLengthM: Math.round((b + 0.6) * 10) / 10,
         pitDepthM: df,
       },
     }));
@@ -1027,26 +1056,63 @@ export default function App() {
     );
   };
 
+  // One-Click Feature Cross-Linking: Beam Analysis -> Rebar BBS
+  const handleTransferBeamToRebar = () => {
+    const span = activeWorkspace.beam.spanLengthM;
+    const depth = activeWorkspace.beam.sectionDepthMm || 500;
+    const maxM = beamEnvelope.result?.maxMomentKnm || 0;
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      activeModule: 'rebar-bbs',
+      rebarBbs: {
+        ...ws.rebarBbs,
+        elementType: 'beam',
+        beamLengthM: span,
+        beamDepthMm: depth,
+        beamWidthMm: 250,
+        beamMainBarDiaMm: 16,
+        beamTopBarCount: 2,
+        beamBotBarCount: 3,
+        beamStirrupDiaMm: 8,
+        beamStirrupSpacingMm: 150,
+      },
+    }));
+    setIsDashboardView(false);
+    triggerCelebration(
+      'Beam Analysis Linked to Rebar BBS',
+      `Transferred span (${span}m, depth ${depth}mm, M_max=${maxM.toFixed(1)} kN·m) to Beam Reinforcement BBS.`,
+      'success'
+    );
+  };
+
   // One-Click Feature Cross-Linking: Continuous Beam -> Rebar BBS
   const handleTransferContinuousBeamToRebar = () => {
     if (!continuousBeamEnvelope.result) return;
     const maxM = continuousBeamEnvelope.result.maxSaggingMomentKnm;
     const firstSpan = (activeWorkspace.continuousBeam || defaultContinuousBeam).spans[0];
     const spanL = firstSpan ? firstSpan.lengthM : 6.0;
+    const depthMm = (activeWorkspace.continuousBeam || defaultContinuousBeam).sectionDepthMm || 600;
+    const widthMm = (activeWorkspace.continuousBeam || defaultContinuousBeam).sectionWidthMm || 300;
     updateActiveWorkspace((ws) => ({
       ...ws,
       activeModule: 'rebar-bbs',
       rebarBbs: {
         ...ws.rebarBbs,
+        elementType: 'beam',
         beamLengthM: spanL,
-        beamDepthMm: (ws.continuousBeam || defaultContinuousBeam).sectionDepthMm || 600,
-        beamWidthMm: 300,
+        beamDepthMm: depthMm,
+        beamWidthMm: widthMm,
+        beamMainBarDiaMm: 20,
+        beamTopBarCount: 2,
+        beamBotBarCount: 3,
+        beamStirrupDiaMm: 8,
+        beamStirrupSpacingMm: 150,
       },
     }));
     setIsDashboardView(false);
     triggerCelebration(
       'Continuous Beam Linked to Rebar BBS',
-      `Transferred design span (${spanL}m, M_max=${maxM.toFixed(1)} kN·m) to Beam Reinforcement BBS.`,
+      `Transferred design span (${spanL}m, depth ${depthMm}mm, M_max=${maxM.toFixed(1)} kN·m) to Beam Reinforcement BBS.`,
       'success'
     );
   };
@@ -1111,9 +1177,9 @@ export default function App() {
       concreteMaterials: {
         ...ws.concreteMaterials,
         wetVolumeM3: batchVol,
-        cementRatio: 1,
-        sandRatio: 1.5,
-        aggregateRatio: 3.0,
+        ratioCement: 1,
+        ratioSand: 1.5,
+        ratioAggregate: 3.0,
       },
     }));
     setIsDashboardView(false);
@@ -1122,6 +1188,57 @@ export default function App() {
       `Pushed ${batchVol} m³ concrete batch into Material Estimator.`,
       'success'
     );
+  };
+
+  // One-Click Feature Cross-Linking: Masonry & Finishes -> BOQ Takeoff Schedule
+  const handleTransferMasonryToBoq = () => {
+    if (!masonryEnvelope.result) return;
+    const syncRes = syncMasonryToBoq(activeWorkspace, masonryEnvelope);
+    if (syncRes.syncedItemsCount > 0) {
+      updateActiveWorkspace(() => ({
+        ...syncRes.updatedWorkspace,
+        activeModule: 'boq-estimator',
+      }));
+      setIsDashboardView(false);
+      triggerCelebration('Masonry Synced to BOQ', syncRes.message, 'celebrate');
+    } else {
+      triggerCelebration('Masonry Sync Status', syncRes.message, 'info');
+    }
+  };
+
+  // One-Click Feature Cross-Linking: Deep Pile Foundation -> BOQ Substructure Schedule
+  const handleTransferPileToBoq = () => {
+    if (!pileEnvelope.result) return;
+    const syncRes = syncPileCapacityToBoq(activeWorkspace, pileEnvelope);
+    if (syncRes.syncedItemsCount > 0) {
+      updateActiveWorkspace(() => ({
+        ...syncRes.updatedWorkspace,
+        activeModule: 'boq-estimator',
+      }));
+      setIsDashboardView(false);
+      triggerCelebration('Pile Foundation Synced to BOQ', syncRes.message, 'celebrate');
+    } else {
+      triggerCelebration('Pile Sync Status', syncRes.message, 'info');
+    }
+  };
+
+  // One-Click Feature Cross-Linking: Surveying Suite -> BOQ Substructure Schedule
+  const handleTransferSurveyingToBoq = () => {
+    const syncRes = syncSurveyingEarthworkToBoq(activeWorkspace, {
+      landAreaSqM: 1250,
+      excavationVolumeM3: 450,
+      description: 'Site Clearing, Grubbing & Topsoil Stripping — Auto-Synced from Surveying Suite',
+    });
+    if (syncRes.syncedItemsCount > 0) {
+      updateActiveWorkspace(() => ({
+        ...syncRes.updatedWorkspace,
+        activeModule: 'boq-estimator',
+      }));
+      setIsDashboardView(false);
+      triggerCelebration('Surveying Site Area Synced to BOQ', syncRes.message, 'celebrate');
+    } else {
+      triggerCelebration('Surveying Sync Status', syncRes.message, 'info');
+    }
   };
 
   // One-Click Feature Cross-Linking: Concrete Materials -> BOQ Schedule
@@ -1317,6 +1434,8 @@ export default function App() {
     // Synchronize global workbench unit system
     if (preset === 'imperial') {
       workbench.setUnitSystem('Imperial');
+    } else if (preset === 'regional') {
+      workbench.setUnitSystem('Regional');
     } else if (preset === 'metric') {
       workbench.setUnitSystem('SI');
     }
@@ -1330,7 +1449,12 @@ export default function App() {
       },
     }));
 
-    const presetLabel = preset === 'metric' ? 'METRIC (SI)' : preset === 'imperial' ? 'IMPERIAL (US)' : 'REGIONAL';
+    const presetLabel =
+      preset === 'metric'
+        ? 'SI (METRIC STANDARD)'
+        : preset === 'regional'
+        ? 'BANGLADESH STANDARD (BNBC / LOCAL SITE)'
+        : 'IMPERIAL (US)';
     setToastBanner(`Switched project unit system to ${presetLabel} · Values smoothly converted`);
 
     setTimeout(() => {
@@ -1342,7 +1466,7 @@ export default function App() {
     updateActiveWorkspace((ws) => {
       let nextWs = { ...ws, activeModule: moduleId };
       if (subAction === 'staircase') {
-        nextWs.rebarBbs = { ...ws.rebarBbs, elementType: 'staircase' };
+        nextWs.rebarBbs = { ...ws.rebarBbs, elementType: 'staircase-waist' };
       }
       return nextWs;
     });
@@ -1354,8 +1478,11 @@ export default function App() {
     // Sync multi-tab workspace
     const tabId = `tab-${moduleId}`;
     setOpenTabs((prev) => {
-      const exists = prev.some((t) => t.id === tabId || t.moduleId === moduleId);
-      if (exists) return prev;
+      const existing = prev.find((t) => t.id === tabId || t.moduleId === moduleId);
+      if (existing) {
+        setActiveTabId(existing.id);
+        return prev;
+      }
       const toolMeta = TOOL_REGISTRY_MAP[moduleId];
       const newTab: WorkspaceTabItem = {
         id: tabId,
@@ -1364,9 +1491,12 @@ export default function App() {
         title: toolMeta?.shortLabel || MODULE_META[moduleId]?.shortLabel || moduleId,
         shortCode: toolMeta?.shortCode,
       };
+      setActiveTabId(tabId);
       return [...prev, newTab];
     });
-    setActiveTabId(tabId);
+
+    const mainEl = document.getElementById('top');
+    if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectWorkspaceTab = (tabId: string) => {
@@ -1386,6 +1516,8 @@ export default function App() {
           targetTab.moduleId === 'unit-converter' ? 'converter' : 'calculator',
           targetTab.moduleId
         );
+        const mainEl = document.getElementById('top');
+        if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
   };
@@ -1603,9 +1735,39 @@ export default function App() {
       if (payload.boq) {
         nextWs.boq = { ...nextWs.boq, ...payload.boq };
       }
+      if (payload.continuousBeam) {
+        nextWs.continuousBeam = { ...nextWs.continuousBeam, ...payload.continuousBeam } as any;
+      }
+      if (payload.pile) {
+        nextWs.pile = { ...nextWs.pile, ...payload.pile } as any;
+      }
+      if (payload.pipe) {
+        nextWs.pipe = { ...nextWs.pipe, ...payload.pipe } as any;
+      }
+      if (payload.surveying) {
+        nextWs.surveying = { ...nextWs.surveying, ...payload.surveying } as any;
+      }
       return nextWs;
     });
     setToastBanner(`Applied preset "${preset.name}" to current workspace.`);
+  };
+
+  const handleResetModuleToZero = (modId: EngineeringModuleId) => {
+    const zeroSlice = getZeroBaselineForModule(modId);
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      ...zeroSlice,
+    }));
+    setToastBanner(`Module "${modId}" parameters reset to clean zero baseline.`);
+  };
+
+  const handleLoadStandardPresetForModule = (modId: EngineeringModuleId) => {
+    const preset = getOfficialModulePreset(modId);
+    if (preset) {
+      handleApplyPreset(preset);
+    } else {
+      setToastBanner(`No official preset registered for module "${modId}".`);
+    }
   };
 
   const handleImportPresets = (imported: EngineeringPreset[]) => {
@@ -1677,7 +1839,7 @@ export default function App() {
                   itemNo: itemNo.trim() || it.itemNo,
                   description: itemDesc.trim(),
                   category: itemCategory,
-                  numberOfMembers: Math.max(1, itemMembers),
+                  numberOfMembers: Math.max(0, itemMembers),
                   lengthM: itemLength,
                   widthM: itemWidth,
                   heightM: itemHeight,
@@ -1698,7 +1860,7 @@ export default function App() {
         itemNo: itemNo.trim() || `${activeWorkspace.boq.items.length + 1}.01`,
         description: itemDesc.trim(),
         category: itemCategory,
-        numberOfMembers: Math.max(1, itemMembers),
+        numberOfMembers: Math.max(0, itemMembers),
         lengthM: itemLength,
         widthM: itemWidth,
         heightM: itemHeight,
@@ -2190,9 +2352,15 @@ export default function App() {
     }
   };
 
-  // Cross-Module Auto-Sync: Rebar BBS & Concrete Mix -> BOQ Takeoff Schedule
+  // Cross-Module Auto-Sync: Rebar BBS, Concrete Mix, Masonry & Pile -> BOQ Takeoff Schedule
   const handleSyncAllModulesToBoq = () => {
-    const res = syncAllModulesToBoq(activeWorkspace, bbsEnvelope, concreteEnvelope);
+    const res = syncAllModulesToBoq(
+      activeWorkspace,
+      bbsEnvelope,
+      concreteEnvelope,
+      masonryEnvelope,
+      pileEnvelope
+    );
     if (res.syncedItemsCount > 0) {
       updateActiveWorkspace(() => res.updatedWorkspace);
       triggerCelebration('Cross-Module Auto-Sync Complete', res.message, 'celebrate');
@@ -2835,7 +3003,7 @@ export default function App() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setToastBanner('Exported client-local Schema v2 JSON workspace package.');
+    setToastBanner(`Exported client-local Schema v${CURRENT_SCHEMA_VERSION} JSON workspace package.`);
   };
 
   const handleImportStateJson = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2845,13 +3013,13 @@ export default function App() {
     reader.onload = () => {
       try {
         const raw = JSON.parse(String(reader.result));
-        localStorage.setItem('pb_civillab_state_v2', JSON.stringify(raw));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(raw));
         const reloaded = loadPersistedState();
         setAppState(reloaded);
         setToastBanner(
           reloaded.migratedFromVersion
-            ? `Migrated imported Schema v${reloaded.migratedFromVersion} → Schema v2.`
-            : 'Imported Schema v2 workspace state.'
+            ? `Migrated imported Schema v${reloaded.migratedFromVersion} → Schema v${CURRENT_SCHEMA_VERSION}.`
+            : `Imported Schema v${CURRENT_SCHEMA_VERSION} workspace state.`
         );
       } catch {
         setToastBanner('Invalid JSON file. State remained unchanged.');
@@ -3089,6 +3257,7 @@ export default function App() {
             projectCode={activeWorkspace.projectCode}
             onSaveSnapshot={handleLogCalculationSnapshot}
             onOpenProjectMetadata={() => handleOpenEditWorkspace(activeWorkspace)}
+            onOpenToolPicker={() => setCommandPaletteOpen(true)}
           />
 
         {/* Desktop Split-Screen Layout */}
@@ -3325,11 +3494,22 @@ export default function App() {
                 onTransferEarthworkToBoq={handleTransferEarthworkToBoq}
                 onApplyRateToBoq={handleApplyRateToBOQ}
                 onTransferContinuousBeamToRebar={handleTransferContinuousBeamToRebar}
+                onTransferBeamToRebar={handleTransferBeamToRebar}
+                onTransferMasonryToBoq={handleTransferMasonryToBoq}
+                onTransferPileToBoq={handleTransferPileToBoq}
+                onTransferSurveyingToBoq={handleTransferSurveyingToBoq}
                 onTransferPipeToBoq={handleTransferPipeToBoq}
                 bbsSteelWeightKg={bbsEnvelope.result?.totalSteelWeightKg}
                 bearingFootingWidthM={activeWorkspace.bearing.footingWidthM}
                 bearingEmbedmentDepthM={activeWorkspace.bearing.embedmentDepthM}
                 bearingAppliedLoadKn={activeWorkspace.bearing.appliedColumnLoadKn}
+                beamSpanM={activeWorkspace.beam.spanLengthM}
+                beamMaxMomentKnm={beamEnvelope.result?.maxMomentKnm}
+                masonryNetVolumeM3={masonryEnvelope.result?.netWallVolumeM3}
+                masonryBricksCount={masonryEnvelope.result?.bricksWithWastageCount}
+                pileTotalCount={activeWorkspace.pile?.pileGroupRows && activeWorkspace.pile?.pileGroupCols ? (activeWorkspace.pile.pileGroupRows * activeWorkspace.pile.pileGroupCols) : 1}
+                pileConcreteVolumeM3={pileEnvelope.result ? Number((pileEnvelope.result.crossSectionAreaM2 * pileEnvelope.result.lengthM * (pileEnvelope.result.pileGroupSummary?.totalPiles || 1)).toFixed(2)) : undefined}
+                surveyingLandAreaSqM={1250}
                 mixBatchVolumeM3={activeWorkspace.concrete.batchVolumeM3}
                 matConcreteVolumeM3={activeWorkspace.concreteMaterials.wetVolumeM3}
                 earthworkBankVolumeM3={earthworkEnvelope.result?.bankVolumeM3}
@@ -3347,7 +3527,7 @@ export default function App() {
               <div className="mx-4 md:mx-6 mt-4 p-4 rounded-xl border border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/30 text-[var(--md-sys-color-on-surface)] space-y-2">
                 <div className="flex items-center gap-2 font-bold text-xs font-mono uppercase tracking-wide text-[var(--md-sys-color-error)]">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>Validation Contract Diagnostics ({currentEnvelope.issues.length} Issues Identified)</span>
+                  <span>Input Check & Warnings ({currentEnvelope.issues.length} Issues Identified)</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
                   {currentEnvelope.issues.map((iss, i) => (
@@ -3365,7 +3545,12 @@ export default function App() {
             {/* Split Screen Grids or Dedicated Full-Width Modules */}
             {activeModule === 'surveying-suite' ? (
               <div className="p-4 md:p-6 space-y-6">
-                <SurveyingSuite />
+                <SurveyingSuite
+                  onQuickPrint={handleQuickPrintA4Report}
+                  onExportPdf={handleDirectDownloadPdf}
+                  onExportCsv={handleExportAnalyticalCsv}
+                  onSaveToHistory={handleLogCalculationSnapshot}
+                />
                 <AboutThisTool toolId="surveying-suite" id="about-this-tool-section" defaultExpanded={true} />
               </div>
             ) : [
@@ -3383,6 +3568,9 @@ export default function App() {
                 activeTab={activeModule}
                 onSelectTab={(tab) => handleSetModule(tab)}
                 onSaveToHistory={handleLogCalculationSnapshot}
+                onQuickPrint={handleQuickPrintA4Report}
+                onExportPdf={handleDirectDownloadPdf}
+                onExportCsv={handleExportAnalyticalCsv}
                 workspaceId={activeWorkspace.id}
                 projectName={activeWorkspace.name}
                 currency={activeWorkspace.currency}
@@ -3397,13 +3585,40 @@ export default function App() {
                 transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
                 className="lg:col-span-5 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-xl p-5 space-y-4"
               >
-                <div className="flex items-center justify-between pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
-                  <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-                    Input Parameters
-                  </h2>
-                  <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                    48px Jobsite Controls
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--md-sys-color-outline-variant)]">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
+                        Input Parameters
+                      </h2>
+                      <span className="text-[11px] px-2 py-0.5 rounded font-mono font-medium bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
+                        Input Data (Zero Allowed)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                      Start from clean zero baseline or populate standard engineering references.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleResetModuleToZero(activeModule)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-error-container)]/30 hover:text-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Reset all inputs of this module to clean zero baseline"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-[var(--md-sys-color-error)]" />
+                      <span>Reset to Zero</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLoadStandardPresetForModule(activeModule)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 flex items-center gap-1.5 transition-opacity cursor-pointer shadow-sm"
+                      title="Load official standard engineering preset for this module"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Load Standard Preset</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* MODULE: QUANTITY TAKEOFF & BOQ ESTIMATOR */}
@@ -3608,7 +3823,7 @@ export default function App() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)] leading-tight">
-                            Analytical Vector Envelope
+                            Calculation Results & Diagram
                           </h2>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
                             {MODULE_META[activeModule].shortLabel}
@@ -3645,10 +3860,10 @@ export default function App() {
                               ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] font-bold shadow-xs'
                               : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
                           }`}
-                          title="Dense Tabular Schedule optimized for A4 Reports & Computations"
+                          title="Detailed Table Schedule for Reports & Computations"
                         >
                           <Table className="w-3.5 h-3.5" />
-                          <span>Dense Tabular</span>
+                          <span>Detailed Table</span>
                         </button>
                         <button
                           type="button"
@@ -4044,6 +4259,7 @@ export default function App() {
                       customUnits={appState.customUnits}
                       getOutputUnit={getOutputUnit}
                       updateOutputUnit={updateOutputUnit}
+                      onPushToBoq={handleTransferMasonryToBoq}
                     />
                   )}
 
@@ -4091,6 +4307,8 @@ export default function App() {
                   {activeModule === 'pipe-hydraulics' && pipeEnvelope.result && (
                     <PipeHydraulicsMetrics
                       result={pipeEnvelope.result}
+                      activeWorkspace={activeWorkspace}
+                      updateActiveWorkspace={updateActiveWorkspace}
                     />
                   )}
                 </div>
@@ -4171,36 +4389,39 @@ export default function App() {
         {/* FLOATING COLLAPSIBLE & ORIENTATION-ADAPTIVE BOTTOM DOCK */}
         <FloatingBottomDock
           onNavigateHome={() => {
-            civilLab.setActivePage('home', null);
+            setActiveTabId('dashboard');
             setIsDashboardView(true);
+            civilLab.setActivePage('home', null);
             const mainEl = document.getElementById("top");
             if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onNavigateAll={() => {
-            civilLab.setActivePage('all', null);
+            setActiveTabId('dashboard');
             setIsDashboardView(true);
+            civilLab.setActivePage('all', null);
             const mainEl = document.getElementById("top");
             if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onOpenSearch={() => {
+            setActiveTabId('dashboard');
+            setIsDashboardView(true);
             civilLab.setActivePage('search', null);
             const mainEl = document.getElementById("top");
             if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onNavigateConverter={() => {
-            setIsDashboardView(false);
-            civilLab.setActivePage('converter', null);
-            const mainEl = document.getElementById("top");
-            if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
+            handleSetModule('unit-converter');
           }}
           onOpenHistory={() => {
-            setIsDashboardView(false);
+            setActiveTabId('dashboard');
+            setIsDashboardView(true);
             civilLab.setActivePage('history', null);
             const mainEl = document.getElementById("top");
             if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
           }}
           onOpenProfile={() => {
-            setIsDashboardView(false);
+            setActiveTabId('dashboard');
+            setIsDashboardView(true);
             civilLab.setActivePage('profile', null);
             const mainEl = document.getElementById("top");
             if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
@@ -4386,6 +4607,46 @@ export default function App() {
           isOpen={architectureModalOpen}
           onClose={() => setArchitectureModalOpen(false)}
           initialTab={architectureInitialTab}
+          architecture={activeWorkspace.architecture}
+          onUpdateArchitecture={(updater) => {
+            updateActiveWorkspace((ws) => {
+              const prevArch = ws.architecture || createDefaultArchitectureParameters();
+              const nextArch = updater(prevArch);
+              return { ...ws, architecture: nextArch };
+            });
+          }}
+          onSendTankToBOQ={(tankItems) => {
+            updateActiveWorkspace((ws) => ({
+              ...ws,
+              boq: {
+                ...ws.boq,
+                items: [...ws.boq.items, ...tankItems],
+              },
+            }));
+            triggerCelebration(
+              'Tank Quantities Added to BOQ',
+              `Added ${tankItems.length} line items for Water Reservoirs (UGWR & OHT) & Septic Tank to Quantity Takeoff.`,
+              'success'
+            );
+          }}
+          onSendStaircaseToRebar={(stairParams) => {
+            updateActiveWorkspace((ws) => ({
+              ...ws,
+              activeModule: 'rebar-bbs',
+              rebarBbs: {
+                ...ws.rebarBbs,
+                elementType: 'staircase-waist',
+                ...stairParams,
+              },
+            }));
+            handleSetModule('rebar-bbs', 'staircase');
+            setArchitectureModalOpen(false);
+            triggerCelebration(
+              'Staircase Sent to Rebar BBS',
+              'Transferred staircase waist slab geometry & riser/tread parameters directly into Rebar Bar Bending Schedule.',
+              'success'
+            );
+          }}
         />
 
         {/* AutoCAD Scale & Viewport Calculator, CAD Shortcuts & LISP Hub Modal */}

@@ -145,6 +145,8 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
       ? AlertTriangle
       : AlertOctagon;
 
+  const isZeroActive = capacityInfo.percentage === 0;
+
   const defaultStandaloneVariants: Variants = {
     hidden: { opacity: 0, y: 20, scale: 0.98 },
     visible: {
@@ -165,7 +167,7 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
       variants={variants || defaultStandaloneVariants}
       initial={variants ? undefined : 'hidden'}
       animate={variants ? undefined : 'visible'}
-      className={`p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5 transition-colors duration-300 shadow-2xs ${className}`}
+      className={`p-3.5 rounded-xl border ${isZeroActive ? 'border-amber-500/40 bg-amber-500/5' : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]'} space-y-2.5 transition-colors duration-300 shadow-2xs ${className}`}
       role="region"
       aria-label="Demand-Capacity Ratio Gauge"
     >
@@ -187,6 +189,11 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
             <span>{capacityInfo.formattedValue}</span>
             <span className="text-[9px] opacity-80">({displayPercentage}%)</span>
           </span>
+          {isZeroActive && (
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wider shrink-0">
+              0 ACTIVE
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
