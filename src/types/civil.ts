@@ -32,7 +32,8 @@ export type EngineeringModuleId =
   | 'contractor-bills'
   | 'petty-cash'
   | 'cube-tests'
-  | 'daily-progress-report';
+  | 'daily-progress-report'
+  | 'office-docs';
 
 export type BuildingCode = 'BNBC-2020' | 'ACI-318' | 'IS-456';
 

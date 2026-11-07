@@ -561,19 +561,35 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
 
                   {/* Action buttons */}
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* One-click Receive in Store */}
-                    {!isReceived && (
+                    {/* Approve Requisition Button if Pending */}
+                    {isPending && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateRequisition(req.id, { status: 'Approved', approvedBy: 'Project Engineer' });
+                          showToast(`Requisition ${req.reqNo} Approved for Store Inward / PO!`);
+                        }}
+                        className="px-3.5 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                        title="Approve Requisition for Purchasing and Receiving"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>✓ Approve Indent</span>
+                      </button>
+                    )}
+
+                    {/* Receive into Store Inventory (Challan) Button on Approved/Pending Requisitions */}
+                    {!isReceived && req.status !== 'Cancelled' && (
                       <button
                         type="button"
                         onClick={() => {
                           setReceiveModalReq(req);
-                          setReceiveForm({ challanNo: '', truckNo: '', supplier: '', receiver: 'Storekeeper' });
+                          setReceiveForm({ challanNo: `CH-${Date.now().toString().slice(-5)}`, truckNo: '', supplier: '', receiver: 'Site Storekeeper' });
                         }}
                         className="px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
-                        title="Mark received and automatically create Inward Stock Transactions into Store"
+                        title="Receive into Store Inventory (Challan) — automatically generates Inward stock entry in SM-01"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>✓ Mark as Received in Store</span>
+                        <Truck className="w-3.5 h-3.5" />
+                        <span>Receive into Store Inventory (Challan)</span>
                       </button>
                     )}
 

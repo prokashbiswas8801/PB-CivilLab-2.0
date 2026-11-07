@@ -16,8 +16,9 @@ import {
   Sparkles,
   FileSpreadsheet,
   FileDown,
+  ScrollText,
 } from 'lucide-react';
-import { EngineeringModuleId, CalculationRecord } from '../../types/civil';
+import { EngineeringModuleId, CalculationRecord, CivilWorkspace } from '../../types/civil';
 import { useSiteManagement } from '../../context/SiteManagementContext';
 import { AboutThisTool, AboutThisToolButton } from '../ui/AboutThisTool';
 import {
@@ -30,6 +31,7 @@ import {
   PettyCashModule,
   CubeTestModule,
   DailyProgressReportModule,
+  OfficeDocsModule,
 } from './index';
 import { OfflineSyncManager } from './OfflineSyncManager';
 
@@ -43,6 +45,7 @@ export interface SiteManagementHubProps {
   workspaceId?: string;
   projectName?: string;
   currency?: string;
+  activeWorkspace?: CivilWorkspace;
 }
 
 interface ErpModuleTabDef {
@@ -117,6 +120,13 @@ const ERP_TABS: ErpModuleTabDef[] = [
     bengaliTitle: 'ডেইলি প্রগ্রেস রিপোর্ট',
     icon: ClipboardCheck,
   },
+  {
+    id: 'office-docs',
+    shortCode: 'SM-10',
+    title: 'Office Docs & Letters',
+    bengaliTitle: 'অফিসিয়াল চিঠি ও সনদ',
+    icon: ScrollText,
+  },
 ];
 
 export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
@@ -129,6 +139,7 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
   workspaceId = 'default',
   projectName = 'Main Civil Project',
   currency = 'BDT',
+  activeWorkspace,
 }) => {
   const {
     siteData,
@@ -518,6 +529,7 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
         {activeTab === 'cube-tests' && <CubeTestModule />}
 
         {activeTab === 'daily-progress-report' && <DailyProgressReportModule />}
+        {activeTab === 'office-docs' && <OfficeDocsModule activeWorkspace={activeWorkspace} />}
       </div>
 
       {/* 4. DEDICATED EXPANDABLE "ABOUT THIS TOOL" MONOGRAPH FOR THE ACTIVE MODULE */}

@@ -1398,7 +1398,8 @@ export function buildReportDataFromWorkspace(
     case 'contractor-bills':
     case 'petty-cash':
     case 'cube-tests':
-    case 'daily-progress-report': {
+    case 'daily-progress-report':
+    case 'office-docs': {
       const siteErp = getSiteErpSnapshot(workspace.id);
       populateSiteErpReportData(moduleId, siteErp, workspace, baseReport);
       break;
@@ -1735,6 +1736,21 @@ function populateSiteErpReportData(
           col7: 'Archived',
         }));
       }
+      break;
+    }
+
+    case 'office-docs': {
+      report.moduleMeta.moduleTitle = 'Official Engineering Office Documents & Letters';
+      report.moduleMeta.status = 'SAFE';
+
+      report.inputs = [
+        { name: 'Project Name', symbol: 'Proj', value: workspace.name, unit: 'project' },
+        { name: 'Project Code', symbol: 'Code', value: workspace.projectCode, unit: 'id' },
+      ];
+
+      report.outputs = [
+        { name: 'Documentation Formats', symbol: 'Doc_Types', value: '5 Official Templates', unit: 'contracts', status: 'SAFE' },
+      ];
       break;
     }
   }

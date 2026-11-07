@@ -62,6 +62,7 @@ export const LaborAttendanceModule: React.FC = () => {
     recordDailyAttendance,
     recordWorkerPayment,
     getWorkerMonthlySummary,
+    addPettyCashEntry,
   } = useSiteManagement();
   const { isOnline, stats, triggerSyncNow, isSyncing } = useOfflineSync();
 
@@ -90,6 +91,7 @@ export const LaborAttendanceModule: React.FC = () => {
     paymentMethod: 'Cash' as WorkerPaymentRecord['paymentMethod'],
     voucherRef: '',
     remarks: '',
+    syncToPettyCash: true,
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -241,6 +243,7 @@ export const LaborAttendanceModule: React.FC = () => {
     if (amountNum <= 0) return;
 
     const todayStr = new Date().toISOString().split('T')[0];
+    const voucherCode = payoutForm.voucherRef.trim() || `V-LAB-${Date.now().toString().slice(-4)}`;
 
     recordWorkerPayment({
       workerId: payoutModalWorker.id,
@@ -249,11 +252,25 @@ export const LaborAttendanceModule: React.FC = () => {
       type: payoutForm.type,
       amount: amountNum,
       paymentMethod: payoutForm.paymentMethod,
-      voucherRef: payoutForm.voucherRef.trim() || undefined,
+      voucherRef: voucherCode,
       remarks: payoutForm.remarks.trim() || undefined,
     });
 
-    showToast(`Recorded ${payoutForm.type} of ৳ ${amountNum.toLocaleString()} for ${payoutModalWorker.name}.`);
+    if (payoutForm.syncToPettyCash) {
+      addPettyCashEntry({
+        date: todayStr,
+        type: 'Expense',
+        category: 'Labor Wage / Khoraki',
+        amount: amountNum,
+        voucherNo: voucherCode,
+        description: `${payoutForm.type} for ${payoutModalWorker.name} (${payoutModalWorker.trade})${payoutForm.remarks ? ` - ${payoutForm.remarks}` : ''}`,
+        receiverOrSupplier: payoutModalWorker.name,
+        approvedBy: 'Site Engineer',
+        paymentMode: payoutForm.paymentMethod === 'Bank Transfer' ? 'Bank' : (payoutForm.paymentMethod === 'bKash/Mobile' ? 'bKash/Nagad' : 'Cash'),
+      });
+    }
+
+    showToast(`Recorded ${payoutForm.type} of ৳ ${amountNum.toLocaleString()} for ${payoutModalWorker.name}${payoutForm.syncToPettyCash ? ' & logged in Petty Cash' : ''}.`);
     setPayoutModalWorker(null);
     setPayoutForm({
       amount: '',
@@ -261,6 +278,7 @@ export const LaborAttendanceModule: React.FC = () => {
       paymentMethod: 'Cash',
       voucherRef: '',
       remarks: '',
+      syncToPettyCash: true,
     });
   };
 
@@ -866,6 +884,7 @@ export const LaborAttendanceModule: React.FC = () => {
                               paymentMethod: 'Cash',
                               voucherRef: `V-WAGE-${Date.now().toString().slice(-4)}`,
                               remarks: `Wage settlement for ${monthDisplayName}`,
+                              syncToPettyCash: true,
                             });
                           }}
                           className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 shadow-2xs cursor-pointer inline-flex items-center gap-1"
@@ -1186,6 +1205,25 @@ export const LaborAttendanceModule: React.FC = () => {
                   onChange={(e) => setPayoutForm({ ...payoutForm, remarks: e.target.value })}
                   className="w-full px-4 py-2 rounded-full text-xs border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                 />
+              </div>
+
+              {/* Petty Cash Sync Checkbox */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  id="syncLaborToPettyCash"
+                  checked={payoutForm.syncToPettyCash}
+                  onChange={(e) => setPayoutForm({ ...payoutForm, syncToPettyCash: e.target.checked })}
+                  className="mt-0.5 rounded text-[var(--md-sys-color-primary)] focus:ring-0 cursor-pointer"
+                />
+                <label htmlFor="syncLaborToPettyCash" className="text-xs text-[var(--md-sys-color-on-surface)] cursor-pointer select-none">
+                  <span className="font-semibold block text-amber-700 dark:text-amber-300">
+                    Record Payment in Petty Cash / Ledger (SM-07)
+                  </span>
+                  <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] block">
+                    Automatically posts a debit expense voucher under &quot;Labor Wage / Khoraki&quot; in the site cashbook.
+                  </span>
+                </label>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--md-sys-color-outline)]/15">

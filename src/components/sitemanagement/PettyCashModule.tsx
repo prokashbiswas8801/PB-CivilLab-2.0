@@ -41,6 +41,8 @@ const CATEGORIES: Array<{ key: PettyCashCategory; label: string; icon: any }> = 
   { key: 'Tools', label: 'Minor Tools (ছোট যন্ত্রপাতি)', icon: Wrench },
   { key: 'Fuel/Generator', label: 'Fuel/Generator (ডিজেল/অকটেন)', icon: Fuel },
   { key: 'Printing/Stationery', label: 'Printing/Stationery (কাগজ/প্রিন্ট)', icon: PrintIcon },
+  { key: 'Labor Wage / Khoraki', label: 'Labor Wage / Khoraki (মজুরি ও খোরাকি)', icon: Hammer },
+  { key: 'Contractor RA Bill', label: 'Contractor RA Bill (কন্ট্রাক্টর বিল পরিশোধ)', icon: Wallet },
   { key: 'Misc', label: 'Miscellaneous (বিবিধ খরচ)', icon: HelpCircle },
 ];
 

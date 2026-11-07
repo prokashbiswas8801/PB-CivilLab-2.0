@@ -65,6 +65,7 @@ import {
   Wallet,
   Layers,
   ClipboardCheck,
+  ScrollText,
 } from 'lucide-react';
 import {
   exportAnalyticalScheduleCsv,
@@ -415,6 +416,12 @@ const MODULE_META: Record<
     shortLabel: 'DPR Generator',
     codeStandard: '1-Click Multi-Source Site Synthesis',
     icon: ClipboardCheck,
+  },
+  'office-docs': {
+    label: 'Official Letters & Office Docs Generator',
+    shortLabel: 'Office Docs',
+    codeStandard: 'Bilingual Formal Engineering Contracts & Notices',
+    icon: ScrollText,
   },
 };
 
@@ -831,6 +838,7 @@ export default function App() {
       case 'petty-cash':
       case 'cube-tests':
       case 'daily-progress-report':
+      case 'office-docs':
         return {
           status: 'valid' as const,
           issues: [],
@@ -3563,6 +3571,7 @@ export default function App() {
                 'petty-cash',
                 'cube-tests',
                 'daily-progress-report',
+                'office-docs',
               ].includes(activeModule) ? (
               <SiteManagementHub
                 activeTab={activeModule}
@@ -3574,6 +3583,7 @@ export default function App() {
                 workspaceId={activeWorkspace.id}
                 projectName={activeWorkspace.name}
                 currency={activeWorkspace.currency}
+                activeWorkspace={activeWorkspace}
               />
             ) : (
               <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

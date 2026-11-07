@@ -7,5 +7,6 @@ export { ContractorBillModule } from './ContractorBillModule';
 export { PettyCashModule } from './PettyCashModule';
 export { CubeTestModule } from './CubeTestModule';
 export { DailyProgressReportModule } from './DailyProgressReportModule';
+export { OfficeDocsModule } from './OfficeDocsModule';
 export { SiteManagementHub } from './SiteManagementHub';
 export { OfflineSyncManager } from './OfflineSyncManager';

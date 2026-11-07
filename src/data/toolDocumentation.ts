@@ -2256,6 +2256,67 @@ export const TOOL_DOCUMENTATION: Record<string, ToolDocumentation> = {
     ],
     limitationsAndNotes: ['DPR compiles historical snapshots based on the specific selected calendar date.'],
   },
+
+  // =========================================================================
+  // 33. OFFICIAL ENGINEERING OFFICE DOCUMENTS & LETTERS (SM-10)
+  // =========================================================================
+  'office-docs': {
+    id: 'office-docs',
+    title: 'Official Letters, Contracts & Handover Certificates (অফিসিয়াল চিঠি ও সনদ)',
+    shortLabel: 'Office Docs',
+    discipline: 'Site Management & Contract Administration',
+    standardUsed: 'BNBC-2020 / FIDIC Civil Contract & PWD Administration',
+    overview:
+      'Official engineering office documentation generator supporting 5 bilingual (English & Bengali) A4 printable templates pre-filled with active project metadata and engineer of record credentials: Material Gate Pass & Challan, Sub-Contractor Work Order, Joint Measurement & RA Bill Forwarding Letter, Site Instruction / Non-Conformance Notice (NCR), and Project Handover Certificate.',
+    capabilities: [
+      'Material Gate Pass & Delivery Challan with returnable/non-returnable security controls',
+      'Sub-Contractor Work Orders with detailed Schedule of Rates, retention clauses, and defect liability terms',
+      'Joint Measurement & Interim Running Account (RA) Bill Forwarding Letters with statutory deduction schedules',
+      'Site Instruction & Non-Conformance Notices (NCR) referencing BNBC-2020 and ACI 318 with remediation directives',
+      'Substantial Completion & Handover Certificates with official tri-party signature blocks',
+      'Instant English & Bengali (বাংলা) language toggling with live formatted A4 print layout',
+    ],
+    howItWorks: {
+      methodology:
+        'Binds workspace project codes, locations, client entities, and licensed engineer credentials into standardized legal and contractual engineering formats.',
+      governingEquations: [
+        {
+          name: 'Net Certified Payment',
+          formula: 'NetPayable = GrossCertified - (Retention_{10\\%} + AdvanceRecovery + AIT_{Tax})',
+          description: 'Standard FIDIC / PWD interim bill payment certification formula.',
+        },
+      ],
+      codeStandards: ['BNBC-2020 Part 6', 'FIDIC Conditions of Contract (Red/Silver Book)', 'CPTU / PWD Office Procedures'],
+      assumptions: ['Physical work measurements have been jointly recorded in the official Measurement Book (MB)'],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Select Document Template',
+        instruction: 'Choose one of the 5 official templates: Gate Pass, Work Order, Bill Forwarding, NCR, or Handover Certificate.',
+      },
+      {
+        step: 2,
+        title: 'Customize Project & Legal Metadata',
+        instruction: 'Review pre-filled project data, contractor details, itemized rate tables, or non-conformance observations.',
+      },
+      {
+        step: 3,
+        title: 'Toggle Bilingual Language',
+        instruction: 'Switch between English and Bengali (বাংলা) as required by project stakeholders or government authorities.',
+      },
+      {
+        step: 4,
+        title: 'Print Official A4 Letter',
+        instruction: 'Click "Print A4 Document (PDF)" to produce client-ready submittals with triple signature blocks.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Dual Archiving: Print 2 physical signed copies for on-site records and export a digital PDF copy.',
+      'NCR Resolution: Ensure the Resident Engineer formally counter-signs and marks the NCR closed before subsequent concrete pours.',
+    ],
+    limitationsAndNotes: ['Official letters should be signed by registered Professional Engineers (PE / IEB).'],
+  },
 };
 
 /**

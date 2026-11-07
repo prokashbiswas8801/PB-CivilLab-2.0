@@ -42,6 +42,7 @@ export const CubeTestModule: React.FC = () => {
     addCubeTestRecord,
     updateCubeTestRecord,
     deleteCubeTestRecord,
+    addMilestoneTask,
   } = useSiteManagement();
 
   // Search & Filter
@@ -156,10 +157,51 @@ export const CubeTestModule: React.FC = () => {
       showToast(`Updated concrete pour ${payload.pourId}`);
     } else {
       addCubeTestRecord(payload);
-      showToast(`Logged casting pour & scheduled 7-Day & 28-Day crushing dates!`);
+      showToast(`Logged casting pour & auto-scheduled 7-Day / 28-Day testing and BNBC curing in Schedule Roster (SM-03)!`);
     }
 
     setIsPourModalOpen(false);
+  };
+
+  // 1-Click Sync to Schedule & Roster (SM-03)
+  const handleSyncToSchedule = (cube: CubeTestRecord) => {
+    const castDate = new Date(cube.castingDate);
+    const d7 = new Date(castDate);
+    d7.setDate(d7.getDate() + 7);
+    const day7Str = d7.toISOString().split('T')[0];
+
+    const d28 = new Date(castDate);
+    d28.setDate(d28.getDate() + 28);
+    const day28Str = d28.toISOString().split('T')[0];
+
+    const curingEnd = new Date(castDate);
+    curingEnd.setDate(curingEnd.getDate() + 14);
+    const curingEndStr = curingEnd.toISOString().split('T')[0];
+
+    const isColumnOrWall = /col|column|wall|pillar|lift|core/i.test(cube.structuralElement);
+    const deshutterDays = isColumnOrWall ? 2 : 21;
+    const deshutter = new Date(castDate);
+    deshutter.setDate(deshutter.getDate() + deshutterDays);
+    const deshutterStr = deshutter.toISOString().split('T')[0];
+
+    addMilestoneTask({
+      title: `Curing & De-shuttering: ${cube.structuralElement} (${cube.concreteGrade})`,
+      zoneFloor: cube.structuralElement,
+      startDate: cube.castingDate,
+      endDate: deshutterStr,
+      progress: 35,
+      isCastingEvent: true,
+      castingDate: cube.castingDate,
+      autoCuringEndDate: curingEndStr,
+      autoDeshutteringDate: deshutterStr,
+      linkedCubeTestId: cube.id,
+      status: 'Under Curing',
+      priority: 'Critical',
+      assignedForeman: 'Site Quality Officer',
+      notes: `BNBC-2020 Concrete Quality: Continuous curing till ${curingEndStr}. 7-day test: ${day7Str}, 28-day test: ${day28Str}. Formwork de-shuttering target: ${deshutterStr} (${deshutterDays} days).`,
+    });
+
+    showToast(`✓ Synced 7d/28d crushing milestones & BNBC de-shuttering (${deshutterStr}) to Schedule Roster (SM-03)!`);
   };
 
   // Save Test Results
@@ -549,11 +591,20 @@ export const CubeTestModule: React.FC = () => {
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleSyncToSchedule(cube)}
+                            title="1-Click Sync to Schedule & Roster (SM-03): adds 7d/28d crushing & BNBC de-shuttering milestones"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs transition-all hover:scale-105 cursor-pointer"
+                          >
+                            <Calendar className="w-3 h-3" />
+                            <span>Sync Schedule</span>
+                          </button>
                           <button
                             onClick={() => handleOpenRecordResult(cube)}
                             title="Record Crushing Strength Results"
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer"
                           >
                             <Activity className="w-3 h-3" />
                             <span>Record Test</span>

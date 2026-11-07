@@ -49,6 +49,7 @@ export const ContractorBillModule: React.FC = () => {
     updateRABill,
     deleteRABill,
     financialSummary,
+    addPettyCashEntry,
   } = useSiteManagement();
 
   // Search & Filter state
@@ -240,6 +241,24 @@ export const ContractorBillModule: React.FC = () => {
         : 'Draft';
     updateRABill(bill.id, { paymentStatus: nextStatus });
     showToast(`Bill ${bill.billNo} marked as ${nextStatus}.`);
+  };
+
+  // Record Payment in Petty Cash / Ledger
+  const handleRecordPaymentInPettyCash = (bill: ContractorRABill) => {
+    const voucherRef = bill.voucherNo || `V-RA-${bill.billNo}`;
+    addPettyCashEntry({
+      date: new Date().toISOString().split('T')[0],
+      type: 'Expense',
+      category: 'Contractor RA Bill',
+      amount: bill.netPayable,
+      voucherNo: voucherRef,
+      description: `Contractor RA Bill payment to ${bill.contractorName} for ${bill.workTrade} (${bill.billNo})`,
+      receiverOrSupplier: bill.contractorName,
+      approvedBy: 'Project Director',
+      paymentMode: 'Bank',
+    });
+    updateRABill(bill.id, { paymentStatus: 'Paid', voucherNo: voucherRef });
+    showToast(`Logged payment of ৳ ${bill.netPayable.toLocaleString()} in Petty Cash / Ledger (Voucher: ${voucherRef}) & marked bill as Paid.`);
   };
 
   // Delete bill handler
@@ -577,9 +596,26 @@ export const ContractorBillModule: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* Net Payable */}
-                    <td className="py-3.5 px-4 text-right font-bold text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">
-                      ৳ {bill.netPayable.toLocaleString()}
+                    {/* Net Payable & Ledger Sync */}
+                    <td className="py-3.5 px-4 text-right tabular-nums">
+                      <div className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                        ৳ {bill.netPayable.toLocaleString()}
+                      </div>
+                      {bill.paymentStatus !== 'Paid' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRecordPaymentInPettyCash(bill)}
+                          title="Record Payment in Petty Cash / Ledger (SM-07)"
+                          className="mt-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs inline-flex items-center gap-1 cursor-pointer transition-all hover:scale-105"
+                        >
+                          <DollarSign className="w-3 h-3" />
+                          <span>Record Payment in Petty Cash / Ledger</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-300 mt-1">
+                          <Check className="w-3 h-3" /> Paid in Ledger
+                        </span>
+                      )}
                     </td>
 
                     {/* Status Badge */}

@@ -59,6 +59,8 @@ export type PettyCashCategory =
   | 'Tools'
   | 'Fuel/Generator'
   | 'Printing/Stationery'
+  | 'Labor Wage / Khoraki'
+  | 'Contractor RA Bill'
   | 'Misc';
 
 export type ConcreteGrade =
@@ -308,6 +310,7 @@ export interface PettyCashTransaction {
   description: string;
   receiverOrSupplier?: string;
   approvedBy?: string;
+  paymentMode?: string;
   timestamp: string;
 }
 

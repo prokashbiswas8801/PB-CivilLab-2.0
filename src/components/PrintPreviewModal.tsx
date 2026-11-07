@@ -1565,6 +1565,7 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
     case 'petty-cash':
     case 'cube-tests':
     case 'daily-progress-report':
+    case 'office-docs':
       return (
         <>
           <tr>
@@ -1934,6 +1935,7 @@ function renderModuleOutputCards(moduleId: EngineeringModuleId, ws: CivilWorkspa
     'petty-cash',
     'cube-tests',
     'daily-progress-report',
+    'office-docs',
   ].includes(moduleId)) {
     return (
       <>

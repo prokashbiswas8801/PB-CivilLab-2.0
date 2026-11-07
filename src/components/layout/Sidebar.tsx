@@ -149,6 +149,7 @@ export const SIDEBAR_CATEGORIES: SidebarCategory[] = [
       { id: 'petty-cash', name: 'Petty Cash & Imprest Register', subtitle: 'Site Expenses & Cash in Hand', moduleId: 'petty-cash', actionType: 'module', badge: 'Cash' },
       { id: 'cube-tests', name: 'Concrete Cube Crushing Tests', subtitle: '7-Day / 28-Day Strength DCR', moduleId: 'cube-tests', actionType: 'module', badge: 'QC' },
       { id: 'daily-progress-report', name: 'Daily Progress Report (DPR)', subtitle: '1-Click Master Site Report', moduleId: 'daily-progress-report', actionType: 'module', badge: 'DPR' },
+      { id: 'office-docs', name: 'Official Letters & Office Docs', subtitle: 'Gate Pass, Work Order & Handover', moduleId: 'office-docs', actionType: 'module', badge: 'Docs' },
     ],
   },
 ];

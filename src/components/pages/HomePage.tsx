@@ -31,6 +31,7 @@ import {
   Users,
   Receipt,
   Wallet,
+  ScrollText,
 } from 'lucide-react';
 import { EngineeringModuleId, CivilWorkspace } from '../../types/civil';
 import { useCivilLab } from '../../context/CivilLabContext';
@@ -494,6 +495,15 @@ export const HomePage: React.FC<HomePageProps> = ({
           standardUsed: 'Construction Project DPR Protocol',
           icon: ClipboardCheck,
           moduleId: 'daily-progress-report',
+        },
+        {
+          id: 'office-docs',
+          shortCode: 'SM-10',
+          title: 'Official Letters & Office Docs (অফিসিয়াল চিঠি ও সনদ)',
+          description: 'Bilingual legal/contractual office documents: Material Gate Pass, Work Orders, Joint Measurement Forwarding Letters, NCRs, and Handover Certificates.',
+          standardUsed: 'BNBC-2020 / FIDIC Civil Contract Practice',
+          icon: ScrollText,
+          moduleId: 'office-docs',
         },
       ],
     },
