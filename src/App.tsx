@@ -221,6 +221,12 @@ import {
   getVerifiedReportById,
   saveVerifiedReport,
 } from './utils/verificationEngine';
+import { OfficeDocPublicPortalView } from './components/sitemanagement/OfficeDocPublicPortalView';
+import {
+  VerifiedOfficeDocRecord,
+  decodeOfficeDocToken,
+  getVerifiedOfficeDocById,
+} from './utils/officeDocVerification';
 import {
   BoqEstimatorInputs,
   BoqEstimatorTable,
@@ -534,6 +540,7 @@ export default function App() {
   const [isDashboardView, setIsDashboardView] = useState(true);
   const [activeReportQr, setActiveReportQr] = useState<GeneratedReportQrResult | null>(null);
   const [verifiedReportRecord, setVerifiedReportRecord] = useState<PublicEngineeringReportRecord | null>(null);
+  const [verifiedOfficeDocRecord, setVerifiedOfficeDocRecord] = useState<VerifiedOfficeDocRecord | null>(null);
   const [verifySubmittalModalOpen, setVerifySubmittalModalOpen] = useState(false);
   const [architectureModalOpen, setArchitectureModalOpen] = useState(false);
   const [architectureInitialTab, setArchitectureInitialTab] = useState<'far' | 'staircase' | 'watertank' | 'septictank'>('far');
@@ -593,7 +600,29 @@ export default function App() {
       const urlParams = new URLSearchParams(search);
       const verifyDocId = urlParams.get('verify');
       const tokenParam = urlParams.get('token');
+      const docTokenParam = urlParams.get('docToken');
+      const verifyDocParam = urlParams.get('verifyDoc');
 
+      // 1. Office Documents Verification
+      if (docTokenParam) {
+        const decodedDoc = decodeOfficeDocToken(docTokenParam);
+        if (decodedDoc) {
+          setVerifiedOfficeDocRecord(decodedDoc);
+          setShowSplash(false);
+          return;
+        }
+      }
+
+      if (verifyDocParam) {
+        const foundDoc = getVerifiedOfficeDocById(verifyDocParam);
+        if (foundDoc) {
+          setVerifiedOfficeDocRecord(foundDoc);
+          setShowSplash(false);
+          return;
+        }
+      }
+
+      // 2. Engineering Calculation Reports Verification
       if (tokenParam) {
         const decoded = decodeVerificationToken(tokenParam);
         if (decoded) {
@@ -2067,7 +2096,7 @@ export default function App() {
     if (!currentEnvelope.result) return;
     const modLabel = MODULE_META[activeModule].label;
     const code = MODULE_META[activeModule].codeStandard;
-    let text = `========================================================\nPB CivilLab — Analytical Calculation Summary\nProject: ${activeWorkspace.name} [${activeWorkspace.projectCode}]\nModule: ${modLabel}\nGoverning Standard: ${code}\nStatus: ${currentEnvelope.status.toUpperCase()}\nTimestamp: ${new Date().toLocaleString()}\n========================================================\n`;
+    let text = `========================================================\nBD. CivilLab — Analytical Calculation Summary\nProject: ${activeWorkspace.name} [${activeWorkspace.projectCode}]\nModule: ${modLabel}\nGoverning Standard: ${code}\nStatus: ${currentEnvelope.status.toUpperCase()}\nTimestamp: ${new Date().toLocaleString()}\n========================================================\n`;
 
     if (activeModule === 'beam-analysis') {
       const r = currentEnvelope.result as BeamAnalysisResult;
@@ -2154,9 +2183,9 @@ export default function App() {
         <!-- Certified Executive Header with Dynamic Verification QR Code -->
         <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
           <div class="flex items-center gap-3.5">
-            <img src="${BRAND_LOGO_SRC}" alt="PB CivilLab Official Brand Logo" class="w-14 h-14 rounded-xl object-cover border border-slate-300 shadow-xs shrink-0" />
+            <img src="${BRAND_LOGO_SRC}" alt="BD. CivilLab Official Brand Logo" class="w-14 h-14 rounded-xl object-contain border border-slate-300 shadow-xs shrink-0 bg-slate-900 p-1" />
             <div>
-              <div class="text-2xl font-black font-sans tracking-tight text-blue-700">PB CivilLab</div>
+              <div class="text-2xl font-black font-sans tracking-tight text-blue-700">BD. CivilLab</div>
               <div class="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-600 mt-0.5">
                 CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS
               </div>
@@ -2269,7 +2298,7 @@ export default function App() {
 
         <!-- Footer with Verification Ledger -->
         <div class="pt-3 border-t border-slate-300 text-[10px] font-mono text-slate-500 flex justify-between items-center print-avoid-break">
-          <div>© 2026 PB CivilLab · Developed &amp; Designed by PROKASH BISWAS</div>
+          <div>© 2026 BD. CivilLab · Developed &amp; Designed by PROKASH BISWAS</div>
           <div class="flex items-center gap-2">
             <span>Doc Ref: <strong>${docId}</strong></span>
             <span>·</span>
@@ -2997,7 +3026,7 @@ export default function App() {
   const handleExportStateJson = () => {
     const packagePayload = {
       ...appState,
-      brand: 'PB CivilLab',
+      brand: 'BD. CivilLab',
       tagline: 'CALCULATE SMARTER. BUILD BETTER.',
       creator: 'PROKASH BISWAS',
       exportedAt: new Date().toISOString(),
@@ -3006,7 +3035,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pb-civillab-schema-v${CURRENT_SCHEMA_VERSION}-${activeWorkspace.projectCode}.json`;
+    a.download = `bd-civillab-schema-v${CURRENT_SCHEMA_VERSION}-${activeWorkspace.projectCode}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3216,9 +3245,28 @@ export default function App() {
         onSelectCalculation={handleRestoreCalculation}
       />
 
-      {showSplash && !verifiedReportRecord && <AppSplash onComplete={() => setShowSplash(false)} />}
+      {showSplash && !verifiedReportRecord && !verifiedOfficeDocRecord && (
+        <AppSplash onComplete={() => setShowSplash(false)} />
+      )}
 
-      {verifiedReportRecord ? (
+      {verifiedOfficeDocRecord ? (
+        <OfficeDocPublicPortalView
+          record={verifiedOfficeDocRecord}
+          onClose={() => {
+            setVerifiedOfficeDocRecord(null);
+            if (typeof window !== 'undefined' && window.history) {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('verifyDoc');
+              url.searchParams.delete('docToken');
+              window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+            }
+          }}
+          onOpenWorkbench={() => {
+            handleSetModule('office-docs');
+            setVerifiedOfficeDocRecord(null);
+          }}
+        />
+      ) : verifiedReportRecord ? (
         <ReportVerificationView
           record={verifiedReportRecord}
           onClose={() => {
@@ -3341,7 +3389,7 @@ export default function App() {
                   {userPreferences.showEngineeringSignatureLine && (
                     <div className="mt-2 text-center w-56 border-t border-black pt-1">
                       <div className="text-[10px] font-bold text-black uppercase">
-                        {userProfile.initials || 'PB'} OFFICIAL CERTIFICATION STAMP
+                        {userProfile.initials || 'BD'} OFFICIAL CERTIFICATION STAMP
                       </div>
                       <div className="text-[9px] text-gray-500">Engineer of Record Signature &amp; Date</div>
                     </div>
@@ -4384,7 +4432,7 @@ export default function App() {
             )}
 
 
-            {/* PB CivilLab Global Engineered Footer */}
+            {/* BD. CivilLab Global Engineered Footer */}
             <Footer
               onNavigateHome={() => {
                 handleSetModule('boq-estimator');

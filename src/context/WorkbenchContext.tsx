@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { EngineeringModuleId } from '../types/civil';
 import { roundEng } from '../utils/mathEngine';
+import { formatFeetInches } from '../utils/unitConverter';
 
 // ============================================================================
 // TYPES & DEFINITIONS
@@ -187,6 +188,7 @@ export interface WorkbenchContextType {
     category: EngineeringUnitCategory,
     decimals?: number
   ) => string;
+  formatFeetInches: (valueInFeetOrMeters: number, isMeters?: boolean) => string;
 
   // Project Metadata
   projectMetadata: ProjectMetadata;
@@ -211,20 +213,20 @@ export interface WorkbenchContextType {
 // STORAGE KEYS & DEFAULTS
 // ============================================================================
 
-export const WORKBENCH_VERSION_KEY = 'pb_civillab_workbench_version';
+export const WORKBENCH_VERSION_KEY = 'bd_civillab_workbench_version';
 export const CURRENT_WORKBENCH_VERSION = 'v3_clean';
 
 const STORAGE_KEYS = {
-  UNIT_SYSTEM: 'pb_civillab_global_unit_system_v3',
-  PROJECT_METADATA: 'pb_civillab_project_metadata_v3',
-  RECENT_TOOLS: 'pb_civillab_recent_tools_v3',
-  FAVORITE_TOOLS: 'pb_civillab_favorite_tools_v3',
-  CALC_HISTORY: 'pb_civillab_calc_history_v3',
+  UNIT_SYSTEM: 'bd_civillab_global_unit_system_v3',
+  PROJECT_METADATA: 'bd_civillab_project_metadata_v3',
+  RECENT_TOOLS: 'bd_civillab_recent_tools_v3',
+  FAVORITE_TOOLS: 'bd_civillab_favorite_tools_v3',
+  CALC_HISTORY: 'bd_civillab_calc_history_v3',
 };
 
 const DEFAULT_METADATA: ProjectMetadata = {
   projectName: 'Standard Civil Infrastructure Project',
-  projectCode: 'PBCL-2026-DES',
+  projectCode: 'BDCL-2026-DES',
   clientName: 'Public Works Department (PWD)',
   engineerName: 'Lead Structural & Civil Engineer',
   projectLocation: 'Dhaka Metropolitan Zone, Bangladesh',
@@ -540,8 +542,24 @@ export const WorkbenchProvider: React.FC<WorkbenchProviderProps> = ({ children }
     [convertValue, unitSystem]
   );
 
+  const formatFeetInchesCallback = useCallback(
+    (valueInFeetOrMeters: number, isMeters: boolean = false): string => {
+      return formatFeetInches(valueInFeetOrMeters, { isMeters });
+    },
+    []
+  );
+
   const formatWithActiveUnit = useCallback(
     (valueInSI: number, category: EngineeringUnitCategory, decimals: number = 2): string => {
+      if (category === 'length' && (unitSystem === 'Imperial' || unitSystem === 'Regional')) {
+        const converted = toActiveUnit(valueInSI, category, decimals);
+        const symbol = getUnitSymbol(category);
+        const ftIn = formatFeetInches(valueInSI, { isMeters: true });
+        return `${converted.toLocaleString('en-US', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: decimals,
+        })} ${symbol} (${ftIn})`;
+      }
       const converted = toActiveUnit(valueInSI, category, decimals);
       const symbol = getUnitSymbol(category);
       return `${converted.toLocaleString('en-US', {
@@ -549,7 +567,7 @@ export const WorkbenchProvider: React.FC<WorkbenchProviderProps> = ({ children }
         maximumFractionDigits: decimals,
       })} ${symbol}`;
     },
-    [toActiveUnit, getUnitSymbol]
+    [toActiveUnit, getUnitSymbol, unitSystem]
   );
 
   const value = useMemo<WorkbenchContextType>(
@@ -563,6 +581,7 @@ export const WorkbenchProvider: React.FC<WorkbenchProviderProps> = ({ children }
       toActiveUnit,
       fromActiveUnitToSI,
       formatWithActiveUnit,
+      formatFeetInches: formatFeetInchesCallback,
       projectMetadata,
       updateProjectMetadata,
       resetProjectMetadata,
@@ -586,6 +605,7 @@ export const WorkbenchProvider: React.FC<WorkbenchProviderProps> = ({ children }
       toActiveUnit,
       fromActiveUnitToSI,
       formatWithActiveUnit,
+      formatFeetInchesCallback,
       projectMetadata,
       updateProjectMetadata,
       resetProjectMetadata,

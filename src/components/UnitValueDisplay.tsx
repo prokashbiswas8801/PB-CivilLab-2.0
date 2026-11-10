@@ -7,6 +7,7 @@ import {
   UnitDefinition,
   CANONICAL_BASE_UNITS,
   getConversionFactorDetails,
+  formatFeetInches,
 } from '../utils/unitEngine';
 import { ChevronDown, Check } from 'lucide-react';
 
@@ -67,12 +68,15 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
   // Formatted string
   const displayFormatted = useMemo(() => {
     if (isNaN(convertedValue)) return '—';
+    if (activeUnitInfo.id === 'ft-in') {
+      return formatFeetInches(convertedValue);
+    }
     if (Number.isInteger(convertedValue)) return convertedValue.toLocaleString();
     return convertedValue.toLocaleString(undefined, {
       minimumFractionDigits: precision,
       maximumFractionDigits: precision,
     });
-  }, [convertedValue, precision]);
+  }, [convertedValue, precision, activeUnitInfo.id]);
 
   // Smooth fade transition tracking when unit system changes
   const [isUnitFading, setIsUnitFading] = useState(false);

@@ -143,7 +143,7 @@ export const ENGINEERING_THEMES: Record<EngineeringTheme, ThemeDefinition> = {
   },
 };
 
-const THEME_STORAGE_KEY = 'pb_civillab_active_theme_v4';
+const THEME_STORAGE_KEY = 'bd_civillab_active_theme_v4';
 
 // Helper to map any legacy theme id to a v4 theme id
 function normalizeTheme(id: string | null | undefined): EngineeringTheme {
@@ -171,7 +171,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [theme, setThemeState] = useState<EngineeringTheme>(() => {
     if (typeof window === 'undefined') return 'obsidian-gold';
     try {
-      const stored = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem('pb_civillab_active_theme_v3');
+      const stored = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem('pb_civillab_active_theme_v4') || localStorage.getItem('pb_civillab_active_theme_v3');
       return normalizeTheme(stored);
     } catch {
       return 'obsidian-gold';

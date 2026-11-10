@@ -1,39 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">
-  <defs>
-    <linearGradient id="pb-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FDE68A" />
-      <stop offset="50%" stop-color="#F59E0B" />
-      <stop offset="100%" stop-color="#D97706" />
-    </linearGradient>
-    <linearGradient id="pb-accent-gold" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#D97706" stop-opacity="0.8" />
-      <stop offset="100%" stop-color="#FBBF24" stop-opacity="0.9" />
-    </linearGradient>
-  </defs>
-
   <!-- Obsidian Dark Foundation Base -->
-  <rect width="64" height="64" rx="14" fill="#121110" />
+  <rect width="64" height="64" rx="14" fill="#141413" stroke="#2B2A27" stroke-width="1.2" />
 
-  <!-- Subtle Engineering Grid Lines -->
-  <path d="M12 20h40M12 32h40M12 44h40M20 12v40M32 12v40M44 12v40" stroke="#262320" stroke-width="0.75" stroke-dasharray="1 3" />
+  <!-- Subtle Precision CAD Engineering Grid -->
+  <path d="M14 20h36M14 32h36M14 44h36 M20 14v36M32 14v36M44 14v36" stroke="#252422" stroke-width="0.75" stroke-dasharray="1.5 2.5" />
 
-  <!-- Structural Accent Beam Corner -->
-  <path d="M12 16L16 12M48 52l4-4" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round" opacity="0.7" />
+  <!-- 45-degree Chamfer Alignment Accents -->
+  <path d="M12 16L16 12M48 52l4-4" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round" opacity="0.6" />
 
-  <!-- Civil / Structural Monogram "PB" -->
-  <g transform="translate(11, 14)">
-    <!-- Column Mast (Structural I-Pillar) -->
-    <rect x="0" y="2" width="6" height="32" rx="1.5" fill="url(#pb-gold-grad)" />
-    
-    <!-- Letter 'P' Loop -->
-    <path d="M6 4h10c5 0 8.5 2.5 8.5 7.5S21 19 16 19H6V4z" fill="none" stroke="url(#pb-gold-grad)" stroke-width="4.5" stroke-linejoin="round" />
+  <!-- "C" Structural Channel Frame (Warm Titanium White #F8FAFC) -->
+  <path d="M30 18H21.5L16.5 23.5V40.5L21.5 46H30" fill="none" stroke="#F8FAFC" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" />
 
-    <!-- Letter 'B' Backbone & Structural Double Loop -->
-    <rect x="18" y="2" width="5.5" height="32" rx="1.2" fill="#E7E5E4" />
-    <path d="M23 4h8c4.2 0 7 2.2 7 6.2 0 3.2-1.8 5.2-4.8 5.8 3.8.7 5.8 3 5.8 6.8 0 4.5-3.2 7.2-8 7.2h-8" fill="none" stroke="#FBF9F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- "L" Reinforced Angle Beam & Structural Ruler (Engineered Amber Gold #F59E0B) -->
+  <path d="M35 18V46H48" fill="none" stroke="#F59E0B" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" />
 
-    <!-- Engineering Axis Point Indicator -->
-    <circle cx="21" cy="18" r="2" fill="#F59E0B" />
-    <path d="M19 18h4M21 16v4" stroke="#121110" stroke-width="0.8" stroke-linecap="round" />
-  </g>
+  <!-- Millimeter Scale Caliper Ticks on 'L' Vertical Leg -->
+  <path d="M31.5 23.5h2.5 M30 29h4 M31.5 34.5h2.5 M30 40h4" stroke="#F59E0B" stroke-width="1.2" stroke-linecap="round" />
+
+  <!-- Structural Node Caliper Pivot & Anchor Point -->
+  <circle cx="41.5" cy="27" r="2.2" fill="#F59E0B" />
+  <circle cx="41.5" cy="27" r="0.9" fill="#141413" />
 </svg>

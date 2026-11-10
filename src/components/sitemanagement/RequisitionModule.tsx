@@ -262,7 +262,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
 
     const totalEst = req.items.reduce((sum, item) => sum + item.requestedQty * item.estimatedRate, 0);
 
-    const message = `🏗️ *PB CivilLab — Material Requisition Order*\n📋 *Req No:* ${req.reqNo} | *Priority:* ${urgencyIcon}\n📅 *Date:* ${req.date} | *Required By:* ${req.requiredByDate}\n🏢 *Project:* ${activeProjectId}\n-----------------------------------\n📦 *Materials Required:*\n${itemsText}\n-----------------------------------\n💰 *Est. Total Value:* ৳ ${totalEst.toLocaleString()}\n👤 *Requested By:* ${req.requestedBy}\n${req.notes ? `⚠️ *Remarks:* ${req.notes}\n` : ''}✅ *Please arrange procurement and dispatch to site immediately.*`;
+    const message = `🏗️ *BD. CivilLab — Material Requisition Order*\n📋 *Req No:* ${req.reqNo} | *Priority:* ${urgencyIcon}\n📅 *Date:* ${req.date} | *Required By:* ${req.requiredByDate}\n🏢 *Project:* ${activeProjectId}\n-----------------------------------\n📦 *Materials Required:*\n${itemsText}\n-----------------------------------\n💰 *Est. Total Value:* ৳ ${totalEst.toLocaleString()}\n👤 *Requested By:* ${req.requestedBy}\n${req.notes ? `⚠️ *Remarks:* ${req.notes}\n` : ''}✅ *Please arrange procurement and dispatch to site immediately.*`;
 
     navigator.clipboard.writeText(message);
     showToast('Requisition formatted for WhatsApp & copied to clipboard!');
@@ -1021,7 +1021,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
           <div className="border-b-2 border-black pb-4 mb-6">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">PB CivilLab — Site Material Requisition Slip</h1>
+                <h1 className="text-2xl font-bold tracking-tight">BD. CivilLab — Site Material Requisition Slip</h1>
                 <p className="text-xs text-gray-600 mt-1">Official Material Procurement & Inward Indent Voucher</p>
               </div>
               <div className="text-right">

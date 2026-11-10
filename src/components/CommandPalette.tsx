@@ -468,7 +468,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         id: 'action-verify-submittal',
         title: 'Verify Engineering Submittal (Scan / Reference ID)',
         category: 'Actions',
-        description: 'Verify official PDF calculation reports using document reference (PBCL-2026-XXXXXX) or QR code link',
+        description: 'Verify official PDF calculation reports using document reference (BDCL-2026-XXXXXX) or QR code link',
         keywords: ['verify', 'verification', 'qr', 'scan', 'docid', 'submittal', 'certificate', 'iso9001', 'audit', 'check'],
         action: onOpenVerification,
       },

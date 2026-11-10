@@ -1,9 +1,73 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   NIKOSH BENGALI TYPOGRAPHY SPECIFICATION (OFFICIAL BD STANDARDS)
+   ========================================================================== */
+@font-face {
+  font-family: 'Nikosh';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src: local('Nikosh'),
+       local('NikoshBAN'),
+       local('NikoshLight'),
+       url('https://cdn.jsdelivr.net/gh/sonnetdp/nikosh@master/fonts/Nikosh.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/hmoazzem/bangla-fonts/Nikosh.ttf') format('truetype'),
+       url('/fonts/Nikosh.woff2') format('woff2'),
+       url('/fonts/Nikosh.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Nikosh';
+  font-style: normal;
+  font-weight: bold;
+  font-display: swap;
+  src: local('Nikosh'),
+       local('NikoshBAN'),
+       local('NikoshLight'),
+       url('https://cdn.jsdelivr.net/gh/sonnetdp/nikosh@master/fonts/Nikosh.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/hmoazzem/bangla-fonts/Nikosh.ttf') format('truetype'),
+       url('/fonts/Nikosh.woff2') format('woff2'),
+       url('/fonts/Nikosh.ttf') format('truetype');
+}
+
+/* Force unicode-range mapping for Bengali script (U+0980 - U+09FF) so any Bengali text automatically renders in Nikosh */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local('Nikosh'),
+       local('NikoshBAN'),
+       local('NikoshLight'),
+       url('https://cdn.jsdelivr.net/gh/sonnetdp/nikosh@master/fonts/Nikosh.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/hmoazzem/bangla-fonts/Nikosh.ttf') format('truetype'),
+       url('/fonts/Nikosh.woff2') format('woff2'),
+       url('/fonts/Nikosh.ttf') format('truetype');
+  unicode-range: U+0980-09FF;
+}
+
+@font-face {
+  font-family: 'Georgia';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local('Nikosh'),
+       local('NikoshBAN'),
+       local('NikoshLight'),
+       url('https://cdn.jsdelivr.net/gh/sonnetdp/nikosh@master/fonts/Nikosh.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/gh/hmoazzem/bangla-fonts/Nikosh.ttf') format('truetype'),
+       url('/fonts/Nikosh.woff2') format('woff2'),
+       url('/fonts/Nikosh.ttf') format('truetype');
+  unicode-range: U+0980-09FF;
+}
+
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Georgia', 'Times New Roman', serif;
+  --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+  --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 }
 
 @layer base {
@@ -13,9 +77,11 @@
   .theme-cad-charcoal,
   .theme-blueprint-navy,
   .dark {
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
     /* THEME 1: Obsidian Gold (Default Dark Workbench) */
     --md-sys-color-background: #121110;
@@ -69,9 +135,11 @@
   /* THEME 2: Terracotta Studio (Espresso Dark Earthen Masonry) */
   .theme-terracotta-studio,
   [data-theme="terracotta-studio"] {
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
     --md-sys-color-background: #161210;
     --md-sys-color-on-background: #FFFBEB;
@@ -125,9 +193,11 @@
   .theme-editorial-parchment,
   [data-theme="editorial-parchment"],
   .theme-calcpad-paper {
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
     --md-sys-color-background: #F7F4EF; /* Cream Archival Parchment */
     --md-sys-color-on-background: #1C1917;
@@ -182,9 +252,11 @@
   [data-theme="solar-amber"],
   .theme-site-daylight,
   .sunlight-mode {
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
     --md-sys-color-background: #FFFFFF;
     --md-sys-color-on-background: #090D16;
@@ -238,9 +310,11 @@
   .theme-emerald-botanical,
   [data-theme="emerald-botanical"],
   .theme-emerald-matrix {
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Georgia', 'Times New Roman', serif;
+    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
     --md-sys-color-background: #071712;
     --md-sys-color-on-background: #ECFDF5;
@@ -298,6 +372,16 @@
 
   body, p, span, input, select, textarea {
     font-family: var(--font-sans);
+  }
+
+  /* All Bengali script characters & Bengali language containers strictly use Nikosh */
+  :lang(bn),
+  [lang="bn"],
+  .font-bangla,
+  .font-bengali,
+  .font-nikosh,
+  .nikosh-text {
+    font-family: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif !important;
   }
 
   table, th, td, code, pre, .font-mono, .tabular-nums, .stat-value, .coordinate-value {
@@ -439,7 +523,8 @@
   }
 
   /* Standalone A4 Print Root: expands naturally across multiple A4 sheets */
-  #pb-printable-report {
+  #pb-printable-report,
+  .printable-document {
     display: block !important;
     position: static !important;
     width: 100% !important;
@@ -454,6 +539,7 @@
     overflow: visible !important;
     height: auto !important;
     min-height: 0 !important;
+    font-family: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, sans-serif !important;
   }
 
   #pb-printable-report:empty {
@@ -799,4 +885,68 @@ th,
 .animate-checkmark-spring {
   animation: checkmark-spring 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   FORCE NIKOSH FONT ON ALL D3, RECHARTS & SVG CHART COMPONENTS & LABELS
+   Ensures complete visual consistency with the application's Bengali typography
+   ========================================================================== */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-surface text,
+.recharts-surface tspan,
+.recharts-text,
+.recharts-label,
+.recharts-cartesian-axis,
+.recharts-cartesian-axis text,
+.recharts-cartesian-axis tspan,
+.recharts-cartesian-axis-tick,
+.recharts-cartesian-axis-tick text,
+.recharts-cartesian-axis-tick-value,
+.recharts-polar-angle-axis-tick-value,
+.recharts-polar-radius-axis-tick-value,
+.recharts-legend-item-text,
+.recharts-default-tooltip,
+.recharts-tooltip-label,
+.recharts-tooltip-item,
+.recharts-tooltip-item-name,
+.recharts-tooltip-item-value,
+.recharts-pie-label-text,
+.recharts-radial-bar-label-text,
+.recharts-brush text,
+.recharts-responsive-container text,
+g.recharts-cartesian-axis text,
+g.recharts-xAxis text,
+g.recharts-yAxis text,
+.d3-chart,
+.d3-chart text,
+.d3-chart tspan,
+.d3-axis,
+.d3-axis text,
+.d3-axis tspan,
+.d3-tooltip,
+.d3-label,
+.d3-legend text,
+.axis text,
+.axis-label,
+.axis-title,
+.tick text,
+svg text,
+svg tspan,
+svg text.font-mono,
+svg tspan.font-mono,
+.chart-label,
+.chart-axis-label,
+.chart-title,
+.chart-tick-label,
+.diagram-label,
+[class*="recharts"] text,
+[class*="recharts"] tspan,
+[class*="d3"] text,
+[class*="d3"] tspan {
+  font-family: 'Nikosh', 'NikoshBAN', 'SolaimanLipi', sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 

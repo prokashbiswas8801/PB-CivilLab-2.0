@@ -15,9 +15,12 @@ import {
   OfflineSyncStats,
 } from '../types/offlineSync';
 
-const QUEUE_STORAGE_KEY = 'pbcivillab_offline_sync_queue_v1';
-const SIMULATED_OFFLINE_KEY = 'pbcivillab_simulated_offline';
-const LAST_SYNC_KEY = 'pbcivillab_last_sync_timestamp';
+const QUEUE_STORAGE_KEY = 'bdcivillab_offline_sync_queue_v1';
+const LEGACY_QUEUE_STORAGE_KEY = 'pbcivillab_offline_sync_queue_v1';
+const SIMULATED_OFFLINE_KEY = 'bdcivillab_simulated_offline';
+const LEGACY_SIMULATED_OFFLINE_KEY = 'pbcivillab_simulated_offline';
+const LAST_SYNC_KEY = 'bdcivillab_last_sync_timestamp';
+const LEGACY_LAST_SYNC_KEY = 'pbcivillab_last_sync_timestamp';
 
 const OfflineSyncContext = createContext<OfflineSyncContextType | undefined>(undefined);
 
@@ -30,7 +33,8 @@ export const OfflineSyncProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // 2. Simulated Offline Mode (for testing without turning off internet)
   const [isSimulatedOffline, setIsSimulatedOfflineState] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(SIMULATED_OFFLINE_KEY) === 'true';
+      const stored = localStorage.getItem(SIMULATED_OFFLINE_KEY) ?? localStorage.getItem(LEGACY_SIMULATED_OFFLINE_KEY);
+      return stored === 'true';
     } catch {
       return false;
     }
@@ -42,7 +46,11 @@ export const OfflineSyncProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // 3. Persistent Sync Queue State
   const [queue, setQueue] = useState<SyncQueueItem[]>(() => {
     try {
-      const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
+      let raw = localStorage.getItem(QUEUE_STORAGE_KEY);
+      if (!raw) {
+        raw = localStorage.getItem(LEGACY_QUEUE_STORAGE_KEY);
+        if (raw) localStorage.setItem(QUEUE_STORAGE_KEY, raw);
+      }
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parsed;
@@ -56,7 +64,7 @@ export const OfflineSyncProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
     try {
-      return localStorage.getItem(LAST_SYNC_KEY);
+      return localStorage.getItem(LAST_SYNC_KEY) || localStorage.getItem(LEGACY_LAST_SYNC_KEY);
     } catch {
       return null;
     }

@@ -179,7 +179,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pb-civillab-presets-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `bd-civillab-presets-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -197,7 +197,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
         onImportPresets(parsed);
         setAppliedPresetToast(`Imported ${parsed.length} preset configurations.`);
       } else {
-        setAppliedPresetToast('Error: Could not parse valid PB CivilLab engineering presets from file.');
+        setAppliedPresetToast('Error: Could not parse valid BD. CivilLab engineering presets from file.');
       }
     };
     reader.readAsText(file);
@@ -333,7 +333,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                   User Profile & Preferences
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]">
-                  PB CivilLab
+                  BD. CivilLab
                 </span>
               </div>
               <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
@@ -475,7 +475,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                         required
                         value={profileForm.organization}
                         onChange={(e) => setProfileForm({ ...profileForm, organization: e.target.value })}
-                        placeholder="e.g. PB CivilLab Consultancy Ltd. / BUET"
+                        placeholder="e.g. BD. CivilLab Consultancy Ltd. / BUET"
                         className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)] font-medium"
                       />
                     </div>
@@ -1295,7 +1295,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
         <div className="shrink-0 px-6 py-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] flex items-center justify-between">
           <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
             <Award className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-            <span>PB CivilLab v2.0 · EOR: {profileForm.fullName}</span>
+            <span>BD. CivilLab v2.0 · EOR: {profileForm.fullName}</span>
           </div>
 
           <button

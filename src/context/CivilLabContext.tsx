@@ -127,24 +127,24 @@ export interface CivilLabContextType {
 // STORAGE KEYS & ROBUST DEFAULTS
 // ============================================================================
 
-export const CIVILLAB_CONTEXT_VERSION_KEY = 'pb_civillab_context_version';
+export const CIVILLAB_CONTEXT_VERSION_KEY = 'bd_civillab_context_version';
 export const CURRENT_CIVILLAB_CONTEXT_VERSION = 'v3_clean';
 
 const STORAGE_KEYS = {
-  ACTIVE_PAGE: 'pb_civillab_active_page_v3',
-  ACTIVE_CALC_ID: 'pb_civillab_active_calc_id_v3',
-  IS_DOCK_COLLAPSED: 'pb_civillab_dock_collapsed_v3',
-  PINNED_TOOLS: 'pb_civillab_pinned_tools_v3',
-  SEARCH_HISTORY: 'pb_civillab_search_history_v3',
-  SAVED_HISTORY: 'pb_civillab_saved_history_v3',
-  USER_PROFILE: 'pb_civillab_user_profile_v3',
-  PDF_PRESET: 'pb_civillab_pdf_preset_v3',
+  ACTIVE_PAGE: 'bd_civillab_active_page_v3',
+  ACTIVE_CALC_ID: 'bd_civillab_active_calc_id_v3',
+  IS_DOCK_COLLAPSED: 'bd_civillab_dock_collapsed_v3',
+  PINNED_TOOLS: 'bd_civillab_pinned_tools_v3',
+  SEARCH_HISTORY: 'bd_civillab_search_history_v3',
+  SAVED_HISTORY: 'bd_civillab_saved_history_v3',
+  USER_PROFILE: 'bd_civillab_user_profile_v3',
+  PDF_PRESET: 'bd_civillab_pdf_preset_v3',
 };
 
 const DEFAULT_USER_PROFILE: CivilUserProfile = {
   name: 'Prokash Biswas',
   title: 'Principal Civil & Structural Engineer',
-  organization: 'PB Civil Engineering Consultancy',
+  organization: 'BD. Civil Engineering Consultancy',
   licenseNo: 'PE-8801-BD',
   email: 'prokashbiswas8801@gmail.com',
   phone: '+880 1712-345678',
@@ -159,7 +159,7 @@ const DEFAULT_USER_PROFILE: CivilUserProfile = {
     {
       id: 'proj-001',
       name: 'Padma Bridge River Viaduct & Pier Caps',
-      code: 'PBCL-2026-VIAD',
+      code: 'BDCL-2026-VIAD',
       clientName: 'Bangladesh Bridge Authority (BBA)',
       location: 'Mawa-Janjira Sector, Bangladesh',
       currency: 'BDT',
@@ -168,7 +168,7 @@ const DEFAULT_USER_PROFILE: CivilUserProfile = {
     {
       id: 'proj-002',
       name: 'High-Rise Commercial Mat & Bored Piles',
-      code: 'PBCL-2026-MAT',
+      code: 'BDCL-2026-MAT',
       clientName: 'Eastern Housing & Commercial Ltd.',
       location: 'Chittagong Port City, Bangladesh',
       currency: 'BDT',
@@ -189,7 +189,7 @@ const DEFAULT_PDF_PRESET: CivilPdfPreset = {
   includeSignatureBlock: true,
   showProjectMetadata: true,
   customHeaderTitle: 'Official Structural & Geotechnical Submittal Sheet',
-  companySubtitle: 'PB Civil Engineering Consultancy · Verified Engineering Calculations',
+  companySubtitle: 'BD. Civil Engineering Consultancy · Verified Engineering Calculations',
   signatoryName: 'Prokash Biswas, PE',
 };
 

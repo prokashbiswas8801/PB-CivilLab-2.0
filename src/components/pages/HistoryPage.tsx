@@ -75,7 +75,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
   // Copy Summary Handler
   const handleCopySummary = (item: SavedHistoryItem) => {
     const formatted = [
-      `PB CivilLab · Saved Record: ${item.title}`,
+      `BD. CivilLab · Saved Record: ${item.title}`,
       `Timestamp: ${new Date(item.timestamp).toLocaleString()}`,
       `Type: ${item.type.toUpperCase()}`,
       `Summary: ${item.summary}`,

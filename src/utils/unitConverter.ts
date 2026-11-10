@@ -907,6 +907,109 @@ function formatInchesResult(totalInches: number): FeetInchParseResult {
   };
 }
 
+export interface FormatFeetInchesOptions {
+  isMeters?: boolean; // If true, input value is in SI meters; otherwise decimal feet
+  useFractions?: boolean; // Default true: 12'-6 1/2" vs decimal inches
+  maxDenominator?: number; // 2, 4, 8, 16, 32 (default 16)
+  showZeroInches?: boolean; // Default true: e.g. 12'-0" instead of 12'
+  decimalInches?: boolean; // Default false: format inches as decimal e.g. 12'-6.50"
+  precision?: number; // Decimal places when decimalInches is true
+  showSuta?: boolean; // Local Bangladesh suta annotation (1 suta = 1/8 in)
+}
+
+/**
+ * Formats a decimal feet or SI meters length value into authentic architectural/engineering
+ * composite notation: feet'-in" (e.g. 12'-6", 12'-6 1/2", 10'-0", 0'-9", -5'-4 1/4")
+ */
+export function formatFeetInches(
+  value: number,
+  options?: FormatFeetInchesOptions
+): string {
+  if (isNaN(value) || !isFinite(value)) return '—';
+
+  const isMeters = options?.isMeters ?? false;
+  // Convert meters to decimal feet if necessary (1 ft = 0.3048 m)
+  const totalFeet = isMeters ? value / EXACT_CONVERSION.FT_TO_M : value;
+
+  const isNegative = totalFeet < -1e-9;
+  const absFeet = Math.abs(totalFeet);
+
+  if (absFeet < 1e-9) {
+    return `0'-0"`;
+  }
+
+  const sign = isNegative ? '-' : '';
+  const totalInches = absFeet * 12;
+  let ft = Math.floor(absFeet);
+  let remInches = totalInches - ft * 12;
+
+  // Rounding guard if remInches is infinitesimally close to 12
+  if (remInches >= 11.999999) {
+    ft += 1;
+    remInches = 0;
+  }
+
+  // Decimal inches mode (e.g. 12'-6.50")
+  if (options?.decimalInches) {
+    const prec = options?.precision ?? 2;
+    const decStr = remInches.toFixed(prec);
+    return `${sign}${ft}'-${decStr}"`;
+  }
+
+  const useFractions = options?.useFractions ?? true;
+  if (!useFractions) {
+    const roundedWholeInches = Math.round(remInches);
+    let finalFt = ft;
+    let finalInches = roundedWholeInches;
+    if (finalInches === 12) {
+      finalFt += 1;
+      finalInches = 0;
+    }
+    return `${sign}${finalFt}'-${finalInches}"`;
+  }
+
+  // Fractional inches mode (default, rounded to nearest 1/16 or custom denominator)
+  const denom = options?.maxDenominator || 16;
+  const wholeInches = Math.floor(remInches);
+  const fracPart = remInches - wholeInches;
+  const numerator = Math.round(fracPart * denom);
+
+  let finalFt = ft;
+  let finalWholeInches = wholeInches;
+  let fractionText = '';
+
+  if (numerator === denom) {
+    finalWholeInches += 1;
+    if (finalWholeInches === 12) {
+      finalFt += 1;
+      finalWholeInches = 0;
+    }
+  } else if (numerator > 0) {
+    const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+    const div = gcd(numerator, denom);
+    const simplifiedNum = numerator / div;
+    const simplifiedDen = denom / div;
+    fractionText = ` ${simplifiedNum}/${simplifiedDen}`;
+  }
+
+  // Bangladesh suta notation (1 inch = 8 suta)
+  let sutaText = '';
+  if (options?.showSuta) {
+    const sutaTotal = remInches * 8;
+    const wholeSuta = Math.round(sutaTotal % 8);
+    if (wholeSuta > 0) {
+      sutaText = ` (${wholeSuta} suta)`;
+    }
+  }
+
+  // If whole inches is 0 and there is a fraction
+  if (finalWholeInches === 0 && fractionText && !options?.showZeroInches) {
+    return `${sign}${finalFt}'-${fractionText.trim()}"${sutaText}`;
+  }
+
+  return `${sign}${finalFt}'-${finalWholeInches}${fractionText}"${sutaText}`;
+}
+
 /* -------------------------------------------------------------
    METROLOGICAL NUMBER FORMATTING & REAL-TIME INPUT TYPING
 ------------------------------------------------------------- */

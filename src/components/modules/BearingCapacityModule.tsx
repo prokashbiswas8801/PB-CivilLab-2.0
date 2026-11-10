@@ -982,7 +982,7 @@ export const BearingCapacityMetrics: React.FC<BearingCapacityMetricsProps> = ({
 
   const handleCopyBreakdown = () => {
     const text = [
-      `=== PB CivilLab Shallow Foundation Geotechnical Analysis ===`,
+      `=== BD. CivilLab Shallow Foundation Geotechnical Analysis ===`,
       `Governing Standard: BNBC-2020 Part 6 / ACI 318`,
       `Active Solver: ${result.solverMethodUsed ? result.solverMethodUsed.toUpperCase() : 'MEYERHOF (1963)'}`,
       `Effective Overburden (q0): ${result.effectiveOverburdenKpa.toFixed(1)} kPa`,

@@ -156,11 +156,18 @@ export const BUILT_IN_PRINT_PRESETS: PrintPreset[] = [
   },
 ];
 
-const PRINT_PRESETS_STORAGE_KEY = 'pb_civillab_print_presets';
+const PRINT_PRESETS_STORAGE_KEY = 'bd_civillab_print_presets';
+const LEGACY_PRINT_PRESETS_STORAGE_KEY = 'pb_civillab_print_presets';
 
 export function loadSavedPrintPresets(): PrintPreset[] {
   try {
-    const raw = localStorage.getItem(PRINT_PRESETS_STORAGE_KEY);
+    let raw = localStorage.getItem(PRINT_PRESETS_STORAGE_KEY);
+    if (!raw) {
+      raw = localStorage.getItem(LEGACY_PRINT_PRESETS_STORAGE_KEY);
+      if (raw) {
+        localStorage.setItem(PRINT_PRESETS_STORAGE_KEY, raw);
+      }
+    }
     if (!raw) return BUILT_IN_PRINT_PRESETS;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return BUILT_IN_PRINT_PRESETS;

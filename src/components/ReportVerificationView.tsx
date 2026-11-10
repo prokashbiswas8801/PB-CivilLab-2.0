@@ -51,7 +51,7 @@ export function ReportVerificationView({
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'overview' | 'inputs' | 'outputs' | 'equations'>('overview');
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pbcivillab.app';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bdcivillab.app';
   const publicUrl = record.verificationUrl || buildPublicVerificationUrl(record, origin);
 
   useEffect(() => {
@@ -129,7 +129,7 @@ export function ReportVerificationView({
             type="button"
             onClick={onClose}
             className="p-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-            title="Return to PB CivilLab"
+            title="Return to BD. CivilLab"
             aria-label="Back to Workbench"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -137,7 +137,7 @@ export function ReportVerificationView({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-[var(--md-sys-color-primary)]">
-                PB CivilLab Verification Registry
+                BD. CivilLab Verification Registry
               </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                 <ShieldCheck className="w-3 h-3" />
@@ -176,7 +176,7 @@ export function ReportVerificationView({
               type="button"
               onClick={() => onOpenWorkbench(record)}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] text-xs font-semibold shadow-xs transition-opacity cursor-pointer btn-tactile"
-              title="Open parameters in PB CivilLab Workbench"
+              title="Open parameters in BD. CivilLab Workbench"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Open in Workbench</span>
@@ -203,7 +203,7 @@ export function ReportVerificationView({
                 </span>
               </div>
               <p className="text-xs md:text-sm text-emerald-800/80 dark:text-emerald-300/80 mt-1">
-                This calculation submittal was authoritatively generated and validated by a licensed professional engineer using the PB CivilLab Analytical Engine under governing building standard <strong>{record.project.governingCode}</strong>.
+                This calculation submittal was authoritatively generated and validated by a licensed professional engineer using the BD. CivilLab Analytical Engine under governing building standard <strong>{record.project.governingCode}</strong>.
               </p>
             </div>
           </div>
@@ -653,7 +653,7 @@ export function ReportVerificationView({
         {/* Legal & Compliance Notice Footer */}
         <div className="p-4 rounded-2xl bg-[var(--md-sys-color-surface-container-low)] text-center text-xs text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
           <p>
-            This public verification page is cryptographic proof of calculation integrity under PB CivilLab Automated Submittal Protocol v2.4. Document Reference ID <strong>{record.docId}</strong>.
+            This public verification page is cryptographic proof of calculation integrity under BD. CivilLab Automated Submittal Protocol v2.4. Document Reference ID <strong>{record.docId}</strong>.
           </p>
           <p className="mt-1 text-[11px] opacity-75">
             Strictly certified for professional civil engineering, permit submittals, and regulatory compliance.

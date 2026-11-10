@@ -1,5 +1,5 @@
 /**
- * PB CivilLab — Safe Inline Math & Unit Expression Evaluator
+ * BD. CivilLab — Safe Inline Math & Unit Expression Evaluator
  * 
  * Safely parses and evaluates mathematical arithmetic expressions,
  * trigonometric functions, and unit conversions without using unsafe eval().

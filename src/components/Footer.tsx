@@ -39,12 +39,24 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                 and quantity surveyors. High-fidelity formulas, real-time vector diagrams, and standards-compliant takeoff schedules.
               </p>
 
-              {/* Developer / Creator Attribution */}
-              <div className="pt-2 flex items-center gap-2">
+              {/* Developer / Creator Attribution & Social Links */}
+              <div className="pt-2 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline-variant)]">
                   <UserCheck className="w-3.5 h-3.5 shrink-0" />
                   <span>Created &amp; Developed by <strong>PROKASH BISWAS</strong></span>
                 </span>
+                <a
+                  href="https://www.facebook.com/BD.CivilLab"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-semibold bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 transition-colors"
+                  title="Official Facebook Page (ফেসবুক পেজ)"
+                >
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  <span>BD. CivilLab Page</span>
+                </a>
               </div>
             </div>
 
@@ -119,7 +131,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
           {/* Mandatory Engineering Technical Disclaimer Banner */}
           <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
             <p className="text-xs font-mono leading-relaxed text-[var(--md-sys-color-on-surface-variant)]">
-              <strong className="text-[var(--md-sys-color-on-surface)]">Disclaimer:</strong> PB CivilLab provides design calculations for estimation, academic, and practical guidance purposes. All output should be reviewed by a certified licensed structural engineer prior to construction.
+              <strong className="text-[var(--md-sys-color-on-surface)]">Disclaimer:</strong> BD. CivilLab provides design calculations for estimation, academic, and practical guidance purposes. All output should be reviewed by a certified licensed structural engineer prior to construction.
             </p>
           </div>
 
@@ -127,7 +139,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
           <div className="pt-6 border-t border-[var(--md-sys-color-outline-variant)] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
             <div className="flex items-center gap-2">
               <span className="font-bold text-[var(--md-sys-color-on-surface)]">
-                &copy; {currentYear} PB CivilLab. All rights reserved.
+                &copy; {currentYear} BD. CivilLab. All rights reserved.
               </span>
               <span>&middot;</span>
               <span className="text-[var(--md-sys-color-primary)] font-bold">
@@ -179,7 +191,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                   </div>
                   <p className="text-xs">
                     Responsible for mathematical formulation, vector diagrams, civil geotechnical modules,
-                    and design token architecture across the PB CivilLab platform.
+                    and design token architecture across the BD. CivilLab platform.
                   </p>
                 </div>
 
@@ -190,8 +202,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                   <ul className="list-disc pl-5 space-y-1 font-mono">
                     <li>Civil Design Standards: ACI 318, Eurocode 2, BNBC 2020, IS 456:2000, ASTM standards</li>
                     <li>Frontend Architecture: React 19, Vite, Tailwind CSS with dynamic Material Design 3 tokens</li>
-                    <li>Persistence: 100% Client-Side Local Schema v2 storage, multi-project workspace isolation</li>
-                    <li>Icons &amp; Geometry: Official PB CivilLab SVG vector asset set &amp; Lucide Engineering Icons</li>
+                    <li>Persistence: 100% Client-Side Local Schema v3 storage, multi-project workspace isolation</li>
+                    <li>Icons &amp; Geometry: Official BD. CivilLab SVG vector asset set &amp; Lucide Engineering Icons</li>
                   </ul>
                 </div>
               </div>
@@ -201,13 +213,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
             {activeModal === 'terms' && (
               <div className="space-y-4 text-xs text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
                 <p>
-                  <strong>1. Acceptance of Terms:</strong> By accessing or using PB CivilLab, you acknowledge that all calculations, diagrams, and estimation schedules are generated through client-side computational algorithms.
+                  <strong>1. Acceptance of Terms:</strong> By accessing or using BD. CivilLab, you acknowledge that all calculations, diagrams, and estimation schedules are generated through client-side computational algorithms.
                 </p>
                 <p>
-                  <strong>2. Professional Verification Required:</strong> PB CivilLab is intended for estimation, academic verification, preliminary sizing, and field guidance. It does not replace the statutory seal, review, or certification of a registered, licensed Professional Engineer (PE / SE).
+                  <strong>2. Professional Verification Required:</strong> BD. CivilLab is intended for estimation, academic verification, preliminary sizing, and field guidance. It does not replace the statutory seal, review, or certification of a registered, licensed Professional Engineer (PE / SE).
                 </p>
                 <p>
-                  <strong>3. Limitation of Liability:</strong> Under no circumstances shall the author (PROKASH BISWAS) or PB CivilLab be liable for direct, indirect, or consequential damages resulting from structural construction, site excavation, or procurement executed without independent engineering peer review.
+                  <strong>3. Limitation of Liability:</strong> Under no circumstances shall the author (PROKASH BISWAS) or BD. CivilLab be liable for direct, indirect, or consequential damages resulting from structural construction, site excavation, or procurement executed without independent engineering peer review.
                 </p>
               </div>
             )}
@@ -219,7 +231,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                   <strong>1. 100% Client-Side Data Ownership:</strong> All calculation parameters, workspace configurations, takeoff items, and historical logs remain strictly inside your browser&#39;s local storage.
                 </p>
                 <p>
-                  <strong>2. Zero Server Tracking:</strong> PB CivilLab does not upload your project budgets, contractor rates, or structural dimensions to external advertising or analytics brokers.
+                  <strong>2. Zero Server Tracking:</strong> BD. CivilLab does not upload your project budgets, contractor rates, or structural dimensions to external advertising or analytics brokers.
                 </p>
                 <p>
                   <strong>3. Portability &amp; Backups:</strong> You can export and import complete workspace state packages anytime via the built-in JSON Bundle exporter.
@@ -233,15 +245,35 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                 <p>
                   Have feedback, feature requests for additional civil engineering modules, or code standard inquiries?
                 </p>
-                <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-2">
+                <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-3">
                   <div className="font-bold text-[var(--md-sys-color-on-surface)]">
-                    Primary Engineering Inquiries
+                    Primary Engineering Inquiries &amp; Social Connect
                   </div>
                   <div className="font-mono text-sm font-bold text-[var(--md-sys-color-primary)]">
-                    support@pbcivillab.com
+                    prokashbiswas8801@gmail.com
                   </div>
                   <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                    Creator: PROKASH BISWAS
+                    Creator: PROKASH BISWAS (<span className="font-nikosh" lang="bn">প্রকাশ বিশ্বাস</span>)
+                  </div>
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    <a
+                      href="https://www.facebook.com/BD.CivilLab"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 transition-colors"
+                    >
+                      <span>Official Facebook Page</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                    <a
+                      href="https://www.facebook.com/prokash.biswas.88073"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline)] font-semibold text-xs hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors"
+                    >
+                      <span>Creator FB Profile</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   </div>
                 </div>
               </div>

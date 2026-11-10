@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   FileDown,
   ScrollText,
+  ShieldCheck,
 } from 'lucide-react';
 import { EngineeringModuleId, CalculationRecord, CivilWorkspace } from '../../types/civil';
 import { useSiteManagement } from '../../context/SiteManagementContext';
@@ -34,6 +35,12 @@ import {
   OfficeDocsModule,
 } from './index';
 import { OfflineSyncManager } from './OfflineSyncManager';
+import { OfficeDocVerificationModal } from './OfficeDocVerificationModal';
+import { OfficeDocPublicPortalView } from './OfficeDocPublicPortalView';
+import {
+  VerifiedOfficeDocRecord,
+  listVerifiedOfficeDocs,
+} from '../../utils/officeDocVerification';
 
 export interface SiteManagementHubProps {
   activeTab: EngineeringModuleId;
@@ -150,6 +157,8 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [verificationPortalOpen, setVerificationPortalOpen] = useState(false);
+  const [portalPreviewRecord, setPortalPreviewRecord] = useState<VerifiedOfficeDocRecord | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -300,6 +309,17 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
           {/* Quick Actions (Offline Sync, Backup, Restore, History) */}
           <div className="flex items-center gap-2 flex-wrap">
             <OfflineSyncManager />
+
+            {/* Dedicated Stakeholder Verification Portal Link */}
+            <button
+              type="button"
+              onClick={() => setVerificationPortalOpen(true)}
+              className="px-3.5 py-1.5 rounded-full text-xs font-sans font-bold inline-flex items-center gap-1.5 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 transition-all shadow-2xs cursor-pointer hover:scale-[1.02]"
+              title="Dedicated Stakeholder Verification Portal: generate unique public-facing URLs and QR codes for Office Documents"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Verification Portal</span>
+            </button>
 
             <button
               type="button"
@@ -541,6 +561,23 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
           defaultExpanded={false}
         />
       </div>
+
+      {/* Dedicated Verification Portal Modal */}
+      <OfficeDocVerificationModal
+        isOpen={verificationPortalOpen}
+        onClose={() => setVerificationPortalOpen(false)}
+        onOpenPublicPreview={(rec) => setPortalPreviewRecord(rec)}
+      />
+
+      {/* Stakeholder Read-Only Public View Modal */}
+      {portalPreviewRecord && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <OfficeDocPublicPortalView
+            record={portalPreviewRecord}
+            onClose={() => setPortalPreviewRecord(null)}
+          />
+        </div>
+      )}
     </div>
   );
 };

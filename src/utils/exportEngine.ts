@@ -135,7 +135,7 @@ export function exportToCSV(
 
   // Metadata block header
   if (metadata && Object.keys(metadata).length > 0) {
-    lines.push(`"PB CIVILLAB — PROFESSIONAL CIVIL ENGINEERING SCHEDULE"`);
+    lines.push(`"BD. CIVILLAB — PROFESSIONAL CIVIL ENGINEERING SCHEDULE"`);
     for (const [key, val] of Object.entries(metadata)) {
       if (val !== undefined && val !== null && val !== '') {
         const cleanKey = sanitizeEngineeringSymbols(key).replace(/"/g, '""');
@@ -306,7 +306,7 @@ export async function generateEngineeringPDF(
   const qrUrl = reportData.qrLinkUrl || (
     typeof window !== 'undefined' && window.location?.href
       ? window.location.href
-      : `https://pb-civillab.engine?doc=${encodeURIComponent(docId)}`
+      : `https://bd-civillab.engine?doc=${encodeURIComponent(docId)}`
   );
 
   let qrDataUrl = '';
@@ -341,7 +341,7 @@ export async function generateEngineeringPDF(
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('PB CIVILLAB', margin + 4, margin + 8);
+  doc.text('BD. CIVILLAB', margin + 4, margin + 8);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
@@ -391,7 +391,7 @@ export async function generateEngineeringPDF(
   doc.text(`Governing Standard: ${sanitizeEngineeringSymbols(reportData.moduleMeta.standard || 'BNBC 2020 / ACI 318-19 / AISC 360-16')}`, col1X, yPos + 9.5);
 
   doc.text(`Project Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectName || 'Civil Infrastructure Design')}`, col1X, yPos + 14.5);
-  doc.text(`Project Code: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectCode || 'PBCL-PRJ')}`, col1X, yPos + 18.5);
+  doc.text(`Project Code: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectCode || 'BDCL-PRJ')}`, col1X, yPos + 18.5);
   doc.text(`Location: ${sanitizeEngineeringSymbols(reportData.projectMeta.location || 'Jobsite Engineering Office')}`, col1X, yPos + 22.5);
 
   // Col 2
@@ -736,7 +736,7 @@ export async function generateEngineeringPDF(
   doc.setTextColor(71, 85, 105);
   doc.text(`Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerName || 'Design Engineer, PE')}`, margin + 4, yPos + 9);
   doc.text(`Reg / License No: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerLicense || 'PE-104928')}`, margin + 4, yPos + 13);
-  doc.text(`Organization: ${sanitizeEngineeringSymbols(reportData.projectMeta.organization || 'PB Civil Engineering Lab')}`, margin + 4, yPos + 17);
+  doc.text(`Organization: ${sanitizeEngineeringSymbols(reportData.projectMeta.organization || 'BD. Civil Engineering Lab')}`, margin + 4, yPos + 17);
   doc.text('Signature: __________________________   Date: ____________', margin + 4, yPos + 23);
 
   // Column Right: Checked & Approved By
@@ -767,7 +767,7 @@ export async function generateEngineeringPDF(
     doc.setDrawColor(226, 232, 240);
     doc.line(margin, pageHeight - 9, margin + contentWidth, pageHeight - 9);
 
-    const footerLeft = `PB CivilLab Professional Suite  •  Doc Ref: ${docId}  •  Tamper-Evident Report`;
+    const footerLeft = `BD. CivilLab Professional Suite  •  Doc Ref: ${docId}  •  Tamper-Evident Report`;
     const footerRight = `Page ${i} of ${totalPages}`;
 
     doc.text(footerLeft, margin, pageHeight - 6);
@@ -800,7 +800,7 @@ function renderPageRunningHeader(
   doc.setFontSize(7.5);
   doc.setTextColor(30, 58, 138);
   doc.text(
-    sanitizeEngineeringSymbols(`PB CivilLab  |  ${reportData.moduleMeta.moduleTitle}  |  Project: ${reportData.projectMeta.projectCode}`),
+    sanitizeEngineeringSymbols(`BD. CivilLab  |  ${reportData.moduleMeta.moduleTitle}  |  Project: ${reportData.projectMeta.projectCode}`),
     margin,
     10
   );
@@ -822,7 +822,7 @@ function renderPageRunningHeader(
 
 /**
  * Constructs a comprehensive `EngineeringReportData` object from the current
- * workspace and calculation envelope for any active module in PB CivilLab.
+ * workspace and calculation envelope for any active module in BD. CivilLab.
  */
 export function buildReportDataFromWorkspace(
   moduleId: EngineeringModuleId,
@@ -845,7 +845,7 @@ export function buildReportDataFromWorkspace(
     unitSystem: unitSys,
     engineerName: userProfile?.fullName || workspace.engineerOfRecord || 'Civil Project Engineer, PE',
     engineerLicense: userProfile?.licenseNumber || 'PE-104928',
-    organization: userProfile?.organization || 'PB Civil Engineering Lab',
+    organization: userProfile?.organization || 'BD. Civil Engineering Lab',
   };
 
   const governing = getGoverningEquations(moduleId);
@@ -1408,7 +1408,7 @@ export function buildReportDataFromWorkspace(
     default: {
       // General Fallback
       baseReport.inputs = [
-        { name: 'Module Configuration ID', symbol: 'ID', value: moduleId, unit: 'key', notes: 'PB CivilLab Suite' },
+        { name: 'Module Configuration ID', symbol: 'ID', value: moduleId, unit: 'key', notes: 'BD. CivilLab Suite' },
       ];
       baseReport.outputs = [
         { name: 'Analysis Envelope Status', symbol: 'Status', value: envelope.status.toUpperCase(), unit: 'status', status: 'SAFE' },
@@ -1427,8 +1427,11 @@ function getSiteErpSnapshot(projectId: string = 'default'): any {
   if (typeof window === 'undefined') return null;
   try {
     const raw =
+      localStorage.getItem(`bdcivillab_site_erp_v3_clean_${projectId}`) ||
       localStorage.getItem(`pbcivillab_site_erp_v3_clean_${projectId}`) ||
+      localStorage.getItem('bdcivillab_site_erp_v3_clean_PROJ-DEFAULT-01') ||
       localStorage.getItem('pbcivillab_site_erp_v3_clean_PROJ-DEFAULT-01') ||
+      localStorage.getItem('bdcivillab_site_erp_v3_clean_default') ||
       localStorage.getItem('pbcivillab_site_erp_v3_clean_default');
     if (raw) return JSON.parse(raw);
   } catch (err) {
@@ -1783,7 +1786,7 @@ export async function exportCertifiedReportPDF(
     console.warn('Verification record sync warning:', e);
   }
 
-  const filename = `${moduleId}_submittal_${workspace.projectCode || 'PBCL'}.pdf`;
+  const filename = `${moduleId}_submittal_${workspace.projectCode || 'BDCL'}.pdf`;
   return generateEngineeringPDF(reportData, {
     onProgress,
     autoDownload: true,
@@ -1844,7 +1847,7 @@ export function exportBbsCSV(
   rows.push(['Total Rebar Tonnes (MT)', '', '', '', '', '', '', '', result.totalSteelTonnes.toFixed(3)]);
   rows.push(['Nominal Hook Bend Angle', '', '', '', '', '', '', '', `${workspace.rebarBbs.hookAngle || '90'} deg standard`]);
 
-  exportToCSV(`${workspace.projectCode || 'PBCL'}_Rebar_BBS_Schedule.csv`, headers, rows, metadata);
+  exportToCSV(`${workspace.projectCode || 'BDCL'}_Rebar_BBS_Schedule.csv`, headers, rows, metadata);
 }
 
 /**
@@ -1908,7 +1911,7 @@ export function exportBoqCSV(
   rows.push([`VAT / Tax (${result.vatTaxPercent}%)`, '', '', '', '', '', '', '', '', '', '', '', '', '', result.vatTaxAmount.toFixed(2)]);
   rows.push([`GRAND TOTAL BOQ (${result.currency})`, '', '', '', '', '', '', '', '', '', '', '', '', '', result.grandTotalAmount.toFixed(2)]);
 
-  exportToCSV(`${workspace.projectCode || 'PBCL'}_BOQ_Estimate_Schedule.csv`, headers, rows, metadata);
+  exportToCSV(`${workspace.projectCode || 'BDCL'}_BOQ_Estimate_Schedule.csv`, headers, rows, metadata);
 }
 
 /**
@@ -1956,7 +1959,7 @@ export function exportEarthworkCSV(
     rows.push(['Prismoidal Correction Factor', 'Volume Delta', result.prismoidalCorrectionM3?.toFixed(2) || '—', 'm^3', 'Correction between methods']);
   }
 
-  exportToCSV(`${workspace.projectCode || 'PBCL'}_Earthwork_Schedule.csv`, headers, rows, metadata);
+  exportToCSV(`${workspace.projectCode || 'BDCL'}_Earthwork_Schedule.csv`, headers, rows, metadata);
 }
 
 /**
@@ -2020,6 +2023,6 @@ export function exportModuleCSV(
     });
   }
 
-  exportToCSV(`${workspace.projectCode || 'PBCL'}_${moduleId.toUpperCase()}_Schedule.csv`, headers, rows, metadata);
+  exportToCSV(`${workspace.projectCode || 'BDCL'}_${moduleId.toUpperCase()}_Schedule.csv`, headers, rows, metadata);
 }
 

@@ -8,6 +8,8 @@ import {
   convertDirect as coreConvertDirect,
   parseFeetInchString,
   FeetInchParseResult,
+  formatFeetInches,
+  FormatFeetInchesOptions,
   EXACT_CONVERSION,
   RegionalLandBreakdown,
   computeRegionalLandBreakdown,
@@ -25,11 +27,12 @@ export const ALL_UNITS = STANDARD_UNITS;
 export {
   EXACT_CONVERSION,
   parseFeetInchString,
+  formatFeetInches,
   computeRegionalLandBreakdown,
   formatSmartNumber,
   formatNumberWhileTyping,
 };
-export type { FeetInchParseResult, RegionalLandBreakdown, FormatNumberOptions };
+export type { FeetInchParseResult, FormatFeetInchesOptions, RegionalLandBreakdown, FormatNumberOptions };
 
 /**
  * System Presets Default Units
@@ -342,7 +345,14 @@ export function parseSmartUnitInput(
       /^\d+\/\d+/.test(trimmed))
   ) {
     const feetInchResult = parseFeetInchString(trimmed);
-    if (feetInchResult.isValid) {
+      if (currentUnitId === 'ft-in') {
+        return {
+          parsedValue: feetInchResult.totalFeet,
+          detectedUnitId: 'ft-in',
+          isValid: true,
+          architecturalResult: feetInchResult,
+        };
+      }
       if (currentUnitId === 'suta' || currentUnitId === 'soot') {
         return {
           parsedValue: feetInchResult.totalInches * 8,
@@ -385,11 +395,10 @@ export function parseSmartUnitInput(
       }
       return {
         parsedValue: feetInchResult.totalFeet,
-        detectedUnitId: 'ft',
+        detectedUnitId: currentUnitId === 'ft-in' ? 'ft-in' : 'ft',
         isValid: true,
         architecturalResult: feetInchResult,
       };
-    }
   }
 
   // 2. Check for explicit unit suffix in the string: e.g. "250 mm", "15 cft", "500 psi", "18 kN/m3", "5 decimal"

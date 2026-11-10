@@ -27,6 +27,7 @@ import {
   Terminal,
   FolderArchive,
   ClipboardCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { EngineeringModuleId } from '../../types/civil';
 import { useWorkbench } from '../../context/WorkbenchContext';
@@ -224,7 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed && (
             <div className="leading-none min-w-0">
               <span className="text-base font-black tracking-tight text-[var(--md-sys-color-on-surface)] group-hover:text-[var(--md-sys-color-primary)] transition-colors">
-                PB CivilLab
+                <span className="text-[var(--md-sys-color-primary)] font-black">BD.</span> CivilLab
               </span>
               <span className="block text-[10px] font-mono text-[var(--md-sys-color-primary)] uppercase tracking-wider font-semibold mt-0.5">
                 Engineering Suite
@@ -467,29 +468,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Footer Info / Project Meta */}
-      <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shrink-0">
+      {/* Footer Info / Project Meta & Official Facebook Page Link */}
+      <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shrink-0 space-y-2.5">
         {!isCollapsed ? (
-          <div className="flex items-center justify-between text-xs font-mono">
-            <div className="truncate pr-2">
-              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Active Project</span>
-              <span className="font-bold text-[var(--md-sys-color-on-surface)] truncate block">
-                {workbench.projectMetadata.projectName}
-              </span>
+          <>
+            <div className="flex items-center justify-between text-xs font-mono">
+              <div className="truncate pr-2">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Active Project</span>
+                <span className="font-bold text-[var(--md-sys-color-on-surface)] truncate block">
+                  {workbench.projectMetadata.projectName}
+                </span>
+              </div>
+              {onOpenWorkspaceManager && (
+                <button
+                  type="button"
+                  onClick={onOpenWorkspaceManager}
+                  className="p-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] cursor-pointer shrink-0"
+                  title="Manage Projects"
+                >
+                  <FolderArchive className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            {onOpenWorkspaceManager && (
-              <button
-                type="button"
-                onClick={onOpenWorkspaceManager}
-                className="p-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] cursor-pointer shrink-0"
-                title="Manage Projects"
+
+            {/* Official Facebook Community Link */}
+            <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60">
+              <a
+                href="https://www.facebook.com/BD.CivilLab"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-between p-2 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-xs"
+                title="BD. CivilLab Official Page (ফেসবুক পেজ)"
               >
-                <FolderArchive className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-lg bg-[#1877F2] text-white flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                  </div>
+                  <div className="truncate text-left leading-tight">
+                    <span className="font-bold text-[11px] text-[var(--md-sys-color-on-surface)] group-hover:text-blue-600 dark:group-hover:text-blue-400 block truncate">
+                      BD. CivilLab
+                    </span>
+                    <span className="text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] block truncate">
+                      Official Page · <span className="font-nikosh" lang="bn">ফেসবুক পেজ</span>
+                    </span>
+                  </div>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] group-hover:text-blue-500 shrink-0" />
+              </a>
+            </div>
+          </>
         ) : (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             {onOpenWorkspaceManager && (
               <button
                 type="button"
@@ -500,6 +531,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <FolderArchive className="w-4 h-4" />
               </button>
             )}
+            <a
+              href="https://www.facebook.com/BD.CivilLab"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl text-blue-500 hover:bg-blue-500/10 transition-colors flex items-center justify-center"
+              title="BD. CivilLab Official Page (ফেসবুক পেজ)"
+            >
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+            </a>
           </div>
         )}
       </div>

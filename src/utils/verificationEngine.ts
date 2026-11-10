@@ -68,7 +68,8 @@ export interface PublicEngineeringReportRecord {
   rawResultSnapshot?: any;
 }
 
-const STORAGE_VERIFICATION_KEY = 'pb_civillab_verified_reports_v1';
+const STORAGE_VERIFICATION_KEY = 'bd_civillab_verified_reports_v1';
+const LEGACY_STORAGE_VERIFICATION_KEY = 'pb_civillab_verified_reports_v1';
 
 /**
  * Extract module specific key inputs for concise public display
@@ -316,7 +317,7 @@ export function createVerifiedReportRecord(
 
   const origin = typeof window !== 'undefined' && window.location?.origin
     ? window.location.origin
-    : 'https://pbcivillab.app';
+    : 'https://bdcivillab.app';
 
   const record: PublicEngineeringReportRecord = {
     docId,
@@ -363,7 +364,7 @@ export function createVerifiedReportRecord(
         formula: e.formula,
         description: e.description,
       })) || [],
-      executiveNotes: `Certified engineering calculations generated under PB CivilLab Automated Computational Suite v2.4. Analyzed strictly in adherence to ${workspace.governingCode} code standards with verified peer QA/QC review protocols.`,
+      executiveNotes: `Certified engineering calculations generated under BD. CivilLab Automated Computational Suite v2.4. Analyzed strictly in adherence to ${workspace.governingCode} code standards with verified peer QA/QC review protocols.`,
     },
     rawInputsSnapshot: envelope.result ? { ...(workspace as any)[activeModule.replace(/-/g, '')] } : undefined,
     rawResultSnapshot: envelope.result,
@@ -580,7 +581,13 @@ export function saveVerifiedReport(record: PublicEngineeringReportRecord): void 
  */
 export function listVerifiedReports(): PublicEngineeringReportRecord[] {
   try {
-    const raw = localStorage.getItem(STORAGE_VERIFICATION_KEY);
+    let raw = localStorage.getItem(STORAGE_VERIFICATION_KEY);
+    if (!raw) {
+      raw = localStorage.getItem(LEGACY_STORAGE_VERIFICATION_KEY);
+      if (raw) {
+        localStorage.setItem(STORAGE_VERIFICATION_KEY, raw);
+      }
+    }
     if (!raw) return [];
     return JSON.parse(raw) as PublicEngineeringReportRecord[];
   } catch {

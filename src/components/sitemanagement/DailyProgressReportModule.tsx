@@ -589,7 +589,7 @@ export const DailyProgressReportModule: React.FC = () => {
             <div className="p-8 md:p-12 space-y-6 font-serif text-xs">
               {/* Header */}
               <div className="text-center pb-4 border-b-2 border-zinc-900 space-y-1">
-                <h2 className="text-2xl font-bold tracking-tight uppercase">PB CivilLab Construction Supervision</h2>
+                <h2 className="text-2xl font-bold tracking-tight uppercase">BD. CivilLab Construction Supervision</h2>
                 <p className="text-[11px] text-zinc-600 uppercase tracking-widest font-sans">
                   Official Site Daily Progress Report (DPR)
                 </p>

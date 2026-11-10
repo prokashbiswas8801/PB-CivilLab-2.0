@@ -50,6 +50,7 @@ import {
   computeBOQEstimator,
 } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
+import { formatFeetInches } from '../../utils/unitConverter';
 import {
   STANDARD_WBS_SECTIONS,
   REGIONAL_DISTRICT_ADJUSTMENTS,
@@ -69,6 +70,215 @@ import {
   exportTenderBoqCsv,
   exportTenderBoqPdf,
 } from '../../utils/tenderExport';
+
+export interface BoqSummaryWidgetProps {
+  boq: CivilWorkspace['boq'];
+  onLoadSampleBOQItems?: () => void;
+  onSyncFromModules?: () => void;
+  className?: string;
+}
+
+export const BoqSummaryWidget: React.FC<BoqSummaryWidgetProps> = ({
+  boq,
+  onLoadSampleBOQItems,
+  onSyncFromModules,
+  className = '',
+}) => {
+  const summary = useMemo(() => {
+    const calc = computeBOQEstimator(boq);
+    const items = boq?.items || [];
+    const totalCost = calc.result?.grandTotalAmount ?? 0;
+    const subtotal = calc.result?.subtotalAmount ?? 0;
+    const contingencyAmt = calc.result?.contingencyAmount ?? 0;
+    const overheadAmt = calc.result?.contractorOverheadAmount ?? 0;
+    const vatAmt = calc.result?.vatTaxAmount ?? 0;
+    const markupsAmt = contingencyAmt + overheadAmt + vatAmt;
+
+    const activeItems = items.filter((it) => (it.numberOfMembers ?? 1) > 0 && (it.unitRate ?? 0) > 0);
+    const zeroValuedItems = items.filter((it) => (it.numberOfMembers ?? 1) === 0 || (it.unitRate ?? 0) === 0);
+    const categories = new Set(items.map((it) => it.category).filter(Boolean));
+    const currency = boq?.currency || 'BDT';
+    const currencySymbol = getCurrencySymbol(currency);
+    const avgItemCost = activeItems.length > 0 ? totalCost / activeItems.length : 0;
+
+    return {
+      totalCost,
+      subtotal,
+      markupsAmt,
+      contingencyAmt,
+      overheadAmt,
+      vatAmt,
+      itemCount: items.length,
+      activeCount: activeItems.length,
+      zeroValuedCount: zeroValuedItems.length,
+      categoryCount: categories.size,
+      currencySymbol,
+      currency,
+      contingencyPercent: boq?.contingencyPercent ?? 5,
+      overheadPercent: boq?.contractorOverheadPercent ?? 10,
+      vatPercent: boq?.vatTaxPercent ?? 7.5,
+      avgItemCost,
+    };
+  }, [boq]);
+
+  const district = REGIONAL_DISTRICT_ADJUSTMENTS.find((d) => d.id === boq?.regionalDistrictId) || REGIONAL_DISTRICT_ADJUSTMENTS[0];
+
+  return (
+    <div
+      className={`rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] p-3.5 sm:p-4 shadow-xs space-y-3 ${className}`}
+      data-testid="boq-top-summary-widget"
+    >
+      {/* Header bar with Status */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--md-sys-color-outline-variant)]/60 pb-2.5">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-[var(--md-sys-color-primary)]/10 text-[var(--md-sys-color-primary)]">
+            <Calculator className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                BOQ Executive Cost Summary
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                LIVE REACTIVE
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+              Real-time project cost roll-up &amp; takeoff schedule metrics
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+          <span className="px-2 py-0.5 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
+            {summary.currencySymbol} {summary.currency}
+          </span>
+          <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
+            {district.name} ({district.multiplier}x)
+          </span>
+        </div>
+      </div>
+
+      {/* Main KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+        {/* KPI 1: Total Cost (Grand Total) */}
+        <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-[var(--md-sys-color-on-surface-variant)]">
+            <span className="font-semibold uppercase tracking-wider text-[10px]">Total Cost (Grand Total)</span>
+            <span className="text-[10px] font-mono font-bold text-[var(--md-sys-color-primary)]">
+              +{((summary.markupsAmt / (summary.subtotal || 1)) * 100).toFixed(1)}% Markup
+            </span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-[var(--md-sys-color-on-surface)]">
+              {summary.currencySymbol} {summary.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] pt-1 border-t border-[var(--md-sys-color-outline-variant)]/40 flex flex-wrap items-center justify-between gap-1">
+            <span>Direct Subtotal:</span>
+            <span className="font-bold text-[var(--md-sys-color-on-surface)]">
+              {summary.currencySymbol} {summary.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 2: Total Item Count */}
+        <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-xs text-[var(--md-sys-color-on-surface-variant)]">
+            <span className="font-semibold uppercase tracking-wider text-[10px]">Total Item Count</span>
+            {summary.itemCount === 0 ? (
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40">
+                0 ITEMS ACTIVE
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                {summary.activeCount} Active
+              </span>
+            )}
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-[var(--md-sys-color-primary)]">
+              {summary.itemCount}
+            </span>
+            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              {summary.itemCount === 1 ? 'Line Item' : 'Line Items'}
+            </span>
+          </div>
+          <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] pt-1 border-t border-[var(--md-sys-color-outline-variant)]/40 flex flex-wrap items-center justify-between gap-1">
+            <span>WBS Categories:</span>
+            <span className="font-bold text-[var(--md-sys-color-on-surface)]">
+              {summary.categoryCount} {summary.categoryCount === 1 ? 'Trade' : 'Trades'}
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 3: Financial Add-Ons & Average */}
+        <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xs space-y-1 sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between text-xs text-[var(--md-sys-color-on-surface-variant)]">
+            <span className="font-semibold uppercase tracking-wider text-[10px]">Markups &amp; Tax</span>
+            <span className="text-[10px] font-mono font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              +{summary.currencySymbol} {summary.markupsAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1 text-[10px] font-mono font-bold pt-0.5">
+            <span className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+              Cont: {summary.contingencyPercent}%
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+              CP&amp;OH: {summary.overheadPercent}%
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+              VAT: {summary.vatPercent}%
+            </span>
+          </div>
+          <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] pt-1 border-t border-[var(--md-sys-color-outline-variant)]/40 flex flex-wrap items-center justify-between gap-1">
+            <span>Avg Item Cost:</span>
+            <span className="font-bold text-[var(--md-sys-color-on-surface)]">
+              {summary.activeCount > 0
+                ? `${summary.currencySymbol} ${summary.avgItemCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : '—'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Zero State Call-to-Action when 0 items */}
+      {summary.itemCount === 0 && (
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+              Takeoff sheet has <strong>0 items</strong>. Add measurements below or load standard presets to estimate cost.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {onLoadSampleBOQItems && (
+              <button
+                type="button"
+                onClick={onLoadSampleBOQItems}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Load Preset</span>
+              </button>
+            )}
+            {onSyncFromModules && (
+              <button
+                type="button"
+                onClick={onSyncFromModules}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] flex items-center gap-1 cursor-pointer transition-opacity shadow-2xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Sync Modules</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export interface BoqEstimatorInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -234,6 +444,13 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Dynamic Reactive BOQ Executive Summary Widget */}
+      <BoqSummaryWidget
+        boq={activeWorkspace.boq}
+        onLoadSampleBOQItems={onLoadSampleBOQItems}
+        onSyncFromModules={onSyncFromModules}
+      />
+
       {/* Project Currency & Markup Modifiers */}
       <div className="p-3.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-3">
         <div className="flex items-center justify-between">
@@ -973,7 +1190,7 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
             </div>
             <h2 className="text-lg md:text-xl font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2 mt-0.5">
               <FileSpreadsheet className="w-5 h-5 text-[var(--md-sys-color-primary)] shrink-0" />
-              <span>Project Bill of Quantities &middot; {activeWorkspace?.projectCode || 'PBCL-2026'}</span>
+              <span>Project Bill of Quantities &middot; {activeWorkspace?.projectCode || 'BDCL-2026'}</span>
             </h2>
           </div>
 
@@ -999,6 +1216,15 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Real-time Executive Cost & Item Count Summary Widget */}
+        {activeWorkspace?.boq && (
+          <BoqSummaryWidget
+            boq={activeWorkspace.boq}
+            onLoadSampleBOQItems={onLoadSampleBOQItems}
+            onSyncFromModules={onSyncFromModules}
+          />
+        )}
 
         {/* 5 Master Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto pb-1 text-xs font-bold custom-scrollbar">
@@ -1267,14 +1493,23 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
                                   )}
                                 </td>
                                 <td className="py-2 px-2 text-center">{it.numberOfMembers}</td>
-                                <td className={`py-2 px-2 text-right ${it.lengthM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
-                                  {it.lengthM.toFixed(2)}
+                                <td className={`py-2 px-2 text-right ${it.lengthM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`} title={it.lengthM > 0 ? formatFeetInches(it.lengthM, { isMeters: true }) : undefined}>
+                                  <div>{it.lengthM.toFixed(2)}</div>
+                                  {it.lengthM > 0 && (
+                                    <div className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">{formatFeetInches(it.lengthM, { isMeters: true })}</div>
+                                  )}
                                 </td>
-                                <td className={`py-2 px-2 text-right ${it.widthM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
-                                  {it.widthM.toFixed(2)}
+                                <td className={`py-2 px-2 text-right ${it.widthM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`} title={it.widthM > 0 ? formatFeetInches(it.widthM, { isMeters: true }) : undefined}>
+                                  <div>{it.widthM.toFixed(2)}</div>
+                                  {it.widthM > 0 && (
+                                    <div className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">{formatFeetInches(it.widthM, { isMeters: true })}</div>
+                                  )}
                                 </td>
-                                <td className={`py-2 px-2 text-right ${it.heightM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
-                                  {it.heightM.toFixed(2)}
+                                <td className={`py-2 px-2 text-right ${it.heightM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`} title={it.heightM > 0 ? formatFeetInches(it.heightM, { isMeters: true }) : undefined}>
+                                  <div>{it.heightM.toFixed(2)}</div>
+                                  {it.heightM > 0 && (
+                                    <div className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">{formatFeetInches(it.heightM, { isMeters: true })}</div>
+                                  )}
                                 </td>
                                 <td className="py-2 px-2 text-center font-bold">{it.unit}</td>
                                 <td className={`py-2 px-2 text-right font-bold ${it.totalBillableQty === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
@@ -1824,7 +2059,7 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
                   return (
                     <g key={idx}>
                       <line x1="40" y1={y} x2="580" y2={y} stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4 4" />
-                      <text x="32" y={y + 3} textAnchor="end" fontSize="9" fill="currentColor" opacity="0.6" fontFamily="monospace">
+                      <text x="32" y={y + 3} textAnchor="end" fontSize="9" fill="currentColor" opacity="0.6" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
                         {pct}%
                       </text>
                     </g>
@@ -1851,7 +2086,7 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
                         fillOpacity="0.45"
                         rx="3"
                       />
-                      <text x={x + barWidth / 2} y="185" textAnchor="middle" fontSize="8" fill="currentColor" opacity="0.75" fontFamily="monospace">
+                      <text x={x + barWidth / 2} y="185" textAnchor="middle" fontSize="8" fill="currentColor" opacity="0.75" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
                         M{p.month}
                       </text>
                     </g>

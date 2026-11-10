@@ -1,5 +1,5 @@
 /**
- * Advanced Hydraulic Solver Engine for PB CivilLab
+ * Advanced Hydraulic Solver Engine for BD. CivilLab
  * Complies with Chow (Open-Channel Hydraulics), AWWA M11/M9, and BNBC-2020 Chapter 8
  */
 

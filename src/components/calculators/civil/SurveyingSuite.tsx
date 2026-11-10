@@ -20,6 +20,7 @@ import {
   History,
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
+import { formatFeetInches } from '../../../utils/unitConverter';
 
 export interface LevelingRow {
   id: string;
@@ -410,7 +411,7 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
     };
 
     await generateEngineeringPDF(pdfReportData, {
-      filename: `PB_CivilLab_Surveying_Leveling_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `BD_CivilLab_Surveying_Leveling_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 
@@ -722,7 +723,7 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                       </div>
                     </div>
                     <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] bg-[var(--md-sys-color-surface-container-low)] p-2 rounded-lg">
-                      Heron&apos;s formula: s = (a+b+c)/2 = {((sideA + sideB + sideC) / 2).toFixed(2)} {inputUnit}. Area = √[s(s-a)(s-b)(s-c)].
+                      Heron&apos;s formula: s = (a+b+c)/2 = {((sideA + sideB + sideC) / 2).toFixed(2)} {inputUnit} ({formatFeetInches((sideA + sideB + sideC) / 2, { isMeters: inputUnit === 'm' })}). Area = √[s(s-a)(s-b)(s-c)].
                     </div>
                   </div>
                 )}
@@ -784,7 +785,7 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                         className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)]"
                       />
                       <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
-                        Divided into Δ₁ ({quadSide1}, {quadSide2}, {quadDiagonal}) and Δ₂ ({quadSide3}, {quadSide4}, {quadDiagonal}).
+                        Divided into Δ₁ ({quadSide1}, {quadSide2}, {quadDiagonal}) and Δ₂ ({quadSide3}, {quadSide4}, {quadDiagonal}) · Diagonal: {formatFeetInches(quadDiagonal, { isMeters: inputUnit === 'm' })}.
                       </span>
                     </div>
                   </div>
@@ -1242,10 +1243,10 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                     {points.map((p, idx) => (
                       <g key={idx}>
                         <circle cx={p.x} cy={p.y} r="4" fill="var(--md-sys-color-surface)" stroke="var(--md-sys-color-primary)" strokeWidth="2" />
-                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[9px] font-mono fill-current font-bold">
+                        <text x={p.x} y={p.y - 8} textAnchor="middle" className="text-[9px] font-nikosh fill-current font-bold" style={{ fontFamily: "'Nikosh', 'NikoshBAN', sans-serif" }}>
                           {p.rl.toFixed(2)}m
                         </text>
-                        <text x={p.x} y={height - 4} textAnchor="middle" className="text-[8px] font-mono fill-[var(--md-sys-color-on-surface-variant)]">
+                        <text x={p.x} y={height - 4} textAnchor="middle" className="text-[8px] font-nikosh fill-[var(--md-sys-color-on-surface-variant)]" style={{ fontFamily: "'Nikosh', 'NikoshBAN', sans-serif" }}>
                           {p.station}
                         </text>
                       </g>

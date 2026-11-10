@@ -75,7 +75,7 @@ export const PersistenceInspectorModal: React.FC<PersistenceInspectorModalProps>
               Local-First Schema v2 Storage Diagnostics
             </h2>
             <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-              PB CivilLab offline persistence and schema state inspector
+              BD. CivilLab offline persistence and schema state inspector
             </p>
           </div>
           <button
@@ -135,7 +135,7 @@ export const PersistenceInspectorModal: React.FC<PersistenceInspectorModalProps>
             <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
               <div className="text-[var(--md-sys-color-on-surface-variant)] text-[10px]">Tier 2: Asynchronous Resilient DB</div>
               <div className="font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
-                IndexedDB (pb_civillab_db)
+                IndexedDB (bd_civillab_db)
               </div>
               <div className="text-[10px] text-[var(--md-sys-color-primary)] flex items-center gap-1 mt-1">
                 {idbDiagnostics.supported ? (

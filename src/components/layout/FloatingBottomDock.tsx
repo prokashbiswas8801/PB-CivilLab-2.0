@@ -221,7 +221,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   // EXPANDED STATE: Sleek floating bottom dock with 6 primary destinations + 1 minimize toggle
   return (
     <nav
-      aria-label="PB CivilLab Main Navigation"
+      aria-label="BD. CivilLab Main Navigation"
       className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 print:hidden transition-all duration-200 max-w-[96vw] sm:max-w-none"
     >
       <div

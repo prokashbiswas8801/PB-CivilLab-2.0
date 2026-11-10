@@ -1,5 +1,5 @@
 /**
- * PB CivilLab — Offline & Background Sync System Types
+ * BD. CivilLab — Offline & Background Sync System Types
  * 
  * Provides strict TypeScript models for:
  * - Offline mutation queues across Site Management modules

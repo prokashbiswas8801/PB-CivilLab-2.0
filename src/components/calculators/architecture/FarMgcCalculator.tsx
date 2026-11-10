@@ -15,6 +15,7 @@ import {
   Info,
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
+import { formatFeetInches } from '../../../utils/unitConverter';
 
 export type OccupancyType = 'residential' | 'commercial' | 'mixed' | 'educational' | 'industrial';
 export type LandUnit = 'katha' | 'decimal' | 'sqft' | 'sqm';
@@ -312,7 +313,7 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
     };
 
     await generateEngineeringPDF(pdfData, {
-      filename: `PB_CivilLab_FAR_MGC_Setback_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `BD_CivilLab_FAR_MGC_Setback_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 
@@ -690,7 +691,7 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                   </defs>
 
                   {/* Rear Property Annotation */}
-                  <text x={svgW / 2} y={plotY - 10} textAnchor="middle" className="text-[9px] font-mono fill-[var(--md-sys-color-on-surface-variant)] uppercase font-bold">
+                  <text x={svgW / 2} y={plotY - 10} textAnchor="middle" className="text-[9px] font-nikosh fill-[var(--md-sys-color-on-surface-variant)] uppercase font-bold">
                     ▲ REAR PROPERTY BOUNDARY (Rear Setback: {activeSetbacks.rear}m)
                   </text>
 
@@ -747,31 +748,31 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                   />
 
                   {/* Building Label & Dimensions */}
-                  <text x={bldgX + bldgW_px / 2} y={bldgY + bldgH_px / 2 - 8} textAnchor="middle" className="text-[11px] font-mono font-bold fill-[var(--md-sys-color-primary)]">
+                  <text x={bldgX + bldgW_px / 2} y={bldgY + bldgH_px / 2 - 8} textAnchor="middle" className="text-[11px] font-nikosh font-bold fill-[var(--md-sys-color-primary)]">
                     PERMISSIBLE FOOTPRINT
                   </text>
-                  <text x={bldgX + bldgW_px / 2} y={bldgY + bldgH_px / 2 + 8} textAnchor="middle" className="text-[10px] font-mono fill-[var(--md-sys-color-on-surface)] font-semibold">
+                  <text x={bldgX + bldgW_px / 2} y={bldgY + bldgH_px / 2 + 8} textAnchor="middle" className="text-[10px] font-nikosh fill-[var(--md-sys-color-on-surface)] font-semibold">
                     {calculations.governedFootprintSqm} m² ({calculations.buildableWidthM}m × {calculations.buildableDepthM}m)
                   </text>
 
                   {/* Side Setback Dimension Indicators */}
-                  <text x={plotX + sbSide1_px / 2} y={plotY + plotH_px / 2} textAnchor="middle" className="text-[8px] font-mono fill-rose-600 font-bold">
+                  <text x={plotX + sbSide1_px / 2} y={plotY + plotH_px / 2} textAnchor="middle" className="text-[8px] font-nikosh fill-rose-600 font-bold">
                     {activeSetbacks.side1}m
                   </text>
-                  <text x={plotX + plotW_px - sbSide2_px / 2} y={plotY + plotH_px / 2} textAnchor="middle" className="text-[8px] font-mono fill-rose-600 font-bold">
+                  <text x={plotX + plotW_px - sbSide2_px / 2} y={plotY + plotH_px / 2} textAnchor="middle" className="text-[8px] font-nikosh fill-rose-600 font-bold">
                     {activeSetbacks.side2}m
                   </text>
 
                   {/* Front Setback Indicator */}
-                  <text x={plotX + plotW_px / 2} y={plotY + plotH_px - sbFront_px / 2 + 3} textAnchor="middle" className="text-[9px] font-mono fill-rose-600 font-bold">
+                  <text x={plotX + plotW_px / 2} y={plotY + plotH_px - sbFront_px / 2 + 3} textAnchor="middle" className="text-[9px] font-nikosh fill-rose-600 font-bold">
                     Front Setback: {activeSetbacks.front} m
                   </text>
 
                   {/* Plot Dimension Callouts */}
-                  <text x={plotX + plotW_px / 2} y={plotY + 14} textAnchor="middle" className="text-[9px] font-mono fill-[var(--md-sys-color-primary)] font-bold">
+                  <text x={plotX + plotW_px / 2} y={plotY + 14} textAnchor="middle" className="text-[9px] font-nikosh fill-[var(--md-sys-color-primary)] font-bold">
                     Frontage: {frontageM} m
                   </text>
-                  <text x={plotX - 10} y={plotY + plotH_px / 2} textAnchor="middle" transform={`rotate(-90 ${plotX - 10} ${plotY + plotH_px / 2})`} className="text-[9px] font-mono fill-[var(--md-sys-color-primary)] font-bold">
+                  <text x={plotX - 10} y={plotY + plotH_px / 2} textAnchor="middle" transform={`rotate(-90 ${plotX - 10} ${plotY + plotH_px / 2})`} className="text-[9px] font-nikosh fill-[var(--md-sys-color-primary)] font-bold">
                     Depth: {plotDepthM} m
                   </text>
 
@@ -793,7 +794,7 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                     strokeWidth="1.5"
                     strokeDasharray="6 6"
                   />
-                  <text x={svgW / 2} y={roadY + roadH / 2 + 3} textAnchor="middle" className="text-[9px] font-mono fill-white font-bold tracking-wider">
+                  <text x={svgW / 2} y={roadY + roadH / 2 + 3} textAnchor="middle" className="text-[9px] font-nikosh fill-white font-bold tracking-wider">
                     FRONT ROAD: {roadWidthM}m ({(roadWidthM * 3.28084).toFixed(1)} FT WIDE)
                   </text>
                 </svg>
@@ -813,35 +814,38 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
               <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
                 <span className="font-semibold text-rose-600">Front Setback</span>
                 <span className="font-bold text-[var(--md-sys-color-on-surface)]">
-                  {activeSetbacks.front} m ({(activeSetbacks.front * 3.28084).toFixed(2)} ft)
+                  {activeSetbacks.front} m ({formatFeetInches(activeSetbacks.front, { isMeters: true })})
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
                 <span className="font-semibold text-rose-600">Rear Setback</span>
                 <span className="font-bold text-[var(--md-sys-color-on-surface)]">
-                  {activeSetbacks.rear} m ({(activeSetbacks.rear * 3.28084).toFixed(2)} ft)
+                  {activeSetbacks.rear} m ({formatFeetInches(activeSetbacks.rear, { isMeters: true })})
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
                 <span className="font-semibold text-rose-600">Side 1 Setback</span>
                 <span className="font-bold text-[var(--md-sys-color-on-surface)]">
-                  {activeSetbacks.side1} m ({(activeSetbacks.side1 * 3.28084).toFixed(2)} ft)
+                  {activeSetbacks.side1} m ({formatFeetInches(activeSetbacks.side1, { isMeters: true })})
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
                 <span className="font-semibold text-rose-600">Side 2 Setback</span>
                 <span className="font-bold text-[var(--md-sys-color-on-surface)]">
-                  {activeSetbacks.side2} m ({(activeSetbacks.side2 * 3.28084).toFixed(2)} ft)
+                  {activeSetbacks.side2} m ({formatFeetInches(activeSetbacks.side2, { isMeters: true })})
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--md-sys-color-primary-container)]/20 border border-[var(--md-sys-color-primary)]/30">
                 <span className="font-bold text-[var(--md-sys-color-primary)]">Permissible Envelope</span>
-                <span className="font-bold text-[var(--md-sys-color-primary)]">
+                <span className="font-bold text-[var(--md-sys-color-primary)] text-right">
                   {calculations.buildableWidthM}m × {calculations.buildableDepthM}m
+                  <span className="block text-[10px] font-normal text-[var(--md-sys-color-on-surface-variant)]">
+                    ({formatFeetInches(calculations.buildableWidthM, { isMeters: true })} × {formatFeetInches(calculations.buildableDepthM, { isMeters: true })})
+                  </span>
                 </span>
               </div>
             </div>

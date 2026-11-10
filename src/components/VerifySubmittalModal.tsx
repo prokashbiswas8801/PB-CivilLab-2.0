@@ -55,7 +55,7 @@ export function VerifySubmittalModal({
       return;
     }
 
-    // Case 1: Raw URL pasted (e.g. https://.../?verify=PBCL-2026-XXXXXX&token=...)
+    // Case 1: Raw URL pasted (e.g. https://.../?verify=BDCL-2026-XXXXXX&token=...)
     if (raw.includes('verify=') || raw.includes('token=')) {
       try {
         const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
@@ -94,7 +94,7 @@ export function VerifySubmittalModal({
       }
     }
 
-    // Case 3: Document Reference ID (e.g., PBCL-2026-XXXXXX)
+    // Case 3: Document Reference ID (e.g., BDCL-2026-XXXXXX)
     const found = getVerifiedReportById(raw);
     if (found) {
       onSelectRecord(found);
@@ -102,15 +102,15 @@ export function VerifySubmittalModal({
       return;
     }
 
-    // Check if it's formatted like a submittal reference
-    const isDocRefPattern = /^PBCL-\d{4}-[A-Z0-9]+$/i.test(raw);
+    // Check if it's formatted like a submittal reference (BDCL or legacy PBCL)
+    const isDocRefPattern = /^(BDCL|PBCL)-\d{4}-[A-Z0-9]+$/i.test(raw);
     if (isDocRefPattern) {
       setErrorMsg(
         `Document "${raw}" was not found in your local verification registry. If this report was issued on another device, paste the full URL or cryptographic token from the QR code.`
       );
     } else {
       setErrorMsg(
-        'Invalid submittal reference format. Document references follow the pattern: PBCL-2026-XXXXXX'
+        'Invalid submittal reference format. Document references follow the pattern: BDCL-2026-XXXXXX'
       );
     }
   };
@@ -181,7 +181,7 @@ export function VerifySubmittalModal({
                     setDocRefInput(e.target.value);
                     if (errorMsg) setErrorMsg(null);
                   }}
-                  placeholder="e.g. PBCL-2026-A1B2C3 or paste https://.../?verify=..."
+                  placeholder="e.g. BDCL-2026-A1B2C3 or paste https://.../?verify=..."
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] text-sm font-mono placeholder:font-sans placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)] transition-all"
                   autoFocus
                 />

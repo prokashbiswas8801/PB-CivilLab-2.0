@@ -14,6 +14,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
+import { formatFeetInches } from '../../../utils/unitConverter';
 
 export type StaircaseType = 'dog-legged' | 'straight' | 'open-well';
 
@@ -294,7 +295,7 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
       ['Estimated Design Dead Load', Number(calc.deadLoadKpa.toFixed(2)), 'kN/m²', 'Self-wt + finishes'],
       ['Factored Design Load (1.2D + 1.6L)', Number(calc.factoredLoadKpa.toFixed(2)), 'kN/m²', 'Ultimate Design ULS'],
     ];
-    exportToCSV(`PB_CivilLab_Staircase_Design_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    exportToCSV(`BD_CivilLab_Staircase_Design_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
   // PDF Export
@@ -343,7 +344,7 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
     };
 
     await generateEngineeringPDF(pdfData, {
-      filename: `PB_CivilLab_Staircase_Design_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `BD_CivilLab_Staircase_Design_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 
@@ -404,12 +405,12 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
 
         {/* Datum Level Lines */}
         <line x1="20" y1={p0y} x2="620" y2={p0y} stroke="#64748b" strokeWidth="1" strokeDasharray="6 3" />
-        <text x="30" y={p0y + 16} fill="#94a3b8" fontSize="10" fontFamily="monospace">
+        <text x="30" y={p0y + 16} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
           LVL 0.00 (Lower Landing / Floor)
         </text>
 
         <line x1="20" y1={currY} x2="620" y2={currY} stroke="#64748b" strokeWidth="1" strokeDasharray="6 3" />
-        <text x="30" y={currY - 8} fill="#94a3b8" fontSize="10" fontFamily="monospace">
+        <text x="30" y={currY - 8} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
           LVL +{(calc.actualRiserMm * (stepsCount + 1)).toFixed(0)} mm (Mid Landing)
         </text>
 
@@ -462,7 +463,8 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
           fill="#f472b6"
           fontSize="11"
           fontWeight="bold"
-          fontFamily="monospace"
+          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
+          className="font-nikosh"
         >
           θ = {calc.stairPitchDeg.toFixed(1)}°
         </text>
@@ -484,7 +486,8 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
           fontSize="10"
           fontWeight="bold"
           textAnchor="end"
-          fontFamily="monospace"
+          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
+          className="font-nikosh"
         >
           R = {calc.actualRiserMm.toFixed(0)} mm
         </text>
@@ -505,7 +508,8 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
           fontSize="10"
           fontWeight="bold"
           textAnchor="middle"
-          fontFamily="monospace"
+          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
+          className="font-nikosh"
         >
           T = {calc.actualTreadMm} mm
         </text>
@@ -524,7 +528,8 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
           y={p0y - riserPx * 5 + 35}
           fill="#38bdf8"
           fontSize="10"
-          fontFamily="monospace"
+          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
+          className="font-nikosh"
         >
           tw = {waistSlabMm} mm
         </text>
@@ -545,17 +550,18 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
           y={p0y - riserPx * 4 - 1000 * scale}
           fill="#f87171"
           fontSize="10"
-          fontFamily="monospace"
+          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
           fontWeight="bold"
+          className="font-nikosh"
         >
           Min Headroom ≥ 2150 mm
         </text>
 
         {/* Flight annotations */}
-        <text x={startX + 20} y={startY + 35} fill="#94a3b8" fontSize="10" fontFamily="sans-serif">
+        <text x={startX + 20} y={startY + 35} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
           Landing: {landingWidthMm} mm
         </text>
-        <text x={upperLandingX - 80} y={currY + 45} fill="#94a3b8" fontSize="10" fontFamily="sans-serif">
+        <text x={upperLandingX - 80} y={currY + 45} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
           Mid Landing: {landingWidthMm} mm
         </text>
       </svg>
@@ -701,7 +707,7 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                   Floor-to-Floor Height (H)
                 </label>
                 <span className="font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                  {(floorHeightMm / 1000).toFixed(2)} m ({(floorHeightMm / 304.8).toFixed(2)} ft)
+                  {(floorHeightMm / 1000).toFixed(2)} m ({formatFeetInches(floorHeightMm / 1000, { isMeters: true })})
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -938,12 +944,12 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
             {renderCrossSection()}
 
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-[var(--md-sys-color-outline-variant)]">
-              <span>Going: {calc.goingLengthMm} mm</span>
+              <span>Going: {calc.goingLengthMm} mm ({formatFeetInches(calc.goingLengthMm / 1000, { isMeters: true })})</span>
               <span>•</span>
-              <span>Inclined Waist Length: {calc.waistInclinedLengthMm.toFixed(0)} mm</span>
+              <span>Waist: {calc.waistInclinedLengthMm.toFixed(0)} mm ({formatFeetInches(calc.waistInclinedLengthMm / 1000, { isMeters: true })})</span>
               <span>•</span>
               <span>
-                Required Length: {calc.totalGoingRequiredMm} mm (Well: {stairwellLengthMm} mm)
+                Required: {calc.totalGoingRequiredMm} mm ({formatFeetInches(calc.totalGoingRequiredMm / 1000, { isMeters: true })}) | Well: {formatFeetInches(stairwellLengthMm / 1000, { isMeters: true })}
               </span>
             </div>
           </div>

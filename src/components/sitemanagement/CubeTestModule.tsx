@@ -918,7 +918,7 @@ export const CubeTestModule: React.FC = () => {
             {/* Certificate Body */}
             <div className="p-8 md:p-10 space-y-6 font-serif">
               <div className="text-center pb-4 border-b-2 border-zinc-800 space-y-1">
-                <h3 className="text-xl font-bold uppercase tracking-tight">PB CivilLab Materials Quality Control</h3>
+                <h3 className="text-xl font-bold uppercase tracking-tight">BD. CivilLab Materials Quality Control</h3>
                 <p className="text-[11px] text-zinc-600 uppercase tracking-widest font-sans">
                   Concrete Cube Compressive Strength Test Certificate (BS 1881 / ASTM C39 / BNBC 2020)
                 </p>
@@ -1012,7 +1012,7 @@ export const CubeTestModule: React.FC = () => {
                 </div>
                 <div className="border-t border-zinc-400 pt-2 space-y-0.5">
                   <p className="font-bold">Certified By Resident Engineer</p>
-                  <p className="text-[10px] text-zinc-500">PB CivilLab Construction Supervision</p>
+                  <p className="text-[10px] text-zinc-500">BD. CivilLab Construction Supervision</p>
                 </div>
               </div>
             </div>

@@ -382,7 +382,7 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
         ['Transfer Pump Head', totalHeadM, 'm', 'Static + dynamic friction'],
         ['Recommended Motor Rating', `${waterCalc.recommendedHp} HP`, 'HP', `${(waterCalc.recommendedHp * 0.7457).toFixed(2)} kW motor`],
       ];
-      exportToCSV(`PB_CivilLab_Water_Reservoirs_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+      exportToCSV(`BD_CivilLab_Water_Reservoirs_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
     } else {
       const rows: (string | number)[][] = [
         ['Contributing Users', septicUsers, 'persons', 'Design population'],
@@ -399,7 +399,7 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
         ['Soak Pit Internal Diameter', soakPitDiaM, 'm', 'Cylindrical well'],
         ['Soak Pit Total Depth', Number(septicCalc.soakPitTotalDepthM.toFixed(2)), 'm', 'Honeycomb lining + gravel'],
       ];
-      exportToCSV(`PB_CivilLab_Septic_System_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+      exportToCSV(`BD_CivilLab_Septic_System_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
     }
   };
 
@@ -448,7 +448,7 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
       };
 
       await generateEngineeringPDF(pdfData, {
-        filename: `PB_CivilLab_Water_Reservoirs_${new Date().toISOString().slice(0, 10)}.pdf`,
+        filename: `BD_CivilLab_Water_Reservoirs_${new Date().toISOString().slice(0, 10)}.pdf`,
       });
     } else {
       const pdfData = {
@@ -492,7 +492,7 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
       };
 
       await generateEngineeringPDF(pdfData, {
-        filename: `PB_CivilLab_Septic_System_${new Date().toISOString().slice(0, 10)}.pdf`,
+        filename: `BD_CivilLab_Septic_System_${new Date().toISOString().slice(0, 10)}.pdf`,
       });
     }
   };

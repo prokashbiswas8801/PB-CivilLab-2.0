@@ -13,6 +13,7 @@ import {
   FeetInchParseResult,
   formatSmartNumber,
   formatNumberWhileTyping,
+  formatFeetInches,
 } from '../../utils/unitConverter';
 import { parseSmartUnitInput } from '../../utils/unitEngine';
 import { ExplainConversionModal } from '../modals/ExplainConversionModal';
@@ -26,6 +27,8 @@ const COMMON_CATEGORY_PAIRS: Record<
 > = {
   length: [
     { label: 'm ⇄ ft', from: 'm', to: 'ft', title: 'Metric Meters ↔ Imperial Feet' },
+    { label: 'm ⇄ ft\'-in"', from: 'm', to: 'ft-in', title: 'Meters ↔ Architectural Feet-Inch (ft\'-in")' },
+    { label: 'ft ⇄ ft\'-in"', from: 'ft', to: 'ft-in', title: 'Decimal Feet ↔ Architectural Feet-Inch (ft\'-in")' },
     { label: 'mm ⇄ in', from: 'mm', to: 'in', title: 'Rebar Millimeters ↔ Inches' },
     { label: 'm ⇄ mm', from: 'm', to: 'mm', title: 'Meters ↔ Millimeters' },
     { label: 'km ⇄ mi', from: 'km', to: 'mi', title: 'Kilometers ↔ Statute Miles' },
@@ -173,7 +176,11 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     let nextValue = converter.inputValue;
     if (withValueCarry && currentConvertedValue !== null) {
       nextValue = parseFloat(currentConvertedValue.toFixed(6));
-      setDisplayInputString(formatNumberWhileTyping(String(nextValue)).formatted);
+      setDisplayInputString(
+        oldTo === 'ft-in'
+          ? formatFeetInches(nextValue)
+          : formatNumberWhileTyping(String(nextValue)).formatted
+      );
     }
 
     updateActiveWorkspace((ws) => ({
@@ -881,6 +888,26 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                   type="button"
                   onClick={() => {
                     const feetVal = parseFloat(activeFeetInchResult.totalFeet.toFixed(4));
+                    setDisplayInputString(activeFeetInchResult.fractionString || formatFeetInches(feetVal));
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      converter: {
+                        ...ws.converter,
+                        category: 'length',
+                        fromUnit: 'ft-in',
+                        inputValue: feetVal,
+                      },
+                    }));
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-mono rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-400 cursor-pointer font-bold"
+                  title="Load architectural feet'-in&quot; notation into main converter input"
+                >
+                  Apply {activeFeetInchResult.fractionString || `${activeFeetInchResult.totalFeet.toFixed(2)} ft`} (ft&apos;-in&quot;)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const feetVal = parseFloat(activeFeetInchResult.totalFeet.toFixed(4));
                     setDisplayInputString(formatNumberWhileTyping(String(feetVal)).formatted);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
@@ -895,7 +922,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                   className="px-2 py-1 text-[11px] font-mono rounded bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-primary)] cursor-pointer font-bold"
                   title="Load parsed feet into main converter input"
                 >
-                  Apply {activeFeetInchResult.totalFeet.toFixed(3)} ft to Input
+                  Apply {activeFeetInchResult.totalFeet.toFixed(3)} ft
                 </button>
                 <button
                   type="button"
@@ -915,7 +942,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                   className="px-3 py-1 text-[11px] font-mono rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-colors cursor-pointer font-bold"
                   title="Load parsed meters into main converter input"
                 >
-                  Apply {activeFeetInchResult.totalMeters.toFixed(3)} m to Input
+                  Apply {activeFeetInchResult.totalMeters.toFixed(3)} m
                 </button>
               </div>
             </div>
@@ -979,13 +1006,19 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
         <div>
           <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Source Value</div>
           <div className="text-xl font-bold font-mono mt-0.5">
-            {formatSmartNumber(inputValue)} <span className="text-xs font-normal">{fromUnit}</span>
+            {fromUnit === 'ft-in'
+              ? formatFeetInches(inputValue)
+              : formatSmartNumber(inputValue)}{' '}
+            <span className="text-xs font-normal">{fromUnit === 'ft-in' ? `ft'-in"` : fromUnit}</span>
           </div>
         </div>
         <div>
           <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Converted Value</div>
           <div className="text-xl font-bold font-mono mt-0.5 text-[var(--md-sys-color-primary)]">
-            {formatSmartNumber(conversionResult.result, 6)} <span className="text-xs font-normal">{toUnit}</span>
+            {toUnit === 'ft-in'
+              ? formatFeetInches(conversionResult.result)
+              : formatSmartNumber(conversionResult.result, 6)}{' '}
+            <span className="text-xs font-normal">{toUnit === 'ft-in' ? `ft'-in"` : toUnit}</span>
           </div>
         </div>
         <div>

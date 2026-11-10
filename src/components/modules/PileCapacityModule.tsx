@@ -679,7 +679,7 @@ export const PileCapacityMetrics: React.FC<PileCapacityMetricsProps> = ({ result
 
   const handleCopyBreakdown = () => {
     const text = [
-      `=== PB CivilLab Deep Foundation Geotechnical Analysis ===`,
+      `=== BD. CivilLab Deep Foundation Geotechnical Analysis ===`,
       `Governing Standard: ${result.governingCode}`,
       `Pile Type: ${result.pileType} | Diameter: ${result.diameterM}m | Length: ${result.lengthM}m`,
       `Design Axial Load: ${result.appliedLoadKn} kN`,

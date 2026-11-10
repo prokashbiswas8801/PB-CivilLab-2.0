@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[PB CivilLab Runtime Exception Caught by ErrorBoundary]:', error, errorInfo);
+    console.error('[BD. CivilLab Runtime Exception Caught by ErrorBoundary]:', error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `pb-civillab-crash-backup-${new Date().toISOString().slice(0, 19)}.json`;
+      a.download = `bd-civillab-crash-backup-${new Date().toISOString().slice(0, 19)}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -105,7 +105,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 RUNTIME EXCEPTION ISOLATED · SCHEMA V2 SAFEGUARD
               </div>
               <h1 className="text-xl md:text-2xl font-bold mt-1 text-[var(--md-sys-color-on-surface)]">
-                Rendering Fault Intercepted by PB CivilLab Boundary
+                Rendering Fault Intercepted by BD. CivilLab Boundary
               </h1>
               <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] mt-1.5 leading-relaxed">
                 A calculation module or UI component encountered an unexpected runtime error. Your local storage data remains isolated and intact. Choose a recovery action below.

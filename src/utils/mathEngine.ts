@@ -1,5 +1,5 @@
 /**
- * PB CivilLab — Precision Math & Validation Engine
+ * BD. CivilLab — Precision Math & Validation Engine
  * 
  * Provides:
  * 1. Floating-point precision error prevention (safe arithmetic, Kahan summation, engineering rounding).

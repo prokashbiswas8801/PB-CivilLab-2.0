@@ -1018,12 +1018,12 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                       ======================================================== */}
                   <footer className="pt-4 border-t border-slate-300 text-[10px] font-mono text-slate-500 space-y-1 print-avoid-break">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>© 2026 PB CivilLab. All rights reserved.</div>
+                      <div>© 2026 BD. CivilLab. All rights reserved.</div>
                       <div>Created &amp; Developed by PROKASH BISWAS</div>
                       <div>Document Ref: {documentId}</div>
                     </div>
                     <div className="text-[9px] text-slate-400 leading-tight">
-                      Disclaimer: PB CivilLab provides design calculations for estimation, academic, and practical guidance purposes. All output should be reviewed by a certified licensed structural engineer prior to construction.
+                      Disclaimer: BD. CivilLab provides design calculations for estimation, academic, and practical guidance purposes. All output should be reviewed by a certified licensed structural engineer prior to construction.
                     </div>
                   </footer>
                 </div>

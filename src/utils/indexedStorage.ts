@@ -1,5 +1,5 @@
 /**
- * IndexedDB Local-First Storage Provider for PB CivilLab
+ * IndexedDB Local-First Storage Provider for BD. CivilLab
  * 
  * Provides an asynchronous, robust persistence layer backing up localStorage.
  * Ensures zero-data-loss across app sessions, browser crashes, or storage pressure.
@@ -7,7 +7,7 @@
 
 import { CivilLabSchemaV2 } from '../types/civil';
 
-const IDB_DATABASE_NAME = 'pb_civillab_db';
+const IDB_DATABASE_NAME = 'bd_civillab_db';
 const IDB_DATABASE_VERSION = 1;
 const IDB_STORE_NAME = 'app_state_store';
 const IDB_STATE_KEY = 'root_state';
@@ -45,16 +45,16 @@ export function getIDBDatabase(): Promise<IDBDatabase | null> {
       };
 
       request.onerror = (err) => {
-        console.warn('[PB CivilLab] IndexedDB open error, falling back to pure localStorage:', err);
+        console.warn('[BD. CivilLab] IndexedDB open error, falling back to pure localStorage:', err);
         resolve(null);
       };
 
       request.onblocked = () => {
-        console.warn('[PB CivilLab] IndexedDB open request blocked');
+        console.warn('[BD. CivilLab] IndexedDB open request blocked');
         resolve(null);
       };
     } catch (e) {
-      console.warn('[PB CivilLab] IndexedDB initialization failed:', e);
+      console.warn('[BD. CivilLab] IndexedDB initialization failed:', e);
       resolve(null);
     }
   });
@@ -77,12 +77,12 @@ export async function persistToIndexedDB(state: CivilLabSchemaV2): Promise<boole
 
       req.onsuccess = () => resolve(true);
       req.onerror = () => {
-        console.warn('[PB CivilLab] Failed writing state to IndexedDB');
+        console.warn('[BD. CivilLab] Failed writing state to IndexedDB');
         resolve(false);
       };
     });
   } catch (err) {
-    console.warn('[PB CivilLab] Error persisting to IndexedDB:', err);
+    console.warn('[BD. CivilLab] Error persisting to IndexedDB:', err);
     return false;
   }
 }
@@ -108,12 +108,12 @@ export async function loadFromIndexedDB(): Promise<CivilLabSchemaV2 | null> {
         }
       };
       req.onerror = () => {
-        console.warn('[PB CivilLab] Failed loading state from IndexedDB');
+        console.warn('[BD. CivilLab] Failed loading state from IndexedDB');
         resolve(null);
       };
     });
   } catch (err) {
-    console.warn('[PB CivilLab] Error loading from IndexedDB:', err);
+    console.warn('[BD. CivilLab] Error loading from IndexedDB:', err);
     return null;
   }
 }

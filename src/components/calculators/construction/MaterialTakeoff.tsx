@@ -17,6 +17,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
+import { formatFeetInches } from '../../../utils/unitConverter';
 
 export type TakeoffSubTab = 'brickwork' | 'plaster-paint' | 'flooring-tiles' | 'formwork-labor';
 
@@ -430,7 +431,7 @@ export const MaterialTakeoff: React.FC = () => {
       ];
     }
 
-    exportToCSV(`PB_CivilLab_Takeoff_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    exportToCSV(`BD_CivilLab_Takeoff_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
   // PDF Export
@@ -471,7 +472,7 @@ export const MaterialTakeoff: React.FC = () => {
     };
 
     await generateEngineeringPDF(pdfData, {
-      filename: `PB_CivilLab_Takeoff_${activeTab}_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `BD_CivilLab_Takeoff_${activeTab}_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 
@@ -558,9 +559,14 @@ export const MaterialTakeoff: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                    Wall Length (m)
-                  </label>
+                  <div className="flex justify-between items-center text-xs">
+                    <label className="font-medium text-[var(--md-sys-color-on-surface)]">
+                      Wall Length (m)
+                    </label>
+                    <span className="font-mono text-[var(--md-sys-color-on-surface-variant)] text-[10px]">
+                      {formatFeetInches(wallLengthM, { isMeters: true })}
+                    </span>
+                  </div>
                   <input
                     type="number"
                     step="0.5"
@@ -570,9 +576,14 @@ export const MaterialTakeoff: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                    Wall Height (m)
-                  </label>
+                  <div className="flex justify-between items-center text-xs">
+                    <label className="font-medium text-[var(--md-sys-color-on-surface)]">
+                      Wall Height (m)
+                    </label>
+                    <span className="font-mono text-[var(--md-sys-color-on-surface-variant)] text-[10px]">
+                      {formatFeetInches(wallHeightM, { isMeters: true })}
+                    </span>
+                  </div>
                   <input
                     type="number"
                     step="0.2"
@@ -1040,9 +1051,14 @@ export const MaterialTakeoff: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                    Room Length (m)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
+                      Room Length (m)
+                    </label>
+                    <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400 font-semibold">
+                      {formatFeetInches(roomLengthM, { isMeters: true })}
+                    </span>
+                  </div>
                   <input
                     type="number"
                     step="0.5"
@@ -1052,9 +1068,14 @@ export const MaterialTakeoff: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                    Room Width (m)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
+                      Room Width (m)
+                    </label>
+                    <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400 font-semibold">
+                      {formatFeetInches(roomWidthM, { isMeters: true })}
+                    </span>
+                  </div>
                   <input
                     type="number"
                     step="0.5"

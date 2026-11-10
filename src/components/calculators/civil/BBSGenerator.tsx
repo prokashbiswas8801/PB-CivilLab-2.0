@@ -18,6 +18,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
+import { formatFeetInches } from '../../../utils/unitConverter';
 import {
   computeRebarSuggestions,
   REBAR_ROLE_DEFINITIONS,
@@ -787,7 +788,7 @@ export const BBSGenerator: React.FC = () => {
     };
 
     await generateEngineeringPDF(pdfReportData, {
-      filename: `PB_CivilLab_BBS_Schedule_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `BD_CivilLab_BBS_Schedule_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 
@@ -802,7 +803,7 @@ export const BBSGenerator: React.FC = () => {
             <line x1="30" y1="50" x2="210" y2="50" strokeWidth={strokeWidth} strokeLinecap="round" />
             <circle cx="30" cy="50" r="3" fill="currentColor" />
             <circle cx="210" cy="50" r="3" fill="currentColor" />
-            <text x="120" y="40" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="120" y="40" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               L = {dimA || 'L'} mm
             </text>
           </svg>
@@ -812,13 +813,13 @@ export const BBSGenerator: React.FC = () => {
         return (
           <svg viewBox="0 0 240 120" className="w-full h-24 stroke-current text-[var(--md-sys-color-primary)] fill-none">
             <polyline points="40,30 40,80 200,80" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-            <text x="120" y="98" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="120" y="98" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               A = {dimA || 'A'} mm
             </text>
-            <text x="25" y="55" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="25" y="55" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               B = {dimB || 'B'}
             </text>
-            <text x="50" y="70" className="text-[9px] font-mono fill-[var(--md-sys-color-error)]">
+            <text x="50" y="70" className="text-[9px] font-nikosh fill-[var(--md-sys-color-error)]">
               90° (-2d)
             </text>
           </svg>
@@ -828,13 +829,13 @@ export const BBSGenerator: React.FC = () => {
         return (
           <svg viewBox="0 0 240 120" className="w-full h-24 stroke-current text-[var(--md-sys-color-primary)] fill-none">
             <polyline points="40,30 40,85 200,85 200,30" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-            <text x="120" y="103" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="120" y="103" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               A = {dimA || 'A'} mm
             </text>
-            <text x="25" y="55" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="25" y="55" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               B = {dimB || 'B'}
             </text>
-            <text x="215" y="55" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="215" y="55" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               C = {dimC || 'C'}
             </text>
           </svg>
@@ -849,10 +850,10 @@ export const BBSGenerator: React.FC = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            <text x="100" y="30" textAnchor="middle" className="text-[10px] font-mono fill-current font-bold">
+            <text x="100" y="30" textAnchor="middle" className="text-[10px] font-nikosh fill-current font-bold">
               45° Crank (+0.42H)
             </text>
-            <text x="130" y="88" textAnchor="middle" className="text-[10px] font-mono fill-current font-bold">
+            <text x="130" y="88" textAnchor="middle" className="text-[10px] font-nikosh fill-current font-bold">
               L = {dimA || 'L'} mm (H = {dimH || 'H'} mm)
             </text>
           </svg>
@@ -865,13 +866,13 @@ export const BBSGenerator: React.FC = () => {
             {/* 135 deg seismic hooks */}
             <path d="M 50,45 L 75,30" strokeWidth={strokeWidth} strokeLinecap="round" />
             <path d="M 60,25 L 45,50" strokeWidth={strokeWidth} strokeLinecap="round" />
-            <text x="120" y="18" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="120" y="18" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               A = {dimA || 'A'} mm
             </text>
-            <text x="205" y="65" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="205" y="65" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               B = {dimB || 'B'}
             </text>
-            <text x="85" y="42" className="text-[9px] font-mono fill-[var(--md-sys-color-tertiary)] font-bold">
+            <text x="85" y="42" className="text-[9px] font-nikosh fill-[var(--md-sys-color-tertiary)] font-bold">
               135° Hooks (10d)
             </text>
           </svg>
@@ -882,10 +883,10 @@ export const BBSGenerator: React.FC = () => {
           <svg viewBox="0 0 240 120" className="w-full h-24 stroke-current text-[var(--md-sys-color-primary)] fill-none">
             <circle cx="120" cy="60" r="42" strokeWidth={strokeWidth} />
             <path d="M 120,18 C 135,18 145,28 135,40" strokeWidth={strokeWidth} strokeLinecap="round" />
-            <text x="120" y="64" textAnchor="middle" className="text-[11px] font-mono fill-current font-bold">
+            <text x="120" y="64" textAnchor="middle" className="text-[11px] font-nikosh fill-current font-bold">
               Dia = {dimA || 'D'} mm
             </text>
-            <text x="120" y="112" textAnchor="middle" className="text-[9px] font-mono fill-current">
+            <text x="120" y="112" textAnchor="middle" className="text-[9px] font-nikosh fill-current">
               π×D + 2×10d lap
             </text>
           </svg>
@@ -1541,12 +1542,22 @@ export const BBSGenerator: React.FC = () => {
                         </div>
                       </td>
 
-                      <td className="py-2 px-2 font-bold text-[var(--md-sys-color-primary)]">
-                        {r.cuttingLengthM} m
+                      <td className="py-2 px-2">
+                        <span className="font-bold text-[var(--md-sys-color-primary)] block">
+                          {r.cuttingLengthM} m
+                        </span>
+                        <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
+                          {formatFeetInches(r.cuttingLengthM, { isMeters: true })}
+                        </span>
                       </td>
 
-                      <td className="py-2 px-2 text-[var(--md-sys-color-on-surface)]">
-                        {r.totalLengthM} m
+                      <td className="py-2 px-2">
+                        <span className="text-[var(--md-sys-color-on-surface)] block">
+                          {r.totalLengthM} m
+                        </span>
+                        <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
+                          {formatFeetInches(r.totalLengthM, { isMeters: true })}
+                        </span>
                       </td>
 
                       <td className="py-2 px-2 font-bold text-emerald-600">

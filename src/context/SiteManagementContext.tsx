@@ -34,9 +34,10 @@ import { useOfflineSync } from './OfflineSyncContext';
 // CONSTANTS & INITIAL DATA SCHEMAS
 // ============================================================================
 
-export const SITE_VERSION_KEY = 'pbcivillab_site_version';
+export const SITE_VERSION_KEY = 'bdcivillab_site_version';
 export const CURRENT_SITE_VERSION = 'v3_clean';
-const STORAGE_KEY_PREFIX = 'pbcivillab_site_erp_v3_clean_';
+const STORAGE_KEY_PREFIX = 'bdcivillab_site_erp_v3_clean_';
+const LEGACY_STORAGE_KEY_PREFIX = 'pbcivillab_site_erp_v3_clean_';
 const DEFAULT_PROJECT_ID = 'PROJ-DEFAULT-01';
 
 /**
@@ -740,8 +741,15 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
     }
 
     const storageKey = `${STORAGE_KEY_PREFIX}${activeProjectId}`;
+    const legacyStorageKey = `${LEGACY_STORAGE_KEY_PREFIX}${activeProjectId}`;
     try {
-      const raw = localStorage.getItem(storageKey);
+      let raw = localStorage.getItem(storageKey);
+      if (!raw) {
+        raw = localStorage.getItem(legacyStorageKey);
+        if (raw) {
+          localStorage.setItem(storageKey, raw);
+        }
+      }
       if (raw) {
         const parsed = JSON.parse(raw);
         // Robust schema recovery: ensure all expected arrays and maps exist

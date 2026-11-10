@@ -809,7 +809,7 @@ export const PettyCashModule: React.FC = () => {
             {/* Voucher Body */}
             <div className="p-8 space-y-5 font-serif">
               <div className="text-center pb-4 border-b border-zinc-800">
-                <h3 className="text-lg font-bold uppercase tracking-tight">PB CivilLab Construction Site</h3>
+                <h3 className="text-lg font-bold uppercase tracking-tight">BD. CivilLab Construction Site</h3>
                 <p className="text-[11px] text-zinc-600 uppercase tracking-widest font-sans">
                   Site Imprest Cash Voucher
                 </p>

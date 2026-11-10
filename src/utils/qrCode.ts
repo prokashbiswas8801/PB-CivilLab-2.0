@@ -22,7 +22,7 @@ export interface ReportVerificationPayload {
 export function buildReportVerificationString(payload: ReportVerificationPayload): string {
   // Construct a compact, scannable verification record
   return JSON.stringify({
-    app: 'PB CivilLab',
+    app: 'BD. CivilLab',
     id: payload.documentId,
     proj: payload.projectCode,
     mod: payload.moduleId,
@@ -116,7 +116,7 @@ export interface GeneratedReportQrResult {
 }
 
 /**
- * Generates official engineering submittal document reference code (e.g. PBCL-2026-XXXXXX)
+ * Generates official engineering submittal document reference code (e.g. BDCL-2026-XXXXXX)
  */
 export function generateSubmittalDocRef(year: number = 2026): string {
   const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -124,7 +124,7 @@ export function generateSubmittalDocRef(year: number = 2026): string {
   for (let i = 0; i < 6; i++) {
     rand += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return `PBCL-${year}-${rand}`;
+  return `BDCL-${year}-${rand}`;
 }
 
 /**

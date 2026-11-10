@@ -2347,7 +2347,7 @@ export function getToolDocumentation(
   const overview =
     fallbackMeta?.overview ||
     registryEntry?.description ||
-    `The ${title} is a specialized civil engineering calculation module in PB CivilLab designed to provide verified, rigorous analytical solutions conforming to current building codes and engineering best practices.`;
+    `The ${title} is a specialized civil engineering calculation module in BD. CivilLab designed to provide verified, rigorous analytical solutions conforming to current building codes and engineering best practices.`;
 
   return {
     id: toolId,

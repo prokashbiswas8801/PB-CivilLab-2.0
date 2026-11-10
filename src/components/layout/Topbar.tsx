@@ -125,9 +125,14 @@ export const Topbar: React.FC<TopbarProps> = ({
 
         <div className="flex items-center gap-2">
           <LogoMark size={24} animated={false} className="shadow-xs shrink-0" />
-          <span className="text-sm font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)] whitespace-nowrap hidden sm:inline">
-            PB CivilLab
-          </span>
+          <div className="flex items-baseline gap-1.5 hidden sm:flex">
+            <span className="text-sm font-black tracking-tight text-[var(--md-sys-color-on-surface)] whitespace-nowrap">
+              <span className="text-[var(--md-sys-color-primary)]">BD.</span> CivilLab
+            </span>
+            <span className="hidden xl:inline text-[10.5px] text-[var(--md-sys-color-on-surface-variant)] opacity-80 font-nikosh tracking-normal" lang="bn">
+              • সিভিল ইঞ্জিনিয়ারিং ওয়ার্কবেঞ্চ
+            </span>
+          </div>
           <span className="hidden lg:inline px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline)]">
             v2.6 Enterprise
           </span>
@@ -159,7 +164,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                 ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-black'
                 : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
             }`}
-            title="Switch to Bangladesh Standard / Site (ft, in, Suta, RFT, SFT, CFT, Decimal, Katha, 50kg Bag, Maund)"
+            title="Switch to Bangladesh Standard / Site (ft, in, Suta, RFT, SFT, CFT, Decimal, Katha, 50kg Bag, Maund) • বাংলাদেশ স্ট্যান্ডার্ড (BNBC / লোকাল সাইট ইউনিট)"
           >
             BD (Site)
           </button>

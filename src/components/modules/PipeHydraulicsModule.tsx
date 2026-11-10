@@ -1165,7 +1165,7 @@ export const PipeEglHglProfilePlot: React.FC<{ result: PipeHydraulicsResult }> =
       </div>
 
       <div className="relative w-full overflow-hidden rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-        <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto select-none font-mono">
+        <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto select-none font-nikosh">
           <defs>
             <linearGradient id="pipeBarrelGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.4" />

@@ -73,7 +73,7 @@ export async function exportCertifiedEngineeringPdf({
   const margin = 14;
   const contentWidth = pageWidth - 2 * margin;
 
-  // Standardized Engineering Submittal Reference (PBCL-2026-XXXXXX)
+  // Standardized Engineering Submittal Reference (BDCL-2026-XXXXXX)
   const docId = generateSubmittalDocRef(2026);
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', {
@@ -145,7 +145,7 @@ export async function exportCertifiedEngineeringPdf({
   // Brand Logo Icon on left side
   const logoSize = 24;
   try {
-    doc.addImage(BRAND_LOGO_BASE64, 'JPEG', margin + 4, cursorY + 4, logoSize, logoSize);
+    doc.addImage(BRAND_LOGO_BASE64, 'PNG', margin + 4, cursorY + 4, logoSize, logoSize);
   } catch (err) {
     console.warn('Could not add brand logo to PDF header:', err);
   }
@@ -155,7 +155,7 @@ export async function exportCertifiedEngineeringPdf({
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
-  doc.text('PB CivilLab', textX, cursorY + 8);
+  doc.text('BD. CivilLab', textX, cursorY + 8);
 
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.setFont('helvetica', 'bold');
@@ -536,7 +536,7 @@ export async function exportCertifiedEngineeringPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`PB CivilLab Automated Engine v2.4 · Report Doc Ref: ${docId} · ISO 9001 QA Compliant · Page 1 of 1`, margin, pageHeight - margin + 4);
+  doc.text(`BD. CivilLab Automated Engine v2.4 · Report Doc Ref: ${docId} · ISO 9001 QA Compliant · Page 1 of 1`, margin, pageHeight - margin + 4);
   doc.text('CONFIDENTIAL & PROPRIETARY · STRICTLY FOR PROFESSIONAL PERMIT SUBMITTAL USE', pageWidth - margin - 88, pageHeight - margin + 4);
 
   // Stage 7: Final Vector Compilation & Download Launch

@@ -1,13 +1,13 @@
 /**
- * PB CivilLab — Progressive Web App Service Worker
+ * BD. CivilLab — Progressive Web App Service Worker
  * Version: 2.0.0
  * Provides robust offline caching for application shell, static assets,
  * and Background Sync support for Site Management & Field ERP modules
  * (Attendance Muster Roll, Field Notes & Voice Memos, Petty Cash Ledger).
  */
 
-const CACHE_NAME = 'pb-civillab-shell-v2';
-const DATA_CACHE_NAME = 'pb-civillab-data-v2';
+const CACHE_NAME = 'bd-civillab-shell-v2';
+const DATA_CACHE_NAME = 'bd-civillab-data-v2';
 
 // Core assets required for offline boot
 const PRECACHE_ASSETS = [
@@ -16,9 +16,10 @@ const PRECACHE_ASSETS = [
   '/manifest.json',
   '/favicon.svg',
   '/logo.svg',
-  '/logo.jpg',
   '/icon-192.svg',
   '/icon-512.svg',
+  '/fonts/Nikosh.ttf',
+  '/fonts/Nikosh.woff2',
 ];
 
 // Installation: Pre-cache application shell

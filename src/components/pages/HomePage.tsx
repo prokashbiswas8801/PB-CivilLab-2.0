@@ -32,6 +32,7 @@ import {
   Receipt,
   Wallet,
   ScrollText,
+  AlertTriangle,
 } from 'lucide-react';
 import { EngineeringModuleId, CivilWorkspace } from '../../types/civil';
 import { useCivilLab } from '../../context/CivilLabContext';
@@ -57,6 +58,7 @@ export interface HomePageProps {
 interface CategoryDefinition {
   id: string;
   title: string;
+  bilingualTag?: string;
   subtitle: string;
   badge: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -86,6 +88,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 }) => {
   const civilLab = useCivilLab();
   const workbench = useWorkbench();
+  const [aboutLang, setAboutLang] = React.useState<'bn' | 'en'>('bn');
 
   const handleLaunchTool = (tool: {
     moduleId?: EngineeringModuleId;
@@ -116,6 +119,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     {
       id: 'structural',
       title: 'Structural Engineering',
+      bilingualTag: 'স্ট্রাকচারাল ইঞ্জিনিয়ারিং',
       subtitle: 'Flexural Analysis, Continuous FEM & Reinforcement Detailing',
       badge: 'ACI / AISC / BNBC',
       icon: SlidersHorizontal,
@@ -182,6 +186,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     {
       id: 'geotechnical',
       title: 'Geotechnical Engineering',
+      bilingualTag: 'জিওটেকনিক্যাল',
       subtitle: 'Soil Mechanics, Foundation Bearing & Deep Piles',
       badge: 'Terzaghi / Meyerhof',
       icon: HardHat,
@@ -228,6 +233,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     {
       id: 'architecture',
       title: 'Architecture & Planning',
+      bilingualTag: 'আর্কিটেকচার ও প্ল্যানিং',
       subtitle: 'Building By-Laws, Circulation & Sanitary Reservoirs',
       badge: 'RAJUK DAP / BNBC Part 3',
       icon: Building,
@@ -278,6 +284,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     {
       id: 'construction',
       title: 'Construction & BOQ Estimation',
+      bilingualTag: 'এস্টিমেশন ও কনক্রিট',
       subtitle: 'Volumetric Concrete Mixes, Masonry & Granular Rates',
       badge: 'CPWD / PWD / SMM7',
       icon: FileSpreadsheet,
@@ -342,6 +349,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     {
       id: 'hydraulics',
       title: 'Hydraulics & Water Resources',
+      bilingualTag: 'হাইড্রলিক্স ও প্লাম্বিং',
       subtitle: 'Open Channel Surface Flow & Pressure Conduits',
       badge: 'Manning / Hazen-Williams',
       icon: Waves,
@@ -370,6 +378,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     {
       id: 'cad-excel',
       title: 'CAD & Excel Engineering Hub',
+      bilingualTag: 'ক্যাড ও এক্সেল',
       subtitle: 'AutoCAD Viewports, Command Aliases & Formula Macros',
       badge: 'AutoCAD / ISO / LISP',
       icon: Terminal,
@@ -410,6 +419,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     {
       id: 'site-management',
       title: 'Site Management & Field ERP',
+      bilingualTag: 'সাইট ম্যানেজমেন্ট ও ফিল্ড ইআরপি',
       subtitle: 'মাঠ ও নির্মাণ ব্যবস্থাপনা — Store, Requisitions, Muster Roll, Bills, Cash, Tests & DPR',
       badge: 'FIELD ERP / BNBC / ISO 9001',
       icon: ClipboardCheck,
@@ -511,6 +521,38 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-3 sm:px-6 pt-4 pb-20 font-sans">
+      {/* Refined Welcome Hero Banner with Subtle Bengali Micro-copy */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl font-black tracking-tight text-[var(--md-sys-color-on-surface)]">
+              <span className="text-[var(--md-sys-color-primary)] font-black">BD.</span> CivilLab
+            </span>
+            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-[var(--md-sys-color-primary-container)]/50 text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-primary)]/30">
+              Workbench
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm font-medium text-[var(--md-sys-color-on-surface-variant)] mt-1">
+            <span className="font-nikosh tracking-normal text-sm" lang="bn">আধুনিক স্ট্রাকচারাল অ্যানালাইসিস, এস্টিমেশন ও সাইট ম্যানেজমেন্ট স্যুট</span> &bull; <span className="font-mono text-[11px] opacity-80">Calculate Smarter. Build Better.</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="https://www.facebook.com/BD.CivilLab"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 text-xs font-semibold transition-all shadow-2xs"
+            title="BD. CivilLab Official Facebook Page (ফেসবুক পেজ)"
+          >
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            <span>Facebook Page</span>
+            <ExternalLink className="w-3 h-3 opacity-70" />
+          </a>
+        </div>
+      </div>
+
       {/* 1. TOP QUICK-ACCESS & ACTIVE PROJECT BAR */}
       <div className="rounded-2xl p-4 sm:p-5 border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-lg shadow-black/10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
@@ -647,13 +689,18 @@ export const HomePage: React.FC<HomePageProps> = ({
                     <SectionIcon className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-base sm:text-lg font-bold text-[var(--md-sys-color-on-surface)]">
                         {section.title}
                       </h2>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline)]">
                         {section.tools.length} Tools
                       </span>
+                      {section.bilingualTag && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--md-sys-color-primary-container)]/40 text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-primary)]/20 hidden sm:inline-block">
+                          {section.bilingualTag}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
                       {section.subtitle}
@@ -738,53 +785,163 @@ export const HomePage: React.FC<HomePageProps> = ({
         })}
       </div>
 
-      {/* 3. REFINED MISSION & ABOUT PB CIVILLAB SECTION */}
-      <footer className="rounded-2xl p-6 sm:p-8 border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-xl relative overflow-hidden">
+      {/* 3. DEDICATED BILINGUAL ABOUT BD. CIVILLAB & HONEST DISCLAIMER SECTION */}
+      <footer className="rounded-2xl p-6 sm:p-8 border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-xl relative overflow-hidden space-y-6">
         {/* Subtle Background Pattern Accent */}
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-[var(--md-sys-color-primary)]/5 pointer-events-none blur-3xl" />
 
         <div className="relative z-10 space-y-6">
-          {/* Brand & Vision Statement */}
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-[var(--md-sys-color-outline-variant)]">
-            <div className="space-y-2 max-w-2xl">
-              <div className="flex items-center gap-3">
-                <LogoMark size={28} className="text-[var(--md-sys-color-primary)]" />
-                <div>
-                  <h3 className="text-xl font-black text-[var(--md-sys-color-on-surface)] tracking-tight">
-                    PB CivilLab
-                  </h3>
-                  <div className="text-[10px] font-mono uppercase font-bold tracking-widest text-[var(--md-sys-color-primary)]">
-                    Calculate Smarter. Build Better.
-                  </div>
+          {/* Header Bar: Brand Lockup & Language Switcher */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[var(--md-sys-color-outline-variant)]">
+            <div className="flex items-center gap-3">
+              <LogoMark size={32} className="text-[var(--md-sys-color-primary)] shrink-0" />
+              <div>
+                <h3 className="text-xl font-black text-[var(--md-sys-color-on-surface)] tracking-tight">
+                  <span className="text-[var(--md-sys-color-primary)] font-black">BD.</span> CivilLab
+                </h3>
+                <div className="text-[10.5px] font-mono uppercase font-bold tracking-widest text-[var(--md-sys-color-on-surface-variant)]">
+                  {aboutLang === 'bn' ? 'আমাদের সম্পর্কে · সিভিল ইঞ্জিনিয়ারিং ওয়ার্কবেঞ্চ' : 'About BD. CivilLab · Professional Engineering Suite'}
+                </div>
+              </div>
+            </div>
+
+            {/* Bilingual Switcher Tabs (বাংলা | English) */}
+            <div className="flex items-center bg-[var(--md-sys-color-surface-container-low)] p-1 rounded-full border border-[var(--md-sys-color-outline)] self-start sm:self-auto shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setAboutLang('bn')}
+                className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
+                  aboutLang === 'bn'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-bold'
+                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                }`}
+              >
+                বাংলা
+              </button>
+              <button
+                type="button"
+                onClick={() => setAboutLang('en')}
+                className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
+                  aboutLang === 'en'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs font-bold'
+                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                }`}
+              >
+                English
+              </button>
+            </div>
+          </div>
+
+          {/* Bilingual Overview & Creator Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left 8 Cols: Overview & Detailed Engineering Description */}
+            <div className="lg:col-span-8 space-y-4">
+              {aboutLang === 'bn' ? (
+                <div className="space-y-3 text-sm sm:text-base text-[var(--md-sys-color-on-surface-variant)] leading-relaxed font-nikosh" lang="bn">
+                  <p>
+                    <strong className="text-[var(--md-sys-color-on-surface)] font-bold">BD. CivilLab</strong> হলো একটি সমন্বিত, ক্লায়েন্ট-সাইড সিভিল ইঞ্জিনিয়ারিং স্ট্রাকচারাল অ্যানালাইসিস, ফাউন্ডেশন বেয়ারিং ক্যাপাসিটি, BNBC-2020 / ACI-318 আরসিসি ডিজাইন, রিবার বার বেন্ডিং শিডিউল (BBS), প্রাক্কলন ও বিল অব কোয়ান্টিটিজ (BOQ), ইউনিট রেট অ্যানালাইসিস, ওপেন চ্যানেল হাইড্রলিক্স ও প্লাম্বিং, আর্কিটেকচারাল বাই-লজ এবং সাইট কনস্ট্রাকশন ম্যানেজমেন্ট ইআরপি (ERP) ওয়ার্কবেঞ্চ।
+                  </p>
+                  <p>
+                    এটি বিশেষভাবে বাংলাদেশের ও আন্তর্জাতিক সিভিল ইঞ্জিনিয়ার, সাইট সুপারভাইজার, স্ট্রাকচারাল ডিজাইনার ও এস্টিমেটরদের বাস্তবসম্মত দ্রুত কাজের সুবিধার্থে তৈরি করা হয়েছে। শতভাগ লোকাল ও অফলাইন সক্ষম, যা ব্রাউজারের ভেতর সম্পূর্ণ ডেটা গোপনীয়তা বজায় রেখে তাৎক্ষণিক হিসাব ও প্রফেশনাল সাবমিটাল A4 PDF/Excel শিডিউল তৈরি করে।
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
+                  <p>
+                    <strong className="text-[var(--md-sys-color-on-surface)] font-bold">BD. CivilLab</strong> is an enterprise-grade, client-side civil engineering computational suite delivering rigorous structural flexure &amp; shear analysis, geotechnical shallow/deep foundation bearing capacity, BNBC-2020 / ACI-318 RC element detailing, rebar bar bending schedules (BBS), quantity takeoff (BOQ), composite rate analysis, open channel &amp; pipe hydraulics, architectural by-laws, and construction site field ERP.
+                  </p>
+                  <p>
+                    Engineered specifically for practicing civil and structural engineers, site supervisors, and cost estimators in Bangladesh and worldwide, it features a 100% offline-first local storage architecture with zero server telemetry and publication-ready certified A4 PDF/Excel calculation submittals.
+                  </p>
+                </div>
+              )}
+
+              {/* Honest Engineering Disclaimer Callout (ত্রুটি-বিচ্যুতি সংক্রান্ত সতর্কবার্তা) */}
+              <div className="p-4 rounded-xl border border-amber-500/40 bg-amber-500/5 dark:bg-amber-500/10 text-amber-900 dark:text-amber-200 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className={aboutLang === 'bn' ? 'font-nikosh text-sm' : ''} lang={aboutLang === 'bn' ? 'bn' : undefined}>
+                    {aboutLang === 'bn'
+                      ? 'ত্রুটি-বিচ্যুতি সংক্রান্ত সতর্কমূলক ঘোষণা (Engineering Disclaimer)'
+                      : 'Honest Engineering Disclaimer & Verification Notice'}
+                  </span>
+                </div>
+                <p className={`text-xs leading-relaxed opacity-95 ${aboutLang === 'bn' ? 'font-nikosh text-sm sm:text-[15px]' : 'font-sans'}`} lang={aboutLang === 'bn' ? 'bn' : undefined}>
+                  {aboutLang === 'bn' ? (
+                    <>
+                      <strong>মানুষ মাত্রই ভুলের ঊর্ধ্বে নয়; তাই এই অ্যাপ বা ওয়েবসাইটের হিসাব-নিকাশ বা কোডিংয়ে অনিচ্ছাকৃত ভুল-ত্রুটি থাকতেই পারে।</strong> প্রতিটি সূত্র ও ক্যালকুলেশন মডিউল BNBC-2020, ACI 318, IS 456 এবং AISC 360 সহ প্রমিত প্রকৌশল কোডের আলোকে সর্বোচ্চ সতর্কতার সাথে প্রস্তুত করা হয়েছে। তা সত্ত্বেও সাইটে বা ফিল্ডে চূড়ান্ত নির্মাণ বা আর্থিক বাস্তবায়নের পূর্বে যেকোনো গুরুত্বপূর্ণ স্ট্রাকচারাল, রিবার কিংবা মালামালের হিসাব দায়িত্বপ্রাপ্ত লাইসেন্সধারী ইঞ্জিনিয়ার (PE/SE) দ্বারা ক্রস-চেক (যাচাই) করে নেয়ার অনুরোধ করা হচ্ছে। কোনো অনিচ্ছাকৃত ভুল পরিলক্ষিত হলে বা কোনো গঠনমূলক পরামর্শ থাকলে সানন্দে তা জানানোর অনুরোধ রইল।
+                    </>
+                  ) : (
+                    <>
+                      <strong>To err is human; unintentional computational variations, rounding nuances, or software discrepancies may exist.</strong> While every engineering module, algorithmic formula, and code envelope has been diligently designed according to statutory standards (BNBC 2020, ACI 318-19, IS 456, AISC 360, and ASTM), software calculations serve primarily for estimation, academic verification, preliminary sizing, and field guidance. Users are strongly advised to independently verify all structural reinforcement, foundation capacities, and budget allocations with a registered Professional Engineer (PE / SE) prior to site execution. We warmly welcome any bug reports, critiques, or suggestions.
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Right 4 Cols: Creator Attribution & Social Connect Card */}
+            <div className="lg:col-span-4 p-4 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-3.5">
+              <div className="space-y-1">
+                <div className="text-[10px] font-mono uppercase font-bold tracking-wider text-[var(--md-sys-color-primary)]">
+                  {aboutLang === 'bn' ? 'নির্মাতা ও সফটওয়্যার আর্কিটেক্ট' : 'Creator & Software Architect'}
+                </div>
+                <div className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
+                  Prokash Biswas (প্রকাশ বিশ্বাস)
+                </div>
+                <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  Civil &amp; Structural Software Engineer
                 </div>
               </div>
 
-              <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
-                Empowering civil engineers, structural designers, quantity surveyors, architects, and construction managers with transparent, mathematically verifiable, and code-compliant engineering calculations. Engineered as a zero-latency client-side workbench running 100% locally in your browser.
-              </p>
-            </div>
+              {/* Creator & Official Community Social Connect Buttons */}
+              <div className="space-y-2 pt-1 border-t border-[var(--md-sys-color-outline-variant)]">
+                {/* 1. Official Facebook Page Button */}
+                <a
+                  href="https://www.facebook.com/BD.CivilLab"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-[#1877F2] text-white hover:bg-blue-600 transition-colors shadow-xs text-xs font-semibold"
+                  title="Visit BD. CivilLab Official Facebook Page (অফিসিয়াল ফেসবুক পেজ)"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    <span>BD. CivilLab Official Page</span>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                </a>
 
-            {/* Author Attribution Card */}
-            <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-xs font-mono space-y-1 shrink-0 md:min-w-[260px]">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-                Lead Architect &amp; Developer
-              </div>
-              <div className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
-                Prokash Biswas
-              </div>
-              <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                Civil &amp; Structural Software Engineer
-              </div>
-              <div className="pt-1 text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                Contact: <a href="mailto:prokashbiswas8801@gmail.com" className="text-[var(--md-sys-color-primary)] hover:underline">prokashbiswas8801@gmail.com</a>
+                {/* 2. Creator Personal Facebook Profile Button */}
+                <a
+                  href="https://www.facebook.com/prokash.biswas.88073"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-between p-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] transition-colors text-xs font-semibold"
+                  title="Connect with Creator Prokash Biswas on Facebook (নির্মাতার ফেসবুক প্রোফাইল)"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 fill-[#1877F2] shrink-0" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    <span>{aboutLang === 'bn' ? 'নির্মাতার ফেসবুক প্রোফাইল' : "Creator's Facebook Profile"}</span>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)]" />
+                </a>
+
+                {/* 3. Direct Email Contact */}
+                <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] pt-1 text-center">
+                  Email: <a href="mailto:prokashbiswas8801@gmail.com" className="text-[var(--md-sys-color-primary)] hover:underline font-semibold">prokashbiswas8801@gmail.com</a>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Supported Engineering Codes & Standards Badges */}
-          <div className="space-y-3">
+          <div className="space-y-2.5 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
             <div className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
-              Supported Building Codes &amp; Design Standards
+              {aboutLang === 'bn' ? 'সমর্থিত আন্তর্জাতিক ও জাতীয় বিল্ডিং কোড সমূহ' : 'Supported Building Codes & Design Standards'}
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -816,7 +973,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           {/* Build Info & Privacy Notice */}
           <div className="pt-4 border-t border-[var(--md-sys-color-outline-variant)] flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
             <div className="flex items-center gap-2">
-              <span>PB CivilLab v2.5.0-PRO (Build 2026.10)</span>
+              <span className="font-bold text-[var(--md-sys-color-on-surface)]">BD. CivilLab v2.6.0-PRO</span>
               <span>•</span>
               <span className="text-emerald-500 font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />

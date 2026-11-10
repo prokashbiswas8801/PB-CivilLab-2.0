@@ -30,7 +30,7 @@ export const AppSplash: React.FC<AppSplashProps> = ({ onComplete, minDurationMs 
     <div
       role="status"
       aria-live="polite"
-      aria-label="Loading PB CivilLab Workbench"
+      aria-label="Loading BD. CivilLab Workbench"
       className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--md-sys-color-background)] text-[var(--md-sys-color-on-background)] transition-opacity duration-400 select-none ${
         fading ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
@@ -45,13 +45,16 @@ export const AppSplash: React.FC<AppSplashProps> = ({ onComplete, minDurationMs 
         </div>
 
         {/* Title & Tagline */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="text-2xl font-extrabold tracking-tight">
-            <span>PB</span>{' '}
-            <span className="text-[var(--md-sys-color-primary)]">CivilLab</span>
+            <span className="text-[var(--md-sys-color-primary)] font-black">BD.</span>{' '}
+            <span>CivilLab</span>
           </div>
           <div className="text-[11px] font-mono uppercase font-bold tracking-widest text-[var(--md-sys-color-on-surface-variant)]">
             CALCULATE SMARTER. BUILD BETTER.
+          </div>
+          <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] opacity-80 font-nikosh" lang="bn">
+            নিখুঁত হিসাব · মজবুত নির্মাণ
           </div>
         </div>
 

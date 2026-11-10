@@ -33,7 +33,7 @@ export function exportTenderBoqCsv(
   const lines: string[] = [];
 
   // Title Block
-  lines.push(`"PB CIVILLAB - OFFICIAL TENDER BILL OF QUANTITIES (BOQ)"`);
+  lines.push(`"BD. CIVILLAB - OFFICIAL TENDER BILL OF QUANTITIES (BOQ)"`);
   lines.push(`"Project Name:","${workspace.name}"`);
   lines.push(`"Project Code:","${workspace.projectCode}"`);
   lines.push(`"Site Location:","${workspace.siteLocation}"`);
@@ -200,7 +200,7 @@ export async function exportTenderBoqPdf({
 
   // Brand Logo Icon
   try {
-    doc.addImage(BRAND_LOGO_BASE64, 'JPEG', margin + 4, cursorY + 4, 24, 24);
+    doc.addImage(BRAND_LOGO_BASE64, 'PNG', margin + 4, cursorY + 4, 24, 24);
   } catch {
     // continue
   }
@@ -209,7 +209,7 @@ export async function exportTenderBoqPdf({
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('PB CivilLab · Tender Management Suite', textX, cursorY + 8);
+  doc.text('BD. CivilLab · Tender Management Suite', textX, cursorY + 8);
 
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.setFontSize(7);
@@ -428,7 +428,7 @@ export async function exportTenderBoqPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(5.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`PB CivilLab Tender Submittal Engine · Ref: ${docId} · ISO 9001 Protocol · Page 1 of 2`, margin, pageHeight - margin + 2);
+  doc.text(`BD. CivilLab Tender Submittal Engine · Ref: ${docId} · ISO 9001 Protocol · Page 1 of 2`, margin, pageHeight - margin + 2);
   doc.text('CONFIDENTIAL · STRICTLY FOR TENDER BIDDING & PERMIT SUBMISSION', pageWidth - margin - 80, pageHeight - margin + 2);
 
   // PAGE 2: FORM B - ITEMIZED BILL OF QUANTITIES
@@ -499,7 +499,7 @@ export async function exportTenderBoqPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(5.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`PB CivilLab Tender Submittal Engine · Ref: ${docId} · ISO 9001 Protocol · Page 2 of 2`, margin, pageHeight - margin + 2);
+  doc.text(`BD. CivilLab Tender Submittal Engine · Ref: ${docId} · ISO 9001 Protocol · Page 2 of 2`, margin, pageHeight - margin + 2);
   doc.text('OFFICIAL TENDER BILL OF QUANTITIES · AUTHORITATIVE ESTIMATE', pageWidth - margin - 80, pageHeight - margin + 2);
 
   // Save PDF

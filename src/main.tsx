@@ -5,7 +5,12 @@ import { WorkbenchProvider } from './context/WorkbenchContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SiteManagementProvider } from './context/SiteManagementContext';
 import { OfflineSyncProvider } from './context/OfflineSyncContext';
+import './styles/nikoshFont.css';
 import './index.css';
+import { initializeNikoshFontEnforcer } from './utils/bengaliFontEnforcer';
+
+// Activate automated reactive Nikosh font application across all Bengali text
+initializeNikoshFontEnforcer();
 
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>

@@ -1,5 +1,5 @@
 /**
- * PB CivilLab — Site Management & Field ERP
+ * BD. CivilLab — Site Management & Field ERP
  * Authoritative TypeScript Type Definitions
  * 
  * Covering 9 Interconnected Modules:

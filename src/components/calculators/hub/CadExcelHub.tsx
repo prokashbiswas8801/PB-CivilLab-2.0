@@ -296,7 +296,7 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
       code: `(defun c:TLEN (/ ss tot len i ent)
   (vl-load-com)
   (setq tot 0.0)
-  (prompt "\\n[PB CivilLab] Select Lines, Polylines, Arcs for Cumulative Length: ")
+  (prompt "\\n[BD. CivilLab] Select Lines, Polylines, Arcs for Cumulative Length: ")
   (if (setq ss (ssget '((0 . "LINE,LWPOLYLINE,POLYLINE,ARC,SPLINE"))))
     (progn
       (repeat (setq i (sslength ss))
@@ -304,7 +304,7 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
         (setq len (vlax-curve-getDistAtParam ent (vlax-curve-getEndParam ent)))
         (setq tot (+ tot len))
       )
-      (alert (strcat "PB CivilLab Quantity Takeoff:\\n---------------------------------\\nTotal Cumulative Length = " 
+      (alert (strcat "BD. CivilLab Quantity Takeoff:\\n---------------------------------\\nTotal Cumulative Length = " 
                      (rtos tot 2 3) " Drawing Units\\nEquivalent Meters (if mm): " 
                      (rtos (/ tot 1000.0) 2 3) " m"))
       (princ (strcat "\\n>> Total Length = " (rtos tot 2 3) " units."))

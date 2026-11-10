@@ -14,6 +14,7 @@ import {
   UnitDefinition,
   formatSmartNumber,
   formatNumberWhileTyping,
+  formatFeetInches,
   computeRegionalLandBreakdown,
   FeetInchParseResult,
 } from '../utils/unitEngine';
@@ -160,11 +161,14 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     return denormalizeFromBase(siValue, activeUnitInfo.id, category, customUnits);
   }, [siValue, activeUnitInfo.id, category, customUnits]);
 
-  // Formatted display representation (with thousand commas on idle)
+  // Formatted display representation (with thousand commas on idle, or feet'-in" notation)
   const formattedDisplayValue = useMemo(() => {
     if (isNaN(siValue) || !isFinite(siValue)) return '';
+    if (activeUnitInfo.id === 'ft-in') {
+      return formatFeetInches(convertedNumericValue);
+    }
     return formatNumberWithSeparators(convertedNumericValue);
-  }, [siValue, convertedNumericValue]);
+  }, [siValue, convertedNumericValue, activeUnitInfo.id]);
 
   const [rawText, setRawText] = useState<string>(formattedDisplayValue);
   const [architecturalPreview, setArchitecturalPreview] = useState<FeetInchParseResult | null>(null);
@@ -256,7 +260,11 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       onChangeSI(newSI);
       // Immediately denormalize newSI to active unit to prevent stale blur-closure flickers
       const immediateConverted = denormalizeFromBase(newSI, activeUnitInfo.id, category, customUnits);
-      setRawText(formatNumberWithSeparators(immediateConverted));
+      if (activeUnitInfo.id === 'ft-in') {
+        setRawText(formatFeetInches(immediateConverted));
+      } else {
+        setRawText(formatNumberWithSeparators(immediateConverted));
+      }
     } else {
       setRawText(formattedDisplayValue);
     }
@@ -407,19 +415,32 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           )}
         </div>
 
-        {/* 1-Click Real-time Metric <-> Imperial Counterpart Toggle */}
-        {showCounterpartToggle && counterpartUnit && counterpartUnit.id !== activeUnitInfo.id && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={handleToggleCounterpart}
-            className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] text-[var(--md-sys-color-on-surface-variant)] transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 btn-tactile"
-            title={`Real-Time Conversion: Switch to ${counterpartUnit.name} (${counterpartUnit.symbol})`}
-          >
-            <ArrowRightLeft className="w-2.5 h-2.5 text-[var(--md-sys-color-primary)] shrink-0" />
-            <span>⇄ {counterpartUnit.symbol}</span>
-          </button>
-        )}
+        {/* 1-Click Real-time Metric <-> Imperial Counterpart Toggle & Quick ft'-in" Option */}
+        <div className="flex items-center gap-1 shrink-0">
+          {category === 'length' && activeUnitInfo.id !== 'ft-in' && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onUnitChange('ft-in')}
+              className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] text-[var(--md-sys-color-on-surface-variant)] transition-all cursor-pointer inline-flex items-center gap-0.5 shrink-0 btn-tactile"
+              title="Switch to Architectural Feet-Inch notation (ft'-in&quot;)"
+            >
+              <span>ft&apos;-in&quot;</span>
+            </button>
+          )}
+          {showCounterpartToggle && counterpartUnit && counterpartUnit.id !== activeUnitInfo.id && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={handleToggleCounterpart}
+              className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] text-[var(--md-sys-color-on-surface-variant)] transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 btn-tactile"
+              title={`Real-Time Conversion: Switch to ${counterpartUnit.name} (${counterpartUnit.symbol})`}
+            >
+              <ArrowRightLeft className="w-2.5 h-2.5 text-[var(--md-sys-color-primary)] shrink-0" />
+              <span>⇄ {counterpartUnit.symbol}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Input Field with Unit Selector Dropdown Trigger */}
@@ -441,7 +462,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           inputMode="decimal"
           disabled={disabled}
           value={rawText}
-          placeholder={placeholder || (category === 'length' ? `e.g. 12'-6 1/2" or 3.8m` : category === 'area' ? 'e.g. 5 katha or 2.5 dec' : '0')}
+          placeholder={placeholder || (activeUnitInfo.id === 'ft-in' ? `e.g. 12'-6" or 12'-6 1/2"` : category === 'length' ? `e.g. 12'-6 1/2" or 3.8m` : category === 'area' ? 'e.g. 5 katha or 2.5 dec' : '0')}
           onChange={handleInputChange}
           onFocus={handleFocus}
           onBlur={handleBlur}

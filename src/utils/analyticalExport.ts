@@ -1038,7 +1038,7 @@ export function exportAnalyticalScheduleCsv(
   const lines: string[] = [];
 
   // Header metadata block
-  lines.push(`"PB CIVILLAB — CERTIFIED ENGINEERING CALCULATION SCHEDULE"`);
+  lines.push(`"BD. CIVILLAB — CERTIFIED ENGINEERING CALCULATION SCHEDULE"`);
   lines.push(`"Project Name:","${workspace.name.replace(/"/g, '""')}"`);
   lines.push(`"Project Code:","${workspace.projectCode}"`);
   lines.push(`"Discipline / Module:","${moduleId.toUpperCase()}"`);

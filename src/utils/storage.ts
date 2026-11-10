@@ -15,7 +15,8 @@ import {
 } from '../types/civil';
 import { persistToIndexedDB, clearIndexedDB, loadFromIndexedDB } from './indexedStorage';
 
-export const STORAGE_KEY = 'pb_civillab_state_v3_clean';
+export const STORAGE_KEY = 'bd_civillab_state_v3_clean';
+export const LEGACY_PB_V3_KEY = 'pb_civillab_state_v3_clean';
 export const LEGACY_V2_KEY = 'pb_civillab_state_v2';
 export const LEGACY_V1_KEY = 'pb_civillab_state_v1';
 export const CURRENT_SCHEMA_VERSION = 3 as const;
@@ -702,7 +703,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       isBuiltIn: true,
       createdAt: now,
       updatedAt: now,
-      author: 'PB CivilLab Standards',
+      author: 'BD. CivilLab Standards',
       payload: {
         targetModule: 'concrete-materials',
         concreteMaterials: {
@@ -741,7 +742,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       isBuiltIn: true,
       createdAt: now,
       updatedAt: now,
-      author: 'PB CivilLab Standards',
+      author: 'BD. CivilLab Standards',
       payload: {
         targetModule: 'concrete-materials',
         concreteMaterials: {
@@ -769,7 +770,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       isBuiltIn: true,
       createdAt: now,
       updatedAt: now,
-      author: 'PB CivilLab Standards',
+      author: 'BD. CivilLab Standards',
       payload: {
         targetModule: 'concrete-materials',
         concreteMaterials: {
@@ -871,7 +872,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       isBuiltIn: true,
       createdAt: now,
       updatedAt: now,
-      author: 'PB CivilLab Structural',
+      author: 'BD. CivilLab Structural',
       payload: {
         targetModule: 'beam-analysis',
         beam: {
@@ -896,7 +897,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       isBuiltIn: true,
       createdAt: now,
       updatedAt: now,
-      author: 'PB CivilLab Structural',
+      author: 'BD. CivilLab Structural',
       payload: {
         targetModule: 'beam-analysis',
         beam: {
@@ -993,7 +994,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       isBuiltIn: true,
       createdAt: now,
       updatedAt: now,
-      author: 'PB CivilLab Standards',
+      author: 'BD. CivilLab Standards',
       payload: {
         targetModule: 'boq-estimator',
         boq: {
@@ -1632,27 +1633,36 @@ export function purgeLegacyStorage(): void {
   try {
     const hasLegacyV1 = localStorage.getItem(LEGACY_V1_KEY);
     const hasLegacyV2 = localStorage.getItem(LEGACY_V2_KEY);
-    const hasV3 = localStorage.getItem(STORAGE_KEY);
 
-    if (hasLegacyV1 !== null || hasLegacyV2 !== null || !hasV3) {
-      console.info('[PB CivilLab] Purging legacy storage keys (pb_civillab_state_v1, pb_civillab_state_v2) and stale IndexedDB snapshots.');
+    if (hasLegacyV1 !== null || hasLegacyV2 !== null) {
+      console.info('[BD. CivilLab] Purging legacy storage keys (pb_civillab_state_v1, pb_civillab_state_v2).');
       localStorage.removeItem(LEGACY_V1_KEY);
       localStorage.removeItem(LEGACY_V2_KEY);
-      clearIndexedDB().catch((err) => {
-        console.warn('[PB CivilLab] Error clearing stale IndexedDB snapshot on initial boot:', err);
-      });
     }
   } catch (err) {
-    console.warn('[PB CivilLab] Purge error:', err);
+    console.warn('[BD. CivilLab] Purge error:', err);
   }
 }
 
 export function loadPersistedState(): CivilLabSchemaV2 {
-  // Purge legacy storage and stale IndexedDB on initial boot
+  // Purge legacy storage on initial boot
   purgeLegacyStorage();
 
   try {
-    const rawV3 = localStorage.getItem(STORAGE_KEY);
+    let rawV3 = localStorage.getItem(STORAGE_KEY);
+
+    // Seamless migration from legacy PB v3 storage key so user never loses data
+    if (!rawV3) {
+      const legacyPbV3 = localStorage.getItem(LEGACY_PB_V3_KEY);
+      if (legacyPbV3) {
+        rawV3 = legacyPbV3;
+        try {
+          localStorage.setItem(STORAGE_KEY, legacyPbV3);
+        } catch {
+          // ignore quota error
+        }
+      }
+    }
 
     if (!rawV3) {
       const initial = createDefaultSchemaV2();
@@ -1680,7 +1690,7 @@ export function loadPersistedState(): CivilLabSchemaV2 {
 
     return validateAndNormalizeV2(parsed);
   } catch (err) {
-    console.error('[PB CivilLab] Failed to parse localStorage state; falling back to clean schema v3:', err);
+    console.error('[BD. CivilLab] Failed to parse localStorage state; falling back to clean schema v3:', err);
     const recovered = createDefaultSchemaV2();
     savePersistedState(recovered);
     return recovered;
@@ -1692,13 +1702,13 @@ export function savePersistedState(state: CivilLabSchemaV2): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     // Asynchronously replicate to IndexedDB for resilient local-first durability
     persistToIndexedDB(state).catch((e) => {
-      console.warn('[PB CivilLab] Asynchronous IndexedDB backup error:', e);
+      console.warn('[BD. CivilLab] Asynchronous IndexedDB backup error:', e);
     });
   } catch (err) {
-    console.error('[PB CivilLab] Failed to write state to localStorage:', err);
+    console.error('[BD. CivilLab] Failed to write state to localStorage:', err);
     // Even if localStorage quota exceeded, attempt persisting to IndexedDB
     persistToIndexedDB(state).catch((e) => {
-      console.warn('[PB CivilLab] Emergency IndexedDB persist error:', e);
+      console.warn('[BD. CivilLab] Emergency IndexedDB persist error:', e);
     });
   }
 }
@@ -1732,7 +1742,7 @@ export function clearAndResetStorage(mode: 'clean' | 'demo' = 'clean'): CivilLab
   localStorage.removeItem(LEGACY_V2_KEY);
   localStorage.removeItem(LEGACY_V1_KEY);
   clearIndexedDB().catch((err) => {
-    console.warn('[PB CivilLab] Failed clearing IndexedDB during reset:', err);
+    console.warn('[BD. CivilLab] Failed clearing IndexedDB during reset:', err);
   });
   const fresh = mode === 'demo' ? createDemoSchemaV2() : createCleanSchemaV2();
   savePersistedState(fresh);
@@ -1769,7 +1779,7 @@ export function exportProjectWorkspacePackage(
   const envelope: SingleWorkspaceExportEnvelope = {
     schemaVersion: 2,
     exportType: 'single-workspace',
-    brand: 'PB CivilLab',
+    brand: 'BD. CivilLab',
     tagline: 'CALCULATE SMARTER. BUILD BETTER.',
     creator: 'PROKASH BISWAS',
     exportedAt: new Date().toISOString(),
@@ -1872,7 +1882,7 @@ export function exportPresetsPackage(presets: EngineeringPreset[]): string {
   const envelope: PresetsExportEnvelope = {
     schemaVersion: 2,
     exportType: 'civil-presets-package',
-    brand: 'PB CivilLab',
+    brand: 'BD. CivilLab',
     tagline: 'CALCULATE SMARTER. BUILD BETTER.',
     exportedAt: new Date().toISOString(),
     presets,

@@ -372,7 +372,7 @@ export const SiteChecklist: React.FC = () => {
       it.remarks,
     ]);
 
-    exportToCSV(`PB_CivilLab_QA_QC_${activeCategory}_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows, {
+    exportToCSV(`BD_CivilLab_QA_QC_${activeCategory}_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows, {
       projectName,
       location: pourLocation,
       engineerName: inspectorName,
@@ -437,7 +437,7 @@ export const SiteChecklist: React.FC = () => {
     };
 
     await generateEngineeringPDF(pdfData, {
-      filename: `PB_CivilLab_QA_QC_${activeCategory}_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `BD_CivilLab_QA_QC_${activeCategory}_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 

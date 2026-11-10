@@ -1040,7 +1040,7 @@ export const ContractorBillModule: React.FC = () => {
             <div className="p-8 md:p-12 space-y-6 font-serif">
               {/* Header */}
               <div className="text-center pb-6 border-b-2 border-zinc-800 space-y-1">
-                <h2 className="text-2xl font-bold tracking-tight uppercase">PB CivilLab Engineering & Construction</h2>
+                <h2 className="text-2xl font-bold tracking-tight uppercase">BD. CivilLab Engineering & Construction</h2>
                 <p className="text-xs text-zinc-600 uppercase tracking-widest font-sans">
                   Project Site Operations & Sub-Contractor Management System
                 </p>

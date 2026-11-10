@@ -43,6 +43,7 @@ export interface AboutThisToolProps {
 
 const STORAGE_LANG_KEY = 'civil_lab_about_tool_lang';
 const LANG_CHANGE_EVENT = 'civil_lab_about_tool_lang_change';
+const BENGALI_FONT_STACK = "'Nikosh', 'SolaimanLipi', system-ui, -apple-system, sans-serif";
 
 /**
  * Authoritative "About This Tool" Bilingual Component
@@ -149,7 +150,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
               className="text-base sm:text-lg font-bold text-[var(--md-sys-color-on-surface)] mt-0.5 tracking-tight flex items-baseline gap-2 flex-wrap"
               style={{
                 fontFamily: isBn
-                  ? 'system-ui, -apple-system, sans-serif'
+                  ? BENGALI_FONT_STACK
                   : "'Georgia', 'Times New Roman', serif",
               }}
             >
@@ -281,7 +282,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                   className="text-sm sm:text-base leading-relaxed text-[var(--md-sys-color-on-surface)] text-justify"
                   style={{
                     fontFamily: isBn
-                      ? 'system-ui, -apple-system, sans-serif'
+                      ? BENGALI_FONT_STACK
                       : "'Georgia', 'Times New Roman', serif",
                   }}
                 >
@@ -381,7 +382,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                       className="text-sm font-bold text-[var(--md-sys-color-on-surface)]"
                       style={{
                         fontFamily: isBn
-                          ? 'system-ui, -apple-system, sans-serif'
+                          ? BENGALI_FONT_STACK
                           : "'Georgia', 'Times New Roman', serif",
                       }}
                     >
@@ -409,7 +410,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                             className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface)] leading-relaxed block"
                             style={{
                               fontFamily: isBn
-                                ? 'system-ui, -apple-system, sans-serif'
+                                ? BENGALI_FONT_STACK
                                 : "'Georgia', 'Times New Roman', serif",
                             }}
                           >
@@ -441,7 +442,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                       className="text-xs sm:text-sm leading-relaxed text-[var(--md-sys-color-on-surface)]"
                       style={{
                         fontFamily: isBn
-                          ? 'system-ui, -apple-system, sans-serif'
+                          ? BENGALI_FONT_STACK
                           : "'Georgia', 'Times New Roman', serif",
                       }}
                     >
@@ -482,7 +483,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                                     className="text-xs font-bold text-[var(--md-sys-color-on-surface)]"
                                     style={{
                                       fontFamily: isBn
-                                        ? 'system-ui, -apple-system, sans-serif'
+                                        ? BENGALI_FONT_STACK
                                         : "'Georgia', 'Times New Roman', serif",
                                     }}
                                   >
@@ -510,7 +511,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                                   className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-relaxed"
                                   style={{
                                     fontFamily: isBn
-                                      ? 'system-ui, -apple-system, sans-serif'
+                                      ? BENGALI_FONT_STACK
                                       : "'Georgia', 'Times New Roman', serif",
                                   }}
                                 >
@@ -567,7 +568,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                           className="text-xs space-y-1 text-[var(--md-sys-color-on-surface)]"
                           style={{
                             fontFamily: isBn
-                              ? 'system-ui, -apple-system, sans-serif'
+                              ? BENGALI_FONT_STACK
                               : "'Georgia', 'Times New Roman', serif",
                           }}
                         >
@@ -598,7 +599,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                       className="text-sm font-bold text-[var(--md-sys-color-on-surface)]"
                       style={{
                         fontFamily: isBn
-                          ? 'system-ui, -apple-system, sans-serif'
+                          ? BENGALI_FONT_STACK
                           : "'Georgia', 'Times New Roman', serif",
                       }}
                     >
@@ -628,7 +629,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                               className="text-xs sm:text-sm font-bold text-[var(--md-sys-color-on-surface)]"
                               style={{
                                 fontFamily: isBn
-                                  ? 'system-ui, -apple-system, sans-serif'
+                                  ? BENGALI_FONT_STACK
                                   : "'Georgia', 'Times New Roman', serif",
                               }}
                             >
@@ -638,7 +639,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                               className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] leading-relaxed"
                               style={{
                                 fontFamily: isBn
-                                  ? 'system-ui, -apple-system, sans-serif'
+                                  ? BENGALI_FONT_STACK
                                   : "'Georgia', 'Times New Roman', serif",
                               }}
                             >
@@ -693,7 +694,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                               className="text-xs sm:text-sm leading-relaxed"
                               style={{
                                 fontFamily: isBn
-                                  ? 'system-ui, -apple-system, sans-serif'
+                                  ? BENGALI_FONT_STACK
                                   : "'Georgia', 'Times New Roman', serif",
                               }}
                             >
@@ -725,7 +726,7 @@ export const AboutThisTool: React.FC<AboutThisToolProps> = ({
                         className="text-xs space-y-1 text-[var(--md-sys-color-on-surface-variant)]"
                         style={{
                           fontFamily: isBn
-                            ? 'system-ui, -apple-system, sans-serif'
+                            ? BENGALI_FONT_STACK
                             : "'Georgia', 'Times New Roman', serif",
                         }}
                       >

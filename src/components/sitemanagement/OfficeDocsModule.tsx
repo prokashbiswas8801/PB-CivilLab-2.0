@@ -24,6 +24,14 @@ import {
 } from 'lucide-react';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { CivilWorkspace } from '../../types/civil';
+import { OfficeDocVerificationModal } from './OfficeDocVerificationModal';
+import { OfficeDocPublicPortalView } from './OfficeDocPublicPortalView';
+import {
+  VerifiedOfficeDocRecord,
+  generateOfficeDocHash,
+  buildOfficeDocVerificationUrl,
+  saveVerifiedOfficeDoc,
+} from '../../utils/officeDocVerification';
 
 export type OfficeDocType =
   | 'gate-pass'
@@ -61,6 +69,9 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
   const [docType, setDocType] = useState<OfficeDocType>('gate-pass');
   const [language, setLanguage] = useState<'en' | 'bn'>('en');
   const [copied, setCopied] = useState<boolean>(false);
+  const [verificationModalOpen, setVerificationModalOpen] = useState<boolean>(false);
+  const [activeVerifiedDoc, setActiveVerifiedDoc] = useState<VerifiedOfficeDocRecord | null>(null);
+  const [publicPortalPreviewDoc, setPublicPortalPreviewDoc] = useState<VerifiedOfficeDocRecord | null>(null);
 
   // Common Header Metadata
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -227,6 +238,194 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
     }
   };
 
+  const buildCurrentVerifiedRecord = (): VerifiedOfficeDocRecord => {
+    const docId = `DOC-${docType.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+    const hash = generateOfficeDocHash(`${docId}|${docMeta.memoNo}|${docMeta.projectCode}|${Date.now()}`);
+
+    let docTypeTitle = 'Material Gate Pass & Delivery Challan';
+    let docTypeTitleBn = 'ম্যাটেরিয়াল গেট পাস ও ডেলিভারি চালান';
+    let summaryText = gatePassData.purpose;
+    let keyFields: Array<{ label: string; value: string | number; highlight?: boolean }> = [];
+    let tableData: { headers: string[]; rows: Array<Array<string | number>> } | undefined = undefined;
+    let clausesOrNotes: string[] = [];
+
+    if (docType === 'gate-pass') {
+      docTypeTitle = `Material Gate Pass & Delivery Challan (${gatePassData.passType})`;
+      docTypeTitleBn = `ম্যাটেরিয়াল গেট পাস ও ডেলিভারি চালান (${gatePassData.passType === 'Returnable' ? 'ফেরতযোগ্য' : 'অফেরতযোগ্য'})`;
+      summaryText = `Gate clearance authorization for transport of materials/equipment to ${gatePassData.destination}. Purpose: ${gatePassData.purpose}.`;
+      keyFields = [
+        { label: 'Pass Category', value: gatePassData.passType, highlight: true },
+        { label: 'Vehicle Reg', value: gatePassData.vehicleNo },
+        { label: 'Carrier / Driver', value: `${gatePassData.driverName} (${gatePassData.driverPhone})` },
+        { label: 'Destination', value: gatePassData.destination },
+        { label: 'Total Items Dispatched', value: gatePassData.items.length },
+      ];
+      tableData = {
+        headers: ['SL', 'Item Description', 'Qty', 'Unit', 'Purpose / Condition'],
+        rows: gatePassData.items.map((it) => [it.sl, it.description, it.quantity, it.unit, it.remarks || it.purposeOrDestination]),
+      };
+      clausesOrNotes = [
+        'Security guard on duty must verify physical count prior to vehicle exit gate passage.',
+        gatePassData.passType === 'Returnable'
+          ? 'Mandatory Return: Materials must be returned within 7 working days with signed return slip.'
+          : 'Permanent dispatch: Deductions/adjustments logged into store inventory register.',
+      ];
+    } else if (docType === 'work-order') {
+      docTypeTitle = `Sub-Contractor Work Order (${workOrderData.workOrderNo})`;
+      docTypeTitleBn = `উপ-ঠিকাদারি কার্যাদেশ ও চুক্তিপত্র (${workOrderData.workOrderNo})`;
+      summaryText = workOrderData.scopeSummary;
+      keyFields = [
+        { label: 'Awarded Trade', value: workOrderData.trade },
+        { label: 'Sub-Contractor', value: docMeta.contractorName, highlight: true },
+        { label: 'Commencement', value: workOrderData.commencementDate },
+        { label: 'Target Completion', value: workOrderData.completionTargetDate },
+        { label: 'Retention Security', value: `${workOrderData.retentionPercent}%` },
+        { label: 'Defect Liability', value: `${workOrderData.defectLiabilityMonths} Months` },
+      ];
+      tableData = {
+        headers: ['SL', 'Work Description', 'Est. Qty', 'Unit', 'Rate (৳)', 'Amount (৳)'],
+        rows: workOrderData.items.map((it) => [it.sl, it.itemDescription, it.qty, it.unit, `৳ ${it.rate}`, `৳ ${it.amount}`]),
+      };
+      clausesOrNotes = [
+        'Workmanship must strictly conform to BNBC-2020 Part 6 and ACI 318.',
+        `${workOrderData.retentionPercent}% retention security deducted from all RA bills and held for ${workOrderData.defectLiabilityMonths} months.`,
+      ];
+    } else if (docType === 'ra-bill-forwarding') {
+      docTypeTitle = `Interim RA Bill Forwarding Letter (${raBillLetterData.billNo})`;
+      docTypeTitleBn = `চলতি হিসাব (RA) বিল যাচাই ও অর্থ প্রদান সুপারিশ পত্র`;
+      summaryText = raBillLetterData.recommendationNote;
+      keyFields = [
+        { label: 'Bill Reference', value: raBillLetterData.billNo },
+        { label: 'Measurement Period', value: raBillLetterData.measurementPeriod },
+        { label: 'Gross Certified', value: `৳ ${raBillLetterData.grossAmountCertified}` },
+        { label: 'Net Payable Disbursement', value: `৳ ${raBillLetterData.netRecommendedPayable}`, highlight: true },
+        { label: 'Retention Holding', value: `- ৳ ${raBillLetterData.retentionAmount}` },
+      ];
+      tableData = {
+        headers: ['Breakdown Item', 'Amount (৳)', 'Status'],
+        rows: [
+          ['Gross Certified Work Value', `৳ ${raBillLetterData.grossAmountCertified}`, 'Verified in MB'],
+          ['Less: Security Retention (10%)', `- ৳ ${raBillLetterData.retentionAmount}`, 'Withheld'],
+          ['Less: Advance Recovery', `- ৳ ${raBillLetterData.advanceMobilizationRecovery}`, 'Recovered'],
+          ['Less: Tax / AIT / VAT', `- ৳ ${raBillLetterData.aitTaxDeduction}`, 'Statutory Deduction'],
+          ['Net Recommended Payable', `৳ ${raBillLetterData.netRecommendedPayable}`, 'CERTIFIED FOR PAYMENT'],
+        ],
+      };
+      clausesOrNotes = [
+        'Joint physical measurements verified in Measurement Book (MB) pages against approved drawings.',
+        'Concrete cube test 28-day crushing strengths verified compliant with design specifications.',
+      ];
+    } else if (docType === 'site-instruction-ncr') {
+      docTypeTitle = `Site Non-Conformance Notice (NCR: ${ncrData.ncrNo})`;
+      docTypeTitleBn = `সাইট নন-কনফরম্যান্স নোটিশ (NCR) ও সংশোধন নির্দেশ`;
+      summaryText = ncrData.defectDescription;
+      keyFields = [
+        { label: 'NCR Notice No', value: ncrData.ncrNo },
+        { label: 'Severity Level', value: ncrData.severity, highlight: true },
+        { label: 'Location / Grid', value: ncrData.locationGrid },
+        { label: 'Governing Standard', value: ncrData.governingCode },
+        { label: 'Rectification Window', value: `${ncrData.targetRectificationDays} Days` },
+        { label: 'Follow-up Inspection', value: ncrData.followUpInspectionDate },
+      ];
+      tableData = {
+        headers: ['Parameter', 'Details / Directives'],
+        rows: [
+          ['Observed Non-Conformance', ncrData.defectDescription],
+          ['Mandatory Remediation Method', ncrData.rectificationActionRequired],
+          ['Governing Technical Standard', ncrData.governingCode],
+          ['Target Completion Deadline', `${ncrData.targetRectificationDays} Days (${ncrData.followUpInspectionDate})`],
+        ],
+      };
+      clausesOrNotes = [
+        'Subsequent concrete placement or covering works remain suspended until this NCR is formally inspected and closed by the Resident Engineer.',
+      ];
+    } else if (docType === 'completion-certificate') {
+      docTypeTitle = `Substantial Completion & Handover Certificate (${handoverData.certNo})`;
+      docTypeTitleBn = `প্রকল্প সমাপনী ও আনুষ্ঠানিক হস্তান্তর প্রত্যয়ন`;
+      summaryText = handoverData.declaration;
+      keyFields = [
+        { label: 'Certificate Ref', value: handoverData.certNo },
+        { label: 'Contract Reference', value: handoverData.contractRef },
+        { label: 'Actual Completion', value: handoverData.actualCompletionDate, highlight: true },
+        { label: 'Final Contract Value', value: `৳ ${handoverData.finalContractValue}` },
+        { label: 'Defect Liability Expiration', value: handoverData.defectsLiabilityEndDate },
+      ];
+      tableData = {
+        headers: ['Project Milestone', 'Contract Specification'],
+        rows: [
+          ['Scope of Infrastructure', handoverData.scopeCompleted],
+          ['Scheduled Completion', handoverData.scheduledCompletionDate],
+          ['Actual Substantial Completion', handoverData.actualCompletionDate],
+          ['Final Certified Contract Value', `৳ ${handoverData.finalContractValue}`],
+          ['Warranty & Defect Liability Expiry', handoverData.defectsLiabilityEndDate],
+        ],
+      };
+      clausesOrNotes = [
+        'All structural, architectural, MEP, and life-safety systems have been commissioned and tested.',
+        '12-month defect liability period initiated as of the certified substantial completion date.',
+      ];
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bdcivillab.app';
+    const record: VerifiedOfficeDocRecord = {
+      docId,
+      docType,
+      docTypeTitle,
+      docTypeTitleBn,
+      memoNo: docMeta.memoNo,
+      issueDate: docMeta.date,
+      projectName: docMeta.projectName,
+      projectCode: docMeta.projectCode,
+      siteLocation: docMeta.siteLocation,
+      organization: docMeta.organization,
+      clientName: docMeta.clientName,
+      contractorName: docMeta.contractorName,
+      engineerName: docMeta.engineerName,
+      engineerTitle: docMeta.engineerTitle,
+      licenseNo: docMeta.licenseNo,
+      verificationHash: hash,
+      issuedAt: new Date().toISOString(),
+      verificationUrl: '',
+      language,
+      summaryText,
+      keyFields,
+      tableData,
+      clausesOrNotes,
+      signatories: [
+        {
+          role: 'Prepared by Resident Engineer',
+          name: docMeta.engineerName,
+          title: docMeta.engineerTitle,
+          license: docMeta.licenseNo,
+          verifiedStatus: 'CERTIFIED & AUTHENTIC',
+        },
+        {
+          role: 'Checked by Project Manager / Consultant',
+          name: 'Lead Consultant, PE',
+          title: docMeta.consultantOrg,
+          license: 'IEB F-14290 (Verified)',
+          verifiedStatus: 'VERIFIED',
+        },
+        {
+          role: 'Accepted by Contractor / Recipient',
+          name: 'Authorized Signatory',
+          title: docMeta.contractorName,
+          verifiedStatus: 'ACKNOWLEDGED',
+        },
+      ],
+    };
+
+    record.verificationUrl = buildOfficeDocVerificationUrl(record, origin);
+    return record;
+  };
+
+  const handleOpenVerificationPortal = () => {
+    const rec = buildCurrentVerifiedRecord();
+    saveVerifiedOfficeDoc(rec);
+    setActiveVerifiedDoc(rec);
+    setVerificationModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner / Navigation Strip */}
@@ -266,6 +465,17 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
             >
               <Languages className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
               <span>{language === 'en' ? 'বাংলা সংস্করণ (Bengali)' : 'English Version'}</span>
+            </button>
+
+            {/* Dedicated Verification Portal Link Button */}
+            <button
+              type="button"
+              onClick={handleOpenVerificationPortal}
+              className="px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all hover:scale-[1.02]"
+              title="Generate a unique public-facing verification URL and QR code for external stakeholders"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Verification Portal Link</span>
             </button>
 
             <button
@@ -1047,7 +1257,10 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
             {/* Authentic Printable Document Canvas */}
             <div
               id="printable-office-document"
-              className="bg-white text-zinc-900 p-8 sm:p-12 rounded-xl shadow-lg border border-zinc-200 max-w-[850px] mx-auto font-serif print:m-0 print:p-0 print:border-none print:shadow-none"
+              className={`bg-white text-zinc-900 p-8 sm:p-12 rounded-xl shadow-lg border border-zinc-200 max-w-[850px] mx-auto print:m-0 print:p-0 print:border-none print:shadow-none printable-document ${
+                language === 'bn' ? 'font-nikosh' : 'font-serif'
+              }`}
+              lang={language === 'bn' ? 'bn' : 'en'}
               style={{ minHeight: '1050px' }}
             >
               {/* LETTERHEAD HEADER */}
@@ -1478,6 +1691,24 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
           </div>
         </div>
       </div>
+
+      {/* Verification Portal Link Modal */}
+      <OfficeDocVerificationModal
+        isOpen={verificationModalOpen}
+        onClose={() => setVerificationModalOpen(false)}
+        currentDocRecord={activeVerifiedDoc}
+        onOpenPublicPreview={(rec) => setPublicPortalPreviewDoc(rec)}
+      />
+
+      {/* In-App Public Portal Read-Only Preview Modal */}
+      {publicPortalPreviewDoc && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <OfficeDocPublicPortalView
+            record={publicPortalPreviewDoc}
+            onClose={() => setPublicPortalPreviewDoc(null)}
+          />
+        </div>
+      )}
     </div>
   );
 };
