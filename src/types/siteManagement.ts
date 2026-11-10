@@ -293,6 +293,8 @@ export interface ContractorRABill {
   paymentStatus: 'Draft' | 'Certified' | 'Paid';
   voucherNo?: string;
   remarks?: string;
+  linkedBoqItemId?: string;
+  tenderBoqQuantity?: number;
 }
 
 // ============================================================================
@@ -338,6 +340,8 @@ export interface CubeTestRecord {
   labName?: string;
   remarks?: string;
   linkedMilestoneId?: string;
+  mixRatio?: string;
+  pourVolumeM3?: number;
 }
 
 // ============================================================================

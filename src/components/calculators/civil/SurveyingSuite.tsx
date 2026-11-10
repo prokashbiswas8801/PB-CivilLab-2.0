@@ -22,6 +22,8 @@ import {
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 import { formatFeetInches } from '../../../utils/unitConverter';
 
+import { CivilWorkspace, SurveyingParameters } from '../../../types/civil';
+
 export interface LevelingRow {
   id: string;
   station: string;
@@ -46,6 +48,9 @@ export interface SurveyingSuiteProps {
   onExportPdf?: () => void;
   onExportCsv?: () => void;
   onSaveToHistory?: (record?: any) => void;
+  activeWorkspace?: CivilWorkspace;
+  onUpdateSurveying?: (params: Partial<SurveyingParameters>) => void;
+  onTransferToEarthworkAndBoq?: (landAreaSqM: number, excavationVolumeM3: number, formationRL?: number) => void;
 }
 
 export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
@@ -53,37 +58,50 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
   onExportPdf,
   onExportCsv,
   onSaveToHistory,
+  activeWorkspace,
+  onUpdateSurveying,
+  onTransferToEarthworkAndBoq,
 }) => {
   const [activeTab, setActiveTab] = useState<'land-area' | 'leveling-sheet'>('land-area');
 
   /* -------------------------------------------------------------------------
      SUB-MODULE 1: IRREGULAR LAND AREA CALCULATOR
   -------------------------------------------------------------------------- */
-  const [landCalcMode, setLandCalcMode] = useState<'3-sided' | '4-sided' | 'polygon'>('4-sided');
-  const [inputUnit, setInputUnit] = useState<'ft' | 'm'>('ft');
-  const [customKathaSqFt, setCustomKathaSqFt] = useState<number>(720); // 720 standard Bangladesh/Bengal, 1361.25 Bihar
+  const [landCalcMode, setLandCalcMode] = useState<'3-sided' | '4-sided' | 'polygon'>(
+    () => activeWorkspace?.surveying?.landCalcMode || '4-sided'
+  );
+  const [inputUnit, setInputUnit] = useState<'ft' | 'm'>(
+    () => activeWorkspace?.surveying?.inputUnit || 'ft'
+  );
+  const [customKathaSqFt, setCustomKathaSqFt] = useState<number>(
+    () => activeWorkspace?.surveying?.customKathaSqFt || 720
+  );
 
   // 3-Sided (Heron's Formula)
-  const [sideA, setSideA] = useState<number>(120);
-  const [sideB, setSideB] = useState<number>(150);
-  const [sideC, setSideC] = useState<number>(180);
+  const [sideA, setSideA] = useState<number>(() => activeWorkspace?.surveying?.triSides?.a || 120);
+  const [sideB, setSideB] = useState<number>(() => activeWorkspace?.surveying?.triSides?.b || 150);
+  const [sideC, setSideC] = useState<number>(() => activeWorkspace?.surveying?.triSides?.c || 180);
 
   // 4-Sided (Quadrilateral with diagonal)
   // Triangle 1: side 1, side 2, diagonal; Triangle 2: side 3, side 4, diagonal
-  const [quadSide1, setQuadSide1] = useState<number>(85); // North side
-  const [quadSide2, setQuadSide2] = useState<number>(110); // East side
-  const [quadSide3, setQuadSide3] = useState<number>(90); // South side
-  const [quadSide4, setQuadSide4] = useState<number>(105); // West side
-  const [quadDiagonal, setQuadDiagonal] = useState<number>(140); // Diagonal tie line
+  const [quadSide1, setQuadSide1] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s1 || 85);
+  const [quadSide2, setQuadSide2] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s2 || 110);
+  const [quadSide3, setQuadSide3] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s3 || 90);
+  const [quadSide4, setQuadSide4] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s4 || 105);
+  const [quadDiagonal, setQuadDiagonal] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.diag || 140);
 
   // Multi-point Coordinate Polygon (Shoelace Algorithm)
-  const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([
-    { id: 'p1', x: 0, y: 0 },
-    { id: 'p2', x: 120, y: 15 },
-    { id: 'p3', x: 150, y: 110 },
-    { id: 'p4', x: 45, y: 130 },
-    { id: 'p5', x: 0, y: 80 },
-  ]);
+  const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>(() =>
+    activeWorkspace?.surveying?.polygonPoints && activeWorkspace.surveying.polygonPoints.length >= 3
+      ? activeWorkspace.surveying.polygonPoints
+      : [
+          { id: 'p1', x: 0, y: 0 },
+          { id: 'p2', x: 120, y: 15 },
+          { id: 'p3', x: 150, y: 110 },
+          { id: 'p4', x: 45, y: 130 },
+          { id: 'p5', x: 0, y: 80 },
+        ]
+  );
 
   // Compute area in input units squared (ft² or m²)
   const rawComputedArea = useMemo(() => {
@@ -166,16 +184,36 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
      SUB-MODULE 2: RISE & FALL / HEIGHT OF INSTRUMENT (HI) LEVELING SHEET
   -------------------------------------------------------------------------- */
   const [levelingMethod, setLevelingMethod] = useState<'height-of-instrument' | 'rise-and-fall'>('height-of-instrument');
-  const [initialBenchmarkRL, setInitialBenchmarkRL] = useState<number>(100.0);
+  const [initialBenchmarkRL, setInitialBenchmarkRL] = useState<number>(
+    () => (activeWorkspace?.surveying?.benchmarkRL && activeWorkspace.surveying.benchmarkRL > 0) ? activeWorkspace.surveying.benchmarkRL : 100.0
+  );
+  const [formationRL, setFormationRL] = useState<number>(
+    () => activeWorkspace?.surveying?.formationRL || 99.50
+  );
 
-  const [levelingRows, setLevelingRows] = useState<LevelingRow[]>([
-    { id: 'st-01', station: 'BM 1', backsight: 1.450, intermediateSight: undefined, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: undefined, reducedLevel: 100.0, remarks: 'Benchmark on culvert parapet' },
-    { id: 'st-02', station: 'CH 0+000', backsight: undefined, intermediateSight: 1.820, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.370, reducedLevel: 99.630, remarks: 'Centerline road start' },
-    { id: 'st-03', station: 'CH 0+020', backsight: undefined, intermediateSight: 2.150, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.330, reducedLevel: 99.300, remarks: 'Natural ground' },
-    { id: 'st-04', station: 'CP 1', backsight: 2.380, intermediateSight: undefined, foresight: 2.890, heightOfInstrument: 100.940, rise: undefined, fall: 0.740, reducedLevel: 98.560, remarks: 'Change Point on peg' },
-    { id: 'st-05', station: 'CH 0+040', backsight: undefined, intermediateSight: 1.620, foresight: undefined, heightOfInstrument: 100.940, rise: 0.760, fall: undefined, reducedLevel: 99.320, remarks: 'Drain bed invert' },
-    { id: 'st-06', station: 'TBM 2', backsight: undefined, intermediateSight: undefined, foresight: 1.250, heightOfInstrument: 100.940, rise: 0.370, fall: undefined, reducedLevel: 99.690, remarks: 'Closing temporary BM' },
-  ]);
+  const [levelingRows, setLevelingRows] = useState<LevelingRow[]>(() =>
+    activeWorkspace?.surveying?.stations && activeWorkspace.surveying.stations.length > 0
+      ? activeWorkspace.surveying.stations.map((s) => ({
+          id: s.id,
+          station: s.stationName,
+          backsight: s.backsight,
+          intermediateSight: s.intermediateSight,
+          foresight: s.foresight,
+          heightOfInstrument: s.heightOfInstrument,
+          rise: s.rise,
+          fall: s.fall,
+          reducedLevel: s.reducedLevel,
+          remarks: s.remarks,
+        }))
+      : [
+          { id: 'st-01', station: 'BM 1', backsight: 1.450, intermediateSight: undefined, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: undefined, reducedLevel: 100.0, remarks: 'Benchmark on culvert parapet' },
+          { id: 'st-02', station: 'CH 0+000', backsight: undefined, intermediateSight: 1.820, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.370, reducedLevel: 99.630, remarks: 'Centerline road start' },
+          { id: 'st-03', station: 'CH 0+020', backsight: undefined, intermediateSight: 2.150, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.330, reducedLevel: 99.300, remarks: 'Natural ground' },
+          { id: 'st-04', station: 'CP 1', backsight: 2.380, intermediateSight: undefined, foresight: 2.890, heightOfInstrument: 100.940, rise: undefined, fall: 0.740, reducedLevel: 98.560, remarks: 'Change Point on peg' },
+          { id: 'st-05', station: 'CH 0+040', backsight: undefined, intermediateSight: 1.620, foresight: undefined, heightOfInstrument: 100.940, rise: 0.760, fall: undefined, reducedLevel: 99.320, remarks: 'Drain bed invert' },
+          { id: 'st-06', station: 'TBM 2', backsight: undefined, intermediateSight: undefined, foresight: 1.250, heightOfInstrument: 100.940, rise: 0.370, fall: undefined, reducedLevel: 99.690, remarks: 'Closing temporary BM' },
+        ]
+  );
 
   // Compute Leveling Table dynamically according to standard surveying physics
   const computedLeveling = useMemo(() => {
@@ -276,6 +314,100 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
       lastRL,
     };
   }, [levelingRows, initialBenchmarkRL]);
+
+  // Compute station-by-station Cut / Fill and earthwork volume based on formation level
+  const earthworkCutFillSummary = useMemo(() => {
+    const rows = computedLeveling.rows;
+    if (rows.length === 0) {
+      return { totalCutM3: 0, totalFillM3: 0, netVolumeM3: 0, avgCutDepthM: 0, avgFillDepthM: 0, governingType: 'Cut' };
+    }
+
+    let totalCutDepth = 0;
+    let cutCount = 0;
+    let totalFillDepth = 0;
+    let fillCount = 0;
+
+    for (const r of rows) {
+      const diff = r.reducedLevel - formationRL;
+      if (diff > 0.001) {
+        totalCutDepth += diff;
+        cutCount++;
+      } else if (diff < -0.001) {
+        totalFillDepth += Math.abs(diff);
+        fillCount++;
+      }
+    }
+
+    const avgCutDepth = cutCount > 0 ? totalCutDepth / cutCount : 0;
+    const avgFillDepth = fillCount > 0 ? totalFillDepth / fillCount : 0;
+
+    const effectiveArea = areaSqM > 0 ? areaSqM : 100;
+    const totalCutM3 = Number((effectiveArea * (cutCount / rows.length) * avgCutDepth).toFixed(2));
+    const totalFillM3 = Number((effectiveArea * (fillCount / rows.length) * avgFillDepth).toFixed(2));
+    const netVolumeM3 = Number(Math.abs(totalCutM3 - totalFillM3).toFixed(2));
+
+    return {
+      totalCutM3,
+      totalFillM3,
+      netVolumeM3,
+      governingType: totalCutM3 >= totalFillM3 ? 'Cut' : 'Fill',
+      avgCutDepthM: Number(avgCutDepth.toFixed(3)),
+      avgFillDepthM: Number(avgFillDepth.toFixed(3)),
+    };
+  }, [computedLeveling.rows, formationRL, areaSqM]);
+
+  // Auto-persist calculated surveying geometry and leveling grid into active workspace
+  React.useEffect(() => {
+    if (onUpdateSurveying) {
+      onUpdateSurveying({
+        computedAreaSqM: Number(areaSqM.toFixed(2)),
+        computedAreaSqFt: Number(areaSqFt.toFixed(2)),
+        computedExcavationVolumeM3: earthworkCutFillSummary.netVolumeM3,
+        formationRL,
+        landCalcMode,
+        inputUnit,
+        customKathaSqFt,
+        triSides: { a: sideA, b: sideB, c: sideC },
+        quadSides: { s1: quadSide1, s2: quadSide2, s3: quadSide3, s4: quadSide4, diag: quadDiagonal },
+        polygonPoints,
+        benchmarkRL: initialBenchmarkRL,
+        method: levelingMethod,
+        stations: computedLeveling.rows.map((r) => ({
+          id: r.id,
+          stationName: r.station,
+          backsight: r.backsight,
+          intermediateSight: r.intermediateSight,
+          foresight: r.foresight,
+          heightOfInstrument: r.heightOfInstrument,
+          rise: r.rise,
+          fall: r.fall,
+          reducedLevel: r.reducedLevel,
+          remarks: r.remarks,
+        })),
+      });
+    }
+  }, [
+    areaSqM,
+    areaSqFt,
+    earthworkCutFillSummary.netVolumeM3,
+    formationRL,
+    landCalcMode,
+    inputUnit,
+    customKathaSqFt,
+    sideA,
+    sideB,
+    sideC,
+    quadSide1,
+    quadSide2,
+    quadSide3,
+    quadSide4,
+    quadDiagonal,
+    polygonPoints,
+    initialBenchmarkRL,
+    levelingMethod,
+    computedLeveling.rows,
+    onUpdateSurveying,
+  ]);
 
   // Add / Duplicate / Delete Leveling Row
   const handleAddLevelingRow = () => {
@@ -592,6 +724,40 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
           >
             Differential Leveling (HI &amp; Rise-Fall)
           </button>
+        </div>
+        {/* Real Computed Surveying & Earthwork Pipeline Summary */}
+        <div className="bg-gradient-to-r from-emerald-950/20 via-teal-950/20 to-transparent border border-emerald-500/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 mt-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600/15 text-emerald-500 flex items-center justify-center shrink-0">
+              <Compass className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                  Field Surveying &amp; Earthwork Takeoff Pipeline
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  Live Data Link
+                </span>
+              </div>
+              <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span>Land Area: <strong className="text-[var(--md-sys-color-on-surface)]">{areaSqM.toFixed(1)} m²</strong> ({areaSqFt.toFixed(1)} sq.ft / {conversions.katha} katha)</span>
+                <span>Formation RL: <strong className="text-[var(--md-sys-color-on-surface)]">{formationRL.toFixed(3)} m</strong></span>
+                <span>Cut / Fill Volume: <strong className="text-[var(--md-sys-color-on-surface)]">{earthworkCutFillSummary.netVolumeM3} m³</strong> ({earthworkCutFillSummary.governingType})</span>
+              </div>
+            </div>
+          </div>
+
+          {onTransferToEarthworkAndBoq && (
+            <button
+              type="button"
+              onClick={() => onTransferToEarthworkAndBoq(areaSqM, earthworkCutFillSummary.netVolumeM3, formationRL)}
+              className="touch-target-48 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer flex items-center gap-2 shadow-xs transition-transform active:scale-95"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Transfer to BOQ &amp; Earthwork</span>
+            </button>
+          )}
         </div>
       </div>
 

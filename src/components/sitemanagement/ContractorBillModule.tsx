@@ -24,6 +24,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useSiteManagement } from '../../context/SiteManagementContext';
+import { useCivilLab } from '../../context/CivilLabContext';
 import { ContractorRABill } from '../../types/siteManagement';
 
 const COMMON_TRADES = [
@@ -51,6 +52,7 @@ export const ContractorBillModule: React.FC = () => {
     financialSummary,
     addPettyCashEntry,
   } = useSiteManagement();
+  const { activeWorkspace } = useCivilLab();
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,6 +80,8 @@ export const ContractorBillModule: React.FC = () => {
   const [voucherNo, setVoucherNo] = useState('');
   const [remarks, setRemarks] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<'Draft' | 'Certified' | 'Paid'>('Draft');
+  const [linkedBoqItemId, setLinkedBoqItemId] = useState<string>('');
+  const [tenderBoqQuantity, setTenderBoqQuantity] = useState<number | undefined>(undefined);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -127,6 +131,8 @@ export const ContractorBillModule: React.FC = () => {
     setVoucherNo(`V-RA-${nextSeq.toString().padStart(2, '0')}`);
     setRemarks('');
     setPaymentStatus('Draft');
+    setLinkedBoqItemId('');
+    setTenderBoqQuantity(undefined);
     setIsFormOpen(true);
   };
 
@@ -148,7 +154,30 @@ export const ContractorBillModule: React.FC = () => {
     setVoucherNo(bill.voucherNo || '');
     setRemarks(bill.remarks || '');
     setPaymentStatus(bill.paymentStatus);
+    setLinkedBoqItemId(bill.linkedBoqItemId || '');
+    setTenderBoqQuantity(bill.tenderBoqQuantity);
     setIsFormOpen(true);
+  };
+
+  // Link selected BOQ line item to auto-populate trade, unit, rate and tender budget
+  const handleSelectBoqItem = (itemId: string) => {
+    setLinkedBoqItemId(itemId);
+    if (!itemId) {
+      setTenderBoqQuantity(undefined);
+      return;
+    }
+    const boqItem = activeWorkspace.boq.items.find((it) => it.id === itemId);
+    if (boqItem) {
+      const tenderQty =
+        boqItem.numberOfMembers * boqItem.lengthM * boqItem.widthM * boqItem.heightM -
+        (boqItem.deductionQty || 0);
+      setTenderBoqQuantity(Number(tenderQty.toFixed(2)));
+      setWorkTrade(`${boqItem.itemNo}: ${boqItem.description}`);
+      setUnit(boqItem.unit === 'm3' ? 'm³' : boqItem.unit === 'm2' ? 'Sq.Ft' : boqItem.unit);
+      if (boqItem.unitRate > 0) {
+        setContractRate(boqItem.unitRate);
+      }
+    }
   };
 
   // When contractor or trade changes in form, auto-fill previous cumulative qty from last bill
@@ -218,6 +247,8 @@ export const ContractorBillModule: React.FC = () => {
       paymentStatus,
       voucherNo: voucherNo.trim() || undefined,
       remarks: remarks.trim() || undefined,
+      linkedBoqItemId: linkedBoqItemId || undefined,
+      tenderBoqQuantity: tenderBoqQuantity,
     };
 
     if (editingBill) {
@@ -571,6 +602,19 @@ export const ContractorBillModule: React.FC = () => {
                       <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
                         Prev: {bill.previousMeasuredQty.toLocaleString()} • Total: {bill.totalCumulativeQty.toLocaleString()}
                       </div>
+                      {bill.tenderBoqQuantity !== undefined && (
+                        <div className="mt-1">
+                          {bill.totalCumulativeQty > bill.tenderBoqQuantity ? (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold">
+                              ⚠️ Over-run ({bill.totalCumulativeQty.toLocaleString()} / {bill.tenderBoqQuantity.toLocaleString()})
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                              ✓ Tender: {bill.tenderBoqQuantity.toLocaleString()} {bill.unit}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     {/* Current Gross */}
@@ -773,6 +817,38 @@ export const ContractorBillModule: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Link to BOQ Tender Item */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Link to BOQ Tender Item (Continuous Tracking)</span>
+                    </label>
+                    {tenderBoqQuantity !== undefined && (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 font-semibold">
+                        Tender Ceiling: {tenderBoqQuantity.toLocaleString()} {unit}
+                      </span>
+                    )}
+                  </div>
+                  <select
+                    value={linkedBoqItemId}
+                    onChange={(e) => handleSelectBoqItem(e.target.value)}
+                    className="w-full px-4 py-2 rounded-full text-xs bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] font-serif"
+                  >
+                    <option value="">-- Manual Site Trade (Not linked to BOQ) --</option>
+                    {activeWorkspace.boq.items.map((it) => {
+                      const qty =
+                        it.numberOfMembers * it.lengthM * it.widthM * it.heightM -
+                        (it.deductionQty || 0);
+                      return (
+                        <option key={it.id} value={it.id}>
+                          {it.itemNo}: {it.description} (Tender: {qty.toFixed(1)} {it.unit} @ ৳{it.unitRate})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1.5">
                     Work Trade / Scope
@@ -799,6 +875,15 @@ export const ContractorBillModule: React.FC = () => {
                     Total Qty: {totalQtyCalc.toLocaleString()} {unit}
                   </span>
                 </div>
+
+                {tenderBoqQuantity !== undefined && totalQtyCalc > tenderBoqQuantity && (
+                  <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>
+                      <strong>BOQ Quantity Over-run:</strong> Total measured {totalQtyCalc.toLocaleString()} {unit} exceeds tender ceiling {tenderBoqQuantity.toLocaleString()} {unit} by {(totalQtyCalc - tenderBoqQuantity).toLocaleString()} {unit} ({((totalQtyCalc / tenderBoqQuantity - 1) * 100).toFixed(1)}% excess).
+                    </span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>

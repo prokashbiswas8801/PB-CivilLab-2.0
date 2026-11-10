@@ -724,6 +724,17 @@ export interface SurveyingParameters {
   station2Name: string;
   easting2M: number;
   northing2M: number;
+  // Computed Land Area & Earthwork Cut/Fill Persistence
+  landCalcMode?: '3-sided' | '4-sided' | 'polygon';
+  inputUnit?: 'ft' | 'm';
+  computedAreaSqM?: number;
+  computedAreaSqFt?: number;
+  computedExcavationVolumeM3?: number;
+  formationRL?: number;
+  polygonPoints?: Array<{ id: string; x: number; y: number }>;
+  triSides?: { a: number; b: number; c: number };
+  quadSides?: { s1: number; s2: number; s3: number; s4: number; diag: number };
+  customKathaSqFt?: number;
 }
 
 export interface CalculationRecord {

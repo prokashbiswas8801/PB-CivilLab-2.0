@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileSpreadsheet,
   Plus,
@@ -287,31 +287,31 @@ export interface BoqEstimatorInputsProps {
   customUnits: CustomUnitDefinition[];
   getFieldUnit: (fieldKey: string, category: UnitCategoryKey, fallbackUnitId: string) => string;
   updateFieldUnit: (fieldKey: string, unitId: string) => void;
-  editingTakeoffItemId: string | null;
-  setEditingTakeoffItemId: (id: string | null) => void;
-  itemNo: string;
-  setItemNo: (val: string) => void;
-  itemDesc: string;
-  setItemDesc: (val: string) => void;
-  itemCategory: TakeoffCategory;
-  setItemCategory: (val: TakeoffCategory) => void;
-  itemUnit: TakeoffUnit;
-  setItemUnit: (val: TakeoffUnit) => void;
-  itemMembers: number;
-  setItemMembers: (val: number) => void;
-  itemLength: number;
-  setItemLength: (val: number) => void;
-  itemWidth: number;
-  setItemWidth: (val: number) => void;
-  itemHeight: number;
-  setItemHeight: (val: number) => void;
-  itemDeduction: number;
-  setItemDeduction: (val: number) => void;
-  itemWastage: number;
-  setItemWastage: (val: number) => void;
-  itemUnitRate: number;
-  setItemUnitRate: (val: number) => void;
-  onSaveTakeoffItem: (e: React.FormEvent) => void;
+  editingTakeoffItemId?: string | null;
+  setEditingTakeoffItemId?: (id: string | null) => void;
+  itemNo?: string;
+  setItemNo?: (val: string) => void;
+  itemDesc?: string;
+  setItemDesc?: (val: string) => void;
+  itemCategory?: TakeoffCategory;
+  setItemCategory?: (val: TakeoffCategory) => void;
+  itemUnit?: TakeoffUnit;
+  setItemUnit?: (val: TakeoffUnit) => void;
+  itemMembers?: number;
+  setItemMembers?: (val: number) => void;
+  itemLength?: number;
+  setItemLength?: (val: number) => void;
+  itemWidth?: number;
+  setItemWidth?: (val: number) => void;
+  itemHeight?: number;
+  setItemHeight?: (val: number) => void;
+  itemDeduction?: number;
+  setItemDeduction?: (val: number) => void;
+  itemWastage?: number;
+  setItemWastage?: (val: number) => void;
+  itemUnitRate?: number;
+  setItemUnitRate?: (val: number) => void;
+  onSaveTakeoffItem?: (e: React.FormEvent) => void;
   onApplyRateToBOQ: () => void;
   onClearAllBOQItems: () => void;
   onLoadSampleBOQItems: () => void;
@@ -337,27 +337,27 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   updateFieldUnit,
   editingTakeoffItemId,
   setEditingTakeoffItemId,
-  itemNo,
+  itemNo: propItemNo,
   setItemNo,
-  itemDesc,
+  itemDesc: propItemDesc,
   setItemDesc,
-  itemCategory,
+  itemCategory: propItemCategory,
   setItemCategory,
-  itemUnit,
+  itemUnit: propItemUnit,
   setItemUnit,
-  itemMembers,
+  itemMembers: propItemMembers,
   setItemMembers,
-  itemLength,
+  itemLength: propItemLength,
   setItemLength,
-  itemWidth,
+  itemWidth: propItemWidth,
   setItemWidth,
-  itemHeight,
+  itemHeight: propItemHeight,
   setItemHeight,
-  itemDeduction,
+  itemDeduction: propItemDeduction,
   setItemDeduction,
-  itemWastage,
+  itemWastage: propItemWastage,
   setItemWastage,
-  itemUnitRate,
+  itemUnitRate: propItemUnitRate,
   setItemUnitRate,
   onSaveTakeoffItem,
   onApplyRateToBOQ,
@@ -375,6 +375,145 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   itemDurationMonths = 2,
   setItemDurationMonths,
 }) => {
+  // Encapsulated Form State
+  const [internalEditingId, setInternalEditingId] = useState<string | null>(null);
+  const [internalItemNo, setInternalItemNo] = useState('');
+  const [internalItemDesc, setInternalItemDesc] = useState('');
+  const [internalItemCategory, setInternalItemCategory] = useState<TakeoffCategory>('substructure');
+  const [internalItemMembers, setInternalItemMembers] = useState(1);
+  const [internalItemLength, setInternalItemLength] = useState(0);
+  const [internalItemWidth, setInternalItemWidth] = useState(0);
+  const [internalItemHeight, setInternalItemHeight] = useState(0);
+  const [internalItemDeduction, setInternalItemDeduction] = useState(0);
+  const [internalItemUnit, setInternalItemUnit] = useState<TakeoffUnit>('m3');
+  const [internalItemWastage, setInternalItemWastage] = useState(3.0);
+  const [internalItemUnitRate, setInternalItemUnitRate] = useState(0);
+
+  const activeEditingId = editingTakeoffItemId !== undefined ? editingTakeoffItemId : internalEditingId;
+  const setActiveEditingId = setEditingTakeoffItemId || setInternalEditingId;
+
+  const itemNo = propItemNo !== undefined ? propItemNo : internalItemNo;
+  const setItemNoAction = setItemNo || setInternalItemNo;
+
+  const itemDesc = propItemDesc !== undefined ? propItemDesc : internalItemDesc;
+  const setItemDescAction = setItemDesc || setInternalItemDesc;
+
+  const itemCategory = propItemCategory !== undefined ? propItemCategory : internalItemCategory;
+  const setItemCategoryAction = setItemCategory || setInternalItemCategory;
+
+  const itemUnit = propItemUnit !== undefined ? propItemUnit : internalItemUnit;
+  const setItemUnitAction = setItemUnit || setInternalItemUnit;
+
+  const itemMembers = propItemMembers !== undefined ? propItemMembers : internalItemMembers;
+  const setItemMembersAction = setItemMembers || setInternalItemMembers;
+
+  const itemLength = propItemLength !== undefined ? propItemLength : internalItemLength;
+  const setItemLengthAction = setItemLength || setInternalItemLength;
+
+  const itemWidth = propItemWidth !== undefined ? propItemWidth : internalItemWidth;
+  const setItemWidthAction = setItemWidth || setInternalItemWidth;
+
+  const itemHeight = propItemHeight !== undefined ? propItemHeight : internalItemHeight;
+  const setItemHeightAction = setItemHeight || setInternalItemHeight;
+
+  const itemDeduction = propItemDeduction !== undefined ? propItemDeduction : internalItemDeduction;
+  const setItemDeductionAction = setItemDeduction || setInternalItemDeduction;
+
+  const itemWastage = propItemWastage !== undefined ? propItemWastage : internalItemWastage;
+  const setItemWastageAction = setItemWastage || setInternalItemWastage;
+
+  const itemUnitRate = propItemUnitRate !== undefined ? propItemUnitRate : internalItemUnitRate;
+  const setItemUnitRateAction = setItemUnitRate || setInternalItemUnitRate;
+
+  useEffect(() => {
+    if (activeEditingId) {
+      const it = activeWorkspace.boq.items.find((item) => item.id === activeEditingId);
+      if (it) {
+        setItemNoAction(it.itemNo);
+        setItemDescAction(it.description);
+        setItemCategoryAction(it.category);
+        setItemUnitAction(it.unit);
+        setItemMembersAction(it.numberOfMembers);
+        setItemLengthAction(it.lengthM);
+        setItemWidthAction(it.widthM);
+        setItemHeightAction(it.heightM);
+        setItemDeductionAction(it.deductionQty);
+        setItemWastageAction(it.wastagePercent);
+        setItemUnitRateAction(it.unitRate);
+      }
+    }
+  }, [activeEditingId, activeWorkspace.boq.items]);
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onSaveTakeoffItem) {
+      onSaveTakeoffItem(e);
+      return;
+    }
+    if (!itemDesc.trim()) return;
+
+    if (activeEditingId) {
+      updateActiveWorkspace((ws) => ({
+        ...ws,
+        boq: {
+          ...ws.boq,
+          items: ws.boq.items.map((it) =>
+            it.id === activeEditingId
+              ? {
+                  ...it,
+                  itemNo: itemNo.trim() || it.itemNo,
+                  description: itemDesc.trim(),
+                  category: itemCategory,
+                  numberOfMembers: Math.max(0, itemMembers),
+                  lengthM: itemLength,
+                  widthM: itemWidth,
+                  heightM: itemHeight,
+                  deductionQty: itemDeduction,
+                  unit: itemUnit,
+                  wastagePercent: itemWastage,
+                  unitRate: itemUnitRate,
+                }
+              : it
+          ),
+        },
+      }));
+    } else {
+      const newItem: TakeoffLineItem = {
+        id: `takeoff-${Math.random().toString(36).substring(2, 9)}`,
+        itemNo: itemNo.trim() || `${activeWorkspace.boq.items.length + 1}.01`,
+        description: itemDesc.trim(),
+        category: itemCategory,
+        numberOfMembers: Math.max(0, itemMembers),
+        lengthM: itemLength,
+        widthM: itemWidth,
+        heightM: itemHeight,
+        deductionQty: itemDeduction,
+        unit: itemUnit,
+        wastagePercent: itemWastage,
+        unitRate: itemUnitRate,
+      };
+      updateActiveWorkspace((ws) => ({
+        ...ws,
+        boq: {
+          ...ws.boq,
+          items: [...ws.boq.items, newItem],
+        },
+      }));
+    }
+
+    // Reset Form
+    setActiveEditingId(null);
+    setItemNoAction('');
+    setItemDescAction('');
+    setItemMembersAction(1);
+    setItemLengthAction(0);
+    setItemWidthAction(0);
+    setItemHeightAction(0);
+    setItemDeductionAction(0);
+    setItemWastageAction(3.0);
+    setItemUnitRateAction(0);
+  };
+
   const currentLibraryId = activeWorkspace.boq?.rateLibraryId || 'pwd-2024';
   const currentDistrictId = activeWorkspace.boq?.regionalDistrictId || 'dhaka';
   const activeDistrict = REGIONAL_DISTRICT_ADJUSTMENTS.find((d) => d.id === currentDistrictId) || REGIONAL_DISTRICT_ADJUSTMENTS[0];
@@ -411,10 +550,10 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
     if (setSelectedWbsSectionId) setSelectedWbsSectionId(secId);
     const sec = STANDARD_WBS_SECTIONS.find((s) => s.id === secId);
     if (sec) {
-      setItemCategory(sec.category);
+      setItemCategoryAction(sec.category);
       if (!itemNo || itemNo.includes('.')) {
         const matchingCount = activeWorkspace.boq.items.filter((it) => it.wbsSectionId === secId).length;
-        setItemNo(`${sec.code}.${String(matchingCount + 1).padStart(2, '0')}`);
+        setItemNoAction(`${sec.code}.${String(matchingCount + 1).padStart(2, '0')}`);
       }
     }
   };
@@ -599,15 +738,15 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
       </div>
 
       {/* Item Creator Form */}
-      <form onSubmit={onSaveTakeoffItem} className="p-3.5 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] space-y-3">
+      <form onSubmit={handleFormSubmit} className="p-3.5 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-            {editingTakeoffItemId ? 'Edit Takeoff Line Item' : 'Append Takeoff Line Item'}
+            {activeEditingId ? 'Edit Takeoff Line Item' : 'Append Takeoff Line Item'}
           </h3>
-          {editingTakeoffItemId && (
+          {activeEditingId && (
             <button
               type="button"
-              onClick={() => setEditingTakeoffItemId(null)}
+              onClick={() => setActiveEditingId(null)}
               className="text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:underline cursor-pointer"
             >
               Cancel Edit
@@ -640,7 +779,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             <input
               type="text"
               value={itemNo}
-              onChange={(e) => setItemNo(e.target.value)}
+              onChange={(e) => setItemNoAction(e.target.value)}
               placeholder="e.g. 200.01"
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
             />
@@ -651,7 +790,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             <input
               type="text"
               value={itemDesc}
-              onChange={(e) => setItemDesc(e.target.value)}
+              onChange={(e) => setItemDescAction(e.target.value)}
               placeholder="e.g. Foundation earth excavation in all soils"
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs"
               required
@@ -664,7 +803,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1">Trade Category</label>
             <select
               value={itemCategory}
-              onChange={(e) => setItemCategory(e.target.value as TakeoffCategory)}
+              onChange={(e) => setItemCategoryAction(e.target.value as TakeoffCategory)}
               className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
             >
               <option value="earthwork">Earthwork</option>
@@ -683,7 +822,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1">Unit</label>
             <select
               value={itemUnit}
-              onChange={(e) => setItemUnit(e.target.value as TakeoffUnit)}
+              onChange={(e) => setItemUnitAction(e.target.value as TakeoffUnit)}
               className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
             >
               <option value="m3">m³ (Cubic Meter)</option>
@@ -715,7 +854,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               value={itemMembers}
               onChange={(e) => {
                 const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemMembers(isNaN(val) ? 0 : val);
+                setItemMembersAction(isNaN(val) ? 0 : val);
               }}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
                 itemMembers === 0
@@ -732,7 +871,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             label="Length L"
             category="length"
             siValue={itemLength}
-            onChangeSI={(val) => setItemLength(val)}
+            onChangeSI={(val) => setItemLengthAction(val)}
             currentUnitId={getFieldUnit('boq.itemL', 'length', 'm')}
             onUnitChange={(u) => updateFieldUnit('boq.itemL', u)}
             customUnits={customUnits}
@@ -742,7 +881,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             label="Width W"
             category="length"
             siValue={itemWidth}
-            onChangeSI={(val) => setItemWidth(val)}
+            onChangeSI={(val) => setItemWidthAction(val)}
             currentUnitId={getFieldUnit('boq.itemW', 'length', 'm')}
             onUnitChange={(u) => updateFieldUnit('boq.itemW', u)}
             customUnits={customUnits}
@@ -752,7 +891,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
             label="Height H"
             category="length"
             siValue={itemHeight}
-            onChangeSI={(val) => setItemHeight(val)}
+            onChangeSI={(val) => setItemHeightAction(val)}
             currentUnitId={getFieldUnit('boq.itemH', 'length', 'm')}
             onUnitChange={(u) => updateFieldUnit('boq.itemH', u)}
             customUnits={customUnits}
@@ -773,7 +912,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               value={itemDeduction}
               onChange={(e) => {
                 const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemDeduction(isNaN(val) ? 0 : val);
+                setItemDeductionAction(isNaN(val) ? 0 : val);
               }}
               className={`w-full touch-target-48 px-2 rounded-lg border font-mono text-xs transition-colors ${
                 itemDeduction === 0
@@ -801,7 +940,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               value={itemWastage}
               onChange={(e) => {
                 const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemWastage(isNaN(val) ? 0 : val);
+                setItemWastageAction(isNaN(val) ? 0 : val);
               }}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
                 itemWastage === 0
@@ -825,7 +964,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               {rateAnalysisResult && (
                 <button
                   type="button"
-                  onClick={() => setItemUnitRate(itemUnit === 'cft' ? rateAnalysisResult.unitRatePerCft : rateAnalysisResult.unitRatePerM3)}
+                  onClick={() => setItemUnitRateAction(itemUnit === 'cft' ? rateAnalysisResult.unitRatePerCft : rateAnalysisResult.unitRatePerM3)}
                   className="text-[10px] text-[var(--md-sys-color-primary)] font-bold underline cursor-pointer shrink-0"
                   title="Import calculated rate from Rate Analysis Workbench"
                 >
@@ -839,7 +978,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               value={itemUnitRate}
               onChange={(e) => {
                 const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemUnitRate(isNaN(val) ? 0 : val);
+                setItemUnitRateAction(isNaN(val) ? 0 : val);
               }}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
                 itemUnitRate === 0

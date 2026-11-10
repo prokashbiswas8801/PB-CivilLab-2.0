@@ -372,3 +372,189 @@ export function computeRebarSuggestions(params: ElementInputParameters): RebarSu
     },
   };
 }
+
+/* --------------------------------------------------------------------------
+   BNBC 2020 / ACI 318-19 BEAM FLEXURAL & SHEAR REINFORCEMENT DESIGN ENGINE
+--------------------------------------------------------------------------- */
+
+export interface BeamFlexureDesignInput {
+  governingMomentKnm: number; // Factored design moment Mu (sagging)
+  governingShearKn?: number; // Factored design shear Vu
+  spanLengthM: number;
+  widthMm?: number; // section width b
+  depthMm?: number; // overall section height h
+  concreteGradeFckMpa?: number; // f'c default 25 MPa
+  steelGradeFyMpa?: number; // fy default 420 MPa (Grade 60)
+  clearCoverMm?: number; // default 40 mm
+  isContinuous?: boolean;
+  hoggingMomentKnm?: number; // negative design moment over supports
+}
+
+export interface BeamBarSelection {
+  diaMm: number;
+  count: number;
+  asProvidedMm2: number;
+  asRequiredMm2: number;
+  layers: number;
+}
+
+export interface BeamStirrupSelection {
+  diaMm: number;
+  spacingMm: number;
+  legs: number;
+  totalCount: number;
+}
+
+export interface BeamFlexureDesignResult {
+  widthMm: number;
+  depthMm: number;
+  effectiveDepthMm: number;
+  asRequiredMm2: number;
+  asMinMm2: number;
+  steelRatioPercent: number;
+  bottomBars: BeamBarSelection;
+  topBars: BeamBarSelection;
+  stirrups: BeamStirrupSelection;
+  codeReference: string;
+}
+
+export function computeBeamFlexureAndShearDesign(
+  input: BeamFlexureDesignInput
+): BeamFlexureDesignResult {
+  const widthMm = Math.max(150, input.widthMm || 250);
+  const depthMm = Math.max(250, input.depthMm || 500);
+  const spanLengthM = Math.max(1.0, input.spanLengthM || 5.0);
+  const fck = Math.max(15, input.concreteGradeFckMpa || 25);
+  const fy = Math.max(250, input.steelGradeFyMpa || 420);
+  const cover = Math.max(25, input.clearCoverMm || 40);
+  const muSagging = Math.max(0.1, Math.abs(input.governingMomentKnm || 25.0));
+  const muHogging = input.hoggingMomentKnm ? Math.max(0, Math.abs(input.hoggingMomentKnm)) : 0;
+  const vuKn = input.governingShearKn !== undefined ? Math.abs(input.governingShearKn) : (muSagging * 4) / spanLengthM;
+
+  // Approximate effective depth (assuming 10mm stirrup and ~16-20mm main bar)
+  const d = Math.max(150, depthMm - cover - 10 - 10);
+
+  // Helper for flexural tension steel As per ACI 318-19 / BNBC 2020
+  const solveAs = (muKnm: number) => {
+    const phi = 0.90; // Tension-controlled flexure reduction factor
+    const muNmm = muKnm * 1e6;
+    const rn = muNmm / (phi * widthMm * d * d);
+
+    // Beta 1 factor
+    const m = fy / (0.85 * fck);
+    const discriminant = Math.max(0, 1 - (2 * m * rn) / fy);
+    const rhoCalculated = (1 / m) * (1 - Math.sqrt(discriminant));
+
+    // Minimum steel ratio per BNBC 2020 Sec 8.2 / ACI 318-19 Table 9.6.1.2
+    const rhoMin1 = (0.25 * Math.sqrt(fck)) / fy;
+    const rhoMin2 = 1.4 / fy;
+    const rhoMin = Math.max(rhoMin1, rhoMin2);
+
+    // Maximum steel ratio (0.85 * beta1 * fc/fy * (0.003 / (0.003 + 0.005)))
+    const beta1 = fck <= 28 ? 0.85 : Math.max(0.65, 0.85 - (0.05 * (fck - 28)) / 7);
+    const rhoMax = 0.85 * beta1 * (fck / fy) * (0.003 / 0.008);
+
+    const rhoGov = Math.min(rhoMax, Math.max(rhoCalculated, rhoMin));
+    const asReq = Math.round(rhoGov * widthMm * d);
+
+    return { asReq, asMin: Math.round(rhoMin * widthMm * d), rhoGov };
+  };
+
+  const sagging = solveAs(muSagging);
+  const hogging = muHogging > 0 ? solveAs(muHogging) : null;
+
+  // Practical bar selector: choose from [16, 20, 25, 12] mm bars
+  const selectBarCombination = (asReqMm2: number, minBars: number = 2, maxBars: number = 5): BeamBarSelection => {
+    const candidates = [16, 20, 25, 12];
+    let bestSelection: BeamBarSelection = {
+      diaMm: 16,
+      count: minBars,
+      asProvidedMm2: Math.round(minBars * ((Math.PI * 16 * 16) / 4)),
+      asRequiredMm2: asReqMm2,
+      layers: 1,
+    };
+    let minOverdesign = Infinity;
+
+    for (const dia of candidates) {
+      const barArea = (Math.PI * dia * dia) / 4;
+      let count = Math.max(minBars, Math.ceil(asReqMm2 / barArea));
+      if (count > maxBars) continue;
+
+      const asProvided = Math.round(count * barArea);
+      const overdesign = asProvided - asReqMm2;
+
+      // Prefer 2 to 4 bars with reasonable excess
+      if (asProvided >= asReqMm2 && overdesign < minOverdesign) {
+        minOverdesign = overdesign;
+        bestSelection = {
+          diaMm: dia,
+          count,
+          asProvidedMm2: asProvided,
+          asRequiredMm2: asReqMm2,
+          layers: count > 4 ? 2 : 1,
+        };
+      }
+    }
+    return bestSelection;
+  };
+
+  // Bottom Tension Steel
+  const bottomBars = selectBarCombination(sagging.asReq, 2, 5);
+
+  // Top Steel: If hogging moment exists, design for hogging; otherwise 2 hanger bars (Ø12mm or Ø16mm)
+  let topBars: BeamBarSelection;
+  if (hogging && hogging.asReq > 0) {
+    topBars = selectBarCombination(hogging.asReq, 2, 4);
+  } else {
+    // Nominal top hanger bars (minimum 2-Ø12mm or 2-Ø16mm)
+    const hangerDia = depthMm >= 550 ? 16 : 12;
+    const hangerArea = Math.round(2 * ((Math.PI * hangerDia * hangerDia) / 4));
+    topBars = {
+      diaMm: hangerDia,
+      count: 2,
+      asProvidedMm2: hangerArea,
+      asRequiredMm2: sagging.asMin,
+      layers: 1,
+    };
+  }
+
+  // Shear Stirrup Design per BNBC 2020 / ACI 318-19
+  // Vc = 0.17 * sqrt(f'c) * b * d (in N) = ... * 1e-3 (in kN)
+  const vcKn = 0.17 * Math.sqrt(fck) * widthMm * d * 1e-3;
+  const phiV = 0.75;
+  const vsReqKn = Math.max(0, vuKn / phiV - vcKn);
+
+  const stirrupDia = 8; // standard 8mm or 10mm shear tie
+  const avMm2 = 2 * ((Math.PI * stirrupDia * stirrupDia) / 4); // 2 legs = 100.5 mm²
+
+  let stirrupSpacing = 150;
+  if (vsReqKn > 0) {
+    // s = (Av * fy * d) / (Vs * 1000)
+    const rawSpacing = (avMm2 * fy * d) / (vsReqKn * 1000);
+    stirrupSpacing = Math.min(200, Math.max(100, Math.floor(rawSpacing / 25) * 25));
+  } else {
+    // Nominal maximum spacing: min(d/2, 200mm)
+    stirrupSpacing = Math.min(200, Math.max(100, Math.floor((d / 2) / 25) * 25));
+  }
+
+  const totalStirrups = Math.max(5, Math.round((spanLengthM * 1000) / stirrupSpacing) + 1);
+
+  return {
+    widthMm,
+    depthMm,
+    effectiveDepthMm: Math.round(d),
+    asRequiredMm2: sagging.asReq,
+    asMinMm2: sagging.asMin,
+    steelRatioPercent: Number((sagging.rhoGov * 100).toFixed(2)),
+    bottomBars,
+    topBars,
+    stirrups: {
+      diaMm: stirrupDia,
+      spacingMm: stirrupSpacing,
+      legs: 2,
+      totalCount: totalStirrups,
+    },
+    codeReference: 'BNBC-2020 Sec 8.2 / ACI 318-19 Strength Design',
+  };
+}
+

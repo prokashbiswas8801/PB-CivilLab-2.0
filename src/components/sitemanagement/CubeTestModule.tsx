@@ -24,6 +24,7 @@ import {
   FileCheck2,
 } from 'lucide-react';
 import { useSiteManagement } from '../../context/SiteManagementContext';
+import { useCivilLab } from '../../context/CivilLabContext';
 import { CubeTestRecord, ConcreteGrade, CubeTestStatus } from '../../types/siteManagement';
 
 const CONCRETE_GRADES: Array<{ grade: ConcreteGrade; targetMpa: number; targetPsi: number; mixRatio: string }> = [
@@ -44,6 +45,7 @@ export const CubeTestModule: React.FC = () => {
     deleteCubeTestRecord,
     addMilestoneTask,
   } = useSiteManagement();
+  const { activeWorkspace } = useCivilLab();
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,6 +124,35 @@ export const CubeTestModule: React.FC = () => {
     setIsPourModalOpen(true);
   };
 
+  // 1-Click Sync: Import Active Concrete Mix Design directly as a Pour Sample
+  const handleImportActiveMixPour = () => {
+    const conc = activeWorkspace.concrete;
+    const targetFc = conc.targetStrengthMpa || 25;
+    const vol = conc.batchVolumeM3 || 10;
+    const slump = conc.slumpMm || 100;
+    const ratio = `1 : ${conc.sandRatio || 1.5} : ${conc.stoneRatio || 3.0}`;
+
+    let matchedGrade: ConcreteGrade = 'M25';
+    if (targetFc <= 17) matchedGrade = 'M15';
+    else if (targetFc <= 22) matchedGrade = 'M20';
+    else if (targetFc <= 27) matchedGrade = 'M25';
+    else if (targetFc <= 32) matchedGrade = 'M30';
+    else if (targetFc <= 37) matchedGrade = 'M35';
+    else matchedGrade = 'M40';
+
+    const nextSeq = siteData.cubeTests.length + 1;
+    setEditingCube(null);
+    setPourId(`POUR-${nextSeq.toString().padStart(3, '0')}`);
+    setCastingDate(new Date().toISOString().split('T')[0]);
+    setStructuralElement(`Superstructure Casting Batch (${vol} m³)`);
+    setConcreteGrade(matchedGrade);
+    setSlumpMm(slump);
+    setLabName('Central Site Quality Testing Lab');
+    setRemarks(`Auto-synced from ACI 211 Concrete Mix Design (${targetFc} MPa target, mix ratio ${ratio}, batch ${vol} m³).`);
+    setIsPourModalOpen(true);
+    showToast(`Loaded ACI 211 Concrete Mix (${targetFc} MPa, ${vol} m³) into Pour Register.`);
+  };
+
   // Open Record Test Results Modal
   const handleOpenRecordResult = (cube: CubeTestRecord) => {
     setTestedRecord(cube);
@@ -150,6 +181,8 @@ export const CubeTestModule: React.FC = () => {
       status: 'Scheduled' as const,
       labName: labName.trim() || 'Central Quality Lab',
       remarks: remarks.trim() || undefined,
+      mixRatio: `1 : ${activeWorkspace.concrete?.sandRatio || 1.5} : ${activeWorkspace.concrete?.stoneRatio || 3.0}`,
+      pourVolumeM3: activeWorkspace.concrete?.batchVolumeM3 || 10,
     };
 
     if (editingCube) {
@@ -311,6 +344,17 @@ export const CubeTestModule: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {activeWorkspace.concrete && (
+            <button
+              type="button"
+              onClick={handleImportActiveMixPour}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold border border-teal-500/50 hover:bg-teal-500/10 text-teal-600 dark:text-teal-400 transition-all shadow-sm"
+              title="Import active ACI 211 concrete mix design directly as a fresh site pour"
+            >
+              <Sparkles className="w-4 h-4 text-teal-500" />
+              <span>Sync Active Mix ({activeWorkspace.concrete.targetStrengthMpa || 25} MPa)</span>
+            </button>
+          )}
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-medium border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] transition-all shadow-sm"
