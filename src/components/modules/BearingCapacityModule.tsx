@@ -17,7 +17,9 @@ import {
   Copy,
   Check,
   Info,
+  MapPin,
 } from 'lucide-react';
+import { getAllBangladeshDistricts } from '../../data/bangladeshDistricts';
 
 export interface BearingCapacityInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -164,32 +166,66 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
         ))}
       </div>
 
-      {/* Geotechnical Quick Presets Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1">
-          Soil Presets:
-        </span>
-        <button
-          type="button"
-          onClick={() => applyGeotechPreset(1.8, 1.5, 650, 15, 26, 18.0, 3.5, 'square')}
-          className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
-        >
-          Sandy Clay (1.8m)
-        </button>
-        <button
-          type="button"
-          onClick={() => applyGeotechPreset(2.4, 2.0, 1100, 0, 34, 19.5, 4.0, 'square')}
-          className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
-        >
-          Dense Sand (2.4m)
-        </button>
-        <button
-          type="button"
-          onClick={() => applyGeotechPreset(1.5, 1.2, 450, 22, 18, 17.0, 0.8, 'square')}
-          className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
-        >
-          High GWT Wet Clay
-        </button>
+      {/* Geotechnical Quick Presets & BD District Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 py-1 px-1 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1">
+            Soil Presets:
+          </span>
+          <button
+            type="button"
+            onClick={() => applyGeotechPreset(1.8, 1.5, 650, 15, 26, 18.0, 3.5, 'square')}
+            className="min-h-[30px] px-2.5 py-0.5 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
+          >
+            Sandy Clay (1.8m)
+          </button>
+          <button
+            type="button"
+            onClick={() => applyGeotechPreset(2.4, 2.0, 1100, 0, 34, 19.5, 4.0, 'square')}
+            className="min-h-[30px] px-2.5 py-0.5 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
+          >
+            Dense Sand (2.4m)
+          </button>
+          <button
+            type="button"
+            onClick={() => applyGeotechPreset(1.5, 1.2, 450, 22, 18, 17.0, 0.8, 'square')}
+            className="min-h-[30px] px-2.5 py-0.5 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
+          >
+            High GWT Wet Clay
+          </button>
+        </div>
+
+        {/* Bangladesh 64 District Geotech Preset */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <MapPin className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+          <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)]">BD District:</span>
+          <select
+            value={activeWorkspace.bearing.selectedDistrictId || ''}
+            onChange={(e) => {
+              const distId = e.target.value;
+              const districts = getAllBangladeshDistricts();
+              const found = districts.find((d) => d.id === distId);
+              if (found) {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  bearing: {
+                    ...ws.bearing,
+                    selectedDistrictId: found.id,
+                    waterTableDepthM: found.typicalWaterTableM,
+                  },
+                }));
+              }
+            }}
+            className="min-h-[30px] px-2 py-0.5 rounded-md border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+          >
+            <option value="">Select District (64 Districts)...</option>
+            {getAllBangladeshDistricts().map((dist) => (
+              <option key={dist.id} value={dist.id}>
+                {dist.name} ({dist.bengaliName}) - GWT ~{dist.typicalWaterTableM}m
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Tab Group 1: Footing Geometry & Solver Method */}
@@ -717,6 +753,72 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               designTip="When GWT is within B below footing base, the second surcharge term is interpolated using buoyant unit weight."
             />
           </div>
+
+          {/* Geotechnical Borehole SPT N-Value & Meyerhof Empirical Assessment (BNBC-2020 §3.7) */}
+          <div className="p-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold font-mono text-[var(--md-sys-color-primary)]">
+                Borehole Field Standard Penetration Test (SPT N-Value) &amp; Overburden Correction
+              </span>
+              <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                BNBC 2020 Part 6 §3.7 / Meyerhof (1965, 1976)
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-semibold mb-1">Field Borehole SPT N (Uncorrected)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="70"
+                  value={activeWorkspace.bearing.boreholeFieldSptN ?? (activeWorkspace.bearing.sptN60 || 16)}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      bearing: { ...ws.bearing, boreholeFieldSptN: val, sptN60: val },
+                    }));
+                  }}
+                  className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                />
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+                  Raw blows from sub-soil investigation borehole report
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold mb-1">Hammer Efficiency (Em)</label>
+                <select
+                  value={activeWorkspace.bearing.hammerEfficiency ?? 0.60}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      bearing: { ...ws.bearing, hammerEfficiency: val },
+                    }));
+                  }}
+                  className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                >
+                  <option value="0.55">Donut Hammer (Em = 0.55 - BD Traditional)</option>
+                  <option value="0.60">Safety Hammer (Em = 0.60 - Standard N60)</option>
+                  <option value="0.75">Automatic Trip Hammer (Em = 0.75 - High Energy)</option>
+                </select>
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+                  Em energy ratio for N60 correction
+                </span>
+              </div>
+
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[11px] font-mono flex flex-col justify-center">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Overburden Correction &amp; Method:</span>
+                <span className="font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+                  Liao &amp; Whitman: CN = min(2.0, √(98 / σ'v))
+                </span>
+                <span className="text-[10px] text-[var(--md-sys-color-primary)]">
+                  Meyerhof empirical q_all calculated for 25mm settlement
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1043,6 +1145,63 @@ export const BearingCapacityMetrics: React.FC<BearingCapacityMetricsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Geotechnical Borehole SPT N60 & Meyerhof Empirical Assessment Card */}
+      {result.correctedSptN60 !== undefined && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              <span>Borehole SPT N60 &amp; Meyerhof Empirical Bearing (25mm Settlement Benchmark)</span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
+              BNBC-2020 Part 6 §3.7 / Bowles Eq. 4-40
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs font-mono pt-1">
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Field SPT N (Raw)</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">{result.rawSptN ?? 15} blows</strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Em = {((result.hammerEfficiency ?? 0.6) * 100).toFixed(0)}%</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Overburden Factor CN</span>
+              <strong className="text-sm text-[var(--md-sys-color-primary)] mt-0.5 block">{result.overburdenCorrectionCn?.toFixed(2) ?? '1.00'}</strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Liao &amp; Whitman</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Corrected SPT N60</span>
+              <strong className="text-sm text-sky-600 dark:text-sky-400 mt-0.5 block">{result.correctedSptN60} blows/30cm</strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Energy + Overburden</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Meyerhof SPT q_all (25mm)</span>
+              <strong className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                {result.empiricalSptAllowableKpa !== undefined ? `${result.empiricalSptAllowableKpa.toFixed(1)} kPa` : '—'}
+              </strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Permissible settlement</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Empirical DCR</span>
+              <strong className={`text-sm mt-0.5 block ${
+                result.empiricalSptAllowableKpa && result.appliedPressureKpa <= result.empiricalSptAllowableKpa
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-amber-600 dark:text-amber-400'
+              }`}>
+                {result.empiricalSptAllowableKpa
+                  ? `${((result.appliedPressureKpa / result.empiricalSptAllowableKpa) * 100).toFixed(1)}%`
+                  : '—'}
+              </strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">q_app / q_all,SPT</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Side-by-Side Solver Comparison Card */}
       {result.methodComparison && (

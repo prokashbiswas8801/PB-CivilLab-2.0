@@ -82,6 +82,116 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Bangladeshi Regional Construction Materials & Aggregate Selector (PWD / BNBC-2020) */}
+      <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
+            <Layers className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+            <span>Bangladeshi Construction Materials &amp; Aggregate Schedule (BNBC-2020 / PWD)</span>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
+            Dry Volume Factor: {activeWorkspace.concrete.coarseAggregateType === 'brick-chips-khoa' ? '1.50 (Brick Khoa)' : '1.54 (Stone Chips)'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+          {/* Coarse Aggregate Selection */}
+          <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-1.5">
+            <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+              Coarse Aggregate Type
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    concrete: {
+                      ...ws.concrete,
+                      coarseAggregateType: 'crushed-stone',
+                      dryVolumeFactor: 1.54,
+                      coarseAggSpecificGravity: 2.67,
+                      coarseAggDryRoddedDensityKgPerM3: 1600,
+                      coarseAggAbsorptionPercent: 1.0,
+                    },
+                  }));
+                }}
+                className={`p-2 rounded-lg border text-left cursor-pointer transition-all ${
+                  (activeWorkspace.concrete.coarseAggregateType ?? 'crushed-stone') === 'crushed-stone' || activeWorkspace.concrete.coarseAggregateType === 'crushed-stone-chips'
+                    ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/25 text-[var(--md-sys-color-primary)] font-bold'
+                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]'
+                }`}
+              >
+                <div className="text-xs">Crushed Stone Chips</div>
+                <div className="text-[10px] font-normal opacity-80 mt-0.5">Pakur / Bholaganj (1.54 factor, SG 2.67, 1% abs)</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    concrete: {
+                      ...ws.concrete,
+                      coarseAggregateType: 'brick-chips-khoa',
+                      dryVolumeFactor: 1.50,
+                      coarseAggSpecificGravity: 2.15,
+                      coarseAggDryRoddedDensityKgPerM3: 1400,
+                      coarseAggAbsorptionPercent: 10.0,
+                    },
+                  }));
+                }}
+                className={`p-2 rounded-lg border text-left cursor-pointer transition-all ${
+                  activeWorkspace.concrete.coarseAggregateType === 'brick-chips-khoa'
+                    ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/25 text-[var(--md-sys-color-primary)] font-bold'
+                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]'
+                }`}
+              >
+                <div className="text-xs">Picked Jhama Khoa</div>
+                <div className="text-[10px] font-normal opacity-80 mt-0.5">1st Class Brick (1.50 factor, SG 2.15, 10% abs)</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Fine Aggregate Sand Selection */}
+          <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-1.5">
+            <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)]">
+              Fine Aggregate Sand Grade (Fineness Modulus FM)
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: 'sylhet-sand', label: 'Sylhet Sand', fm: 2.65, subtitle: 'FM 2.5–2.8' },
+                { id: 'local-sand', label: 'Local Sand', fm: 1.50, subtitle: 'FM 1.2–1.8' },
+                { id: 'blended-sand', label: 'Blended Sand', fm: 2.20, subtitle: 'FM 2.2' },
+              ].map((sand) => (
+                <button
+                  key={sand.id}
+                  type="button"
+                  onClick={() => {
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      concrete: {
+                        ...ws.concrete,
+                        sandType: sand.id as any,
+                        sandFinenessModulus: sand.fm,
+                      },
+                    }));
+                  }}
+                  className={`p-1.5 rounded-md border text-center cursor-pointer transition-all ${
+                    (activeWorkspace.concrete.sandType ?? 'sylhet-sand') === sand.id
+                      ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/25 text-[var(--md-sys-color-primary)] font-bold'
+                      : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]'
+                  }`}
+                >
+                  <div className="text-[11px]">{sand.label}</div>
+                  <div className="text-[9px] font-normal opacity-80 mt-0.5">{sand.subtitle}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Primary Mix Specifications */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <UnitInput

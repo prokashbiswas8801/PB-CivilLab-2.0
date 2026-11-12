@@ -258,6 +258,52 @@ export interface PdfExportEngineOptions {
   filename?: string;
 }
 
+let cachedNikoshBase64: string | null = null;
+
+/**
+ * Loads Nikosh TrueType font as base64 string from local precache or web for jsPDF
+ */
+export async function loadNikoshFontBase64(): Promise<string | null> {
+  if (cachedNikoshBase64) return cachedNikoshBase64;
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const res = await fetch('/fonts/Nikosh.ttf');
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSz = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSz) {
+      const slice = bytes.subarray(i, Math.min(i + chunkSz, bytes.length));
+      binary += String.fromCharCode.apply(null, slice as any);
+    }
+    cachedNikoshBase64 = btoa(binary);
+    return cachedNikoshBase64;
+  } catch (err) {
+    console.warn('[PDF Font] Unable to load Nikosh.ttf offline font into jsPDF:', err);
+    return null;
+  }
+}
+
+/**
+ * Registers Nikosh into jsPDF virtual file system if available
+ */
+export async function registerNikoshFontIfAvailable(doc: jsPDF): Promise<boolean> {
+  try {
+    const base64 = await loadNikoshFontBase64();
+    if (base64) {
+      doc.addFileToVFS('Nikosh.ttf', base64);
+      doc.addFont('Nikosh.ttf', 'Nikosh', 'normal');
+      doc.addFont('Nikosh.ttf', 'Nikosh', 'bold');
+      return true;
+    }
+  } catch (err) {
+    console.warn('[PDF Font] Error registering Nikosh into jsPDF:', err);
+  }
+  return false;
+}
+
 // ============================================================================
 // 4. PROFESSIONAL ENGINEERING PDF GENERATOR (jsPDF + jspdf-autotable + QRCode)
 // ============================================================================
@@ -287,6 +333,8 @@ export async function generateEngineeringPDF(
     unit: 'mm',
     format: 'a4',
   });
+
+  const hasNikoshFont = await registerNikoshFontIfAvailable(doc);
 
   const pageWidth = 210;
   const pageHeight = 297;

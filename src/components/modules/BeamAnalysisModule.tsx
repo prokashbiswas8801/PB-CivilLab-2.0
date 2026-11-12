@@ -10,24 +10,11 @@ import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
 import { HelpCircle, Activity, Wind, ChevronDown, ChevronUp, ArrowDownToLine, Check } from 'lucide-react';
 
-const BANGLADESH_DISTRICT_LOADS: Record<string, {
-  basicWindSpeedMs: number;
-  seismicZone: 'Zone 1 (Z=0.12)' | 'Zone 2 (Z=0.20)' | 'Zone 3 (Z=0.28)' | 'Zone 4 (Z=0.36)';
-  zVal: number;
-}> = {
-  Dhaka: { basicWindSpeedMs: 65.7, seismicZone: 'Zone 2 (Z=0.20)', zVal: 0.20 },
-  Chittagong: { basicWindSpeedMs: 80.0, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
-  "Cox's Bazar": { basicWindSpeedMs: 80.0, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
-  Sylhet: { basicWindSpeedMs: 61.1, seismicZone: 'Zone 4 (Z=0.36)', zVal: 0.36 },
-  Khulna: { basicWindSpeedMs: 73.3, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
-  Rajshahi: { basicWindSpeedMs: 49.3, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
-  Barisal: { basicWindSpeedMs: 78.7, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
-  Mymensingh: { basicWindSpeedMs: 67.4, seismicZone: 'Zone 4 (Z=0.36)', zVal: 0.36 },
-  Rangpur: { basicWindSpeedMs: 57.4, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
-  Comilla: { basicWindSpeedMs: 66.7, seismicZone: 'Zone 2 (Z=0.20)', zVal: 0.20 },
-  Bogra: { basicWindSpeedMs: 61.9, seismicZone: 'Zone 3 (Z=0.28)', zVal: 0.28 },
-  Jessore: { basicWindSpeedMs: 65.0, seismicZone: 'Zone 1 (Z=0.12)', zVal: 0.12 },
-};
+import {
+  BANGLADESH_DISTRICTS,
+  getBangladeshDistrict,
+  getDistrictsByDivision,
+} from '../../data/bangladeshDistricts';
 
 export interface BeamAnalysisInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -308,7 +295,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
 
         {showSeismicWindHelper && (() => {
           const selDistrict = activeWorkspace.beam.windDistrict || 'Dhaka';
-          const distData = BANGLADESH_DISTRICT_LOADS[selDistrict] || BANGLADESH_DISTRICT_LOADS.Dhaka;
+          const distData = getBangladeshDistrict(selDistrict) || BANGLADESH_DISTRICTS.dhaka;
           const currentZone = activeWorkspace.beam.seismicZone || distData.seismicZone;
           let zVal = distData.zVal;
           if (currentZone.includes('0.12') || currentZone.includes('Zone 1')) zVal = 0.12;
@@ -316,7 +303,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
           else if (currentZone.includes('0.28') || currentZone.includes('Zone 3')) zVal = 0.28;
           else if (currentZone.includes('0.36') || currentZone.includes('Zone 4')) zVal = 0.36;
 
-          const soilClass = activeWorkspace.beam.siteSoilClass || 'SC';
+          const soilClass = activeWorkspace.beam.siteSoilClass || distData.typicalSoilClass || 'SD';
           const soilFactorS = soilClass === 'SA' ? 1.0 : soilClass === 'SB' ? 1.2 : soilClass === 'SC' ? 1.15 : soilClass === 'SD' ? 1.35 : 1.40;
           const importanceI = activeWorkspace.beam.seismicImportanceI ?? 1.0;
           const reductionR = Math.max(1.0, activeWorkspace.beam.responseReductionR ?? 5.0);
@@ -334,35 +321,42 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
           const designWindPressKpa = Number((qzKpa * 1.105).toFixed(2));
           const beamWindUdlKnPerM = Number((designWindPressKpa * tribWidth).toFixed(2));
 
+          const districtsByDiv = getDistrictsByDivision();
+
           return (
             <div className="p-3.5 border-t border-[var(--md-sys-color-outline-variant)] space-y-3 bg-[var(--md-sys-color-surface)]">
               {/* Controls Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-semibold mb-1">Bangladesh District</label>
+                  <label className="block text-[11px] font-semibold mb-1">Bangladesh District (64 Districts)</label>
                   <select
                     value={selDistrict}
                     onChange={(e) => {
                       const district = e.target.value;
-                      const entry = BANGLADESH_DISTRICT_LOADS[district];
+                      const entry = getBangladeshDistrict(district);
                       if (entry) {
                         updateActiveWorkspace((ws) => ({
                           ...ws,
                           beam: {
                             ...ws.beam,
-                            windDistrict: district,
+                            windDistrict: entry.name,
                             basicWindSpeedMs: entry.basicWindSpeedMs,
                             seismicZone: entry.seismicZone,
+                            siteSoilClass: entry.typicalSoilClass,
                           },
                         }));
                       }
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
                   >
-                    {Object.keys(BANGLADESH_DISTRICT_LOADS).map((d) => (
-                      <option key={d} value={d}>
-                        {d} ({BANGLADESH_DISTRICT_LOADS[d].seismicZone.split(' ')[0]}, {BANGLADESH_DISTRICT_LOADS[d].basicWindSpeedMs} m/s)
-                      </option>
+                    {Object.entries(districtsByDiv).map(([division, dists]) => (
+                      <optgroup key={division} label={`${division} Division`}>
+                        {dists.map((d) => (
+                          <option key={d.id} value={d.name}>
+                            {d.name} ({d.bengaliName}) — {d.seismicZone.split(' ')[0]}, {d.basicWindSpeedMs} m/s
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>

@@ -66,6 +66,8 @@ import {
   Layers,
   ClipboardCheck,
   ScrollText,
+  MoreVertical,
+  Info,
 } from 'lucide-react';
 import {
   exportAnalyticalScheduleCsv,
@@ -97,6 +99,7 @@ import {
   UserProfile,
   UserCustomPreferences,
   EngineeringPreset,
+  ValidationIssue,
 } from './types/civil';
 import { useTheme } from './context/ThemeContext';
 import {
@@ -393,6 +396,8 @@ export default function App() {
   const [isTableCompact, setIsTableCompact] = useState(false);
   const [denseTableSearch, setDenseTableSearch] = useState('');
   const [showGoverningEquations, setShowGoverningEquations] = useState(false);
+  const [exportToolsMenuOpen, setExportToolsMenuOpen] = useState(false);
+  const exportToolsRef = useRef<HTMLDivElement>(null);
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [activeReportQr, setActiveReportQr] = useState<GeneratedReportQrResult | null>(null);
   const [verifiedReportRecord, setVerifiedReportRecord] = useState<PublicEngineeringReportRecord | null>(null);
@@ -665,24 +670,155 @@ export default function App() {
         return computePileCapacity(activeWorkspace.pile || defaultPile);
       case 'pipe-hydraulics':
         return computePipeHydraulics(activeWorkspace.pipe || defaultPipe);
-      case 'surveying-suite':
+      case 'surveying-suite': {
+        const surv = activeWorkspace.surveying;
+        const area = surv?.computedAreaSqM || 0;
+        const vol = surv?.computedExcavationVolumeM3 || 0;
+        const rowsCount = surv?.stations?.length || 0;
         return {
           status: 'valid' as const,
           issues: [],
           result: {
             title: 'Surveying Field Leveling & Land Area',
-            summary: 'Differential Leveling Arithmetic Check & Irregular Area Computations',
+            summary: `Polygon Area: ${area.toFixed(1)} m², Excavation: ${vol.toFixed(1)} m³, ${rowsCount} Leveling Stations`,
             status: 'valid',
+            computedAreaSqM: area,
+            computedExcavationVolumeM3: vol,
+            levelingRowsCount: rowsCount,
           },
         };
-      case 'store-inventory':
-      case 'material-requisition':
+      }
+      case 'store-inventory': {
+        const negativeStock = siteData.inventory.filter((i) => i.currentStock < 0);
+        const lowStock = siteData.inventory.filter((i) => i.currentStock <= i.minThreshold && i.currentStock >= 0);
+        const totalValuation = siteData.inventory.reduce((sum, i) => sum + Math.max(0, i.currentStock) * i.unitRate, 0);
+        const issues: ValidationIssue[] = [];
+        if (negativeStock.length > 0) {
+          issues.push({
+            field: 'inventory',
+            message: `Negative stock detected on ${negativeStock.length} materials (${negativeStock.map((i) => i.name).join(', ')})`,
+            severity: 'error',
+          });
+        }
+        if (lowStock.length > 0) {
+          issues.push({
+            field: 'inventory',
+            message: `${lowStock.length} items at or below reorder threshold`,
+            severity: 'warning',
+          });
+        }
+        return {
+          status: negativeStock.length > 0 ? ('invalid' as const) : lowStock.length > 0 ? ('warning' as const) : ('valid' as const),
+          issues,
+          result: {
+            moduleId: activeModule,
+            title: 'Store Inventory & Materials Ledger',
+            status: negativeStock.length > 0 ? 'invalid' : 'valid',
+            totalItems: siteData.inventory.length,
+            totalValuation,
+            lowStockCount: lowStock.length,
+            negativeStockCount: negativeStock.length,
+          },
+        };
+      }
+      case 'material-requisition': {
+        const criticalPending = siteData.requisitions.filter(
+          (r) => r.urgency === 'Critical' && r.status !== 'Received' && r.status !== 'Cancelled'
+        );
+        const issues: ValidationIssue[] = [];
+        if (criticalPending.length > 0) {
+          issues.push({
+            field: 'requisitions',
+            message: `${criticalPending.length} Critical site requisitions pending procurement approval`,
+            severity: 'warning',
+          });
+        }
+        return {
+          status: criticalPending.length > 0 ? ('warning' as const) : ('valid' as const),
+          issues,
+          result: {
+            moduleId: activeModule,
+            title: 'Material Indent & Requisitions',
+            status: 'valid',
+            totalRequisitions: siteData.requisitions.length,
+            criticalCount: criticalPending.length,
+          },
+        };
+      }
+      case 'contractor-bills': {
+        const overruns = siteData.raBills.filter(
+          (b) => b.tenderBoqQuantity && b.totalCumulativeQty && b.totalCumulativeQty > b.tenderBoqQuantity
+        );
+        const issues: ValidationIssue[] = [];
+        if (overruns.length > 0) {
+          issues.push({
+            field: 'raBills',
+            message: `${overruns.length} RA Bills exceed baseline tender BOQ quantity`,
+            severity: 'warning',
+          });
+        }
+        return {
+          status: overruns.length > 0 ? ('warning' as const) : ('valid' as const),
+          issues,
+          result: {
+            moduleId: activeModule,
+            title: 'Sub-Contractor RA Billing Suite',
+            status: overruns.length > 0 ? 'warning' : 'valid',
+            totalBills: siteData.raBills.length,
+            overrunCount: overruns.length,
+          },
+        };
+      }
+      case 'petty-cash': {
+        const balance = financialSummary.pettyCashBalance;
+        const issues: ValidationIssue[] = [];
+        if (balance < 0) {
+          issues.push({
+            field: 'pettyCash',
+            message: `Petty Cash deficit! Negative balance: ৳${Math.abs(balance).toLocaleString()}`,
+            severity: 'error',
+          });
+        }
+        return {
+          status: balance < 0 ? ('invalid' as const) : ('valid' as const),
+          issues,
+          result: {
+            moduleId: activeModule,
+            title: 'Site Petty Cash & Imprest',
+            status: balance < 0 ? 'invalid' : 'valid',
+            balance,
+            totalSpent: financialSummary.totalPettyCashSpent,
+            transactionCount: siteData.pettyCash.length,
+          },
+        };
+      }
+      case 'cube-tests': {
+        const failed28d = siteData.cubeTests.filter(
+          (c) => c.day28StrengthMPa != null && c.day28StrengthMPa < c.targetStrengthMPa
+        );
+        const issues: ValidationIssue[] = [];
+        if (failed28d.length > 0) {
+          issues.push({
+            field: 'cubeTests',
+            message: `${failed28d.length} Concrete cube/cylinder specimens failed specified 28-day design strength f'c!`,
+            severity: 'error',
+          });
+        }
+        return {
+          status: failed28d.length > 0 ? ('invalid' as const) : ('valid' as const),
+          issues,
+          result: {
+            moduleId: activeModule,
+            title: 'Concrete Cylinder & Cube Compressive Test Register',
+            status: failed28d.length > 0 ? 'invalid' : 'valid',
+            totalCubes: siteData.cubeTests.length,
+            failedCount: failed28d.length,
+          },
+        };
+      }
       case 'schedule-roster':
       case 'labor-attendance':
       case 'field-notebook':
-      case 'contractor-bills':
-      case 'petty-cash':
-      case 'cube-tests':
       case 'daily-progress-report':
       case 'office-docs':
         return {
@@ -692,6 +828,9 @@ export default function App() {
             moduleId: activeModule,
             title: MODULE_META[activeModule]?.label || 'Site Management ERP',
             status: 'valid',
+            workersCount: siteData.workers.length,
+            milestonesCount: siteData.milestones.length,
+            notesCount: siteData.fieldNotes.length,
           },
         };
       default:
@@ -713,6 +852,9 @@ export default function App() {
     activeWorkspace.continuousBeam,
     activeWorkspace.pile,
     activeWorkspace.pipe,
+    activeWorkspace.surveying,
+    siteData,
+    financialSummary,
     defaultContinuousBeam,
     defaultPile,
     defaultPipe,
@@ -748,7 +890,7 @@ export default function App() {
       continuousBeamMaxMomentKnm?: number;
       surveyingLandAreaSqM?: number;
     } = {
-      surveyingLandAreaSqM: 100,
+      surveyingLandAreaSqM: activeWorkspace.surveying?.computedAreaSqM || 0,
     };
 
     if (activeModule === 'rebar-bbs') {
@@ -782,7 +924,7 @@ export default function App() {
       res.continuousBeamMaxMomentKnm = (currentEnvelope.result as any)?.maxSaggingMomentKnm;
     }
     return res;
-  }, [isDashboardView, activeModule, currentEnvelope, activeWorkspace.rebarBbs]);
+  }, [isDashboardView, activeModule, currentEnvelope, activeWorkspace.rebarBbs, activeWorkspace.surveying]);
 
   const updateActiveWorkspace = useCallback((updater: (ws: CivilWorkspace) => CivilWorkspace) => {
     // Push current activeWorkspace to undo stack (capped at 25 snapshots)
@@ -940,6 +1082,71 @@ export default function App() {
   }, []);
 
   // --------------------------------------------------------------------------
+  // DETERMINISTIC UNIT SYSTEM SWITCHING & QUICK-TOGGLE ENGINE
+  // Preserves base SI numerical values while converting UI inputs, outputs & tables
+  // --------------------------------------------------------------------------
+  const handleSelectUnitPreset = useCallback((preset: UnitSystemPreset) => {
+    setIsUnitSystemTransitioning(true);
+    setUnitTransitionKey((prev) => prev + 1);
+
+    // 1. Synchronize authoritative global workbench context
+    if (preset === 'imperial') {
+      workbench.setUnitSystem('Imperial');
+    } else if (preset === 'regional') {
+      workbench.setUnitSystem('Regional');
+    } else {
+      workbench.setUnitSystem('SI');
+    }
+
+    // 2. Update active workspace unitPreferences without mutating underlying base values
+    updateActiveWorkspace((ws) => {
+      const currentPreset = ws.unitPreferences?.systemPreset || 'metric';
+      if (currentPreset === preset) return ws;
+
+      const nextFieldUnits: Record<string, string> = {};
+      const nextOutputUnits: Record<string, string> = {};
+
+      const nextPresetKey = preset === 'imperial' || preset === 'regional' ? preset : 'metric';
+      Object.keys(SYSTEM_PRESET_UNITS[nextPresetKey]).forEach((catKey) => {
+        const targetUnit = SYSTEM_PRESET_UNITS[nextPresetKey][catKey as UnitCategoryKey];
+        if (targetUnit) {
+          nextFieldUnits[catKey] = targetUnit;
+          nextOutputUnits[catKey] = targetUnit;
+        }
+      });
+
+      return {
+        ...ws,
+        unitPreferences: {
+          systemPreset: preset,
+          fieldUnits: nextFieldUnits,
+          outputUnits: nextOutputUnits,
+        },
+      };
+    });
+
+    // 3. Confirmation toast banner
+    const presetLabel =
+      preset === 'metric'
+        ? 'SI (METRIC STANDARD)'
+        : preset === 'regional'
+        ? 'BANGLADESH STANDARD (BNBC / LOCAL SITE)'
+        : 'IMPERIAL (US)';
+    setToastBanner(`Switched unit system to ${presetLabel} · Values smoothly converted`);
+
+    setTimeout(() => {
+      setIsUnitSystemTransitioning(false);
+    }, 380);
+  }, [updateActiveWorkspace, workbench]);
+
+  const handleQuickToggleUnitSystem = useCallback(() => {
+    const current = activeWorkspace.unitPreferences?.systemPreset || 'metric';
+    const nextPreset: UnitSystemPreset =
+      current === 'imperial' ? 'metric' : current === 'regional' ? 'metric' : 'imperial';
+    handleSelectUnitPreset(nextPreset);
+  }, [activeWorkspace.unitPreferences?.systemPreset, handleSelectUnitPreset]);
+
+  // --------------------------------------------------------------------------
   // CONSOLIDATED MEMOIZED KEYBOARD SHORTCUTS HOOK
   // Safely ignores inputs, textareas, selects, and contenteditable elements
   // --------------------------------------------------------------------------
@@ -949,7 +1156,36 @@ export default function App() {
     onToggleHistory: () => setIsHistoryDrawerOpen((prev) => !prev),
     onUndo: handleUndo,
     onRedo: handleRedo,
+    onToggleSunlightMode: () => {
+      setSunlightMode((prev) => !prev);
+      triggerCelebration(
+        !sunlightMode ? 'Field Sunlight Mode Enabled' : 'Standard Contrast Restored',
+        !sunlightMode
+          ? 'Activated pure black-on-white high-contrast for bright outdoor job sites.'
+          : 'Restored standard engineering workbench theme.',
+        'info'
+      );
+    },
+    onQuickToggleUnitSystem: handleQuickToggleUnitSystem,
   });
+
+  // Sync Field Sunlight Mode class to html root element
+  useEffect(() => {
+    document.documentElement.classList.toggle('sunlight-mode', sunlightMode);
+  }, [sunlightMode]);
+
+  // Handle outside click for Export & Tools menu
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportToolsRef.current && !exportToolsRef.current.contains(e.target as Node)) {
+        setExportToolsMenuOpen(false);
+      }
+    };
+    if (exportToolsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportToolsMenuOpen]);
 
   // Fork a calculation record into an independent project workspace
   const handleForkRecordToProject = (record: CalculationRecord) => {
@@ -1029,23 +1265,33 @@ export default function App() {
   const handleTransferBearingToFootingAndPit = () => {
     const b = activeWorkspace.bearing.footingWidthM;
     const df = activeWorkspace.bearing.embedmentDepthM;
+    // BNBC/PWD Standard: minimum footing thickness 300mm (0.3m) or approx B * 250mm
+    const footingThicknessMm = Math.max(300, Math.round((b * 250) / 50) * 50);
+    // PWD standard working space excavation offset: 300mm (0.3m) on each side -> pit = B + 0.6m
+    const pitDimensionM = Math.round((b + 0.6) * 100) / 100;
+    // Bedding allowance: 150mm (0.15m) PCC/BFS beneath footing -> pit depth = Df + 0.15m
+    const pitDepthM = Math.round((df + 0.15) * 100) / 100;
+
     updateActiveWorkspace((ws) => ({
       ...ws,
       rebarBbs: {
         ...ws.rebarBbs,
+        elementType: 'footing',
         footingWidthM: b,
         footingLengthM: b,
+        footingThicknessMm,
       },
       earthwork: {
         ...ws.earthwork,
-        pitTopWidthM: Math.round((b + 0.6) * 10) / 10,
-        pitTopLengthM: Math.round((b + 0.6) * 10) / 10,
-        pitDepthM: df,
+        calculationType: 'pit-excavation',
+        pitTopWidthM: pitDimensionM,
+        pitTopLengthM: pitDimensionM,
+        pitDepthM,
       },
     }));
     triggerCelebration(
-      'Foundation Geometry Linked',
-      `Synced Footing (${b}m × ${b}m, depth ${df}m) to Rebar BBS & Pit Excavation.`,
+      'Foundation Geometry & Excavation Linked',
+      `Footing (${b}m × ${b}m × ${footingThicknessMm}mm) synced to BBS. Pit excavation set to ${pitDimensionM}m × ${pitDimensionM}m × ${pitDepthM}m (including 300mm PWD working space & 150mm PCC/BFS bedding).`,
       'success'
     );
   };
@@ -1055,29 +1301,61 @@ export default function App() {
     const phi = activeWorkspace.bearing.frictionAngleDeg;
     const c = activeWorkspace.bearing.soilCohesionKpa;
     const gamma = activeWorkspace.bearing.unitWeightKnPerM3;
+    const dw = activeWorkspace.bearing.waterTableDepthM ?? 2.0;
+    const sptN = Math.max(4, Math.round(phi > 0 ? phi / 1.5 : 8));
+
     updateActiveWorkspace((ws) => ({
       ...ws,
       activeModule: 'pile-capacity',
       pile: {
         ...(ws.pile || defaultPile),
         appliedLoadKn: P,
+        waterTableDepthM: dw,
         tipBearingCohesionKpa: c,
         tipBearingFrictionDeg: phi,
         tipBearingUnitWeightKnPerM3: gamma,
+        layers: (ws.pile?.layers || defaultPile.layers).map((layer, idx) => {
+          if (idx === 0) {
+            return {
+              ...layer,
+              cohesionKpa: c,
+              frictionAngleDeg: phi,
+              unitWeightKnPerM3: gamma,
+              sptN,
+            };
+          }
+          return layer;
+        }),
       },
     }));
     navigateToModule('pile-capacity');
     triggerCelebration(
-      'Geotech Parameters Passed to Pile Module',
-      `Transferred Column Load ${P} kN and soil strata parameters to Deep Pile Foundation.`,
-      'success'
+      'Geotech Parameters Passed to Deep Pile',
+      `Transferred Column Axial Load P=${P} kN, GWT depth=${dw}m, and soil parameters (c=${c} kPa, φ=${phi}°, N=${sptN}) to Pile Foundation module.`,
+      'celebrate'
     );
   };
 
   const handleTransferBeamToRebar = () => {
     const span = activeWorkspace.beam.spanLengthM;
-    const depth = activeWorkspace.beam.sectionDepthMm || 500;
-    const maxM = (currentEnvelope.result as any)?.maxMomentKnm || 0;
+    const depthMm = activeWorkspace.beam.sectionDepthMm || 500;
+    const widthMm = 250;
+    const beamRes = (activeModule === 'beam-analysis' ? currentEnvelope.result : computeBeamAnalysis(activeWorkspace.beam).result) as BeamAnalysisResult;
+    const maxMomentKnm = beamRes?.maxMomentKnm || 0;
+    const maxShearKn = beamRes?.maxShearKn || 0;
+
+    // Use BNBC-2020 / ACI 318-19 flexure and shear engineering engine
+    const design = computeBeamFlexureAndShearDesign({
+      spanLengthM: span,
+      depthMm,
+      widthMm,
+      governingMomentKnm: maxMomentKnm,
+      governingShearKn: maxShearKn,
+      concreteGradeFckMpa: activeWorkspace.concrete?.targetStrengthMpa || 25,
+      steelGradeFyMpa: 420,
+      isContinuous: false,
+    });
+
     updateActiveWorkspace((ws) => ({
       ...ws,
       activeModule: 'rebar-bbs',
@@ -1085,31 +1363,46 @@ export default function App() {
         ...ws.rebarBbs,
         elementType: 'beam',
         beamLengthM: span,
-        beamDepthMm: depth,
-        beamWidthMm: 250,
-        beamMainBarDiaMm: 16,
-        beamTopBarCount: 2,
-        beamBotBarCount: 3,
-        beamStirrupDiaMm: 8,
-        beamStirrupSpacingMm: 150,
+        beamDepthMm: depthMm,
+        beamWidthMm: widthMm,
+        beamMainBarDiaMm: design.bottomBars.diaMm,
+        beamTopBarCount: design.topBars.count,
+        beamBotBarCount: design.bottomBars.count,
+        beamStirrupDiaMm: design.stirrups.diaMm,
+        beamStirrupSpacingMm: design.stirrups.spacingMm,
       },
     }));
     navigateToModule('rebar-bbs');
     triggerCelebration(
-      'Beam Analysis Linked to Rebar BBS',
-      `Transferred span (${span}m, depth ${depth}mm, M_max=${maxM.toFixed(1)} kN·m) to Beam Reinforcement BBS.`,
-      'success'
+      'Beam Flexural & Shear Rebar Designed',
+      `BNBC-2020 Design (M=${maxMomentKnm.toFixed(1)} kN·m, V=${maxShearKn.toFixed(1)} kN): Bottom ${design.bottomBars.count}-Ø${design.bottomBars.diaMm}mm (As=${Math.round(design.bottomBars.asProvidedMm2)}mm²), Top ${design.topBars.count}-Ø${design.topBars.diaMm}mm, Stirrups Ø${design.stirrups.diaMm}@${design.stirrups.spacingMm}mm c/c.`,
+      'celebrate'
     );
   };
 
   const handleTransferContinuousBeamToRebar = () => {
     const contEnv = (activeModule === 'continuous-beam' ? currentEnvelope : computeContinuousBeam(activeWorkspace.continuousBeam || defaultContinuousBeam)) as CalculationEnvelope<ContinuousBeamResult>;
     if (!contEnv.result) return;
-    const maxM = contEnv.result.maxSaggingMomentKnm;
+    const maxSagM = contEnv.result.maxSaggingMomentKnm;
+    const maxHogM = contEnv.result.maxHoggingMomentKnm;
+    const maxV = contEnv.result.maxShearKn;
     const firstSpan = (activeWorkspace.continuousBeam || defaultContinuousBeam).spans[0];
     const spanL = firstSpan ? firstSpan.lengthM : 6.0;
     const depthMm = (activeWorkspace.continuousBeam || defaultContinuousBeam).sectionDepthMm || 600;
     const widthMm = (activeWorkspace.continuousBeam || defaultContinuousBeam).sectionWidthMm || 300;
+
+    const design = computeBeamFlexureAndShearDesign({
+      spanLengthM: spanL,
+      depthMm,
+      widthMm,
+      governingMomentKnm: maxSagM,
+      hoggingMomentKnm: maxHogM,
+      governingShearKn: maxV,
+      concreteGradeFckMpa: activeWorkspace.concrete?.targetStrengthMpa || 25,
+      steelGradeFyMpa: 420,
+      isContinuous: true,
+    });
+
     updateActiveWorkspace((ws) => ({
       ...ws,
       activeModule: 'rebar-bbs',
@@ -1119,18 +1412,18 @@ export default function App() {
         beamLengthM: spanL,
         beamDepthMm: depthMm,
         beamWidthMm: widthMm,
-        beamMainBarDiaMm: 20,
-        beamTopBarCount: 2,
-        beamBotBarCount: 3,
-        beamStirrupDiaMm: 8,
-        beamStirrupSpacingMm: 150,
+        beamMainBarDiaMm: design.bottomBars.diaMm,
+        beamTopBarCount: design.topBars.count,
+        beamBotBarCount: design.bottomBars.count,
+        beamStirrupDiaMm: design.stirrups.diaMm,
+        beamStirrupSpacingMm: design.stirrups.spacingMm,
       },
     }));
     navigateToModule('rebar-bbs');
     triggerCelebration(
-      'Continuous Beam Linked to Rebar BBS',
-      `Transferred design span (${spanL}m, depth ${depthMm}mm, M_max=${maxM.toFixed(1)} kN·m) to Beam Reinforcement BBS.`,
-      'success'
+      'Continuous Beam Steel Designed',
+      `Continuous Beam Design (+M=${maxSagM.toFixed(1)}, -M=${maxHogM.toFixed(1)} kN·m): Bottom ${design.bottomBars.count}-Ø${design.bottomBars.diaMm}mm, Top ${design.topBars.count}-Ø${design.topBars.diaMm}mm, Stirrups Ø${design.stirrups.diaMm}@${design.stirrups.spacingMm}mm c/c.`,
+      'celebrate'
     );
   };
 
@@ -1139,6 +1432,8 @@ export default function App() {
     const lengthM = pipeData.lengthM || 100;
     const diaMm = pipeData.internalDiameterMm || 200;
     const matName = pipeData.pipeMaterial === 'pvc-hdpe' ? 'uPVC Pressure Pipe' : 'Ductile Iron Pipe';
+    const dynamicRate = resolveDynamicRate(activeWorkspace, 'pipe', { pipeDiaMm: diaMm });
+
     updateActiveWorkspace((ws) => {
       const existingIdx = ws.boq.items.findIndex(
         (it) => it.itemNo === '6.01' || it.description.toLowerCase().includes('pipe') || it.description.toLowerCase().includes('pipeline')
@@ -1152,13 +1447,14 @@ export default function App() {
           widthM: 1,
           heightM: 1,
           unit: 'm',
-          description: `6.01 - Supply and Laying of ${diaMm}mm Ø ${matName} (Class C)`,
+          description: `6.01 - Supply and Laying of ${diaMm}mm Ø ${matName} [PWD Schedule]`,
+          unitRate: dynamicRate,
         };
       } else {
         updatedItems.push({
           id: `takeoff-${generateUUID().slice(0, 8)}`,
           itemNo: '6.01',
-          description: `Supply and Laying of ${diaMm}mm Ø ${matName} with rubber ring joints`,
+          description: `Supply and Laying of ${diaMm}mm Ø ${matName} with rubber ring joints [PWD Schedule]`,
           category: 'plumbing',
           numberOfMembers: 1,
           lengthM,
@@ -1167,7 +1463,7 @@ export default function App() {
           deductionQty: 0,
           unit: 'm',
           wastagePercent: 3.0,
-          unitRate: diaMm >= 250 ? 4200 : 2600,
+          unitRate: dynamicRate,
         });
       }
       return {
@@ -1179,8 +1475,8 @@ export default function App() {
     navigateToModule('boq-estimator');
     triggerCelebration(
       'Pipeline Synced to BOQ',
-      `Transferred ${lengthM}m of ${diaMm}mm Ø pipe into BOQ Plumbing schedule.`,
-      'success'
+      `Transferred ${lengthM}m of ${diaMm}mm Ø pipe into BOQ at dynamic rate ৳${dynamicRate}/m.`,
+      'celebrate'
     );
   };
 
@@ -1207,6 +1503,8 @@ export default function App() {
 
   const handleTransferMaterialsToBoq = () => {
     const matVol = activeWorkspace.concreteMaterials.wetVolumeM3 || 1.0;
+    const dynamicRate = resolveDynamicRate(activeWorkspace, 'concrete');
+
     updateActiveWorkspace((ws) => ({
       ...ws,
       activeModule: 'boq-estimator',
@@ -1217,22 +1515,26 @@ export default function App() {
           {
             id: `takeoff-${generateUUID().slice(0, 8)}`,
             itemNo: `${ws.boq.items.length + 1}.01`,
-            description: `Concrete materials volume batch (${matVol} m³)`,
+            description: `Cast in situ Reinforced Cement Concrete (RCC) volume batch (${matVol.toFixed(2)} m³) [PWD Schedule]`,
             category: 'superstructure',
             numberOfMembers: 1,
-            lengthM: matVol,
-            widthM: 1,
-            heightM: 1,
+            lengthM: Math.round(Math.cbrt(matVol) * 100) / 100,
+            widthM: Math.round(Math.cbrt(matVol) * 100) / 100,
+            heightM: Math.round((matVol / (Math.cbrt(matVol) * Math.cbrt(matVol))) * 100) / 100,
             deductionQty: 0,
             unit: 'm3',
             wastagePercent: 3.0,
-            unitRate: 8500,
+            unitRate: dynamicRate,
           },
         ],
       },
     }));
     navigateToModule('boq-estimator');
-    triggerCelebration('Materials Synced to BOQ', `Transferred ${matVol} m³ concrete materials to BOQ schedule.`, 'success');
+    triggerCelebration(
+      'Materials Synced to BOQ',
+      `Transferred ${matVol.toFixed(2)} m³ concrete batch to BOQ at dynamic rate ৳${dynamicRate.toLocaleString()}/m³.`,
+      'celebrate'
+    );
   };
 
   const handleTransferMasonryToBoq = () => {
@@ -1268,7 +1570,31 @@ export default function App() {
   };
 
   const handleTransferEarthworkToBoq = () => {
-    const bankVol = computeEarthwork(activeWorkspace.earthwork).result?.bankVolumeM3 || 0;
+    const earthworkRes = computeEarthwork(activeWorkspace.earthwork).result;
+    const bankVol = earthworkRes?.bankVolumeM3 || 0;
+    const ew = activeWorkspace.earthwork;
+    const dynamicRate = resolveDynamicRate(activeWorkspace, 'earthwork');
+
+    // Preserve actual physical bounding dimensions from earthwork type
+    let numMembers = 1;
+    let lenM = 1;
+    let widM = 1;
+    let hgtM = 1;
+
+    if (ew.calculationType === 'pit-excavation') {
+      lenM = ew.pitTopLengthM || 2.0;
+      widM = ew.pitTopWidthM || 2.0;
+      hgtM = ew.pitDepthM || 1.5;
+    } else if (ew.calculationType === 'trapezoidal-trench') {
+      lenM = ew.trenchLengthM || 50;
+      widM = ew.trenchBottomWidthM || 1.0;
+      hgtM = ew.trenchDepthM || 1.5;
+    } else {
+      lenM = ew.roadLengthM || 100;
+      widM = ew.formationWidthM || 7.3;
+      hgtM = Math.max(0.5, ew.depthStation1M || 1.0);
+    }
+
     updateActiveWorkspace((ws) => {
       const existingIdx = ws.boq.items.findIndex(
         (it) => it.itemNo === '1.01' || it.description.toLowerCase().includes('earthwork') || it.description.toLowerCase().includes('excavation')
@@ -1277,27 +1603,28 @@ export default function App() {
       if (existingIdx >= 0) {
         updatedItems[existingIdx] = {
           ...updatedItems[existingIdx],
-          numberOfMembers: 1,
-          lengthM: bankVol,
-          widthM: 1,
-          heightM: 1,
+          numberOfMembers: numMembers,
+          lengthM: lenM,
+          widthM: widM,
+          heightM: hgtM,
           unit: 'm3',
-          description: `1.01 - Site earthwork excavation and compaction (${bankVol.toLocaleString()} m³)`,
+          description: `1.01 - Site earthwork excavation and compaction (${bankVol.toLocaleString()} m³) [PWD Schedule]`,
+          unitRate: dynamicRate,
         };
       } else {
         updatedItems.push({
           id: `takeoff-${generateUUID().slice(0, 8)}`,
           itemNo: '1.01',
-          description: `Earthwork excavation in foundation trenches and site leveling`,
+          description: `Earthwork excavation in foundation trenches and site leveling [PWD Schedule]`,
           category: 'earthwork',
-          numberOfMembers: 1,
-          lengthM: bankVol,
-          widthM: 1,
-          heightM: 1,
+          numberOfMembers: numMembers,
+          lengthM: lenM,
+          widthM: widM,
+          heightM: hgtM,
           deductionQty: 0,
           unit: 'm3',
           wastagePercent: 5.0,
-          unitRate: 185,
+          unitRate: dynamicRate,
         });
       }
       return {
@@ -1309,25 +1636,112 @@ export default function App() {
     navigateToModule('boq-estimator');
     triggerCelebration(
       'Earthwork Synced to BOQ',
-      `Transferred ${bankVol.toLocaleString()} m³ excavation to BOQ.`,
-      'success'
+      `Transferred ${bankVol.toLocaleString()} m³ excavation to BOQ at dynamic rate ৳${dynamicRate}/m³.`,
+      'celebrate'
     );
   };
 
-  const handleTransferSurveyingToBoq = () => {
+  const handleTransferSurveyingToBoq = (
+    landAreaSqMParam?: number,
+    excavationVolParam?: number,
+    formationRLParam?: number
+  ) => {
+    const area = landAreaSqMParam ?? activeWorkspace.surveying?.computedAreaSqM ?? 0;
+    const vol = excavationVolParam ?? activeWorkspace.surveying?.computedExcavationVolumeM3 ?? 0;
+    const fRL = formationRLParam ?? activeWorkspace.surveying?.formationRL;
+
+    // Update earthwork module with true cut/fill volume and dimensions
+    const sideM = Math.round(Math.sqrt(Math.max(area, 1)) * 10) / 10;
+    const avgDepthM = area > 0 && vol > 0 ? Math.round((vol / area) * 100) / 100 : 1.5;
+
     const syncRes = syncSurveyingEarthworkToBoq(activeWorkspace, {
-      landAreaSqM: crossLinkMetrics.surveyingLandAreaSqM || 100,
+      landAreaSqM: area,
+      excavationVolumeM3: vol,
+      formationRL: fRL,
     });
-    if (syncRes.syncedItemsCount > 0) {
-      updateActiveWorkspace(() => ({
-        ...syncRes.updatedWorkspace,
-        activeModule: 'boq-estimator',
-      }));
-      navigateToModule('boq-estimator');
-      triggerCelebration('Surveying Earthwork Synced to BOQ', syncRes.message, 'celebrate');
-    } else {
-      triggerCelebration('Surveying Sync Status', syncRes.message, 'info');
-    }
+
+    updateActiveWorkspace((ws) => ({
+      ...syncRes.updatedWorkspace,
+      activeModule: 'boq-estimator',
+      earthwork: {
+        ...ws.earthwork,
+        calculationType: 'pit-excavation',
+        pitTopLengthM: sideM,
+        pitTopWidthM: sideM,
+        pitDepthM: avgDepthM,
+      },
+      surveying: {
+        method: 'height-of-instrument',
+        benchmarkRL: 10,
+        stations: [],
+        degrees: 0,
+        minutes: 0,
+        seconds: 0,
+        decimalDegreeOutput: 0,
+        inputDecimalDegrees: 0,
+        station1Name: '',
+        easting1M: 0,
+        northing1M: 0,
+        station2Name: '',
+        easting2M: 0,
+        northing2M: 0,
+        ...(ws.surveying || {}),
+        computedAreaSqM: area,
+        computedExcavationVolumeM3: vol,
+        ...(fRL !== undefined ? { formationRL: fRL } : {}),
+      },
+    }));
+
+    navigateToModule('boq-estimator');
+    triggerCelebration(
+      'Surveying -> Earthwork & BOQ Synced',
+      `Transferred Area: ${area.toFixed(1)} m², Excavation: ${vol.toFixed(1)} m³ with PWD earthwork rates to BOQ & Earthwork.`,
+      'celebrate'
+    );
+  };
+
+  const handleSyncBoqToInventory = () => {
+    const ceilings = extractDesignMaterialCeilings(activeWorkspace);
+    const syncRes = syncDesignCeilingsToInventory(
+      siteData,
+      ceilings,
+      updateInventoryItem,
+      addInventoryItem
+    );
+    triggerCelebration(
+      'Design Material Ceilings Synced to Store Inventory',
+      `Updated ${syncRes.updatedCount} items (Cement: ${ceilings.cementBags.toLocaleString()} bags, Sand: ${ceilings.sandCft.toLocaleString()} cft, Coarse Agg: ${ceilings.coarseAggregateCft.toLocaleString()} cft, Rebar: ${ceilings.rebarTonnes.toFixed(2)} T, Bricks: ${ceilings.bricksNos.toLocaleString()} pcs).`,
+      'celebrate'
+    );
+  };
+
+  const handleSyncMixToCubeTests = () => {
+    const concrete = activeWorkspace.concrete;
+    const targetFc = concrete.targetStrengthMpa || 25;
+    const grade: ConcreteGrade = targetFc >= 35 ? 'M35' : targetFc >= 30 ? 'M30' : targetFc >= 25 ? 'M25' : targetFc >= 20 ? 'M20' : 'M15';
+    const mixRatio = targetFc >= 30 ? '1:1.5:3' : targetFc >= 25 ? '1:2:4' : '1:2.5:5';
+    const pourVol = concrete.batchVolumeM3 || 10;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const newRecord = addCubeTestRecord({
+      pourId: `POUR-${Date.now().toString().slice(-4)}`,
+      castingDate: todayStr,
+      structuralElement: `${activeWorkspace.projectCode} - Beams & Columns Frame Pour`,
+      concreteGrade: grade,
+      targetStrengthMPa: targetFc,
+      slumpMm: 100,
+      mixRatio,
+      pourVolumeM3: pourVol,
+      status: 'Scheduled',
+      remarks: `Target f'c=${targetFc} MPa synced directly from ACI/BNBC Concrete Mix Design.`,
+    });
+
+    navigateToModule('cube-tests');
+    triggerCelebration(
+      'Concrete Mix Synced to Cube Test Register',
+      `Created specimen set #${newRecord.pourId} for ${pourVol} m³ pour (${grade}, f'c=${targetFc} MPa, ratio ${mixRatio}).`,
+      'celebrate'
+    );
   };
 
   // Universal Flexible Unit Engine Helper Methods
@@ -1375,48 +1789,7 @@ export default function App() {
     }));
   };
 
-  const handleSwitchUnitPreset = (preset: UnitSystemPreset) => {
-    setIsUnitSystemTransitioning(true);
-    setUnitTransitionKey((prev) => prev + 1);
-
-    updateActiveWorkspace((ws) => {
-      const currentPreset = ws.unitPreferences?.systemPreset || 'metric';
-      if (currentPreset === preset) return ws;
-
-      const nextFieldUnits: Record<string, string> = {};
-      const nextOutputUnits: Record<string, string> = {};
-
-      const nextPresetKey = preset === 'imperial' || preset === 'regional' ? preset : 'metric';
-      Object.keys(SYSTEM_PRESET_UNITS[nextPresetKey]).forEach((catKey) => {
-        const targetUnit = SYSTEM_PRESET_UNITS[nextPresetKey][catKey as UnitCategoryKey];
-        if (targetUnit) {
-          nextFieldUnits[catKey] = targetUnit;
-          nextOutputUnits[catKey] = targetUnit;
-        }
-      });
-
-      return {
-        ...ws,
-        unitPreferences: {
-          systemPreset: preset,
-          fieldUnits: nextFieldUnits,
-          outputUnits: nextOutputUnits,
-        },
-      };
-    });
-
-    const presetLabel =
-      preset === 'metric'
-        ? 'SI (METRIC STANDARD)'
-        : preset === 'regional'
-        ? 'BANGLADESH STANDARD (BNBC / LOCAL SITE)'
-        : 'IMPERIAL (US)';
-    setToastBanner(`Switched project unit system to ${presetLabel} · Values smoothly converted`);
-
-    setTimeout(() => {
-      setIsUnitSystemTransitioning(false);
-    }, 380);
-  };
+  const handleSwitchUnitPreset = handleSelectUnitPreset;
 
   const handleRestoreCalculation = (record: CalculationRecord) => {
     if (record.inputsSnapshot && Object.keys(record.inputsSnapshot).length > 0) {
@@ -2681,25 +3054,25 @@ export default function App() {
   const renderStatusBadge = () => {
     if (currentEnvelope.status === 'invalid') {
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--md-sys-color-error)]">
+        <div role="status" aria-live="polite" className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--md-sys-color-error)]">
           <XCircle className="w-4 h-4 shrink-0" />
           <span>Execution Blocked ({currentEnvelope.issues.length} Errors)</span>
-        </span>
+        </div>
       );
     }
     if (currentEnvelope.status === 'warning') {
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-amber-500">
+        <div role="status" aria-live="polite" className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-amber-500">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>Notice / Serviceability Limits ({currentEnvelope.issues.length} warnings)</span>
-        </span>
+        </div>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--md-sys-color-primary)]">
+      <div role="status" aria-live="polite" className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--md-sys-color-primary)]">
         <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
         <span>Nominal / Valid Envelope (All Constraints Satisfied)</span>
-      </span>
+      </div>
     );
   };
 
@@ -2779,6 +3152,17 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
             onRedo={handleRedo}
             canUndo={undoStack.length > 0}
             canRedo={redoStack.length > 0}
+            sunlightMode={sunlightMode}
+            onToggleSunlightMode={() => {
+              setSunlightMode((prev) => !prev);
+              triggerCelebration(
+                !sunlightMode ? 'Field Sunlight Mode Enabled' : 'Standard Contrast Restored',
+                !sunlightMode
+                  ? 'Pure black-on-white high-contrast enabled for outdoor glare.'
+                  : 'Standard theme restored.',
+                'info'
+              );
+            }}
           />
           {/* IDE/CAD Multi-Tab Workspace Header */}
           <WorkspaceTabs
@@ -2912,7 +3296,12 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               />
             ) : civilLab.activePage === 'converter' ? (
               <div className="p-4 md:p-6">
-                <ConverterPage />
+                <ConverterPage
+                  activeWorkspace={activeWorkspace}
+                  updateActiveWorkspace={updateActiveWorkspace}
+                  customUnits={appState.customUnits}
+                  onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
+                />
               </div>
             ) : civilLab.activePage === 'history' ? (
               <div className="p-4 md:p-6">
@@ -2977,9 +3366,20 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 </h1>
               </div>
 
-              {/* Status and Action Buttons */}
+              {/* Status, Unit Quick-Toggle & Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
                 {renderStatusBadge()}
+
+                <div className="h-4 w-px bg-[var(--md-sys-color-outline-variant)] mx-1 hidden sm:block" />
+
+                {/* Dedicated 1-Click Unit System Quick-Toggle & 3-Preset Selector */}
+                <UnitPresetSelector
+                  currentPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'}
+                  onSelectPreset={handleSelectUnitPreset}
+                  onQuickToggle={handleQuickToggleUnitSystem}
+                  showQuickToggle={true}
+                  isTransitioning={isUnitSystemTransitioning}
+                />
 
                 <div className="h-4 w-px bg-[var(--md-sys-color-outline-variant)] mx-1 hidden sm:block" />
 
@@ -3032,6 +3432,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               <WorkflowCrossLinkBanner
                 activeModule={activeModule}
                 activeWorkspace={activeWorkspace}
+                bearingFailed={capacityInfo?.status === 'critical' || (capacityInfo?.percentage != null && capacityInfo.percentage > 100)}
                 onTransferBbsToBoq={handleTransferBbsToBoq}
                 onTransferMixToBoq={handleTransferMixToBoq}
                 onTransferBearingToFootingAndPit={handleTransferBearingToFootingAndPit}
@@ -3045,6 +3446,8 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 onTransferEarthworkToBoq={handleTransferEarthworkToBoq}
                 onTransferPipeToBoq={handleTransferPipeToBoq}
                 onApplyRateToBoq={handleApplyRateToBOQ}
+                onSyncBoqToInventory={handleSyncBoqToInventory}
+                onSyncMixToCubeTests={handleSyncMixToCubeTests}
                 currencySymbol={getCurrencySymbol(activeWorkspace.currency)}
                 bbsSteelWeightKg={crossLinkMetrics.bbsSteelWeightKg}
                 beamMaxMomentKnm={crossLinkMetrics.beamMaxMomentKnm}
@@ -3059,16 +3462,49 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
 
             {/* Dedicated Full-Width Module Views (Surveying Suite & Site Management ERP) */}
             {activeModule === 'surveying-suite' ? (
-              <div className="p-4 md:p-6 space-y-6">
+              <motion.div
+                key={`surveying-suite-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.25 }}
+                className="p-4 md:p-6 space-y-6"
+              >
                 <React.Suspense fallback={<ModuleSuspenseFallback title="Surveying & Land Measurement Suite" />}>
                   <SurveyingSuite
                     onQuickPrint={handleQuickPrintA4Report}
                     onExportPdf={handleDirectDownloadPdf}
                     onExportCsv={handleExportAnalyticalCsv}
                     onSaveToHistory={handleLogCalculationSnapshot}
+                    activeWorkspace={activeWorkspace}
+                    onUpdateSurveying={(surveyingUpdates) =>
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        surveying: {
+                          method: 'height-of-instrument',
+                          benchmarkRL: 10,
+                          stations: [],
+                          degrees: 0,
+                          minutes: 0,
+                          seconds: 0,
+                          decimalDegreeOutput: 0,
+                          inputDecimalDegrees: 0,
+                          station1Name: '',
+                          easting1M: 0,
+                          northing1M: 0,
+                          station2Name: '',
+                          easting2M: 0,
+                          northing2M: 0,
+                          ...(ws.surveying || {}),
+                          ...surveyingUpdates,
+                        },
+                      }))
+                    }
+                    onTransferToEarthworkAndBoq={(landArea, cutFillVol, formationRL) =>
+                      handleTransferSurveyingToBoq(landArea, cutFillVol, formationRL)
+                    }
                   />
                 </React.Suspense>
-              </div>
+              </motion.div>
             ) : [
                 'store-inventory',
                 'material-requisition',
@@ -3081,27 +3517,34 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 'daily-progress-report',
                 'office-docs',
               ].includes(activeModule) ? (
-              <React.Suspense fallback={<ModuleSuspenseFallback title={MODULE_META[activeModule]?.label || 'Site Management ERP'} />}>
-                <SiteManagementHub
-                  activeTab={activeModule}
-                  onSelectTab={(tab) => navigateToModule(tab)}
-                  onSaveToHistory={handleLogCalculationSnapshot}
-                  onQuickPrint={handleQuickPrintA4Report}
-                  onExportPdf={handleDirectDownloadPdf}
-                  onExportCsv={handleExportAnalyticalCsv}
-                  workspaceId={activeWorkspace.id}
-                  projectName={activeWorkspace.name}
-                  currency={activeWorkspace.currency}
-                  activeWorkspace={activeWorkspace}
-                />
-              </React.Suspense>
+              <motion.div
+                key={`site-management-hub-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.25 }}
+              >
+                <React.Suspense fallback={<ModuleSuspenseFallback title={MODULE_META[activeModule]?.label || 'Site Management ERP'} />}>
+                  <SiteManagementHub
+                    activeTab={activeModule}
+                    onSelectTab={(tab) => navigateToModule(tab)}
+                    onSaveToHistory={handleLogCalculationSnapshot}
+                    onQuickPrint={handleQuickPrintA4Report}
+                    onExportPdf={handleDirectDownloadPdf}
+                    onExportCsv={handleExportAnalyticalCsv}
+                    workspaceId={activeWorkspace.id}
+                    projectName={activeWorkspace.name}
+                    currency={activeWorkspace.currency}
+                    activeWorkspace={activeWorkspace}
+                  />
+                </React.Suspense>
+              </motion.div>
             ) : (
               <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Pane: Parameter Input Form with Smooth Unit Transition */}
               <motion.section
                 key={`inputs-pane-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
-                initial={{ opacity: 0.9, y: 2 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.25 }}
                 className="lg:col-span-5 space-y-4"
               >
@@ -3269,7 +3712,207 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               </motion.section>
 
               {/* Right Pane: Results, Engineering Diagrams & High-Density Tables */}
-              <section className="lg:col-span-7 space-y-5">
+              <motion.section
+                key={`results-pane-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.25 }}
+                className="lg:col-span-7 space-y-4"
+              >
+                {/* CONSOLIDATED CALCULATION RESULTS ACTION BAR */}
+                <div className="calculation-results-action-bar rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                  {/* Left: View Mode Segmented Control */}
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] hidden sm:flex items-center gap-1.5 mr-1">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                      <span>View:</span>
+                    </div>
+                    <div
+                      role="radiogroup"
+                      aria-label="Analytical display mode"
+                      className="inline-flex items-center p-0.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono"
+                    >
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={analyticalViewMode === 'graphical'}
+                        onClick={() => setAnalyticalViewMode('graphical')}
+                        className={`touch-target-48 sm:touch-target-auto px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          analyticalViewMode === 'graphical'
+                            ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs font-bold'
+                            : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                        }`}
+                        title="View CAD Visualizer and Dynamic Gauges"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        <span>Graphical</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={analyticalViewMode === 'tabular'}
+                        onClick={() => setAnalyticalViewMode('tabular')}
+                        className={`touch-target-48 sm:touch-target-auto px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          analyticalViewMode === 'tabular'
+                            ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs font-bold'
+                            : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                        }`}
+                        title="View Itemized Analytical Schedule Table"
+                      >
+                        <Table className="w-3.5 h-3.5" />
+                        <span>Table</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={analyticalViewMode === 'both'}
+                        onClick={() => setAnalyticalViewMode('both')}
+                        className={`touch-target-48 sm:touch-target-auto px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          analyticalViewMode === 'both'
+                            ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs font-bold'
+                            : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                        }`}
+                        title="Split View: Both CAD Diagram and Detailed Table"
+                      >
+                        <Columns className="w-3.5 h-3.5" />
+                        <span>Split</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right: Primary CTAs + Compact Export & Tools Dropdown */}
+                  <div className="flex items-center gap-2">
+                    {/* Primary CTA: Export PDF / Submittal */}
+                    <button
+                      type="button"
+                      onClick={handleOpenPrintPreview}
+                      className="touch-target-48 sm:touch-target-auto min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--md-sys-color-primary)] hover:opacity-95 text-[var(--md-sys-color-on-primary)] flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+                      title="Open certified vector print preview & PDF submittal engine"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>Export PDF</span>
+                    </button>
+
+                    {/* Primary Secondary CTA: Save Snapshot */}
+                    <button
+                      type="button"
+                      onClick={handleLogCalculationSnapshot}
+                      className="touch-target-48 sm:touch-target-auto min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      title="Save verified analytical snapshot to History Ledger"
+                    >
+                      <BookmarkCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="hidden sm:inline">Save Snapshot</span>
+                    </button>
+
+                    {/* Compact Export & Tools Dropdown */}
+                    <div className="relative" ref={exportToolsRef}>
+                      <button
+                        type="button"
+                        onClick={() => setExportToolsMenuOpen((prev) => !prev)}
+                        className="touch-target-48 sm:touch-target-auto min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                        aria-expanded={exportToolsMenuOpen}
+                        aria-haspopup="true"
+                        title="More Export Options, Equations & Documentation"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Export &amp; Tools</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${exportToolsMenuOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {exportToolsMenuOpen && (
+                        <div
+                          role="menu"
+                          className="absolute right-0 mt-1.5 w-60 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 z-30 space-y-0.5 text-xs font-sans animate-in fade-in zoom-in-95 duration-150"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setExportToolsMenuOpen(false);
+                              handleExportAnalyticalCsv();
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                            <div>
+                              <div className="font-semibold">Export CSV / Excel</div>
+                              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">UTF-8 BOM engineering schedule</div>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setExportToolsMenuOpen(false);
+                              handleQuickPrintA4Report();
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <div>
+                              <div className="font-semibold">Quick Print (1-Page A4)</div>
+                              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Direct hardware print with QR</div>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setExportToolsMenuOpen(false);
+                              handleCopySummary();
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            {copiedSummary ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />}
+                            <div>
+                              <div className="font-semibold">{copiedSummary ? 'Copied to Clipboard' : 'Copy Summary'}</div>
+                              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Structured submittal memo</div>
+                            </div>
+                          </button>
+
+                          <div className="my-1 border-t border-[var(--md-sys-color-outline-variant)]" />
+
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setExportToolsMenuOpen(false);
+                              setShowGoverningEquations(true);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Scale className="w-3.5 h-3.5 text-indigo-500" />
+                            <div>
+                              <div className="font-semibold">Governing Equations</div>
+                              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">BNBC / ACI clauses &amp; theory</div>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setExportToolsMenuOpen(false);
+                              setAboutToolDrawerOpen(true);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Info className="w-3.5 h-3.5 text-amber-500" />
+                            <div>
+                              <div className="font-semibold">About This Tool</div>
+                              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Documentation &amp; field guide</div>
+                            </div>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* DEMAND-CAPACITY RATIO (DCR) & LIMIT-STATE GAUGES */}
                 {capacityGauges && capacityGauges.length > 0 && (
                   <DcrGaugeSuite
@@ -3278,114 +3921,107 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   />
                 )}
 
-                {/* Interactive Analytical Engineering Diagram Container */}
-                <div className="analytical-diagram-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs overflow-hidden">
-                  <div className="flex items-center justify-between mb-3 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
-                    <div className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
-                      <SlidersHorizontal className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                      <span>Parametric CAD Analytical Visualizer</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold">
-                        {MODULE_META[activeModule].codeStandard}
-                      </span>
-                    </div>
-                  </div>
-
-                  {activeModule === 'boq-estimator' && currentEnvelope.result && (
-                    <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'rate-analysis' && currentEnvelope.result && (
-                    <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'unit-converter' && (
-                    <UnitConverterDiagramSvg
-                      inputVal={activeWorkspace.converter.inputValue}
-                      outputVal={activeConversionResult?.result ?? 0}
-                      fromUnit={activeWorkspace.converter.fromUnit}
-                      toUnit={activeWorkspace.converter.toUnit}
-                      category={activeWorkspace.converter.category}
-                    />
-                  )}
-                  {activeModule === 'concrete-materials' && currentEnvelope.result && (
-                    <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'rebar-bbs' && currentEnvelope.result && (
-                    <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'masonry-finishes' && currentEnvelope.result && (
-                    <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
-                    <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'beam-analysis' && currentEnvelope.result && (
-                    <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'bearing-capacity' && currentEnvelope.result && (
-                    <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'concrete-mix' && currentEnvelope.result && (
-                    <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'open-channel' && currentEnvelope.result && (
-                    <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'continuous-beam' && currentEnvelope.result && (
-                    <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'pile-capacity' && currentEnvelope.result && (
-                    <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} />
-                  )}
-                  {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
-                    <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} />
-                  )}
-                </div>
-
-                {/* Analytical Dense Table Suite */}
-                <div className="analytical-dense-table-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--md-sys-color-outline-variant)] pb-3">
-                    <div>
-                      <h2 className="text-sm font-bold font-sans tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
-                        <Table className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                        <span>{MODULE_META[activeModule].label} · Calculation Schedule (A4 Print-Ready)</span>
-                      </h2>
-                      <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-                        Governing Standard: <strong className="text-[var(--md-sys-color-primary)]">{MODULE_META[activeModule].codeStandard}</strong>
+                {/* Interactive Analytical Engineering Diagram Container (Graphical & Both modes) */}
+                {(analyticalViewMode === 'graphical' || analyticalViewMode === 'both') && (
+                  <div className="analytical-diagram-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs overflow-hidden">
+                    <div className="flex items-center justify-between mb-3 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
+                      <div className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
+                        <SlidersHorizontal className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                        <span>Parametric CAD Analytical Visualizer</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold">
+                          {MODULE_META[activeModule].codeStandard}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCopySummary}
-                        className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title="Copy summarized engineering metrics with DCR to clipboard"
-                      >
-                        {copiedSummary ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedSummary ? 'Copied' : 'Copy Submittal'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleExportAnalyticalCsv}
-                        className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[var(--md-sys-color-surface-container-highest)] hover:opacity-90 text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 border border-[var(--md-sys-color-outline-variant)] cursor-pointer"
-                        title="Export calculation schedule to Excel CSV with UTF-8 BOM"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>CSV Export</span>
-                      </button>
-                    </div>
+                    {activeModule === 'boq-estimator' && currentEnvelope.result && (
+                      <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'rate-analysis' && currentEnvelope.result && (
+                      <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'unit-converter' && (
+                      <UnitConverterDiagramSvg
+                        inputVal={activeWorkspace.converter.inputValue}
+                        outputVal={activeConversionResult?.result ?? 0}
+                        fromUnit={activeWorkspace.converter.fromUnit}
+                        toUnit={activeWorkspace.converter.toUnit}
+                        category={activeWorkspace.converter.category}
+                      />
+                    )}
+                    {activeModule === 'concrete-materials' && currentEnvelope.result && (
+                      <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'rebar-bbs' && currentEnvelope.result && (
+                      <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'masonry-finishes' && currentEnvelope.result && (
+                      <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
+                      <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'beam-analysis' && currentEnvelope.result && (
+                      <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'bearing-capacity' && currentEnvelope.result && (
+                      <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'concrete-mix' && currentEnvelope.result && (
+                      <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'open-channel' && currentEnvelope.result && (
+                      <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'continuous-beam' && currentEnvelope.result && (
+                      <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'pile-capacity' && currentEnvelope.result && (
+                      <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
+                      <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} />
+                    )}
                   </div>
+                )}
 
-                  <AnalyticalDenseTable
-                    activeModule={activeModule}
-                    activeWorkspace={activeWorkspace}
-                    currentEnvelope={currentEnvelope}
-                    isCompact={isTableCompact}
-                    searchQuery={denseTableSearch}
-                  />
-                </div>
+                {/* Analytical Dense Table Suite (Tabular & Both modes) */}
+                {(analyticalViewMode === 'tabular' || analyticalViewMode === 'both') && (
+                  <div className="analytical-dense-table-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--md-sys-color-outline-variant)] pb-3">
+                      <div>
+                        <h2 className="text-sm font-bold font-sans tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
+                          <Table className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                          <span>{MODULE_META[activeModule].label} · Calculation Schedule (A4 Print-Ready)</span>
+                        </h2>
+                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                          Governing Standard: <strong className="text-[var(--md-sys-color-primary)]">{MODULE_META[activeModule].codeStandard}</strong>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsTableCompact((prev) => !prev)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Toggle compact table density"
+                        >
+                          <span>{isTableCompact ? 'Normal Density' : 'Compact Density'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <AnalyticalDenseTable
+                      activeModule={activeModule}
+                      activeWorkspace={activeWorkspace}
+                      currentEnvelope={currentEnvelope}
+                      isCompact={isTableCompact}
+                      searchQuery={denseTableSearch}
+                    />
+                  </div>
+                )}
 
                 {/* Dynamic Metrics Cards (Lazy Rendered based on Active Module) */}
                 {activeModule === 'concrete-materials' && currentEnvelope.result && (
@@ -3516,7 +4152,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     onApplyRateToBOQ={handleApplyRateToBOQ}
                   />
                 )}
-              </section>
+              </motion.section>
             </div>
             )}
             </>
@@ -3656,6 +4292,87 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
           moduleName={MODULE_META[activeModule]?.label || 'Certified Engineering Submittal'}
           projectCode={activeWorkspace.projectCode}
         />
+
+        {/* Governing Mathematical Equations & Code Clauses Modal */}
+        {showGoverningEquations && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gov-eq-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
+                <div className="flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+                  <div>
+                    <h2 id="gov-eq-title" className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                      {MODULE_META[activeModule].label} · Governing Equations
+                    </h2>
+                    <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                      Standard: <span className="text-[var(--md-sys-color-primary)] font-semibold">{governingEqInfo.codeStandard}</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGoverningEquations(false)}
+                  className="touch-target-48 p-2 rounded-lg text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] text-sm cursor-pointer"
+                  aria-label="Close governing equations dialog"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 overflow-y-auto space-y-4 custom-scrollbar">
+                <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  Mathematical formulations, boundary assumptions, and limit-state derivations governing calculation results for this active module.
+                </div>
+
+                <div className="space-y-3">
+                  {governingEqInfo.equations.map((eq, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">
+                          {eq.name}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold">
+                          Equation {idx + 1}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] font-mono text-sm font-bold text-[var(--md-sys-color-primary)] tracking-wide overflow-x-auto">
+                        {eq.formula}
+                      </div>
+                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
+                        {eq.description}
+                      </p>
+                      {eq.variables && eq.variables.length > 0 && (
+                        <div className="pt-1 border-t border-[var(--md-sys-color-outline-variant)] text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex flex-wrap gap-x-3 gap-y-0.5">
+                          {eq.variables.map((v, vIdx) => (
+                            <span key={vIdx}>• {v}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowGoverningEquations(false)}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] cursor-pointer hover:opacity-90"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Engineering Submittal Verification Modal */}
         <VerifySubmittalModal

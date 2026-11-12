@@ -77,6 +77,12 @@ export interface BeamAnalysisResult {
   status: 'nominal' | 'warning' | 'critical';
   reactionLeftKn: number;
   reactionRightKn: number;
+  governingCode: string;
+  loadCombinationUsed: string;
+  factoredMomentKnm: number;
+  factoredShearKn: number;
+  deflectionLimitFactor: number; // e.g. 360, 240, 180
+  phiFactor: number;
 }
 
 export function computeBeamAnalysis(
@@ -115,6 +121,34 @@ export function computeBeamAnalysis(
     issues.push({ field: 'allowableStressMpa', message: 'Allowable bending stress must be strictly positive (> 0 MPa).', severity: 'error' });
   }
 
+  // Building Code Factors & Serviceability Rules
+  const code = params.codeStandard || 'BNBC-2020';
+  let deadFactor = 1.2;
+  let liveFactor = 1.6;
+  let phiBending = 0.90;
+  let deflectionDivisor = 360;
+  let loadCombName = '1.2D + 1.6L (BNBC-2020 §2.7 / ACI 318-19)';
+
+  if (code === 'Eurocode-2') {
+    deadFactor = 1.35;
+    liveFactor = 1.5;
+    phiBending = 0.87;
+    deflectionDivisor = 250;
+    loadCombName = '1.35G + 1.50Q (Eurocode 2 / EN 1990)';
+  } else if (code === 'IS-456') {
+    deadFactor = 1.5;
+    liveFactor = 1.5;
+    phiBending = 0.87;
+    deflectionDivisor = 350;
+    loadCombName = '1.5(DL + LL) (IS 456:2000 Cl. 36.4)';
+  } else if (code === 'AISC-360') {
+    deadFactor = 1.2;
+    liveFactor = 1.6;
+    phiBending = 0.90;
+    deflectionDivisor = 360;
+    loadCombName = '1.2D + 1.6L (AISC 360 LRFD)';
+  }
+
   if (issues.some((i) => i.severity === 'error') || isZeroBaseline) {
     return createEnvelope<BeamAnalysisResult>(
       {
@@ -128,6 +162,12 @@ export function computeBeamAnalysis(
         status: 'nominal',
         reactionLeftKn: 0,
         reactionRightKn: 0,
+        governingCode: code,
+        loadCombinationUsed: loadCombName,
+        factoredMomentKnm: 0,
+        factoredShearKn: 0,
+        deflectionLimitFactor: deflectionDivisor,
+        phiFactor: phiBending,
       },
       issues
     );
@@ -220,7 +260,7 @@ export function computeBeamAnalysis(
     if (deflMm > maxDeflectionMm) maxDeflectionMm = deflMm;
   }
 
-  const allowableDeflectionMm = (L * 1000) / 360;
+  const allowableDeflectionMm = (L * 1000) / deflectionDivisor;
   const cMm = params.sectionDepthMm / 2;
   const iMm4 = params.momentOfInertiaCm4 * 1e4;
   const bendingStressMpa = (maxMomentKnm * 1e6 * cMm) / iMm4;
@@ -228,6 +268,14 @@ export function computeBeamAnalysis(
   const stressRatio = bendingStressMpa / params.allowableStressMpa;
   const deflRatio = maxDeflectionMm / allowableDeflectionMm;
   const utilizationRatio = Math.max(stressRatio, deflRatio);
+
+  // Ultimate Factored Load Envelope (Strength Design / LRFD)
+  const DL = params.deadLoadKnPerM ?? (w * 0.5);
+  const LL = params.liveLoadKnPerM ?? (w * 0.5);
+  const factoredW = deadFactor * DL + liveFactor * LL;
+  const factorRatio = w > 0 ? factoredW / w : (deadFactor + liveFactor) / 2;
+  const factoredMomentKnm = Number((maxMomentKnm * factorRatio).toFixed(2));
+  const factoredShearKn = Number((maxShearKn * factorRatio).toFixed(2));
 
   if (utilizationRatio > 1.0) {
     issues.push({ field: 'utilizationRatio', message: `Beam exceeds allowable limit state (Utilization: ${(utilizationRatio * 100).toFixed(1)}%).`, severity: 'warning' });
@@ -248,6 +296,12 @@ export function computeBeamAnalysis(
       status,
       reactionLeftKn,
       reactionRightKn,
+      governingCode: code,
+      loadCombinationUsed: loadCombName,
+      factoredMomentKnm,
+      factoredShearKn,
+      deflectionLimitFactor: deflectionDivisor,
+      phiFactor: phiBending,
     },
     issues
   );
@@ -333,6 +387,12 @@ export interface BearingAnalysisResult {
   punchingShearPass: boolean;
   // Overall Structural Check:
   footingStructuralPass: boolean;
+  // SPT N60 Geotechnical Borehole Details (BNBC-2020 Part 6 Chap 3):
+  rawSptN: number;
+  hammerEfficiency: number;
+  overburdenCorrectionCn: number;
+  correctedSptN60: number;
+  empiricalSptAllowableKpa: number; // Meyerhof (1965/1976) empirical q_all for 25mm settlement
   status: 'nominal' | 'warning' | 'critical';
 }
 
@@ -429,6 +489,11 @@ export function computeBearingCapacity(
         punchingShearDcr: 0,
         punchingShearPass: true,
         footingStructuralPass: true,
+        rawSptN: params.boreholeFieldSptN ?? (params.sptN60 ?? 15),
+        hammerEfficiency: params.hammerEfficiency ?? 0.60,
+        overburdenCorrectionCn: 1.0,
+        correctedSptN60: params.sptN60 ?? 15,
+        empiricalSptAllowableKpa: 0,
         status: 'nominal',
       },
       issues
@@ -443,7 +508,30 @@ export function computeBearingCapacity(
   let c = params.soilCohesionKpa;
   let phi = params.frictionAngleDeg;
   let gamma = params.unitWeightKnPerM3;
-  let sptN = params.sptN60 || (phi > 0 ? Math.round(phi * 0.8) : Math.round(c / 6.25) || 12);
+
+  // SPT Field Corrections per BNBC-2020 Part 6 Chap 3 (Liao & Whitman 1986):
+  // Overburden pressure sigma'v at foundation level
+  const DwInit = params.waterTableDepthM;
+  const gammaEffEst = DwInit < Df ? Math.max(8.0, gamma - 9.81) : gamma;
+  const sigmaVPrimeAtBaseKpa = Math.max(10, gammaEffEst * Math.max(0.5, Df));
+  const Cn = Math.min(2.0, Math.max(0.4, Math.sqrt(98 / sigmaVPrimeAtBaseKpa)));
+  const hammerEff = params.hammerEfficiency ?? 0.60;
+  const rawFieldN = params.boreholeFieldSptN ?? (params.sptN60 ? Math.round(params.sptN60 / (Cn * (hammerEff / 0.60))) : (phi > 0 ? Math.round(phi * 0.8) : Math.round(c / 6.25) || 12));
+  const calculatedN60 = Math.round(rawFieldN * (hammerEff / 0.60) * Cn);
+  let sptN = params.sptN60 ?? calculatedN60;
+
+  // Meyerhof (1965/1976) Empirical Bearing Capacity for 25mm (1 inch) allowable settlement (BNBC-2020 Table 6.3.8):
+  // For B <= 1.2m: q_all = 12.5 * N60 * (1 + 0.33 * Df / B) * (Se / 25)
+  // For B > 1.2m:  q_all = 8.33 * N60 * ((B + 0.3) / B)^2 * (1 + 0.33 * Df / B) * (Se / 25)
+  const embedmentFactor = Math.min(1.33, 1 + 0.33 * (Df / Math.max(0.1, B)));
+  const allowableSettlementRatio = 1.0; // Standard 25mm basis
+  const empiricalSptAllowableKpa = Number(
+    (B <= 1.2
+      ? 12.5 * sptN * embedmentFactor * allowableSettlementRatio
+      : 8.33 * sptN * Math.pow((B + 0.3) / B, 2) * embedmentFactor * allowableSettlementRatio
+    ).toFixed(1)
+  );
+
   let EsMpa = params.elasticModulusEsMpa && params.elasticModulusEsMpa > 0
     ? params.elasticModulusEsMpa
     : phi > 0
@@ -945,6 +1033,11 @@ export function computeBearingCapacity(
       punchingShearDcr: Number(punchingShearDcr.toFixed(2)),
       punchingShearPass,
       footingStructuralPass,
+      rawSptN: rawFieldN,
+      hammerEfficiency: hammerEff,
+      overburdenCorrectionCn: Number(Cn.toFixed(2)),
+      correctedSptN60: sptN,
+      empiricalSptAllowableKpa,
       status,
     },
     issues
@@ -1079,14 +1172,25 @@ export function computeConcreteMix(
   const airPercent = params.airEntrainmentPercent || 1.5;
   const volAir = airPercent / 100;
 
-  // Coarse aggregate volume based on ACI 211.1 Table 6.3.6 (DRUW and Fineness Modulus)
-  const druw = params.coarseAggDryRoddedDensityKgPerM3 || 1600;
-  const fm = params.sandFinenessModulus || 2.70;
+  // Bangladeshi Local Aggregate & Sand Behavior per BNBC-2020 / PWD:
+  // Khoa (Picked Jhama Brick Chips): SG ~ 2.15, DRUW ~ 1400 kg/m³, absorption ~ 10%, dry volume factor = 1.50
+  // Crushed Stone Chips (Pakur/Bholaganj): SG ~ 2.67, DRUW ~ 1600 kg/m³, absorption ~ 1.0%, dry volume factor = 1.54
+  const isKhoa = params.coarseAggregateType === 'brick-chips-khoa';
+  const defaultCoarseSG = isKhoa ? 2.15 : 2.67;
+  const defaultDruw = isKhoa ? 1400 : 1600;
+  const druw = params.coarseAggDryRoddedDensityKgPerM3 || defaultDruw;
+
+  // Sand FM: Sylhet Sand (FM 2.5 - 2.8, default 2.65), Local Sand (FM 1.2 - 1.8, default 1.50), Blended (FM 2.20)
+  let defaultFm = 2.65;
+  if (params.sandType === 'local-sand') defaultFm = 1.50;
+  else if (params.sandType === 'blended-sand') defaultFm = 2.20;
+  const fm = params.sandFinenessModulus || defaultFm;
+
   const coarseBaseFraction =
     dMax <= 10 ? 0.48 : dMax <= 12.5 ? 0.55 : dMax <= 20 ? 0.63 : dMax <= 25 ? 0.68 : 0.74;
   const coarseVolumeFraction = Math.max(0.40, Math.min(0.80, coarseBaseFraction - (fm - 2.8) * 0.20));
   const coarseAggDryKgPerM3 = coarseVolumeFraction * druw;
-  const coarseSG = params.coarseAggSpecificGravity || 2.65;
+  const coarseSG = params.coarseAggSpecificGravity || defaultCoarseSG;
   const volCoarse = coarseAggDryKgPerM3 / (coarseSG * 1000);
 
   // Fine aggregate by absolute volume difference
@@ -1101,14 +1205,16 @@ export function computeConcreteMix(
     return createEnvelope<ConcreteMixResult>(null, issues);
   }
 
-  const fineSG = params.fineAggSpecificGravity || 2.60;
+  const defaultFineSG = params.sandType === 'local-sand' ? 2.50 : 2.62;
+  const fineSG = params.fineAggSpecificGravity || defaultFineSG;
   const fineAggDryKgPerM3 = volFine * fineSG * 1000;
 
   // Moisture & Absorption corrections (Field Batching vs Design SSD)
+  const defaultCaAbs = isKhoa ? 10.0 : 1.0;
+  const caAbs = params.coarseAggAbsorptionPercent ?? defaultCaAbs;
+  const caMC = params.coarseAggMoisturePercent ?? (isKhoa ? 8.0 : 2.0);
   const faAbs = params.fineAggAbsorptionPercent ?? 1.2;
   const faMC = params.fineAggMoisturePercent ?? 4.0;
-  const caAbs = params.coarseAggAbsorptionPercent ?? 0.8;
-  const caMC = params.coarseAggMoisturePercent ?? 2.0;
 
   const faFreeMoisture = faMC - faAbs; // %
   const caFreeMoisture = caMC - caAbs; // %
@@ -2546,6 +2652,31 @@ export interface MasonryResult {
   // MS Window/Veranda Grill & Thai Aluminum Schedule
   grillThaiSchedule?: GrillThaiSchedule;
 
+  // Bangladeshi Standard BFS & HBB Sub-base Schedule
+  bfsHbbSchedule?: {
+    subbaseType: string;
+    subbaseAreaM2: number;
+    subbaseAreaSft: number;
+    bricksRequiredCount: number;
+    bricksWithWastageCount: number;
+    sandCushionCft: number;
+    sandCushionM3: number;
+    standardRatePerSft?: number;
+  };
+  subbaseSchedule?: {
+    subbaseType: string;
+    subbaseName: string;
+    areaM2: number;
+    areaSft: number;
+    sandCushionCft: number;
+    sandCushionM3: number;
+    sandCushionBags: number;
+    sandCushionThicknessMm: number;
+    bricksCount: number;
+    bricksWithWastageCount: number;
+  };
+  brickStandardUsed?: string;
+
   status: 'nominal' | 'warning' | 'critical';
 }
 
@@ -2619,16 +2750,33 @@ export function computeMasonryFinishes(
   const netWallAreaM2 = grossWallAreaM2 - totalOpeningAreaM2;
   const netWallVolumeM3 = netWallAreaM2 * params.wallThicknessM;
 
+  // Resolve Bangladeshi Standard Brick Size:
+  // BD PWD Standard Metric: 240 x 115 x 70 mm (actual), 250 x 125 x 75 mm (nominal with 10mm mortar)
+  // Traditional Field Brick: 9.5" x 4.5" x 2.75" ~ 241.3 x 114.3 x 69.85 mm (nominal 10" x 5" x 3" with mortar)
+  let brickL = params.brickLengthMm;
+  let brickW = params.brickWidthMm;
+  let brickH = params.brickHeightMm;
+
+  if (params.brickStandardType === 'bd-pwd-metric') {
+    brickL = 240;
+    brickW = 115;
+    brickH = 70;
+  } else if (params.brickStandardType === 'traditional-field') {
+    brickL = 241;
+    brickW = 114;
+    brickH = 70;
+  }
+
   // Standard brick modular calculation with mortar joint (e.g. 10mm)
   const jM = (params.mortarJointMm || 10) / 1000;
-  const nomL = params.brickLengthMm / 1000 + jM;
-  const nomW = params.brickWidthMm / 1000 + jM;
-  const nomH = params.brickHeightMm / 1000 + jM;
+  const nomL = brickL / 1000 + jM;
+  const nomW = brickW / 1000 + jM;
+  const nomH = brickH / 1000 + jM;
   const nominalBrickVol = nomL * nomW * nomH;
 
-  const actL = params.brickLengthMm / 1000;
-  const actW = params.brickWidthMm / 1000;
-  const actH = params.brickHeightMm / 1000;
+  const actL = brickL / 1000;
+  const actW = brickW / 1000;
+  const actH = brickH / 1000;
   const actualBrickVol = actL * actW * actH;
 
   const rawBricks = Math.ceil(netWallVolumeM3 / nominalBrickVol);
@@ -2773,6 +2921,49 @@ export function computeMasonryFinishes(
     totalDoorOpeningsCount,
   };
 
+  // Bangladeshi Sub-base: Brick Flat Soling (BFS) & Herringbone Bond (HBB)
+  // BFS: Bricks laid flat on bed. Standard rule per 100 sft = ~300 to 320 bricks (approx 31 to 32 bricks/m² or 3.0 to 3.2 bricks/sft)
+  // HBB: Bricks laid on edge in herringbone pattern. Standard rule per 100 sft = ~500 to 550 bricks (approx 52 to 55 bricks/m² or 5.0 to 5.5 bricks/sft)
+  const bfsAreaM2 = params.bfsLayerAreaM2 || (params.subbaseType && params.subbaseType !== 'none' ? floorAreaM2 : 0);
+  const bfsAreaSft = bfsAreaM2 * EXACT_CONVERSION.M2_TO_SFT;
+  const isHbb = params.subbaseType === 'hbb-herringbone-bond';
+  const subbaseRatePerSft = isHbb ? 5.2 : 3.1;
+  const rawSubbaseBricks = Math.ceil(bfsAreaSft * subbaseRatePerSft);
+  const subbaseBricksWithWastage = Math.ceil(rawSubbaseBricks * (1 + (params.brickWastagePercent || 5) / 100));
+
+  // Sand Cushion Bed (default 38mm = 1.5 inch bed)
+  const sandBedThickM = (params.bfsSandCushionThicknessMm || 38) / 1000;
+  const sandCushionM3 = Number((bfsAreaM2 * sandBedThickM).toFixed(3));
+  const sandCushionCft = Number((sandCushionM3 * EXACT_CONVERSION.M3_TO_CFT).toFixed(1));
+
+  const bfsHbbSchedule = bfsAreaM2 > 0 ? {
+    subbaseType: isHbb ? 'Herringbone Bond (HBB)' : 'Brick Flat Soling (BFS)',
+    subbaseAreaM2: Number(bfsAreaM2.toFixed(2)),
+    subbaseAreaSft: Number(bfsAreaSft.toFixed(1)),
+    bricksRequiredCount: rawSubbaseBricks,
+    bricksWithWastageCount: subbaseBricksWithWastage,
+    sandCushionCft,
+    sandCushionM3,
+    standardRatePerSft: subbaseRatePerSft,
+  } : undefined;
+
+  const subbaseSchedule = bfsAreaM2 > 0 ? {
+    subbaseType: isHbb ? 'hbb' : 'bfs',
+    subbaseName: isHbb ? 'Herringbone Bond (HBB)' : 'Brick Flat Soling (BFS)',
+    areaM2: Number(bfsAreaM2.toFixed(2)),
+    areaSft: Number(bfsAreaSft.toFixed(1)),
+    sandCushionCft,
+    sandCushionM3,
+    sandCushionBags: Math.ceil(sandCushionCft / 1.25),
+    sandCushionThicknessMm: Math.round(sandBedThickM * 1000),
+    bricksCount: rawSubbaseBricks,
+    bricksWithWastageCount: subbaseBricksWithWastage,
+  } : undefined;
+
+  const brickStandardUsed = params.brickStandardType === 'traditional-field'
+    ? 'Traditional Field Brick (9.5" × 4.5" × 2.75")'
+    : 'BD PWD Standard Metric (240 × 115 × 70 mm)';
+
   return createEnvelope<MasonryResult>(
     {
       grossWallAreaM2: Number(grossWallAreaM2.toFixed(2)),
@@ -2800,6 +2991,9 @@ export function computeMasonryFinishes(
       tileBoxesCount: boxes,
       paintPuttySchedule,
       grillThaiSchedule,
+      bfsHbbSchedule,
+      subbaseSchedule,
+      brickStandardUsed,
       status: 'nominal',
     },
     issues
@@ -3036,6 +3230,13 @@ export interface BOQResult {
   vatTaxPercent: number;
   vatTaxAmount: number;
   grandTotalAmount: number;
+  aitTaxPercent?: number;
+  aitTaxAmount?: number;
+  retentionMoneyPercent?: number;
+  retentionMoneyAmount?: number;
+  mobilizationRecoveryPercent?: number;
+  mobilizationRecoveryAmount?: number;
+  netPayableToContractorAmount?: number;
   categorySummaries: BOQCategorySummary[];
   wbsSectionSummaries?: BOQWbsSectionSummary[];
   totalItemCount: number;
@@ -3300,6 +3501,15 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
     }))
     .sort((a, b) => Number(a.code) - Number(b.code));
 
+  const aitPercent = typeof params.aitTaxPercent === 'number' ? params.aitTaxPercent : (params.currency === 'BDT' ? 5.0 : 0);
+  const retentionPercent = typeof params.retentionMoneyPercent === 'number' ? params.retentionMoneyPercent : (params.currency === 'BDT' ? 7.5 : 0);
+  const mobRecoveryPercent = typeof params.mobilizationRecoveryPercent === 'number' ? params.mobilizationRecoveryPercent : 0;
+
+  const aitAmt = grandTotal * (aitPercent / 100);
+  const retentionAmt = grandTotal * (retentionPercent / 100);
+  const mobRecoveryAmt = grandTotal * (mobRecoveryPercent / 100);
+  const netPayable = grandTotal - (aitAmt + retentionAmt + mobRecoveryAmt);
+
   return createEnvelope<BOQResult>(
     {
       currency: params.currency || 'USD',
@@ -3313,6 +3523,13 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       vatTaxPercent: params.vatTaxPercent,
       vatTaxAmount: Number(vatTaxAmt.toFixed(2)),
       grandTotalAmount: Number(grandTotal.toFixed(2)),
+      aitTaxPercent: aitPercent,
+      aitTaxAmount: Number(aitAmt.toFixed(2)),
+      retentionMoneyPercent: retentionPercent,
+      retentionMoneyAmount: Number(retentionAmt.toFixed(2)),
+      mobilizationRecoveryPercent: mobRecoveryPercent,
+      mobilizationRecoveryAmount: Number(mobRecoveryAmt.toFixed(2)),
+      netPayableToContractorAmount: Number(netPayable.toFixed(2)),
       categorySummaries,
       wbsSectionSummaries,
       totalItemCount: computedItems.length,
@@ -4828,6 +5045,36 @@ export interface PileCapacityResult {
     governingCode: string;
     bnbcClauses: string[];
   };
+  // Bangladeshi Construction Practice: Casing, Bentonite & Pile Cap Estimates
+  boredPileSpecs?: {
+    casingLengthM: number;
+    bentoniteRequired: boolean;
+    bentoniteSlurryVolumeM3: number;
+    bentoniteViscositySec: number;
+    bentoniteDensityGPerCc: number;
+    slurryQualityNotes: string[];
+  };
+  casingBentoniteNotes?: {
+    casingLengthM: number;
+    bentoniteRequired: boolean;
+    bentoniteSlurryVolumeM3: number;
+    recommendedViscositySec: number;
+    recommendedDensityGPerCc: number;
+    guidelines: string;
+  };
+  pileCapEstimate?: {
+    capLengthM: number;
+    capWidthM: number;
+    capThicknessM: number;
+    pileCapThicknessMm: number;
+    capConcreteVolumeM3: number;
+    concreteVolumeM3: number;
+    cementBags: number;
+    sandCft: number;
+    stoneChipsCft: number;
+    estimatedRebarKg: number;
+    rebarKg: number;
+  };
   calculationsBreakdown: PileCalculationStep[];
   status: 'nominal' | 'warning' | 'critical';
 }
@@ -5377,6 +5624,73 @@ export function computePileCapacity(
           'BNBC Clause 3.10.4.2 (Permissible Settlement Limit of 25 mm)',
           'BNBC Clause 3.10.4.3 (Equivalent Raft Group Consolidation Settlement)',
         ],
+      },
+      // Bangladeshi Construction Practice: Casing, Bentonite & Pile Cap Estimates
+      boredPileSpecs: isBored ? {
+        casingLengthM: params.casingLengthM ?? Math.min(6.0, Math.max(3.0, Dw + 1.0)),
+        bentoniteRequired: params.bentoniteSlurryChecked ?? true,
+        bentoniteSlurryVolumeM3: Number((Ap * L * 1.15).toFixed(2)),
+        bentoniteViscositySec: params.bentoniteViscositySec ?? 38,
+        bentoniteDensityGPerCc: params.bentoniteDensityGPerCc ?? 1.05,
+        slurryQualityNotes: [
+          'BNBC §3.10: Maintain bentonite slurry level ≥ 1.5m above groundwater table.',
+          'Marsh funnel viscosity 30–45s ensures cuttings suspension without excessive cake.',
+          'Desanding required if sand content exceeds 4% prior to tremie concrete placement.',
+        ],
+      } : undefined,
+      casingBentoniteNotes: isBored ? {
+        casingLengthM: params.casingLengthM ?? Math.min(6.0, Math.max(3.0, Dw + 1.0)),
+        bentoniteRequired: params.bentoniteSlurryChecked ?? true,
+        bentoniteSlurryVolumeM3: Number((Ap * L * 1.15).toFixed(2)),
+        recommendedViscositySec: params.bentoniteViscositySec ?? 38,
+        recommendedDensityGPerCc: params.bentoniteDensityGPerCc ?? 1.05,
+        guidelines: 'BNBC-2020 §3.10: Maintain slurry head ≥ 1.5m above groundwater table to prevent borehole necking/collapse in loose sandy silts.',
+      } : undefined,
+      pileCapEstimate: {
+        capLengthM: Number(((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)).toFixed(2)),
+        capWidthM: Number(((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)).toFixed(2)),
+        capThicknessM: Number(((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000).toFixed(2)),
+        pileCapThicknessMm: params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500)),
+        capConcreteVolumeM3: Number((
+          ((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000)
+        ).toFixed(2)),
+        concreteVolumeM3: Number((
+          ((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000)
+        ).toFixed(2)),
+        cementBags: Math.ceil(
+          ((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000) *
+          6.5
+        ),
+        sandCft: Number((
+          ((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000) *
+          15.0
+        ).toFixed(1)),
+        stoneChipsCft: Number((
+          ((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000) *
+          30.0
+        ).toFixed(1)),
+        estimatedRebarKg: Math.round(
+          ((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000) *
+          110 // ~110 kg/m3 for heavy foundation pile cap
+        ),
+        rebarKg: Math.round(
+          ((groupCols - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((groupRows - 1) * spacingM + D + 2 * (params.pileCapOverhangM ?? 0.25)) *
+          ((params.pileCapThicknessMm ?? Math.max(750, Math.round(D * 1500))) / 1000) *
+          110
+        ),
       },
       calculationsBreakdown,
       status,

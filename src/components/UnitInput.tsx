@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useId } from 'react';
 import {
   UnitCategoryKey,
   CustomUnitDefinition,
@@ -81,6 +81,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   onChangeSI,
   currentUnitId,
   onUnitChange,
+  fieldKey,
   step = 'any',
   min,
   max,
@@ -98,6 +99,8 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   customValidation,
   showCounterpartToggle = true,
 }) => {
+  const reactId = useId();
+  const inputId = fieldKey ? `unit-input-${fieldKey}` : `unit-input-${reactId}`;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -341,7 +344,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       {/* Header: Label, Guidance Tooltip Button & Rapid Counterpart Unit Toggle */}
       <div className="flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
-          <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate">
+          <label htmlFor={inputId} className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate cursor-pointer">
             {label}
           </label>
 
@@ -458,6 +461,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         }`}
       >
         <input
+          id={inputId}
           type="text"
           inputMode="decimal"
           disabled={disabled}

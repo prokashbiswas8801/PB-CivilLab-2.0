@@ -128,6 +128,101 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                 ]}
               />
             </div>
+
+            {/* Brick Standard & Sub-base Configuration */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+              <div>
+                <label className="block text-xs font-semibold mb-1">Brick Standard Specification</label>
+                <select
+                  value={activeWorkspace.masonry.brickStandardType || 'bd-pwd-metric'}
+                  onChange={(e) => {
+                    const bType = e.target.value as any;
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      masonry: { ...ws.masonry, brickStandardType: bType },
+                    }));
+                  }}
+                  className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                >
+                  <option value="bd-pwd-metric">BD PWD Standard Metric (240 × 115 × 70 mm)</option>
+                  <option value="traditional-field">Traditional Field Brick (9.5" × 4.5" × 2.75")</option>
+                </select>
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  {activeWorkspace.masonry.brickStandardType === 'traditional-field'
+                    ? 'Nominal: 10" × 5" × 3" (mortar joint included)'
+                    : 'Nominal: 250 × 125 × 75 mm (mortar joint included)'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1">Sub-Base Schedule (BFS / HBB)</label>
+                <select
+                  value={activeWorkspace.masonry.subbaseType || 'none'}
+                  onChange={(e) => {
+                    const subType = e.target.value as any;
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      masonry: { ...ws.masonry, subbaseType: subType },
+                    }));
+                  }}
+                  className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                >
+                  <option value="none">None (Direct Superstructure Wall)</option>
+                  <option value="bfs">Brick Flat Soling (BFS - 3.1 bricks/sft)</option>
+                  <option value="hbb">Herringbone Bond (HBB - 5.2 bricks/sft)</option>
+                </select>
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  Sub-grade paving under floor slab or foundation trench
+                </span>
+              </div>
+            </div>
+
+            {activeWorkspace.masonry.subbaseType && activeWorkspace.masonry.subbaseType !== 'none' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono">
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Sub-Base Area (m²)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={activeWorkspace.masonry.bfsLayerAreaM2 ?? Math.round(activeWorkspace.masonry.wallLengthM * (activeWorkspace.masonry.wallThicknessM + 0.3) * 10) / 10}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        masonry: { ...ws.masonry, bfsLayerAreaM2: Math.max(0, val) },
+                      }));
+                    }}
+                    className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                  />
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                    ~{((activeWorkspace.masonry.bfsLayerAreaM2 ?? (activeWorkspace.masonry.wallLengthM * 0.5)) * 10.7639).toFixed(0)} SFT bed
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Sand Cushion Bed (mm)</label>
+                  <input
+                    type="number"
+                    min="25"
+                    max="200"
+                    step="25"
+                    value={activeWorkspace.masonry.bfsSandCushionThicknessMm ?? 75}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        masonry: { ...ws.masonry, bfsSandCushionThicknessMm: Math.max(0, val) },
+                      }));
+                    }}
+                    className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                  />
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                    Standard sand bed: 75mm (3 in) PWD clause
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Wall Openings: Doors, Windows, Veranda Grills */}
@@ -337,6 +432,58 @@ export const MasonryFinishesMetrics: React.FC<MasonryFinishesMetricsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Sub-Base BFS / HBB PWD Schedule Card */}
+      {result.subbaseSchedule && result.subbaseSchedule.subbaseType !== 'none' && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)]">
+              {result.subbaseSchedule.subbaseName} (PWD Schedule of Rates)
+            </span>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              Bed Area: <strong className="text-[var(--md-sys-color-on-surface)]">{result.subbaseSchedule.areaSft.toFixed(0)} SFT</strong> ({result.subbaseSchedule.areaM2.toFixed(1)} m²)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 text-xs font-mono">
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Soling Bricks</span>
+              <strong className="text-base text-amber-600 dark:text-amber-400 mt-0.5 block">
+                {result.subbaseSchedule.bricksWithWastageCount.toLocaleString()} nos
+              </strong>
+              <span className="text-[9px] text-muted-foreground">
+                {result.subbaseSchedule.subbaseType === 'bfs' ? '3.1 bricks/sft' : '5.2 bricks/sft'} + 3% waste
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Sand Cushion Bed</span>
+              <strong className="text-base text-sky-600 dark:text-sky-400 mt-0.5 block">
+                {result.subbaseSchedule.sandCushionCft.toFixed(1)} cft
+              </strong>
+              <span className="text-[9px] text-muted-foreground">
+                {result.subbaseSchedule.sandCushionThicknessMm} mm bed (~{result.subbaseSchedule.sandCushionM3.toFixed(2)} m³)
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Brick Standard</span>
+              <strong className="text-xs text-[var(--md-sys-color-on-surface)] mt-1 block">
+                {result.brickStandardUsed?.includes('Traditional') ? 'Traditional 9.5"×4.5"' : 'PWD Metric 240×115mm'}
+              </strong>
+              <span className="text-[9px] text-muted-foreground">1st class picked bricks</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Sand Bags (Cushion)</span>
+              <strong className="text-base text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                {result.subbaseSchedule.sandCushionBags} bags
+              </strong>
+              <span className="text-[9px] text-muted-foreground">Local filling sand</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Paint, Primer & Wall Putty Schedule Card */}
       {result.paintPuttySchedule && result.paintPuttySchedule.finishingSurfaceAreaM2 > 0 && (

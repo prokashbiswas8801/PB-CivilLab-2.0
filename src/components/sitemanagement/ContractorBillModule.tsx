@@ -26,6 +26,8 @@ import {
 import { useSiteManagement } from '../../context/SiteManagementContext';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { ContractorRABill } from '../../types/siteManagement';
+import { CivilWorkspace, TakeoffLineItem } from '../../types/civil';
+import { loadPersistedState } from '../../utils/storage';
 
 const COMMON_TRADES = [
   'RCC Structural Civil Labor',
@@ -42,7 +44,11 @@ const COMMON_TRADES = [
 
 const COMMON_UNITS = ['Sq.Ft', 'm³', 'CFT', 'Ton', 'Kg', 'Nos', 'Rft', 'Point'];
 
-export const ContractorBillModule: React.FC = () => {
+export interface ContractorBillModuleProps {
+  activeWorkspace?: CivilWorkspace;
+}
+
+export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ activeWorkspace: propsWs }) => {
   const {
     siteData,
     activeProjectId,
@@ -52,7 +58,16 @@ export const ContractorBillModule: React.FC = () => {
     financialSummary,
     addPettyCashEntry,
   } = useSiteManagement();
-  const { activeWorkspace } = useCivilLab();
+
+  const activeWorkspace = useMemo(() => {
+    if (propsWs) return propsWs;
+    try {
+      const persisted = loadPersistedState();
+      return persisted.workspaces.find((w) => w.id === persisted.activeWorkspaceId) || persisted.workspaces[0];
+    } catch {
+      return null;
+    }
+  }, [propsWs]);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -166,7 +181,7 @@ export const ContractorBillModule: React.FC = () => {
       setTenderBoqQuantity(undefined);
       return;
     }
-    const boqItem = activeWorkspace.boq.items.find((it) => it.id === itemId);
+    const boqItem = activeWorkspace?.boq?.items?.find((it: TakeoffLineItem) => it.id === itemId);
     if (boqItem) {
       const tenderQty =
         boqItem.numberOfMembers * boqItem.lengthM * boqItem.widthM * boqItem.heightM -
@@ -836,7 +851,7 @@ export const ContractorBillModule: React.FC = () => {
                     className="w-full px-4 py-2 rounded-full text-xs bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] font-serif"
                   >
                     <option value="">-- Manual Site Trade (Not linked to BOQ) --</option>
-                    {activeWorkspace.boq.items.map((it) => {
+                    {(activeWorkspace?.boq?.items || []).map((it: TakeoffLineItem) => {
                       const qty =
                         it.numberOfMembers * it.lengthM * it.widthM * it.heightM -
                         (it.deductionQty || 0);

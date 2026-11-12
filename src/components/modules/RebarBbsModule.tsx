@@ -121,7 +121,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             BNBC 2020 Sec 8.1.8 / ACI 318 Table 20.6.1.3.1
           </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <UnitInput
             label="Nominal Clear Cover"
             category="length"
@@ -147,18 +147,39 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             recommendedRange="20 mm (slabs) – 75 mm (earth contact)"
             designTip="Cover protects reinforcing steel from carbonation, moisture ingress, and fire."
           />
+
           <div>
-            <label className="block text-xs font-semibold mb-1">Standard Hook Bend Angle</label>
+            <label className="block text-xs font-semibold mb-1">Steel Grade (BDS ISO 6935-2)</label>
             <select
-              value={bbs.hookAngle || '90'}
+              value={bbs.steelGradeType || '500w-grade60'}
+              onChange={(e) => updateBBS({ steelGradeType: e.target.value as any })}
+              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+            >
+              <option value="500w-grade60">500W Grade 60 (500 MPa / 72.5 ksi - BNBC Standard)</option>
+              <option value="400w-grade40">400W Grade 40 (400 MPa / 58 ksi - Mild Deformed)</option>
+              <option value="550d-highductile">550D High Ductility (550 MPa - High-Rise Frames)</option>
+            </select>
+            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+              BSRM / AKS / KSRM standard thermo-mechanically treated (TMT)
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Standard Hook &amp; Stirrup Bend</label>
+            <select
+              value={bbs.hookAngle || '135'}
               onChange={(e) => updateBBS({ hookAngle: e.target.value as '90' | '135' | '180' })}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
             >
+              <option value="135">135° Seismic Ductile Stirrup (10db ≥ 75mm - BNBC §8.2.3)</option>
               <option value="90">90° Standard L-Bend (Bend deduction: 2d)</option>
-              <option value="135">135° Seismic Stirrup Hook (Bend deduction: 3d)</option>
               <option value="180">180° Semi-circular Hook (Bend deduction: 4d)</option>
             </select>
+            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+              135° hooks mandatory for seismic confinement zones
+            </span>
           </div>
+
           <div>
             <label className="block text-xs font-semibold mb-1">Lapping Standard (&gt; 12m)</label>
             <select
@@ -166,10 +187,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               onChange={(e) => updateBBS({ lappingFactorD: Number(e.target.value) })}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
             >
-              <option value="50">50d Tension Lap (BNBC / ACI standard)</option>
+              <option value="50">50d Tension Lap (BNBC / ACI Class B)</option>
               <option value="60">60d Severe / Seismic Splice Lap</option>
               <option value="40">40d Compression Lap (Columns only)</option>
             </select>
+            <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+              12m stock mill length waste minimization
+            </span>
           </div>
         </div>
       </div>

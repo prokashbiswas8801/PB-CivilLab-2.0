@@ -95,7 +95,16 @@ export type UnitCategoryKey =
   | 'moment'
   | 'slope'
   | 'velocity'
-  | 'flow_rate';
+  | 'flow_rate'
+  | 'section_properties'
+  | 'viscosity'
+  | 'temperature'
+  | 'energy'
+  | 'power'
+  | 'time_frequency'
+  | 'digital_storage'
+  | 'fuel_economy'
+  | 'cad_typography';
 
 export type UnitSystemPreset = 'metric' | 'imperial' | 'regional' | 'custom' | 'mixed';
 
@@ -114,6 +123,7 @@ export interface UnitConverterParameters {
   toUnit: string;
   inputValue: number;
   feetInchRawString: string;
+  regionalLandPreset?: 'standard' | 'rajshahi' | 'chattogram';
 }
 
 /* -------------------------------------------------------------
@@ -202,14 +212,18 @@ export interface BOQParameters {
   currency: CurrencyCode;
   contingencyPercent: number; // e.g. 3%
   contractorOverheadPercent: number; // CP&OH e.g. 10%
-  vatTaxPercent: number; // e.g. 7.5% or 15%
+  vatTaxPercent: number; // e.g. 7.5% or 15% (Bangladeshi statutory VAT)
+  aitTaxPercent?: number; // Advance Income Tax (AIT e.g. 5.0% or 7.0% per NBR/PWD rules)
+  retentionMoneyPercent?: number; // Retention money withheld e.g. 5% to 10% (Security deposit)
   items: TakeoffLineItem[];
   // Advanced QS & Tender Management:
   rateLibraryId?: 'pwd-2024' | 'pwd-2025' | 'lged-2024' | 'commercial' | 'custom';
   regionalDistrictId?: string; // e.g. 'dhaka', 'chittagong', 'sylhet', etc.
   regionalMultiplier?: number; // e.g. 1.00, 1.05
   projectDurationMonths?: number; // Total construction duration (e.g. 12 months)
-  retainagePercent?: number; // Retention money withheld e.g. 5% or 10%
+  retainagePercent?: number; // Retention money withheld e.g. 5% or 10% (Security deposit)
+  mobilizationAdvancePercent?: number; // Mobilization advance paid upfront e.g. 10%
+  mobilizationRecoveryPercent?: number; // Monthly recovery rate e.g. 10% or 20%
   bidTabulation?: BidTabulationData;
 }
 
@@ -269,6 +283,10 @@ export interface BeamParameters {
   supportCondition: SupportCondition;
   allowableStressMpa: number;
   sectionDepthMm: number;
+  // Governing Building Code & Load Combinations:
+  codeStandard?: BuildingCode | 'Eurocode-2' | 'AISC-360';
+  deadLoadKnPerM?: number; // Service Dead Load (D)
+  liveLoadKnPerM?: number; // Service Live Load (L)
   // BNBC-2020 Seismic & Wind Load Quick Estimator Helper
   seismicZone?: 'Zone 1 (Z=0.12)' | 'Zone 2 (Z=0.20)' | 'Zone 3 (Z=0.28)' | 'Zone 4 (Z=0.36)';
   seismicImportanceI?: number;
@@ -297,7 +315,10 @@ export interface BearingParameters {
   // Advanced Geotechnical & Settlement Parameters (BNBC-2020 / ACI / Bowles)
   codeStandard?: BuildingCode;
   shallowSolverMethod?: 'meyerhof' | 'terzaghi' | 'hansen';
-  sptN60?: number;
+  boreholeFieldSptN?: number; // Raw measured field SPT blow count (N_field)
+  hammerEfficiency?: number; // Hammer energy ratio (typical 0.55 - 0.60 for local donut hammer in Bangladesh)
+  sptN60?: number; // Corrected SPT N60 = (N * Em * Cb * Cs * Cr) / 60
+  selectedDistrictId?: string; // Auto-lookup district
   elasticModulusEsMpa?: number;
   poissonRatio?: number;
   clayLayerThicknessM?: number;
@@ -341,12 +362,16 @@ export interface ConcreteMixParameters {
   airEntrainmentPercent: number;
   batchVolumeM3: number;
   exposureClass?: EnvironmentalExposureClass;
+  // Bangladeshi Local Aggregate & Sand Presets:
+  coarseAggregateType?: 'crushed-stone' | 'crushed-stone-chips' | 'brick-chips-khoa' | 'gravel';
+  sandType?: 'sylhet-sand' | 'local-sand' | 'blended-sand';
+  dryVolumeFactor?: number; // 1.54 for stone chips, 1.50 for brick chips khoa per BNBC/PWD
   // ACI 211.1 Advanced Aggregates & Moisture Correction Parameters:
-  sandFinenessModulus?: number; // FM e.g. 2.4 - 3.0 (standard default 2.7)
-  coarseAggDryRoddedDensityKgPerM3?: number; // DRUW in kg/m³ (standard default 1600 kg/m³)
+  sandFinenessModulus?: number; // FM e.g. 2.4 - 3.0 (Sylhet FM 2.5-2.8, Local FM 1.2-1.8)
+  coarseAggDryRoddedDensityKgPerM3?: number; // DRUW in kg/m³ (stone ~1600, khoa ~1400 kg/m³)
   fineAggAbsorptionPercent?: number; // Fine aggregate absorption % (ASTM C128, default 1.2%)
   fineAggMoisturePercent?: number; // Fine aggregate field total moisture % (ASTM C70, default 4.0%)
-  coarseAggAbsorptionPercent?: number; // Coarse aggregate absorption % (ASTM C127, default 0.8%)
+  coarseAggAbsorptionPercent?: number; // Coarse aggregate absorption % (Stone 0.8-1.5%, Khoa 8-12%)
   coarseAggMoisturePercent?: number; // Coarse aggregate field total moisture % (ASTM C566, default 2.0%)
   admixtureDosePercent?: number; // Superplasticizer / water reducer % by weight of cement (default 1.0%)
   admixtureSpecificGravity?: number; // Specific gravity of chemical admixture (default 1.15)
@@ -436,6 +461,14 @@ export interface PileCapacityParameters {
   elasticModulusPileGpa?: number;
   permissibleSettlementMm?: number;
   pileConcreteFckMpa?: number;
+  // Bored Cast-in-Situ Casing & Bentonite Slurry Specifications (BNBC / PWD):
+  casingLengthM?: number; // Temporary steel casing through top alluvium (e.g. 3m - 6m)
+  bentoniteSlurryChecked?: boolean; // Polymer / sodium bentonite drilling mud for borehole stability
+  bentoniteViscositySec?: number; // Marsh funnel viscosity (typical 30 - 45s)
+  bentoniteDensityGPerCc?: number; // Slurry density (typical 1.03 - 1.10 g/cm³)
+  // Integrated Pile Cap Concrete & Rebar Estimation:
+  pileCapThicknessMm?: number; // Typical 750mm - 1200mm
+  pileCapOverhangM?: number; // Pile edge to cap edge clearance (typical 0.15m - 0.30m)
   steelYieldFyMpa?: number;
   pipeWallThicknessMm?: number;
   pileGroupRows?: number;
@@ -549,6 +582,8 @@ export interface RebarBBSParameters {
   // Lapping & 12m Commercial Bar Stock Optimizer
   lappingFactorD?: number; // e.g. 50 (50d) or 60 (60d) for bars exceeding 12m
   commercialBarStockLengthM?: number; // default 12.0m (39.37 ft)
+  steelGradeType?: '500W-grade-72.5' | '400W-grade-60' | '300-grade-40' | 'custom';
+  seismicDuctileStirrups?: boolean; // BNBC-2020 135° hook with 10db >= 75mm extension & closer spacing at ends
   // Beam BBS fields
   beamLengthM?: number;
   beamWidthMm?: number;
@@ -667,6 +702,12 @@ export interface MasonryParameters {
   grillWeightKgPerSft?: number; // default 1.40 kg/sft
   includeGrillSchedule?: boolean;
   includeThaiSchedule?: boolean;
+  // Bangladeshi Standard Brick, BFS & HBB Sub-base:
+  brickStandardType?: 'bd-pwd-metric' | 'traditional-field' | 'custom';
+  wallType?: '125mm-5inch-partition' | '250mm-10inch-loadbearing' | '375mm-15inch' | 'custom';
+  subbaseType?: 'none' | 'bfs-flat-soling' | 'hbb-herringbone-bond';
+  bfsLayerAreaM2?: number; // Floor / road sub-base Brick Flat Soling area
+  bfsSandCushionThicknessMm?: number; // e.g. 25mm to 50mm local sand cushion bed
 }
 
 /* Module 8: Earthwork & Road Alignment */

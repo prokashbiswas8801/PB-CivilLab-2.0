@@ -601,7 +601,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
           <div>
             <label className="block text-[11px] font-semibold mb-1">Currency</label>
             <select
@@ -712,6 +712,78 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                   : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
               }`}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="block text-[11px] font-semibold truncate" title="Advance Income Tax (AIT) Withheld at Source">
+                AIT Tax (%)
+              </label>
+            </div>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              max="25"
+              value={activeWorkspace.boq.aitTaxPercent ?? 5.0}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: { ...ws.boq, aitTaxPercent: isNaN(val) ? 0 : val },
+                }));
+              }}
+              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
+              placeholder="5.0%"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="block text-[11px] font-semibold truncate" title="Security Deposit / Retention Money Withheld">
+                Retention (%)
+              </label>
+            </div>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              max="20"
+              value={activeWorkspace.boq.retentionMoneyPercent ?? 7.5}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: { ...ws.boq, retentionMoneyPercent: isNaN(val) ? 0 : val },
+                }));
+              }}
+              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
+              placeholder="7.5%"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="block text-[11px] font-semibold truncate" title="Mobilization Advance Recovery from Running Bill">
+                Mob. Rec. (%)
+              </label>
+            </div>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              max="30"
+              value={activeWorkspace.boq.mobilizationRecoveryPercent ?? 0}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: { ...ws.boq, mobilizationRecoveryPercent: isNaN(val) ? 0 : val },
+                }));
+              }}
+              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
+              placeholder="0%"
             />
           </div>
         </div>
@@ -1842,6 +1914,37 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
               <span>ESTIMATED GRAND TOTAL BOQ ({boqResult.currency}):</span>
               <span className="text-lg md:text-xl font-extrabold">{boqResult.currencySymbol} {boqResult.grandTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
+
+            {/* Bangladeshi PWD / LGED Statutory Deductions & Net Payable Schedule */}
+            {((boqResult.aitTaxPercent ?? 0) > 0 || (boqResult.retentionMoneyPercent ?? 0) > 0 || (boqResult.mobilizationRecoveryPercent ?? 0) > 0) && (
+              <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 space-y-1.5">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                  Statutory Deductions at Source (PWD / LGED / NBR Compliance)
+                </div>
+                {(boqResult.aitTaxPercent ?? 0) > 0 && (
+                  <div className="flex justify-between items-center text-xs font-mono text-rose-600 dark:text-rose-400">
+                    <span>- Advance Income Tax AIT ({boqResult.aitTaxPercent}%):</span>
+                    <span>- {boqResult.currencySymbol} {(boqResult.aitTaxAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {(boqResult.retentionMoneyPercent ?? 0) > 0 && (
+                  <div className="flex justify-between items-center text-xs font-mono text-amber-600 dark:text-amber-400">
+                    <span>- Security Deposit / Retention Money ({boqResult.retentionMoneyPercent}%):</span>
+                    <span>- {boqResult.currencySymbol} {(boqResult.retentionMoneyAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {(boqResult.mobilizationRecoveryPercent ?? 0) > 0 && (
+                  <div className="flex justify-between items-center text-xs font-mono text-purple-600 dark:text-purple-400">
+                    <span>- Mobilization Advance Recovery ({boqResult.mobilizationRecoveryPercent}%):</span>
+                    <span>- {boqResult.currencySymbol} {(boqResult.mobilizationRecoveryAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex justify-between items-center text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  <span>NET PAYABLE TO CONTRACTOR:</span>
+                  <span className="text-base md:text-lg font-extrabold">{boqResult.currencySymbol} {(boqResult.netPayableToContractorAmount ?? boqResult.grandTotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

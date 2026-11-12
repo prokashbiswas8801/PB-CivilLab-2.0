@@ -542,11 +542,11 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
 
         {activeTab === 'field-notebook' && <FieldNotebookModule />}
 
-        {activeTab === 'contractor-bills' && <ContractorBillModule />}
+        {activeTab === 'contractor-bills' && <ContractorBillModule activeWorkspace={activeWorkspace} />}
 
         {activeTab === 'petty-cash' && <PettyCashModule />}
 
-        {activeTab === 'cube-tests' && <CubeTestModule />}
+        {activeTab === 'cube-tests' && <CubeTestModule activeWorkspace={activeWorkspace} />}
 
         {activeTab === 'daily-progress-report' && <DailyProgressReportModule />}
         {activeTab === 'office-docs' && <OfficeDocsModule activeWorkspace={activeWorkspace} />}

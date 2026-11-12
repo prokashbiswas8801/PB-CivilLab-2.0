@@ -39,6 +39,8 @@ export interface TopbarProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  sunlightMode?: boolean;
+  onToggleSunlightMode?: () => void;
 }
 
 export const Topbar: React.FC<TopbarProps> = ({
@@ -52,6 +54,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   onRedo,
   canUndo = false,
   canRedo = false,
+  sunlightMode = false,
+  onToggleSunlightMode,
 }) => {
   const workbench = useWorkbench();
   const { theme, themeConfig, setTheme, availableThemes } = useTheme();
@@ -373,6 +377,25 @@ export const Topbar: React.FC<TopbarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Dedicated Field Sunlight Mode Toggle (Ultra-high-contrast for outdoor job sites) */}
+        {onToggleSunlightMode && (
+          <button
+            type="button"
+            onClick={onToggleSunlightMode}
+            aria-pressed={sunlightMode}
+            className={`min-h-[32px] px-2.5 sm:px-3 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+              sunlightMode
+                ? 'bg-amber-400 text-black border-amber-500 shadow-sm ring-2 ring-amber-400/50'
+                : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+            }`}
+            title="Field Sunlight Mode (Shift+S): Ultra-high contrast pure black-on-white with bold CAD strokes for outdoor job sites under glare"
+            aria-label="Toggle Field Sunlight Mode"
+          >
+            <Sun className={`w-3.5 h-3.5 ${sunlightMode ? 'text-black stroke-[2.5]' : 'text-amber-500'}`} />
+            <span className="hidden xl:inline">{sunlightMode ? 'Sunlight Active' : 'Sunlight Mode'}</span>
+          </button>
+        )}
 
         {/* Global Offline Sync & Job-Site Status Pill */}
         <OfflineSyncManager className="hidden md:flex" />

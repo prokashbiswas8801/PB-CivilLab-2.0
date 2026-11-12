@@ -6,6 +6,8 @@ export interface HotkeyHandlers {
   onToggleHistory?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  onToggleSunlightMode?: () => void;
+  onQuickToggleUnitSystem?: () => void;
 }
 
 /**
@@ -55,6 +57,20 @@ export function useHotkeys(handlers: HotkeyHandlers) {
       if (isCmdOrCtrl && key === 'h') {
         e.preventDefault();
         handlersRef.current.onToggleHistory?.();
+        return;
+      }
+
+      // Shift + S: Field Sunlight Mode toggle (when not typing in an input)
+      if (e.shiftKey && (e.key === 'S' || e.key === 's') && !isInput && !isCmdOrCtrl) {
+        e.preventDefault();
+        handlersRef.current.onToggleSunlightMode?.();
+        return;
+      }
+
+      // Alt + U: 1-Click Swap Metric (SI) <-> Imperial (US)
+      if (e.altKey && (e.code === 'KeyU' || e.key === 'u' || e.key === 'U') && !isInput && !isCmdOrCtrl) {
+        e.preventDefault();
+        handlersRef.current.onQuickToggleUnitSystem?.();
         return;
       }
 

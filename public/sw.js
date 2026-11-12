@@ -102,17 +102,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Static Assets (Scripts, Styles, Images, Fonts)
+  // 2. Static Assets (Scripts, Styles, Images, Fonts - Including Nikosh Bengali TTF/WOFF2)
   const isStaticAsset =
     url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith('/fonts/') ||
     url.pathname.endsWith('.js') ||
     url.pathname.endsWith('.css') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.png') ||
     url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.woff') ||
     url.pathname.endsWith('.woff2') ||
+    url.pathname.endsWith('.ttf') ||
     url.hostname.includes('fonts.googleapis.com') ||
-    url.hostname.includes('fonts.gstatic.com');
+    url.hostname.includes('fonts.gstatic.com') ||
+    url.hostname.includes('jsdelivr.net');
 
   if (isStaticAsset) {
     event.respondWith(

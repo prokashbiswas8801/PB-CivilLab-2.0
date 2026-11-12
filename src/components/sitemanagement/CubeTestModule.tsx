@@ -26,6 +26,8 @@ import {
 import { useSiteManagement } from '../../context/SiteManagementContext';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { CubeTestRecord, ConcreteGrade, CubeTestStatus } from '../../types/siteManagement';
+import { CivilWorkspace } from '../../types/civil';
+import { loadPersistedState } from '../../utils/storage';
 
 const CONCRETE_GRADES: Array<{ grade: ConcreteGrade; targetMpa: number; targetPsi: number; mixRatio: string }> = [
   { grade: 'M15', targetMpa: 15, targetPsi: 2175, mixRatio: '1:2:4' },
@@ -36,7 +38,11 @@ const CONCRETE_GRADES: Array<{ grade: ConcreteGrade; targetMpa: number; targetPs
   { grade: 'M40', targetMpa: 40, targetPsi: 5800, mixRatio: 'Design Mix' },
 ];
 
-export const CubeTestModule: React.FC = () => {
+export interface CubeTestModuleProps {
+  activeWorkspace?: CivilWorkspace;
+}
+
+export const CubeTestModule: React.FC<CubeTestModuleProps> = ({ activeWorkspace: propsWs }) => {
   const {
     siteData,
     activeProjectId,
@@ -45,7 +51,16 @@ export const CubeTestModule: React.FC = () => {
     deleteCubeTestRecord,
     addMilestoneTask,
   } = useSiteManagement();
-  const { activeWorkspace } = useCivilLab();
+
+  const activeWorkspace = useMemo(() => {
+    if (propsWs) return propsWs;
+    try {
+      const persisted = loadPersistedState();
+      return persisted.workspaces.find((w) => w.id === persisted.activeWorkspaceId) || persisted.workspaces[0];
+    } catch {
+      return null;
+    }
+  }, [propsWs]);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -126,11 +141,11 @@ export const CubeTestModule: React.FC = () => {
 
   // 1-Click Sync: Import Active Concrete Mix Design directly as a Pour Sample
   const handleImportActiveMixPour = () => {
-    const conc = activeWorkspace.concrete;
-    const targetFc = conc.targetStrengthMpa || 25;
-    const vol = conc.batchVolumeM3 || 10;
-    const slump = conc.slumpMm || 100;
-    const ratio = `1 : ${conc.sandRatio || 1.5} : ${conc.stoneRatio || 3.0}`;
+    const conc = activeWorkspace?.concrete;
+    const targetFc = conc?.targetStrengthMpa || 25;
+    const vol = conc?.batchVolumeM3 || 10;
+    const slump = conc?.slumpMm || 100;
+    const ratio = targetFc >= 30 ? '1 : 1.5 : 3' : targetFc >= 25 ? '1 : 2 : 4' : '1 : 2.5 : 5';
 
     let matchedGrade: ConcreteGrade = 'M25';
     if (targetFc <= 17) matchedGrade = 'M15';
@@ -170,6 +185,7 @@ export const CubeTestModule: React.FC = () => {
       return;
     }
     const target = CONCRETE_GRADES.find((g) => g.grade === concreteGrade)?.targetMpa || 25;
+    const defaultRatio = target >= 30 ? '1 : 1.5 : 3' : target >= 25 ? '1 : 2 : 4' : '1 : 2.5 : 5';
 
     const payload = {
       pourId: pourId.trim() || `POUR-${Date.now().toString(36).toUpperCase()}`,
@@ -181,8 +197,8 @@ export const CubeTestModule: React.FC = () => {
       status: 'Scheduled' as const,
       labName: labName.trim() || 'Central Quality Lab',
       remarks: remarks.trim() || undefined,
-      mixRatio: `1 : ${activeWorkspace.concrete?.sandRatio || 1.5} : ${activeWorkspace.concrete?.stoneRatio || 3.0}`,
-      pourVolumeM3: activeWorkspace.concrete?.batchVolumeM3 || 10,
+      mixRatio: defaultRatio,
+      pourVolumeM3: activeWorkspace?.concrete?.batchVolumeM3 || 10,
     };
 
     if (editingCube) {
@@ -344,7 +360,7 @@ export const CubeTestModule: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {activeWorkspace.concrete && (
+          {activeWorkspace?.concrete && (
             <button
               type="button"
               onClick={handleImportActiveMixPour}

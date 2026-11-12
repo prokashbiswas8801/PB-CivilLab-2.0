@@ -750,9 +750,9 @@ export function extractDesignMaterialCeilings(workspace: CivilWorkspace): Design
   if (workspace.concreteMaterials) {
     const cm = computeConcreteMaterials(workspace.concreteMaterials);
     if (cm.result) {
-      cementBags += cm.result.cementBags || 0;
-      sandCft += cm.result.sandVolumeCft || ((cm.result.sandVolumeM3 || 0) * 35.3147);
-      coarseAggregateCft += cm.result.aggregateVolumeCft || ((cm.result.aggregateVolumeM3 || 0) * 35.3147);
+      cementBags += cm.result.cementBags50Kg || 0;
+      sandCft += cm.result.sandCft || ((cm.result.sandVolumeM3 || 0) * 35.3147);
+      coarseAggregateCft += cm.result.aggregateCft || ((cm.result.aggregateVolumeM3 || 0) * 35.3147);
       totalConcreteM3 += cm.result.wetVolumeM3 || 0;
     }
   }
@@ -761,9 +761,9 @@ export function extractDesignMaterialCeilings(workspace: CivilWorkspace): Design
   if (workspace.masonry) {
     const mas = computeMasonryFinishes(workspace.masonry);
     if (mas.result) {
-      bricksNos += mas.result.netBricksCount || mas.result.totalBricksCount || 0;
-      cementBags += (mas.result.mortarCementBags || 0) + (mas.result.plasterCementBags || 0);
-      sandCft += ((mas.result.mortarSandVolumeM3 || 0) + (mas.result.plasterSandVolumeM3 || 0)) * 35.3147;
+      bricksNos += mas.result.bricksWithWastageCount || mas.result.requiredBricksCount || 0;
+      cementBags += (mas.result.mortarCementBags50Kg || 0) + (mas.result.plasterCementBags || 0);
+      sandCft += (mas.result.mortarSandCft || 0) + (mas.result.plasterSandCft || 0);
     }
   }
 
@@ -772,10 +772,10 @@ export function extractDesignMaterialCeilings(workspace: CivilWorkspace): Design
     const bbs = computeRebarBBS(workspace.rebarBbs);
     if (bbs.result) {
       rebarTonnes += bbs.result.totalSteelWeightTon || ((bbs.result.totalSteelWeightKg || 0) / 1000);
-      if (bbs.result.summaryByDia) {
-        for (const item of bbs.result.summaryByDia) {
-          rebarByDiaTonnes[item.diaMm] =
-            (rebarByDiaTonnes[item.diaMm] || 0) + Number((item.totalWeightKg / 1000).toFixed(3));
+      if (bbs.result.items) {
+        for (const item of bbs.result.items) {
+          rebarByDiaTonnes[item.barDiaMm] =
+            (rebarByDiaTonnes[item.barDiaMm] || 0) + Number((item.totalWeightKg / 1000).toFixed(3));
         }
       }
     }

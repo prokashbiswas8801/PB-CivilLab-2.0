@@ -593,9 +593,18 @@
     display: table-footer-group !important;
   }
 
-  .print-avoid-break {
+  .print-avoid-break,
+  #pb-printable-report section,
+  #pb-printable-report article,
+  #pb-printable-report .report-card,
+  #pb-printable-report .print-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  #pb-printable-report svg {
+    shape-rendering: geometricPrecision !important;
+    text-rendering: geometricPrecision !important;
   }
 
   .print-force-break {
@@ -769,12 +778,33 @@
 
 .sunlight-mode svg text {
   fill: #000000 !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
+  stroke: #ffffff !important;
+  stroke-width: 0.4px !important;
+  paint-order: stroke fill;
+}
+
+.sunlight-mode svg path,
+.sunlight-mode svg line,
+.sunlight-mode svg polyline,
+.sunlight-mode svg rect,
+.sunlight-mode svg circle {
+  stroke-width: 2.2px !important;
 }
 
 .sunlight-mode .dcr-gauge-track {
   border: 2px solid #000000 !important;
   background-color: #e2e8f0 !important;
+}
+
+.sunlight-mode .touch-target-48 {
+  min-height: 48px !important;
+  min-width: 48px !important;
+}
+
+.sunlight-mode .border-[var(--md-sys-color-outline-variant)],
+.sunlight-mode .border-[var(--md-sys-color-outline)] {
+  border-color: #000000 !important;
 }
 
 /* ==========================================================================

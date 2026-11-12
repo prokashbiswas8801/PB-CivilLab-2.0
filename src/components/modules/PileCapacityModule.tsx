@@ -327,6 +327,75 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               max="4.0"
             />
           </div>
+
+          {/* Bored Pile Casing & Bentonite Slurry Specifications */}
+          {pile.pileType === 'bored-cast-in-situ' && (
+            <div className="col-span-2 sm:col-span-3 lg:col-span-6 p-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-2 mt-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-bold font-mono text-[var(--md-sys-color-primary)]">
+                  Bored Cast-in-Situ Guide Casing &amp; Bentonite Slurry Specification (BNBC-2020 Part 6 §3.10.3 / ICE)
+                </span>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-mono">
+                  <input
+                    type="checkbox"
+                    checked={pile.bentoniteSlurryChecked ?? true}
+                    onChange={(e) => updatePile({ bentoniteSlurryChecked: e.target.checked })}
+                    className="rounded border-[var(--md-sys-color-outline)]"
+                  />
+                  <span>Use Bentonite Slurry Trenching</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Guide Casing Length (m)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={pile.lengthM}
+                    step="0.5"
+                    value={pile.casingLengthM ?? Math.min(6.0, Math.round(pile.lengthM * 0.3 * 10) / 10)}
+                    onChange={(e) => updatePile({ casingLengthM: Math.max(0, Number(e.target.value) || 0) })}
+                    className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                  />
+                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+                    Temporary steel guide casing for collapsible upper strata
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Marsh Funnel Viscosity (sec)</label>
+                  <input
+                    type="number"
+                    min="25"
+                    max="60"
+                    value={pile.bentoniteViscositySec ?? 35}
+                    onChange={(e) => updatePile({ bentoniteViscositySec: Number(e.target.value) || 35 })}
+                    className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                  />
+                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+                    Target: 30–45s (BNBC / API RP 13B standard)
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1">Slurry Density (g/cm³)</label>
+                  <input
+                    type="number"
+                    min="1.0"
+                    max="1.3"
+                    step="0.01"
+                    value={pile.bentoniteDensityGPerCc ?? 1.08}
+                    onChange={(e) => updatePile({ bentoniteDensityGPerCc: Number(e.target.value) || 1.08 })}
+                    className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                  />
+                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
+                    Fresh bentonite &lt; 1.10 g/cm³ before tremie concreting
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -663,6 +732,42 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                 BNBC 2020 limit: 25mm isolated pile
               </span>
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
+                Pile Cap Thickness (mm)
+              </label>
+              <input
+                type="number"
+                min="400"
+                max="3000"
+                step="50"
+                value={pile.pileCapThicknessMm ?? 1000}
+                onChange={(e) => updatePile({ pileCapThicknessMm: Math.max(400, Number(e.target.value) || 1000) })}
+                className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
+                Rigid pile cap depth (BNBC-2020)
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
+                Cap Edge Overhang (m)
+              </label>
+              <input
+                type="number"
+                min="0.15"
+                max="1.5"
+                step="0.05"
+                value={pile.pileCapOverhangM ?? 0.35}
+                onChange={(e) => updatePile({ pileCapOverhangM: Math.max(0.15, Number(e.target.value) || 0.35) })}
+                className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+              />
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
+                Clear overhang beyond outer pile perimeter
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -883,6 +988,105 @@ export const PileCapacityMetrics: React.FC<PileCapacityMetricsProps> = ({ result
           </table>
         </div>
       </div>
+
+      {/* Bored Cast-in-Situ Casing & Bentonite Slurry Specifications Card */}
+      {result.boredPileSpecs && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)]">
+              Bored Cast-in-Situ Guide Casing &amp; Bentonite Slurry Audit
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
+              BNBC-2020 Part 6 §3.10.3 / ICE Guidelines
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono pt-1">
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Guide Casing Length</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">{result.boredPileSpecs.casingLengthM} m</strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Temporary steel liner</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Bentonite Slurry Vol</span>
+              <strong className="text-sm text-sky-600 dark:text-sky-400 mt-0.5 block">{result.boredPileSpecs.bentoniteSlurryVolumeM3.toFixed(1)} m³</strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">~{(result.boredPileSpecs.bentoniteSlurryVolumeM3 * 35.3147).toFixed(0)} CFT / pile</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Marsh Viscosity</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">{result.boredPileSpecs.bentoniteViscositySec} sec</strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Target: 30–45s</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Slurry Density</span>
+              <strong className={`text-sm mt-0.5 block ${result.boredPileSpecs.bentoniteDensityGPerCc <= 1.10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600'}`}>
+                {result.boredPileSpecs.bentoniteDensityGPerCc} g/cm³
+              </strong>
+              <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Pre-pour &lt; 1.10 g/cm³</span>
+            </div>
+          </div>
+
+          {result.boredPileSpecs.slurryQualityNotes.length > 0 && (
+            <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] pt-1 space-y-0.5">
+              {result.boredPileSpecs.slurryQualityNotes.map((note: string, nIdx: number) => (
+                <div key={nIdx} className="flex items-center gap-1.5">
+                  <span className="text-emerald-600 font-bold">•</span>
+                  <span>{note}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pile Cap Concrete & Rebar Estimation Card */}
+      {result.pileCapEstimate && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)]">
+              Integrated Pile Cap Structural Takeoff ({result.pileCapEstimate.capLengthM}m × {result.pileCapEstimate.capWidthM}m × {(result.pileCapEstimate.pileCapThicknessMm / 1000).toFixed(2)}m)
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              BNBC-2020 / ACI 318 Standard Cap
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs font-mono pt-1">
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Cap Concrete</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">{result.pileCapEstimate.concreteVolumeM3} m³</strong>
+              <span className="text-[9px] text-muted-foreground">~{(result.pileCapEstimate.concreteVolumeM3 * 35.3147).toFixed(0)} CFT</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Cement Bags (50kg)</span>
+              <strong className="text-sm text-sky-600 dark:text-sky-400 mt-0.5 block">{result.pileCapEstimate.cementBags} bags</strong>
+              <span className="text-[9px] text-muted-foreground">1:1.5:3 nominal</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Sylhet Sand</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">{result.pileCapEstimate.sandCft} cft</strong>
+              <span className="text-[9px] text-muted-foreground">FM 2.5–2.8 coarse</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Stone Chips</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">{result.pileCapEstimate.stoneChipsCft} cft</strong>
+              <span className="text-[9px] text-muted-foreground">20mm downgraded</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-muted-foreground block">Cap Rebar (Main + Tie)</span>
+              <strong className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5 block">{result.pileCapEstimate.rebarKg} kg</strong>
+              <span className="text-[9px] text-muted-foreground">~{(result.pileCapEstimate.rebarKg / 1000).toFixed(2)} Metric Tons</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

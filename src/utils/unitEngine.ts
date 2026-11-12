@@ -16,6 +16,8 @@ import {
   FormatNumberOptions,
   formatSmartNumber,
   formatNumberWhileTyping,
+  parseNaturalConversionExpression,
+  NaturalExpressionParseResult,
 } from './unitConverter';
 
 export type UnitDefinition = UnitInfo;
@@ -31,8 +33,15 @@ export {
   computeRegionalLandBreakdown,
   formatSmartNumber,
   formatNumberWhileTyping,
+  parseNaturalConversionExpression,
 };
-export type { FeetInchParseResult, FormatFeetInchesOptions, RegionalLandBreakdown, FormatNumberOptions };
+export type {
+  FeetInchParseResult,
+  FormatFeetInchesOptions,
+  RegionalLandBreakdown,
+  FormatNumberOptions,
+  NaturalExpressionParseResult,
+};
 
 /**
  * System Presets Default Units
@@ -51,6 +60,15 @@ export const SYSTEM_PRESET_UNITS: Record<'metric' | 'imperial' | 'regional', Rec
     slope: 'percent',
     velocity: 'm/s',
     flow_rate: 'L/s',
+    section_properties: 'mm4',
+    viscosity: 'Pa.s',
+    temperature: 'c',
+    energy: 'kJ',
+    power: 'kW',
+    time_frequency: 's',
+    digital_storage: 'MB',
+    fuel_economy: 'km_l',
+    cad_typography: 'mm',
   },
   imperial: {
     length: 'ft',
@@ -65,10 +83,19 @@ export const SYSTEM_PRESET_UNITS: Record<'metric' | 'imperial' | 'regional', Rec
     slope: 'percent',
     velocity: 'ft/s',
     flow_rate: 'cfs',
+    section_properties: 'in4',
+    viscosity: 'cP',
+    temperature: 'f',
+    energy: 'BTU',
+    power: 'hp',
+    time_frequency: 's',
+    digital_storage: 'MB',
+    fuel_economy: 'mpg_us',
+    cad_typography: 'in',
   },
   regional: {
     length: 'ft',
-    area: 'sft',
+    area: 'katha',
     volume: 'cft',
     mass: 'bag50',
     force: 'kN',
@@ -79,6 +106,15 @@ export const SYSTEM_PRESET_UNITS: Record<'metric' | 'imperial' | 'regional', Rec
     slope: 'percent',
     velocity: 'm/s',
     flow_rate: 'L/s',
+    section_properties: 'mm4',
+    viscosity: 'cP',
+    temperature: 'c',
+    energy: 'kcal',
+    power: 'hp_metric',
+    time_frequency: 's',
+    digital_storage: 'MB',
+    fuel_economy: 'km_l',
+    cad_typography: 'in',
   },
 };
 
@@ -462,6 +498,15 @@ export const BASE_UNIT_INFO: Record<UnitCategoryKey, { id: string; name: string;
   slope: { id: 'ratio', name: 'Decimal Ratio', symbol: 'm/m' },
   velocity: { id: 'm/s', name: 'Meter per Second', symbol: 'm/s' },
   flow_rate: { id: 'm3/s', name: 'Cubic Meter per Second', symbol: 'm³/s' },
+  section_properties: { id: 'mm4', name: 'Millimeter⁴', symbol: 'mm⁴' },
+  viscosity: { id: 'Pa.s', name: 'Pascal Second', symbol: 'Pa·s' },
+  temperature: { id: 'k', name: 'Kelvin', symbol: 'K' },
+  energy: { id: 'J', name: 'Joule', symbol: 'J' },
+  power: { id: 'W', name: 'Watt', symbol: 'W' },
+  time_frequency: { id: 's', name: 'Second', symbol: 's' },
+  digital_storage: { id: 'B', name: 'Byte', symbol: 'B' },
+  fuel_economy: { id: 'km_l', name: 'Kilometer per Liter', symbol: 'km/L' },
+  cad_typography: { id: 'mm', name: 'Millimeter', symbol: 'mm' },
 };
 
 export interface ConversionFactorDetails {
