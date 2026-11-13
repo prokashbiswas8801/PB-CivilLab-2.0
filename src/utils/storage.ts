@@ -12,8 +12,14 @@ import {
   EngineeringPreset,
   EngineeringModuleId,
   ArchitectureParameters,
+  FrameTruss2DParams,
+  SectionAnalyzerParams,
+  RcColumnParams,
+  StrutAndTieParams,
 } from '../types/civil';
 import { persistToIndexedDB, clearIndexedDB, loadFromIndexedDB } from './indexedStorage';
+import { createDefaultCustomPolygon } from './sectionMechanics';
+import { STM_WORKED_EXAMPLES } from './strutAndTieEngine';
 
 export const STORAGE_KEY = 'bd_civillab_state_v3_clean';
 export const LEGACY_PB_V3_KEY = 'pb_civillab_state_v3_clean';
@@ -1274,6 +1280,66 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
         },
       },
     },
+    {
+      id: 'preset-frame-portal-sway',
+      name: 'Portal Sway Frame (6.0m Bay × 4.0m Eave + P-Delta)',
+      description: 'Fixed-base steel/RCC portal frame under 22 kN/m roof gravity UDL and 35 kN lateral wind sway for 1st/2nd-order analysis.',
+      category: 'structural-beam',
+      tags: ['2D Frame', 'Portal', 'P-Delta', 'Stiffness Matrix', 'Structural'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Structural Standards',
+      payload: {
+        targetModule: 'frame-truss-2d',
+        frameTruss2d: createDefaultFrameTruss2D(),
+      },
+    },
+    {
+      id: 'preset-section-ipe300',
+      name: 'IPE 300 S355 Beam-Column (Class 1 Plastic)',
+      description: 'European IPE 300 S355 steel profile under -420 kN axial compression, 145 kN·m major moment, and 95 kN vertical shear.',
+      category: 'structural-beam',
+      tags: ['Section Analyzer', 'IPE 300', 'Plastic N-M', 'Eurocode 3', 'AISC'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Structural Standards',
+      payload: {
+        targetModule: 'section-analyzer',
+        sectionAnalyzer: createDefaultSectionAnalyzer(),
+      },
+    },
+    {
+      id: 'preset-rc-column-400x500',
+      name: 'RC Column 400×500 (8-Ø20mm Biaxial BNBC-2020)',
+      description: 'Tied 400×500 mm C28/500W RC column carrying Pu = 1650 kN, Mux = 185 kN·m, Muy = 65 kN·m with slenderness check.',
+      category: 'structural-beam',
+      tags: ['RC Column', 'N-M Interaction', 'Bresler', 'Slenderness', 'BNBC-2020'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Structural Standards',
+      payload: {
+        targetModule: 'rc-column-design',
+        rcColumn: createDefaultRcColumnDesign(),
+      },
+    },
+    {
+      id: 'preset-stm-deep-beam',
+      name: 'Deep Beam STM (4.0m × 1.6m · 900 kN Point Load)',
+      description: 'ACI 318-19 / BNBC-2020 Strut-and-Tie discontinuity model for a single-point-loaded deep transfer beam.',
+      category: 'structural-beam',
+      tags: ['Strut-and-Tie', 'Deep Beam', 'STM', 'Method of Joints'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'Structural Standards',
+      payload: {
+        targetModule: 'strut-and-tie',
+        strutAndTie: createDefaultStrutAndTie(),
+      },
+    },
   ];
 }
 
@@ -1331,6 +1397,51 @@ export function getZeroBaselineForModule(moduleId: EngineeringModuleId): Partial
       return { earthwork: zeroWs.earthwork };
     case 'continuous-beam':
       return { continuousBeam: zeroWs.continuousBeam };
+    case 'frame-truss-2d':
+      return {
+        frameTruss2d: {
+          ...createDefaultFrameTruss2D(),
+          presetName: 'Clean Zero-Load Baseline',
+          members: createDefaultFrameTruss2D().members.map((m) => ({
+            ...m,
+            udlKnPerM: 0,
+            pointLoadKn: 0,
+          })),
+          nodalLoads: [],
+          thermalDeltaC: 0,
+        },
+      };
+    case 'section-analyzer':
+      return {
+        sectionAnalyzer: {
+          ...createDefaultSectionAnalyzer(),
+          axialForceN_Kn: 0,
+          momentMy_Knm: 0,
+          momentMz_Knm: 0,
+          shearVy_Kn: 0,
+          shearVz_Kn: 0,
+          torsionT_Knm: 0,
+        },
+      };
+    case 'rc-column-design':
+      return {
+        rcColumn: {
+          ...createDefaultRcColumnDesign(),
+          axialLoadPu_Kn: 0,
+          momentMux_Knm: 0,
+          momentMuy_Knm: 0,
+        },
+      };
+    case 'strut-and-tie': {
+      const baseStm = createDefaultStrutAndTie();
+      return {
+        strutAndTie: {
+          ...baseStm,
+          presetName: 'Clean Zero-Load STM Baseline',
+          nodalLoads: baseStm.nodalLoads.map((l) => ({ ...l, fxKn: 0, fyKn: 0 })),
+        },
+      };
+    }
     case 'pile-capacity':
       return { pile: zeroWs.pile };
     case 'pipe-hydraulics':
@@ -1340,6 +1451,130 @@ export function getZeroBaselineForModule(moduleId: EngineeringModuleId): Partial
     default:
       return {};
   }
+}
+
+export function createDefaultFrameTruss2D(): FrameTruss2DParams {
+  return {
+    code: 'BNBC-2020',
+    presetName: 'Portal Sway Frame',
+    analysisMode: 'second-order-p-delta',
+    allowableStressMpa: 250,
+    sectionDepthMm: 350,
+    thermalDeltaC: 0,
+    nodes: [
+      { id: 'n1', label: 'N1', xM: 0, yM: 0, support: 'fixed' },
+      { id: 'n2', label: 'N2', xM: 0, yM: 4.0, support: 'none' },
+      { id: 'n3', label: 'N3', xM: 6.0, yM: 4.0, support: 'none' },
+      { id: 'n4', label: 'N4', xM: 6.0, yM: 0, support: 'fixed' },
+    ],
+    members: [
+      {
+        id: 'm1',
+        label: 'C1',
+        startNodeId: 'n1',
+        endNodeId: 'n2',
+        memberType: 'frame',
+        startHinge: false,
+        endHinge: false,
+        areaCm2: 65,
+        inertiaCm4: 18500,
+        elasticModulusGpa: 200,
+        udlKnPerM: 0,
+        pointLoadKn: 0,
+        pointLoadRatio: 0.5,
+      },
+      {
+        id: 'm2',
+        label: 'B1',
+        startNodeId: 'n2',
+        endNodeId: 'n3',
+        memberType: 'frame',
+        startHinge: false,
+        endHinge: false,
+        areaCm2: 75,
+        inertiaCm4: 26000,
+        elasticModulusGpa: 200,
+        udlKnPerM: 22.0,
+        pointLoadKn: 30.0,
+        pointLoadRatio: 0.5,
+      },
+      {
+        id: 'm3',
+        label: 'C2',
+        startNodeId: 'n3',
+        endNodeId: 'n4',
+        memberType: 'frame',
+        startHinge: false,
+        endHinge: false,
+        areaCm2: 65,
+        inertiaCm4: 18500,
+        elasticModulusGpa: 200,
+        udlKnPerM: 0,
+        pointLoadKn: 0,
+        pointLoadRatio: 0.5,
+      },
+    ],
+    nodalLoads: [
+      { nodeId: 'n2', fxKn: 35.0, fyKn: -40.0, mzKnm: 0 },
+      { nodeId: 'n3', fxKn: 0, fyKn: -40.0, mzKnm: 0 },
+    ],
+  };
+}
+
+export function createDefaultSectionAnalyzer(): SectionAnalyzerParams {
+  return {
+    shape: 'i-beam',
+    presetId: 'ipe-300',
+    designCode: 'Eurocode-3',
+    depthH_Mm: 300,
+    widthB_Mm: 150,
+    webThicknessTw_Mm: 7.1,
+    flangeThicknessTf_Mm: 10.7,
+    wallThicknessT_Mm: 8.0,
+    polygonPointsMm: createDefaultCustomPolygon(),
+    fyMpa: 355,
+    elasticModulusGpa: 210,
+    gammaM0: 1.0,
+    axialForceN_Kn: -420,
+    momentMy_Knm: 145,
+    momentMz_Knm: 0,
+    shearVy_Kn: 0,
+    shearVz_Kn: 95,
+    torsionT_Knm: 0,
+  };
+}
+
+export function createDefaultRcColumnDesign(): RcColumnParams {
+  return {
+    designCode: 'BNBC-2020',
+    widthB_Mm: 400,
+    depthH_Mm: 500,
+    clearCoverMm: 40,
+    unsupportedLengthLu_M: 3.6,
+    effectiveLengthFactorK: 0.85,
+    isBracedFrame: true,
+    concreteFcMpa: 28,
+    rebarFyMpa: 500,
+    longitudinalBarDiaMm: 20,
+    barsAlongWidthB: 3,
+    barsAlongDepthH: 3,
+    tieBarDiaMm: 10,
+    tieSpacingMm: 150,
+    axialLoadPu_Kn: 1650,
+    momentMux_Knm: 185,
+    momentMuy_Knm: 65,
+    sustainedLoadRatioBetaDns: 0.6,
+  };
+}
+
+export function createDefaultStrutAndTie(): StrutAndTieParams {
+  const first = STM_WORKED_EXAMPLES[0].params;
+  return {
+    ...first,
+    nodes: first.nodes.map((n) => ({ ...n })),
+    members: first.members.map((m) => ({ ...m })),
+    nodalLoads: first.nodalLoads.map((l) => ({ ...l })),
+  };
 }
 
 export function createCleanSchemaV2(): CivilLabSchemaV2 {
@@ -1461,6 +1696,45 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
           rebarBbs: { ...fallback.workspaces[0].rebarBbs, ...(ws.rebarBbs || {}) },
           masonry: { ...fallback.workspaces[0].masonry, ...(ws.masonry || {}) },
           earthwork: { ...fallback.workspaces[0].earthwork, ...(ws.earthwork || {}) },
+          frameTruss2d: ws.frameTruss2d
+            ? {
+                ...createDefaultFrameTruss2D(),
+                ...ws.frameTruss2d,
+                nodes: Array.isArray(ws.frameTruss2d.nodes) ? ws.frameTruss2d.nodes : createDefaultFrameTruss2D().nodes,
+                members: Array.isArray(ws.frameTruss2d.members) ? ws.frameTruss2d.members : createDefaultFrameTruss2D().members,
+                nodalLoads: Array.isArray(ws.frameTruss2d.nodalLoads) ? ws.frameTruss2d.nodalLoads : createDefaultFrameTruss2D().nodalLoads,
+              }
+            : undefined,
+          sectionAnalyzer: ws.sectionAnalyzer
+            ? {
+                ...createDefaultSectionAnalyzer(),
+                ...ws.sectionAnalyzer,
+                polygonPointsMm: Array.isArray(ws.sectionAnalyzer.polygonPointsMm)
+                  ? ws.sectionAnalyzer.polygonPointsMm
+                  : createDefaultSectionAnalyzer().polygonPointsMm,
+              }
+            : undefined,
+          rcColumn: ws.rcColumn
+            ? {
+                ...createDefaultRcColumnDesign(),
+                ...ws.rcColumn,
+              }
+            : undefined,
+          strutAndTie: ws.strutAndTie
+            ? {
+                ...createDefaultStrutAndTie(),
+                ...ws.strutAndTie,
+                nodes: Array.isArray(ws.strutAndTie.nodes)
+                  ? ws.strutAndTie.nodes
+                  : createDefaultStrutAndTie().nodes,
+                members: Array.isArray(ws.strutAndTie.members)
+                  ? ws.strutAndTie.members
+                  : createDefaultStrutAndTie().members,
+                nodalLoads: Array.isArray(ws.strutAndTie.nodalLoads)
+                  ? ws.strutAndTie.nodalLoads
+                  : createDefaultStrutAndTie().nodalLoads,
+              }
+            : undefined,
           unitPreferences: {
             systemPreset: (ws.unitPreferences?.systemPreset === 'imperial' || ws.unitPreferences?.systemPreset === 'regional' || ws.unitPreferences?.systemPreset === 'custom'
               ? ws.unitPreferences.systemPreset

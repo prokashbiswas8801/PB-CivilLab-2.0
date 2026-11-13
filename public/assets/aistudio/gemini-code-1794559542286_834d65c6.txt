@@ -1,0 +1,25 @@
+Add a new structural analysis module `"frame-truss-2d"` ("2D Frame & Truss Solver + P-Delta") to BD. CivilLab, seamlessly integrated into the existing navigation sidebar, `TOOL_REGISTRY_MAP`, `MODULE_META`, `CommandPalette`, `DcrGaugeSuite`, `AnalyticalDenseTable`, and PDF/CSV export pipeline without breaking any existing modules.
+
+### 1. Workspace Schema & Backward-Compatible Migration (`src/types/civil.ts`, `src/utils/storage.ts`)
+- Add `'frame-truss-2d'` to `EngineeringModuleId`.
+- Define `FrameTruss2DParams` inside `CivilWorkspace` as an optional field (`frameTruss2d?: FrameTruss2DParams`) with a safe default generator `createDefaultFrameTruss2D()` so legacy workspaces in `localStorage` / `IndexedDB` hydrate without errors.
+- Support:
+  - **Nodes:** `{ id, label, xM, yM, support: 'none' | 'pin' | 'roller-x' | 'roller-y' | 'fixed' | 'spring', springKx?, springKy?, springKr? }`
+  - **Members:** `{ id, label, startNodeId, endNodeId, memberType: 'frame' | 'truss', startHinge: boolean, endHinge: boolean, areaCm2, inertiaCm4, elasticModulusGpa, udlKnPerM, pointLoadKn, pointLoadRatio }`
+  - **Nodal Loads:** `{ nodeId, fxKn, fyKn, mzKnm }`
+  - **Analysis Mode:** `'first-order-linear' | 'second-order-p-delta'`
+
+### 2. Direct Stiffness Matrix & Iterative Second-Order $P\text{--}\Delta$ Solver (`src/utils/frameSolver2d.ts`)
+- Implement a clean, deterministic 3-DOF per node (6x6 local stiffness matrix transformed to global coordinates) Direct Stiffness Method solver in TypeScript:
+  - Handle static condensation for internal member hinges (`startHinge` / `endHinge`).
+  - For `'second-order-p-delta'` mode: implement geometric stiffness matrix $[K_G]$ iterative P-Delta convergence + calculate elastic critical buckling load factor $\alpha_{cr}$ (Horne's method / eigenvalue approximation) and amplification factor $\frac{1}{1 - 1/\alpha_{cr}}$.
+  - Explicitly flag unsupported cases (e.g., unstable mechanism / singular stiffness matrix, or thermal loads in P-Delta mode) with clear engineering diagnostics instead of failing silently.
+  - Generate `handCalculationSteps` (DOF numbering, stiffness assembly summary, nodal equilibrium check $\Sigma F_x = 0, \Sigma F_y = 0, \Sigma M = 0$, and $P\text{--}\Delta$ amplification steps).
+
+### 3. Interactive Canvas & Module Components
+- Create `src/components/modules/FrameTruss2DInputs.tsx` and `src/components/modules/FrameTruss2DMetrics.tsx`:
+  - Include preset templates ("Portal Sway Frame", "Pratt Roof Truss", "2-Story Moment Frame", "Cantilever Bracket Truss") with confirmation guard if user already edited nodes/members.
+  - Interactive node/member table editor + quick add/remove controls.
+- Create interactive SVG visualizer in `src/components/EngineeringDiagrams.tsx`:
+  - Render undeformed frame/truss geometry, support symbols, load vectors, and toggleable overlays for **Deformed Shape (with scale slider)**, **Bending Moment Diagram (BMD)**, **Shear Force Diagram (SFD)**, and **Axial Force Diagram (AFD)** with color-coded tension/compression bars.
+- Register `'frame-truss-2d'` in `Sidebar.tsx` (under Structural Analysis category), `App.tsx`, `AnalyticalDenseTable.tsx`, and `analyticalExport.ts`.

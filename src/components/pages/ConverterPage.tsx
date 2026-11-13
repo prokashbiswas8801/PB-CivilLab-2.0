@@ -29,8 +29,7 @@ import {
 import {
   STANDARD_UNITS,
   BASE_UNITS,
-  convertDirect,
-  computeRegionalLandBreakdown,
+  convertUnitValue,
   parseFeetInchString,
   formatSmartNumber,
 } from '../../utils/unitConverter';
@@ -97,18 +96,17 @@ export const ConverterPage: React.FC<ConverterPageProps> = ({
     return parseFeetInchString(converter.feetInchRawString || '');
   }, [converter.feetInchRawString]);
 
-  // Conversion result
+  // Conversion result with step-by-step formula derivation & regional land preset
   const activeConversionResult = useMemo(() => {
     try {
-      const result = convertDirect(
+      return convertUnitValue(
         converter.inputValue,
         converter.fromUnit,
         converter.toUnit,
         converter.category,
-        customUnits
+        customUnits,
+        converter.regionalLandPreset || 'standard'
       );
-      const formula = `1 ${converter.fromUnit} → ${converter.toUnit}`;
-      return { result, formula };
     } catch {
       return { result: 0, formula: 'Error' };
     }
@@ -117,6 +115,7 @@ export const ConverterPage: React.FC<ConverterPageProps> = ({
     converter.fromUnit,
     converter.toUnit,
     converter.category,
+    converter.regionalLandPreset,
     customUnits,
   ]);
 
@@ -191,6 +190,7 @@ export const ConverterPage: React.FC<ConverterPageProps> = ({
           category={converter.category}
           conversionResult={activeConversionResult}
           customUnits={customUnits}
+          regionalLandPreset={converter.regionalLandPreset || 'standard'}
           onSwapUnits={() => {
             updateActiveWorkspace((ws) => ({
               ...ws,
@@ -301,7 +301,7 @@ export const ConverterPage: React.FC<ConverterPageProps> = ({
           <div className="space-y-1.5 text-xs font-mono">
             <div className="flex justify-between py-1 border-b border-[var(--md-sys-color-outline-variant)]/50">
               <span className="text-[var(--md-sys-color-on-surface-variant)]">1 Bag Cement (50kg):</span>
-              <strong className="text-[var(--md-sys-color-on-surface)]">1.226 CFT (0.0347 m³)</strong>
+              <strong className="text-[var(--md-sys-color-on-surface)]">1.226 CFT bulk (1.25 CFT batch)</strong>
             </div>
             <div className="flex justify-between py-1 border-b border-[var(--md-sys-color-outline-variant)]/50">
               <span className="text-[var(--md-sys-color-on-surface-variant)]">Cement Bulk Density:</span>

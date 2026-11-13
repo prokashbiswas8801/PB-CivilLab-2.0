@@ -14,7 +14,13 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { CustomUnitDefinition, UnitCategoryKey } from '../../types/civil';
-import { BASE_UNITS, STANDARD_UNITS } from '../../utils/unitConverter';
+import {
+  BASE_UNITS,
+  STANDARD_UNITS,
+  convertUnitValue,
+  getEffectiveToBaseFactor,
+  normalizeToBase,
+} from '../../utils/unitConverter';
 import { BASE_UNIT_INFO, getUnitDefinition } from '../../utils/unitEngine';
 
 export interface ExplainConversionModalProps {
@@ -25,6 +31,7 @@ export interface ExplainConversionModalProps {
   toUnitId: string;
   category: UnitCategoryKey;
   customUnits: CustomUnitDefinition[];
+  regionalLandPreset?: 'standard' | 'rajshahi' | 'chattogram';
   onSwapUnits?: () => void;
   onOpenCustomUnitsModal?: () => void;
 }
@@ -37,6 +44,7 @@ export const ExplainConversionModal: React.FC<ExplainConversionModalProps> = ({
   toUnitId,
   category,
   customUnits,
+  regionalLandPreset = 'standard',
   onSwapUnits,
   onOpenCustomUnitsModal,
 }) => {
@@ -70,37 +78,66 @@ export const ExplainConversionModal: React.FC<ExplainConversionModalProps> = ({
   const isToCustom = Boolean(toCustomDef);
   const hasCustomUnit = isFromCustom || isToCustom;
 
-  // Retrieve stored base factors
-  const fromFactor = fromUnitObj?.toBaseFactor ?? 1.0;
-  const toFactor = toUnitObj?.toBaseFactor ?? 1.0;
+  const fromStdInfo = (STANDARD_UNITS[category] || []).find((u) => u.id === fromUnitId);
+  const toStdInfo = (STANDARD_UNITS[category] || []).find((u) => u.id === toUnitId);
 
-  // Handle special slope non-linear trigonometric conversions
+  // Retrieve stored base factors accounting for active regional land preset
+  const fromFactor = isFromCustom
+    ? fromCustomDef?.toBaseFactor ?? 1.0
+    : fromStdInfo
+    ? getEffectiveToBaseFactor(fromStdInfo, regionalLandPreset)
+    : fromUnitObj?.toBaseFactor ?? 1.0;
+
+  const toFactor = isToCustom
+    ? toCustomDef?.toBaseFactor ?? 1.0
+    : toStdInfo
+    ? getEffectiveToBaseFactor(toStdInfo, regionalLandPreset)
+    : toUnitObj?.toBaseFactor ?? 1.0;
+
+  // Handle special slope & functional/affine conversions via canonical engine
   const isSlopeSpecial = category === 'slope';
+  const isFunctionalSpecial =
+    category === 'temperature' ||
+    category === 'fuel_economy' ||
+    Boolean(fromStdInfo?.toBase || toStdInfo?.fromBase);
 
-  let baseValue = inputValue * fromFactor;
-  let targetValue = toFactor !== 0 ? baseValue / toFactor : 0;
+  const engineConversion = convertUnitValue(
+    inputValue,
+    fromUnitId,
+    toUnitId,
+    category,
+    customUnits,
+    regionalLandPreset
+  );
+
+  const baseValue = isFunctionalSpecial
+    ? normalizeToBase(inputValue, fromUnitId, category, customUnits, regionalLandPreset)
+    : inputValue * fromFactor;
+
+  const targetValue = isFunctionalSpecial
+    ? engineConversion.result
+    : toFactor !== 0
+    ? baseValue / toFactor
+    : 0;
+
   let slopeFormulaText = '';
 
   if (isSlopeSpecial) {
     if (fromUnitId === 'degree' && toUnitId === 'percent') {
-      targetValue = Math.tan((inputValue * Math.PI) / 180) * 100;
       slopeFormulaText = `tan(${inputValue}°) × 100% = ${targetValue.toFixed(4)}%`;
     } else if (fromUnitId === 'percent' && toUnitId === 'degree') {
-      targetValue = (Math.atan(inputValue / 100) * 180) / Math.PI;
       slopeFormulaText = `atan(${inputValue} / 100) × (180 / π) = ${targetValue.toFixed(4)}°`;
     } else if (fromUnitId === 'degree' && toUnitId === 'ratio') {
-      targetValue = Math.tan((inputValue * Math.PI) / 180);
       slopeFormulaText = `tan(${inputValue}°) = ${targetValue.toFixed(5)} m/m`;
     } else if (fromUnitId === 'ratio' && toUnitId === 'degree') {
-      targetValue = (Math.atan(inputValue) * 180) / Math.PI;
       slopeFormulaText = `atan(${inputValue}) × (180 / π) = ${targetValue.toFixed(4)}°`;
     } else if (fromUnitId === 'percent' && toUnitId === 'ratio') {
-      targetValue = inputValue / 100;
       slopeFormulaText = `${inputValue}% ÷ 100 = ${targetValue.toFixed(4)} m/m`;
     } else if (fromUnitId === 'ratio' && toUnitId === 'percent') {
-      targetValue = inputValue * 100;
       slopeFormulaText = `${inputValue} × 100% = ${targetValue.toFixed(2)}%`;
     }
+  } else if (isFunctionalSpecial) {
+    slopeFormulaText = engineConversion.formula;
   }
 
   const directMultiplier = toFactor !== 0 ? fromFactor / toFactor : 0;

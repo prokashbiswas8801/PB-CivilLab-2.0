@@ -8,6 +8,7 @@ import {
   CANONICAL_BASE_UNITS,
   getConversionFactorDetails,
   formatFeetInches,
+  formatFeetInchDual,
 } from '../utils/unitEngine';
 import { ChevronDown, Check } from 'lucide-react';
 
@@ -78,6 +79,11 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
     });
   }, [convertedValue, precision, activeUnitInfo.id]);
 
+  const lengthDual = useMemo(() => {
+    if (category !== 'length' || isNaN(siValue) || siValue === 0) return null;
+    return formatFeetInchDual(siValue);
+  }, [category, siValue]);
+
   // Smooth fade transition tracking when unit system changes
   const [isUnitFading, setIsUnitFading] = useState(false);
   const prevUnitIdRef = useRef(activeUnitInfo.id);
@@ -126,16 +132,42 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
       </div>
 
       <div className="flex items-baseline justify-between gap-2 mt-0.5">
-        <div
-          className={`text-xl font-bold font-mono truncate transition-all duration-300 ease-out ${
-            isUnitFading
-              ? 'opacity-25 scale-[0.985] text-[var(--md-sys-color-primary)] translate-y-0.5'
-              : highlight
-              ? 'opacity-100 scale-100 text-[var(--md-sys-color-primary)] translate-y-0'
-              : 'opacity-100 scale-100 text-[var(--md-sys-color-on-surface)] translate-y-0'
-          }`}
-        >
-          {displayFormatted}
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <div
+            className={`text-xl font-bold font-mono truncate transition-all duration-300 ease-out ${
+              isUnitFading
+                ? 'opacity-25 scale-[0.985] text-[var(--md-sys-color-primary)] translate-y-0.5'
+                : highlight
+                ? 'opacity-100 scale-100 text-[var(--md-sys-color-primary)] translate-y-0'
+                : 'opacity-100 scale-100 text-[var(--md-sys-color-on-surface)] translate-y-0'
+            }`}
+          >
+            {displayFormatted}
+          </div>
+
+          {/* Dual secondary representation for length */}
+          {lengthDual && (
+            <button
+              type="button"
+              onClick={() => {
+                if (activeUnitInfo.id === 'ft') {
+                  onUnitChange('ft-in');
+                } else if (activeUnitInfo.id === 'ft-in') {
+                  onUnitChange('ft');
+                } else {
+                  onUnitChange('ft-in');
+                }
+              }}
+              className="text-[11px] font-mono font-medium px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary-container)] transition-colors cursor-pointer shrink-0"
+              title="Click to toggle between Decimal Feet and Compound Feet-Inches"
+            >
+              {activeUnitInfo.id === 'ft-in'
+                ? `(${lengthDual.decimalFtStr})`
+                : activeUnitInfo.id === 'ft'
+                ? `(${lengthDual.compoundFtInStr})`
+                : `[${lengthDual.compoundFtInStr} / ${lengthDual.decimalFtStr}]`}
+            </button>
+          )}
         </div>
 
         {/* Dropdown unit badge button */}

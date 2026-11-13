@@ -449,6 +449,16 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                     step="any"
                     min="0"
                   />
+                  <input
+                    type="range"
+                    aria-label={`Span ${sIdx + 1} length slider`}
+                    min={1}
+                    max={20}
+                    step={0.25}
+                    value={Math.min(20, Math.max(1, span.lengthM || 1))}
+                    onChange={(e) => updateSpan(sIdx, { lengthM: Number(e.target.value) })}
+                    className="w-full h-1.5 mt-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
@@ -475,6 +485,16 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                     }`}
                     step="any"
                     min="0"
+                  />
+                  <input
+                    type="range"
+                    aria-label={`Span ${sIdx + 1} UDL slider`}
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={Math.min(100, Math.max(0, span.udlKnPerM || 0))}
+                    onChange={(e) => updateSpan(sIdx, { udlKnPerM: Number(e.target.value) })}
+                    className="w-full h-1.5 mt-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
                   />
                 </div>
               </div>
@@ -507,6 +527,16 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                     step="any"
                     min="0"
                   />
+                  <input
+                    type="range"
+                    aria-label={`Span ${sIdx + 1} point load slider`}
+                    min={0}
+                    max={200}
+                    step={2}
+                    value={Math.min(200, Math.max(0, span.pointLoadKn || 0))}
+                    onChange={(e) => updateSpan(sIdx, { pointLoadKn: Number(e.target.value) })}
+                    className="w-full h-1.5 mt-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
@@ -533,6 +563,16 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                     }`}
                     step="any"
                     min="0"
+                  />
+                  <input
+                    type="range"
+                    aria-label={`Span ${sIdx + 1} point load position slider`}
+                    min={0}
+                    max={Math.max(0.5, span.lengthM || 1)}
+                    step={0.1}
+                    value={Math.min(Math.max(0.5, span.lengthM || 1), Math.max(0, span.pointLoadPositionM || 0))}
+                    onChange={(e) => updateSpan(sIdx, { pointLoadPositionM: Number(e.target.value) })}
+                    className="w-full h-1.5 mt-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
                   />
                 </div>
               </div>

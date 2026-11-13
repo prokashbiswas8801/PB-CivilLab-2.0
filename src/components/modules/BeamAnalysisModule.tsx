@@ -81,17 +81,47 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
         </span>
         <button
           type="button"
-          onClick={() => applyBeamPreset(5.0, 25, 40, 2.5, 'simply-supported')}
+          onClick={() =>
+            updateActiveWorkspace((ws) => ({
+              ...ws,
+              beam: {
+                ...ws.beam,
+                spanLengthM: 5.0,
+                uniformLoadKnPerM: 25,
+                pointLoadKn: 40,
+                pointLoadPositionM: 2.5,
+                supportCondition: 'simply-supported',
+                overhangLeftM: 0,
+                overhangRightM: 0,
+                distributedLoadType: 'uniform',
+              },
+            }))
+          }
           className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
         >
           Floor Beam (5m)
         </button>
         <button
           type="button"
-          onClick={() => applyBeamPreset(6.5, 35, 60, 3.25, 'simply-supported')}
+          onClick={() =>
+            updateActiveWorkspace((ws) => ({
+              ...ws,
+              beam: {
+                ...ws.beam,
+                spanLengthM: 6.5,
+                uniformLoadKnPerM: 18,
+                pointLoadKn: 35,
+                pointLoadPositionM: 8.5,
+                supportCondition: 'overhanging',
+                overhangLeftM: 1.5,
+                overhangRightM: 2.0,
+                distributedLoadType: 'uniform',
+              },
+            }))
+          }
           className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors shrink-0 cursor-pointer"
         >
-          Main Girder (6.5m)
+          Overhanging Girder
         </button>
         <button
           type="button"
@@ -104,9 +134,9 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
 
       {/* Tab Group 1: Geometry & Supports */}
       {(activeTab === 'all' || activeTab === 'geometry') && (
-        <div className="space-y-2.5 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
+        <div className="space-y-3 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
           <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
-            Span & Support Geometry
+            Span &amp; Support Geometry
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
@@ -117,143 +147,373 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   const cond = e.target.value as SupportCondition;
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    beam: { ...ws.beam, supportCondition: cond },
+                    beam: {
+                      ...ws.beam,
+                      supportCondition: cond,
+                      ...(cond === 'overhanging' && !(ws.beam.overhangLeftM || ws.beam.overhangRightM)
+                        ? { overhangLeftM: 1.0, overhangRightM: 1.5 }
+                        : {}),
+                    },
                   }));
                 }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               >
                 <option value="simply-supported">Simply Supported (Pin / Roller)</option>
+                <option value="overhanging">Overhanging Span (Double Cantilever)</option>
                 <option value="cantilever">Cantilever (Fixed / Free)</option>
-                <option value="fixed-ends">Fixed - Fixed (Continuous span)</option>
+                <option value="fixed-ends">Fixed - Fixed (Encastré Span)</option>
               </select>
             </div>
-            <UnitInput
-              label="Span Length L"
-              category="length"
-              siValue={activeWorkspace.beam.spanLengthM}
-              onChangeSI={(val) => {
-                updateActiveWorkspace((ws) => ({
-                  ...ws,
-                  beam: { ...ws.beam, spanLengthM: val },
-                }));
-              }}
-              currentUnitId={getFieldUnit('beam.spanLength', 'length', 'm')}
-              onUnitChange={(u) => updateFieldUnit('beam.spanLength', u)}
-              customUnits={customUnits}
-              step={0.5}
-              presets={[
-                { label: '3.0 m', valueSI: 3.0, title: 'Secondary / Corridor' },
-                { label: '5.0 m', valueSI: 5.0, title: 'Standard Floor Span' },
-                { label: '6.5 m', valueSI: 6.5, title: 'Commercial Grid Span' },
-                { label: '8.0 m', valueSI: 8.0, title: 'Long Span Transfer Girder' },
-              ]}
-              validationRule={{
-                minSI: 0.5,
-                maxSI: 35,
-                warningBelowSI: 1.0,
-                warningAboveSI: 15.0,
-                warningHint: 'Spans exceeding 15m usually require post-tensioned tendons or truss framing under AISC 360 / BNBC.',
-              }}
-              standardRef="BNBC 2020 Part 6 / AISC 360-16 / ACI 318-19 Table 9.3.1.1"
-              recommendedRange="3.0 m – 9.0 m for building frames"
-              designTip="Effective span is taken as the clear distance between supports plus depth d, or center-to-center of bearings."
-            />
+            <div>
+              <UnitInput
+                label={activeWorkspace.beam.supportCondition === 'overhanging' ? 'Main Span L (Between Supports)' : 'Span Length L'}
+                category="length"
+                siValue={activeWorkspace.beam.spanLengthM}
+                onChangeSI={(val) => {
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    beam: { ...ws.beam, spanLengthM: val },
+                  }));
+                }}
+                currentUnitId={getFieldUnit('beam.spanLength', 'length', 'm')}
+                onUnitChange={(u) => updateFieldUnit('beam.spanLength', u)}
+                customUnits={customUnits}
+                step={0.5}
+                presets={[
+                  { label: '3.0 m', valueSI: 3.0, title: 'Secondary / Corridor' },
+                  { label: '5.0 m', valueSI: 5.0, title: 'Standard Floor Span' },
+                  { label: '6.5 m', valueSI: 6.5, title: 'Commercial Grid Span' },
+                  { label: '8.0 m', valueSI: 8.0, title: 'Long Span Transfer Girder' },
+                ]}
+                validationRule={{
+                  minSI: 0.5,
+                  maxSI: 35,
+                  warningBelowSI: 1.0,
+                  warningAboveSI: 15.0,
+                  warningHint: 'Spans exceeding 15m usually require post-tensioned tendons or truss framing under AISC 360 / BNBC.',
+                }}
+                standardRef="BNBC 2020 Part 6 / AISC 360-16 / ACI 318-19 Table 9.3.1.1"
+                recommendedRange="3.0 m – 9.0 m for building frames"
+                designTip="Effective span is taken as the clear distance between supports plus depth d, or center-to-center of bearings."
+              />
+              <div className="mt-1.5 flex items-center gap-2 px-1">
+                <input
+                  type="range"
+                  aria-label="Live scrub main span length in meters"
+                  min={1}
+                  max={20}
+                  step={0.25}
+                  value={Math.min(20, Math.max(1, activeWorkspace.beam.spanLengthM || 1))}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      beam: { ...ws.beam, spanLengthM: val },
+                    }));
+                  }}
+                  className="w-full h-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                />
+                <span className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] shrink-0 w-12 text-right">
+                  {activeWorkspace.beam.spanLengthM.toFixed(2)}m
+                </span>
+              </div>
+            </div>
           </div>
+
+          {activeWorkspace.beam.supportCondition === 'overhanging' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+              <UnitInput
+                label="Left Overhang L_ovL"
+                category="length"
+                siValue={activeWorkspace.beam.overhangLeftM ?? 0}
+                onChangeSI={(val) => {
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    beam: { ...ws.beam, overhangLeftM: Math.max(0, val) },
+                  }));
+                }}
+                currentUnitId={getFieldUnit('beam.overhangLeft', 'length', 'm')}
+                onUnitChange={(u) => updateFieldUnit('beam.overhangLeft', u)}
+                customUnits={customUnits}
+                step={0.25}
+                presets={[
+                  { label: '0.0 m', valueSI: 0, title: 'No Left Overhang' },
+                  { label: '1.5 m', valueSI: 1.5, title: 'Balcony Projection' },
+                  { label: '2.5 m', valueSI: 2.5, title: 'Cantilever Wing' },
+                ]}
+              />
+              <UnitInput
+                label="Right Overhang L_ovR"
+                category="length"
+                siValue={activeWorkspace.beam.overhangRightM ?? 0}
+                onChangeSI={(val) => {
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    beam: { ...ws.beam, overhangRightM: Math.max(0, val) },
+                  }));
+                }}
+                currentUnitId={getFieldUnit('beam.overhangRight', 'length', 'm')}
+                onUnitChange={(u) => updateFieldUnit('beam.overhangRight', u)}
+                customUnits={customUnits}
+                step={0.25}
+                presets={[
+                  { label: '0.0 m', valueSI: 0, title: 'No Right Overhang' },
+                  { label: '1.5 m', valueSI: 1.5, title: 'Corridor Projection' },
+                  { label: '2.5 m', valueSI: 2.5, title: 'Transfer Overhang' },
+                ]}
+              />
+            </div>
+          )}
         </div>
       )}
 
       {/* Tab Group 2: Applied Loads */}
-      {(activeTab === 'all' || activeTab === 'loads') && (
-        <div className="space-y-2.5 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
-          <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-tertiary)] tracking-wider">
-            Applied Loading Actions
+      {(activeTab === 'all' || activeTab === 'loads') && (() => {
+        const totalBeamLen =
+          activeWorkspace.beam.spanLengthM +
+          (activeWorkspace.beam.supportCondition === 'overhanging'
+            ? (activeWorkspace.beam.overhangLeftM || 0) + (activeWorkspace.beam.overhangRightM || 0)
+            : 0);
+        const distType = activeWorkspace.beam.distributedLoadType || 'uniform';
+
+        return (
+          <div className="space-y-3 p-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-tertiary)] tracking-wider">
+                Applied Loading Actions
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                  Distributed Profile:
+                </label>
+                <select
+                  value={distType}
+                  onChange={(e) => {
+                    const nextType = e.target.value as
+                      | 'uniform'
+                      | 'triangular-increasing'
+                      | 'triangular-decreasing'
+                      | 'trapezoidal';
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      beam: {
+                        ...ws.beam,
+                        distributedLoadType: nextType,
+                        endLoadKnPerM:
+                          ws.beam.endLoadKnPerM !== undefined
+                            ? ws.beam.endLoadKnPerM
+                            : nextType === 'trapezoidal'
+                              ? Number((ws.beam.uniformLoadKnPerM * 1.5).toFixed(1))
+                              : ws.beam.uniformLoadKnPerM,
+                      },
+                    }));
+                  }}
+                  className="px-2 py-1 rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono text-[11px]"
+                >
+                  <option value="uniform">Uniform (UDL)</option>
+                  <option value="triangular-increasing">Triangular (0 → w₂)</option>
+                  <option value="triangular-decreasing">Triangular (w₁ → 0)</option>
+                  <option value="trapezoidal">Trapezoidal (w₁ → w₂)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <UnitInput
+                  label={
+                    distType === 'uniform'
+                      ? 'Uniform Load w'
+                      : distType === 'triangular-increasing'
+                        ? 'Peak Load w₂ (or base)'
+                        : 'Left-End Load w₁'
+                  }
+                  category="distributed_load"
+                  siValue={activeWorkspace.beam.uniformLoadKnPerM * 1000}
+                  onChangeSI={(val) => {
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      beam: {
+                        ...ws.beam,
+                        uniformLoadKnPerM: val / 1000,
+                        ...(distType === 'triangular-increasing' ? { endLoadKnPerM: val / 1000 } : {}),
+                      },
+                    }));
+                  }}
+                  currentUnitId={getFieldUnit('beam.udl', 'distributed_load', 'kN/m')}
+                  onUnitChange={(u) => updateFieldUnit('beam.udl', u)}
+                  customUnits={customUnits}
+                  step={1}
+                  presets={[
+                    { label: '15 kN/m', valueSI: 15000, title: 'Light Partition & Self-Weight' },
+                    { label: '25 kN/m', valueSI: 25000, title: 'Standard Residential Floor' },
+                    { label: '40 kN/m', valueSI: 40000, title: 'Heavy Commercial / Storage Floor' },
+                  ]}
+                  validationRule={{
+                    minSI: 0,
+                    maxSI: 250000,
+                    warningAboveSI: 80000,
+                    warningHint: 'UDL exceeding 80 kN/m indicates heavy industrial or transfer floor loading.',
+                  }}
+                  standardRef="BNBC 2020 Chapter 2 / ASCE 7-16"
+                  recommendedRange="10 – 50 kN/m (typical building framing)"
+                  designTip="Uniform load represents dead load self-weight plus superimposed dead load (finishes, partitions) and live load."
+                />
+                <div className="mt-1.5 flex items-center gap-2 px-1">
+                  <input
+                    type="range"
+                    aria-label="Live scrub distributed load in kN per meter"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={Math.min(100, Math.max(0, activeWorkspace.beam.uniformLoadKnPerM))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: {
+                          ...ws.beam,
+                          uniformLoadKnPerM: val,
+                          ...(distType === 'triangular-increasing' ? { endLoadKnPerM: val } : {}),
+                        },
+                      }));
+                    }}
+                    className="w-full h-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] shrink-0 w-16 text-right">
+                    {activeWorkspace.beam.uniformLoadKnPerM.toFixed(1)} kN/m
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <UnitInput
+                  label="Point Load P"
+                  category="force"
+                  siValue={activeWorkspace.beam.pointLoadKn * 1000}
+                  onChangeSI={(val) => {
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      beam: { ...ws.beam, pointLoadKn: val / 1000 },
+                    }));
+                  }}
+                  currentUnitId={getFieldUnit('beam.pointLoad', 'force', 'kN')}
+                  onUnitChange={(u) => updateFieldUnit('beam.pointLoad', u)}
+                  customUnits={customUnits}
+                  step={5}
+                  presets={[
+                    { label: '0 kN', valueSI: 0, title: 'Pure UDL - No Concentrated Load' },
+                    { label: '25 kN', valueSI: 25000, title: 'Secondary Beam Reaction' },
+                    { label: '60 kN', valueSI: 60000, title: 'Intermediate Post / Rooftop Unit' },
+                    { label: '120 kN', valueSI: 120000, title: 'Column Transfer Reaction' },
+                  ]}
+                  standardRef="BNBC 2020 Part 6 / ASCE 7-16"
+                  recommendedRange="0 – 200 kN"
+                  designTip="Set to 0 if the member carries distributed floor loads only."
+                />
+                <div className="mt-1.5 flex items-center gap-2 px-1">
+                  <input
+                    type="range"
+                    aria-label="Live scrub concentrated point load in kilonewtons"
+                    min={0}
+                    max={200}
+                    step={2}
+                    value={Math.min(200, Math.max(0, activeWorkspace.beam.pointLoadKn))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, pointLoadKn: val },
+                      }));
+                    }}
+                    className="w-full h-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] shrink-0 w-14 text-right">
+                    {activeWorkspace.beam.pointLoadKn.toFixed(0)} kN
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <UnitInput
+                  label="Load Position a"
+                  category="length"
+                  siValue={activeWorkspace.beam.pointLoadPositionM}
+                  onChangeSI={(val) => {
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      beam: { ...ws.beam, pointLoadPositionM: val },
+                    }));
+                  }}
+                  currentUnitId={getFieldUnit('beam.loadPos', 'length', 'm')}
+                  onUnitChange={(u) => updateFieldUnit('beam.loadPos', u)}
+                  customUnits={customUnits}
+                  step={0.25}
+                  presets={[
+                    { label: 'L / 4', valueSI: totalBeamLen * 0.25, title: 'Quarter-span' },
+                    { label: 'L / 2 (Mid)', valueSI: totalBeamLen * 0.5, title: 'Mid-span Maximum Moment' },
+                    { label: '3L / 4', valueSI: totalBeamLen * 0.75, title: 'Three-quarter span' },
+                  ]}
+                  validationRule={{
+                    minSI: 0,
+                    maxSI: totalBeamLen,
+                    warningAboveSI: totalBeamLen,
+                    warningHint: `Point load position (${activeWorkspace.beam.pointLoadPositionM}m) cannot exceed total beam length (${totalBeamLen.toFixed(2)}m).`,
+                  }}
+                  standardRef="BNBC 2020 / AISC 360"
+                  recommendedRange={`0.0 m – ${totalBeamLen.toFixed(1)} m`}
+                  designTip="Mid-span (L/2) produces the maximum flexural bending moment for a simply supported beam."
+                />
+                <div className="mt-1.5 flex items-center gap-2 px-1">
+                  <input
+                    type="range"
+                    aria-label="Live scrub point load position along beam"
+                    min={0}
+                    max={Math.max(0.5, totalBeamLen)}
+                    step={0.1}
+                    value={Math.min(Math.max(0.5, totalBeamLen), Math.max(0, activeWorkspace.beam.pointLoadPositionM))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, pointLoadPositionM: val },
+                      }));
+                    }}
+                    className="w-full h-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] shrink-0 w-12 text-right">
+                    {activeWorkspace.beam.pointLoadPositionM.toFixed(2)}m
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {(distType === 'trapezoidal' || distType === 'triangular-increasing') && (
+              <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <UnitInput
+                  label="Right-End Distributed Intensity w₂"
+                  category="distributed_load"
+                  siValue={(activeWorkspace.beam.endLoadKnPerM ?? activeWorkspace.beam.uniformLoadKnPerM) * 1000}
+                  onChangeSI={(val) => {
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      beam: {
+                        ...ws.beam,
+                        endLoadKnPerM: val / 1000,
+                        ...(distType === 'triangular-increasing' ? { uniformLoadKnPerM: val / 1000 } : {}),
+                      },
+                    }));
+                  }}
+                  currentUnitId={getFieldUnit('beam.endUdl', 'distributed_load', 'kN/m')}
+                  onUnitChange={(u) => updateFieldUnit('beam.endUdl', u)}
+                  customUnits={customUnits}
+                  step={1}
+                />
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <UnitInput
-              label="Uniform Load w"
-              category="distributed_load"
-              siValue={activeWorkspace.beam.uniformLoadKnPerM * 1000}
-              onChangeSI={(val) => {
-                updateActiveWorkspace((ws) => ({
-                  ...ws,
-                  beam: { ...ws.beam, uniformLoadKnPerM: val / 1000 },
-                }));
-              }}
-              currentUnitId={getFieldUnit('beam.udl', 'distributed_load', 'kN/m')}
-              onUnitChange={(u) => updateFieldUnit('beam.udl', u)}
-              customUnits={customUnits}
-              step={1}
-              presets={[
-                { label: '15 kN/m', valueSI: 15000, title: 'Light Partition & Self-Weight' },
-                { label: '25 kN/m', valueSI: 25000, title: 'Standard Residential Floor' },
-                { label: '40 kN/m', valueSI: 40000, title: 'Heavy Commercial / Storage Floor' },
-              ]}
-              validationRule={{
-                minSI: 0,
-                maxSI: 250000,
-                warningAboveSI: 80000,
-                warningHint: 'UDL exceeding 80 kN/m indicates heavy industrial or transfer floor loading.',
-              }}
-              standardRef="BNBC 2020 Chapter 2 / ASCE 7-16"
-              recommendedRange="10 – 50 kN/m (typical building framing)"
-              designTip="Uniform load represents dead load self-weight plus superimposed dead load (finishes, partitions) and live load."
-            />
-            <UnitInput
-              label="Point Load P"
-              category="force"
-              siValue={activeWorkspace.beam.pointLoadKn * 1000}
-              onChangeSI={(val) => {
-                updateActiveWorkspace((ws) => ({
-                  ...ws,
-                  beam: { ...ws.beam, pointLoadKn: val / 1000 },
-                }));
-              }}
-              currentUnitId={getFieldUnit('beam.pointLoad', 'force', 'kN')}
-              onUnitChange={(u) => updateFieldUnit('beam.pointLoad', u)}
-              customUnits={customUnits}
-              step={5}
-              presets={[
-                { label: '0 kN', valueSI: 0, title: 'Pure UDL - No Concentrated Load' },
-                { label: '25 kN', valueSI: 25000, title: 'Secondary Beam Reaction' },
-                { label: '60 kN', valueSI: 60000, title: 'Intermediate Post / Rooftop Unit' },
-                { label: '120 kN', valueSI: 120000, title: 'Column Transfer Reaction' },
-              ]}
-              standardRef="BNBC 2020 Part 6 / ASCE 7-16"
-              recommendedRange="0 – 200 kN"
-              designTip="Set to 0 if the member carries distributed floor loads only."
-            />
-            <UnitInput
-              label="Load Position a"
-              category="length"
-              siValue={activeWorkspace.beam.pointLoadPositionM}
-              onChangeSI={(val) => {
-                updateActiveWorkspace((ws) => ({
-                  ...ws,
-                  beam: { ...ws.beam, pointLoadPositionM: val },
-                }));
-              }}
-              currentUnitId={getFieldUnit('beam.loadPos', 'length', 'm')}
-              onUnitChange={(u) => updateFieldUnit('beam.loadPos', u)}
-              customUnits={customUnits}
-              step={0.25}
-              presets={[
-                { label: 'L / 4', valueSI: activeWorkspace.beam.spanLengthM * 0.25, title: 'Quarter-span' },
-                { label: 'L / 2 (Mid)', valueSI: activeWorkspace.beam.spanLengthM * 0.5, title: 'Mid-span Maximum Moment' },
-                { label: '3L / 4', valueSI: activeWorkspace.beam.spanLengthM * 0.75, title: 'Three-quarter span' },
-              ]}
-              validationRule={{
-                minSI: 0,
-                maxSI: activeWorkspace.beam.spanLengthM,
-                warningAboveSI: activeWorkspace.beam.spanLengthM,
-                warningHint: `Point load position (${activeWorkspace.beam.pointLoadPositionM}m) cannot exceed beam span length (${activeWorkspace.beam.spanLengthM}m).`,
-              }}
-              standardRef="BNBC 2020 / AISC 360"
-              recommendedRange={`0.0 m – ${activeWorkspace.beam.spanLengthM} m`}
-              designTip="Mid-span (L/2) produces the maximum flexural bending moment for a simply supported beam."
-            />
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* BNBC-2020 Seismic Zone & Wind Load Quick Estimator Panel */}
       <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]/80 overflow-hidden">

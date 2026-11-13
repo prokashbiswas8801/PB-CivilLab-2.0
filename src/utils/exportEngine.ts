@@ -22,6 +22,10 @@ import {
   EarthworkResult,
   RateAnalysisResult,
 } from './calculations';
+import { FrameTruss2DResult } from './frameSolver2d';
+import { SectionAnalyzerResult } from './sectionMechanics';
+import { RcColumnDesignResult } from './rcColumnEngine';
+import { StrutAndTieResult } from './strutAndTieEngine';
 import { getGoverningEquations, GoverningEquationInfo } from './analyticalExport';
 import { generateSubmittalDocRef } from './qrCode';
 import {
@@ -1255,6 +1259,103 @@ export function buildReportDataFromWorkspace(
         { name: 'Max Sagging Moment', symbol: 'M_sag', value: r.maxSaggingMomentKnm.toFixed(2), unit: 'kN.m', status: 'SAFE' },
         { name: 'Support A Reaction', symbol: 'R_A', value: reactionA.toFixed(2), unit: 'kN', status: 'SAFE' },
         { name: 'Support B Reaction (Central)', symbol: 'R_B', value: reactionB.toFixed(2), unit: 'kN', status: 'SAFE' },
+      ];
+      break;
+    }
+
+    case 'frame-truss-2d': {
+      const r = result as FrameTruss2DResult;
+      const ft = workspace.frameTruss2d;
+      baseReport.moduleMeta.moduleTitle = '2D Frame & Truss Direct Stiffness + Second-Order P-Delta';
+      baseReport.moduleMeta.dcrMax = r.utilizationRatio;
+      baseReport.moduleMeta.status = r.status.toUpperCase() as any;
+
+      baseReport.inputs = [
+        { name: 'Structural Nodes', symbol: 'N_nodes', value: r.nodeCount, unit: 'joints', notes: `${r.freeDofs} free DOFs` },
+        { name: 'Structural Members', symbol: 'N_mem', value: r.memberCount, unit: 'elements', notes: ft?.presetName || 'Custom 2D Mesh' },
+        { name: 'Analysis Formulation', symbol: 'Mode', value: r.analysisMode === 'second-order-p-delta' ? '2nd-Order P-Delta' : '1st-Order Linear', unit: 'method', notes: 'Direct Stiffness' },
+        { name: 'Allowable Combined Stress', symbol: 'sigma_all', value: r.allowableStressMpa, unit: 'MPa', notes: `${r.governingCode} limit` },
+      ];
+
+      baseReport.outputs = [
+        { name: 'Peak Nodal Displacement', symbol: 'delta_max', value: r.maxDisplacementMm.toFixed(2), unit: 'mm', status: 'SAFE' },
+        { name: 'Critical Elastic Buckling Factor', symbol: 'alpha_cr', value: Number.isFinite(r.criticalBucklingFactorAlphaCr) ? r.criticalBucklingFactorAlphaCr.toFixed(2) : 'Infinity', unit: 'ratio', limit: '>= 10.0 (First-Order OK)', status: !Number.isFinite(r.criticalBucklingFactorAlphaCr) || r.criticalBucklingFactorAlphaCr >= 10 ? 'PASS' : 'WARNING' },
+        { name: 'Peak Bending Moment Envelope', symbol: '|M|_max', value: r.maxAbsMomentKnm.toFixed(2), unit: 'kN.m', status: 'SAFE' },
+        { name: 'Peak Shear Force Envelope', symbol: '|V|_max', value: r.maxAbsShearKn.toFixed(2), unit: 'kN', status: 'SAFE' },
+        { name: 'Peak Axial Force Envelope', symbol: '|N|_max', value: r.maxAbsAxialKn.toFixed(2), unit: 'kN', status: 'SAFE' },
+        { name: 'Combined Axial + Flexural DCR', symbol: 'DCR', value: `${(r.utilizationRatio * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.utilizationRatio.toFixed(3), status: r.utilizationRatio <= 1.0 ? 'PASS' : 'FAIL' },
+      ];
+      break;
+    }
+
+    case 'section-analyzer': {
+      const r = result as SectionAnalyzerResult;
+      const sa = workspace.sectionAnalyzer;
+      baseReport.moduleMeta.moduleTitle = 'Cross-Section Stresses & Plastic N-M Interaction';
+      baseReport.moduleMeta.dcrMax = r.governingDcr;
+      baseReport.moduleMeta.status = r.status.toUpperCase() as any;
+
+      baseReport.inputs = [
+        { name: 'Cross-Section Profile', symbol: 'Section', value: r.presetName, unit: r.shape, notes: `${r.designCode} classification` },
+        { name: 'Yield Strength & Factor', symbol: 'f_y / gamma_M0', value: `${r.fyMpa} / ${r.gammaM0}`, unit: 'MPa', notes: `f_yd = ${r.fydMpa.toFixed(1)} MPa` },
+        { name: 'Applied Axial & Major Moment', symbol: 'N / M_y', value: `${sa?.axialForceN_Kn ?? r.axialForceN_Kn} kN / ${sa?.momentMy_Knm ?? r.momentMy_Knm} kN.m`, unit: 'forces', notes: '+N = Tension, -N = Compression' },
+        { name: 'Applied Minor Moment & Shear', symbol: 'M_z / V_z', value: `${sa?.momentMz_Knm ?? r.momentMz_Knm} kN.m / ${sa?.shearVz_Kn ?? r.shearVz_Kn} kN`, unit: 'forces', notes: `T = ${sa?.torsionT_Knm ?? r.torsionT_Knm} kN.m` },
+      ];
+
+      baseReport.outputs = [
+        { name: 'Section Area & Major Inertia', symbol: 'A / I_y', value: `${r.areaCm2.toFixed(1)} cm^2 / ${r.iyCm4.toFixed(0)} cm^4`, unit: 'geom', status: 'INFO' },
+        { name: 'Plastic & Elastic Moduli', symbol: 'W_pl,y / W_el,y', value: `${r.wplYCm3.toFixed(1)} / ${r.welYMinCm3.toFixed(1)}`, unit: 'cm^3', status: 'INFO' },
+        { name: 'Section Classification', symbol: 'Class', value: r.classification.classLabel, unit: r.classification.aiscEquivalent, status: r.classification.isPlasticAllowed ? 'PASS' : 'WARNING' },
+        { name: 'Peak Normal & von Mises Stress', symbol: 'sigma / sigma_vM', value: `${r.sigmaAbsMaxMpa.toFixed(1)} / ${r.vonMisesMaxMpa.toFixed(1)}`, unit: 'MPa', limit: `<= ${r.fydMpa.toFixed(1)} MPa`, status: r.elasticStressDcr <= 1.0 ? 'PASS' : 'FAIL' },
+        { name: 'Reduced Plastic Moment M_N,y,Rd', symbol: 'M_N,y,Rd', value: r.mNyReducedRdKnm.toFixed(1), unit: 'kN.m', status: r.classification.isPlasticAllowed ? 'PASS' : 'WARNING' },
+        { name: 'Governing Section DCR', symbol: 'DCR', value: `${(r.governingDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.governingDcr.toFixed(3), status: r.governingDcr <= 1.0 ? 'PASS' : 'FAIL' },
+      ];
+      break;
+    }
+
+    case 'rc-column-design': {
+      const r = result as RcColumnDesignResult;
+      const col = workspace.rcColumn;
+      baseReport.moduleMeta.moduleTitle = 'RC Column Uniaxial & Biaxial N-M Interaction & Slenderness';
+      baseReport.moduleMeta.dcrMax = r.governingDcr;
+      baseReport.moduleMeta.status = r.status.toUpperCase() as any;
+
+      baseReport.inputs = [
+        { name: 'Column Dimensions (b x h)', symbol: 'b x h', value: `${r.widthB_Mm} x ${r.depthH_Mm}`, unit: 'mm', notes: `Cover ${r.clearCoverMm} mm` },
+        { name: 'Concrete & Rebar Grades', symbol: 'f\'c / fy', value: `${r.concreteFcMpa} / ${r.rebarFyMpa}`, unit: 'MPa', notes: `${r.designCode}` },
+        { name: 'Longitudinal Bars & Ties', symbol: 'Bars / Ties', value: `${r.totalBarCount}-Phi${r.longitudinalBarDiaMm} (${r.rhoPercent.toFixed(2)}%)`, unit: `Ties Phi${r.tieBarDiaMm}@${r.tieSpacingMm}`, notes: `Ast = ${r.astProvidedMm2.toFixed(0)} mm^2` },
+        { name: 'Factored Actions (Pu / Mux / Muy)', symbol: 'Pu / Mu', value: `${r.axialLoadPu_Kn} kN / ${col?.momentMux_Knm ?? r.momentMux_Knm} / ${col?.momentMuy_Knm ?? r.momentMuy_Knm} kN.m`, unit: 'actions', notes: `Lu = ${col?.unsupportedLengthLu_M ?? 3.4} m` },
+      ];
+
+      baseReport.outputs = [
+        { name: 'Max Design Axial Cutoff', symbol: 'Phi Pn,max', value: r.phiPnMaxKn.toFixed(1), unit: 'kN', limit: `Pu <= ${r.phiPnMaxKn.toFixed(0)} kN`, status: r.axialDcr <= 1.0 ? 'PASS' : 'FAIL' },
+        { name: 'Major Flexural Capacity at Pu', symbol: 'Phi Mnx', value: r.xAxis.phiMnAtPuKnm.toFixed(1), unit: 'kN.m', status: r.xAxis.uniaxialDcr <= 1.0 ? 'PASS' : 'FAIL' },
+        { name: 'Minor Flexural Capacity at Pu', symbol: 'Phi Mny', value: r.yAxis.phiMnAtPuKnm.toFixed(1), unit: 'kN.m', status: r.yAxis.uniaxialDcr <= 1.0 ? 'PASS' : 'FAIL' },
+        { name: 'Slenderness Magnifier (X / Y)', symbol: 'delta_ns', value: `${r.xAxis.magnifierDeltaNs.toFixed(3)} / ${r.yAxis.magnifierDeltaNs.toFixed(3)}`, unit: 'ratio', status: r.xAxis.isSlender || r.yAxis.isSlender ? 'WARNING' : 'PASS' },
+        { name: 'Bresler Biaxial Contour DCR', symbol: 'Bresler', value: `${(r.breslerContourDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.breslerContourDcr.toFixed(3), status: r.breslerContourDcr <= 1.0 ? 'PASS' : 'FAIL' },
+        { name: 'Governing Column DCR', symbol: 'DCR', value: `${(r.governingDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.governingDcr.toFixed(3), status: r.governingDcr <= 1.0 ? 'PASS' : 'FAIL' },
+      ];
+      break;
+    }
+
+    case 'strut-and-tie': {
+      const r = result as StrutAndTieResult;
+      baseReport.moduleMeta.moduleTitle = 'Strut-and-Tie Model (STM) Discontinuity Solver (Partial Scope)';
+      baseReport.moduleMeta.dcrMax = r.governingDcr;
+      baseReport.moduleMeta.status = r.status.toUpperCase() as any;
+
+      baseReport.inputs = [
+        { name: 'STM D-Region Template', symbol: 'Model', value: r.presetName, unit: `${r.nodeCount}N / ${r.memberCount}M`, notes: 'Partial Scope: Truss Equilibrium' },
+        { name: 'Member Thickness & Materials', symbol: 't / f\'c / fy', value: `${r.memberThicknessMm} mm / ${r.concreteFcMpa} / ${r.rebarFyMpa} MPa`, unit: 'spec', notes: 'ACI 318-19 Ch. 23' },
+        { name: 'Total Applied Nodal Load', symbol: 'Sum Fy', value: r.totalAppliedFyKn.toFixed(1), unit: 'kN', notes: `Sum Fx = ${r.totalAppliedFxKn.toFixed(1)} kN` },
+      ];
+
+      baseReport.outputs = [
+        { name: 'Max Compression Strut Force', symbol: 'F_strut', value: r.maxCompressionStrutKn.toFixed(1), unit: 'kN', status: 'INFO' },
+        { name: 'Max Tension Tie Force', symbol: 'F_tie', value: r.maxTensionTieKn.toFixed(1), unit: 'kN', status: 'INFO' },
+        { name: 'Total Required Tie Steel', symbol: 'As,req', value: r.totalRequiredTieSteelMm2.toFixed(0), unit: 'mm^2', status: 'PASS' },
+        { name: 'Global Equilibrium Residual', symbol: 'Residual', value: r.equilibriumResidualKn.toExponential(2), unit: 'kN', limit: '< 1e-2 kN', status: r.equilibriumResidualKn < 1e-2 ? 'PASS' : 'WARNING' },
+        { name: 'Governing Strut/Tie Stress DCR', symbol: 'DCR', value: `${(r.governingDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.governingDcr.toFixed(3), status: r.governingDcr <= 1.0 ? 'PASS' : 'FAIL' },
       ];
       break;
     }

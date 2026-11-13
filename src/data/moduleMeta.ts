@@ -22,6 +22,9 @@ import {
   Layers,
   ClipboardCheck,
   ScrollText,
+  Network,
+  Columns2,
+  Triangle,
 } from 'lucide-react';
 import { EngineeringModuleId } from '../types/civil';
 
@@ -104,6 +107,30 @@ export const MODULE_META: Record<EngineeringModuleId, ModuleMetadataItem> = {
     shortLabel: 'Continuous Beam',
     codeStandard: 'Three-Moment / BMD & SFD',
     icon: SlidersHorizontal,
+  },
+  'frame-truss-2d': {
+    label: '2D Frame & Truss Solver + P-Delta',
+    shortLabel: '2D Frame & Truss',
+    codeStandard: 'Direct Stiffness / 2nd-Order P-Δ',
+    icon: Network,
+  },
+  'section-analyzer': {
+    label: 'Section Stresses & Plastic N-M Interaction',
+    shortLabel: 'Section Analyzer',
+    codeStandard: 'Eurocode 3 Class 1–4 / AISC 360',
+    icon: Layers,
+  },
+  'rc-column-design': {
+    label: 'RC Column N-M Interaction & Slenderness',
+    shortLabel: 'RC Column Design',
+    codeStandard: 'BNBC-2020 / ACI 318-19 / Eurocode 2',
+    icon: Columns2,
+  },
+  'strut-and-tie': {
+    label: 'Strut-and-Tie Model (STM) Solver',
+    shortLabel: 'Strut & Tie STM',
+    codeStandard: 'ACI 318-19 Ch. 23 / BNBC-2020 (Partial)',
+    icon: Triangle,
   },
   'pile-capacity': {
     label: 'Deep Pile Foundation Bearing',

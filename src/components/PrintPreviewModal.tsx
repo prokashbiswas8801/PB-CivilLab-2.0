@@ -1481,6 +1481,92 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           </tr>
         </>
       );
+    case 'frame-truss-2d':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Nodes / Members Mesh</td>
+            <td className="p-2 text-center">N / M</td>
+            <td className="p-2 text-right">{ws.frameTruss2d?.nodes?.length || 4} / {ws.frameTruss2d?.members?.length || 3}</td>
+            <td className="p-2 text-center">elements</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Analysis Formulation</td>
+            <td className="p-2 text-center">Solver</td>
+            <td className="p-2 text-right">{ws.frameTruss2d?.analysisMode === 'second-order-p-delta' ? '2nd-Order P-Delta' : '1st-Order Linear'}</td>
+            <td className="p-2 text-center">-</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Allowable Combined Stress</td>
+            <td className="p-2 text-center">σ_all</td>
+            <td className="p-2 text-right">{ws.frameTruss2d?.allowableStressMpa || 250}</td>
+            <td className="p-2 text-center">MPa</td>
+          </tr>
+        </>
+      );
+    case 'section-analyzer':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Cross-Section Profile</td>
+            <td className="p-2 text-center">Shape</td>
+            <td className="p-2 text-right">{ws.sectionAnalyzer?.presetId ? ws.sectionAnalyzer.presetId.toUpperCase() : (ws.sectionAnalyzer?.shape || 'IPE 300')}</td>
+            <td className="p-2 text-center">{ws.sectionAnalyzer?.designCode || 'EC3'}</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Steel Yield Strength</td>
+            <td className="p-2 text-center">f_y / γ_M0</td>
+            <td className="p-2 text-right">{ws.sectionAnalyzer?.fyMpa || 275} / {ws.sectionAnalyzer?.gammaM0 || 1.0}</td>
+            <td className="p-2 text-center">MPa</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Axial Force &amp; Bending Moment</td>
+            <td className="p-2 text-center">N / M_y</td>
+            <td className="p-2 text-right">{ws.sectionAnalyzer?.axialForceN_Kn ?? -420} / {ws.sectionAnalyzer?.momentMy_Knm ?? 115}</td>
+            <td className="p-2 text-center">kN / kN·m</td>
+          </tr>
+        </>
+      );
+    case 'rc-column-design':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">Column Cross-Section &amp; Code</td>
+            <td className="p-2 text-center">b × h</td>
+            <td className="p-2 text-right">{ws.rcColumn?.widthB_Mm ?? 400} × {ws.rcColumn?.depthH_Mm ?? 500}</td>
+            <td className="p-2 text-center">mm ({ws.rcColumn?.designCode || 'BNBC-2020'})</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Concrete &amp; Rebar Strength</td>
+            <td className="p-2 text-center">f&apos;c / f_y</td>
+            <td className="p-2 text-right">{ws.rcColumn?.concreteFcMpa ?? 28} / {ws.rcColumn?.rebarFyMpa ?? 420}</td>
+            <td className="p-2 text-center">MPa</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Factored Axial &amp; Biaxial Moments</td>
+            <td className="p-2 text-center">P_u / M_ux / M_uy</td>
+            <td className="p-2 text-right">{ws.rcColumn?.axialLoadPu_Kn ?? 1850} / {ws.rcColumn?.momentMux_Knm ?? 140} / {ws.rcColumn?.momentMuy_Knm ?? 65}</td>
+            <td className="p-2 text-center">kN / kN·m</td>
+          </tr>
+        </>
+      );
+    case 'strut-and-tie':
+      return (
+        <>
+          <tr>
+            <td className="p-2 font-medium">D-Region Benchmark / Model</td>
+            <td className="p-2 text-center">STM</td>
+            <td className="p-2 text-right">{ws.strutAndTie?.presetName || 'Deep Beam STM'}</td>
+            <td className="p-2 text-center">Partial Scope</td>
+          </tr>
+          <tr>
+            <td className="p-2 font-medium">Thickness &amp; Materials</td>
+            <td className="p-2 text-center">t / f&apos;c / f_y</td>
+            <td className="p-2 text-right">{ws.strutAndTie?.memberThicknessMm ?? 400} / {ws.strutAndTie?.concreteFcMpa ?? 28} / {ws.strutAndTie?.rebarFyMpa ?? 420}</td>
+            <td className="p-2 text-center">mm / MPa</td>
+          </tr>
+        </>
+      );
     case 'pile-capacity':
       return (
         <>
@@ -1856,6 +1942,100 @@ function renderModuleOutputCards(moduleId: EngineeringModuleId, ws: CivilWorkspa
     );
   }
 
+  if (moduleId === 'frame-truss-2d') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Max Nodal Displacement</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.maxDisplacementMm?.toFixed(2)} mm</div>
+        </div>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">Critical Buckling α_cr</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">
+            {Number.isFinite(result.criticalBucklingFactorAlphaCr) ? result.criticalBucklingFactorAlphaCr.toFixed(2) : '∞'}
+          </div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Peak Moment |M|_max</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.maxAbsMomentKnm?.toFixed(2)} kN·m</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Combined Stress DCR</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{((result.utilizationRatio || 0) * 100).toFixed(1)}%</div>
+        </div>
+      </>
+    );
+  }
+
+  if (moduleId === 'section-analyzer') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Area A / Major I_y</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.areaCm2?.toFixed(1)} cm² / {result.iyCm4?.toFixed(0)} cm⁴</div>
+        </div>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">Section Class ({result.designCode})</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">{result.classification?.classLabel}</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Peak von Mises σ_vM</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.vonMisesMaxMpa?.toFixed(1)} MPa</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Governing DCR</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{((result.governingDcr || 0) * 100).toFixed(1)}%</div>
+        </div>
+      </>
+    );
+  }
+
+  if (moduleId === 'rc-column-design') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">GOVERNING P-M DCR</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">{((result.governingDcr || 0) * 100).toFixed(1)}%</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Bresler Biaxial DCR</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{((result.breslerContourDcr || 0) * 100).toFixed(1)}%</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Capacity φM_nx / φM_ny</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.xAxis?.phiMnAtPuKnm?.toFixed(1)} / {result.yAxis?.phiMnAtPuKnm?.toFixed(1)} kN·m</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Slenderness δ_ns (X/Y)</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.xAxis?.magnifierDeltaNs?.toFixed(2)}× / {result.yAxis?.magnifierDeltaNs?.toFixed(2)}×</div>
+        </div>
+      </>
+    );
+  }
+
+  if (moduleId === 'strut-and-tie') {
+    return (
+      <>
+        <div className="p-2.5 rounded bg-amber-50 border border-amber-300">
+          <div className="text-[10px] text-amber-800 font-mono font-bold">MAX COMPRESSION STRUT</div>
+          <div className="text-sm font-bold font-mono text-amber-950 mt-0.5">{result.maxCompressionStrutKn?.toFixed(1)} kN</div>
+        </div>
+        <div className="p-2.5 rounded bg-blue-50 border border-blue-300">
+          <div className="text-[10px] text-blue-700 font-mono font-bold">MAX TENSION TIE</div>
+          <div className="text-sm font-bold font-mono text-blue-900 mt-0.5">+{result.maxTensionTieKn?.toFixed(1)} kN</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">Req. Tie Steel A_s,req</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{result.totalRequiredTieSteelMm2?.toFixed(0)} mm²</div>
+        </div>
+        <div className="p-2.5 rounded bg-slate-50 border border-slate-300">
+          <div className="text-[10px] text-slate-500 font-mono">STM Scope &amp; DCR</div>
+          <div className="text-sm font-bold font-mono mt-0.5">{((result.governingDcr || 0) * 100).toFixed(1)}% (Partial)</div>
+        </div>
+      </>
+    );
+  }
+
   if (moduleId === 'pile-capacity') {
     return (
       <>
@@ -2174,6 +2354,41 @@ function renderModuleEquations(moduleId: EngineeringModuleId, codeStandard: stri
           <div>• Maximum Shear Force: V_max = (w · L) / 2 + (P · max(a, b)) / L</div>
           <div>• Maximum Elastic Deflection: Δ_max = (5 · w · L⁴) / (384 · E · I) + (P · L³) / (48 · E · I) ≤ L / 360</div>
           <div>• Flexural Stress Verification: σ = (M · c) / I ≤ σ_allow</div>
+        </>
+      );
+    case 'frame-truss-2d':
+      return (
+        <>
+          <div>• Direct Stiffness Equilibrium: ([K_E] + [K_G(P)]) · {'{D}'} = {'{F_nodal}'} - Σ [T]ᵀ {'{f_FEF}'}</div>
+          <div>• Hinge Static Condensation: [k_cond] = [k_RR] - [k_RC] · [k_CC]⁻¹ · [k_CR]</div>
+          <div>• Second-Order Sway Amplification: B₂ = 1 / (1 - 1 / α_cr)</div>
+          <div>• Combined Axial + Flexural Stress: σ_comb = |N|/A + (M · y)/I ≤ σ_allow</div>
+        </>
+      );
+    case 'section-analyzer':
+      return (
+        <>
+          <div>• Combined Elastic Normal Stress: σ(y, z) = N / A + (M_y · z) / I_y - (M_z · y) / I_z</div>
+          <div>• Transverse Shear & von Mises: τ(z) = (V_z · Q_y(z)) / (I_y · t(z)) , σ_vM = √(σ² + 3·τ²) ≤ f_yd</div>
+          <div>• Shifted PNA Equilibrium: A_below = 0.5 · (A - N / f_yd) , M_N,y,Rd = ∫ (z - z̄) · σ_pl(z) dA</div>
+          <div>• Local Buckling Guardrail: Class 1/2 Compact → Plastic N-M | Class 3/4 → Elastic Limit Only</div>
+        </>
+      );
+    case 'rc-column-design':
+      return (
+        <>
+          <div>• Strain Compatibility: ε_si = ε_cu · (c − d_i) / c , a = β₁ · c , φ = 0.65 to 0.90</div>
+          <div>• Pure Axial Cutoff: φP_n,max = 0.80 · φ · [0.85·f&apos;c·(A_g − A_st) + f_y·A_st]</div>
+          <div>• Slenderness Magnifier: δ_ns = C_m / [1 − P_u / (0.75·P_c)] ≥ 1.0</div>
+          <div>• Bresler Load Contour: (M_cx / φM_nx)^α + (M_cy / φM_ny)^α ≤ 1.0</div>
+        </>
+      );
+    case 'strut-and-tie':
+      return (
+        <>
+          <div>• 2D Truss Equilibrium: [K]·{'{u}'} = {'{F}'} , ΣF_x = 0 , ΣF_y = 0 , ΣM = 0</div>
+          <div>• Strut Capacity (Advisory): f_ce = 0.85 · β_s · f&apos;c , φ = 0.75</div>
+          <div>• Tension Tie Steel: A_s,tie,req = F_tie / (0.75 · f_y)</div>
         </>
       );
     case 'bearing-capacity':

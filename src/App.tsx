@@ -68,6 +68,8 @@ import {
   ScrollText,
   MoreVertical,
   Info,
+  BookOpenCheck,
+  Share2,
 } from 'lucide-react';
 import {
   exportAnalyticalScheduleCsv,
@@ -124,8 +126,16 @@ import {
   getOfficialModulePreset,
   getZeroBaselineForModule,
   createDefaultArchitectureParameters,
+  createDefaultFrameTruss2D,
+  createDefaultSectionAnalyzer,
+  createDefaultRcColumnDesign,
+  createDefaultStrutAndTie,
 } from './utils/storage';
 import { getIndexedDBStats, isIndexedDBSupported, persistToIndexedDB } from './utils/indexedStorage';
+import { computeFrameTruss2D, FrameTruss2DResult } from './utils/frameSolver2d';
+import { computeSectionMechanics, SectionAnalyzerResult } from './utils/sectionMechanics';
+import { computeRcColumnDesign, RcColumnDesignResult } from './utils/rcColumnEngine';
+import { computeStrutAndTie, StrutAndTieResult } from './utils/strutAndTieEngine';
 import {
   computeBeamAnalysis,
   computeBearingCapacity,
@@ -172,6 +182,10 @@ import {
   BOQCostBreakdownDiagramSvg,
   RateAnalysisBreakdownDiagramSvg,
   ContinuousBeamDiagramSvg,
+  FrameTruss2DDiagramSvg,
+  SectionAnalyzerDiagramSvg,
+  RcColumnDiagramSvg,
+  StrutAndTieDiagramSvg,
   PileCapacityDiagramSvg,
   PipeHydraulicsDiagramSvg,
 } from './components/EngineeringDiagrams';
@@ -264,6 +278,14 @@ import {
   OpenChannelMetrics,
   ContinuousBeamInputs,
   ContinuousBeamMetrics,
+  FrameTruss2DInputs,
+  FrameTruss2DMetrics,
+  SectionAnalyzerInputs,
+  SectionAnalyzerMetrics,
+  RcColumnInputs,
+  RcColumnMetrics,
+  StrutAndTieInputs,
+  StrutAndTieMetrics,
   PileCapacityInputs,
   PileCapacityMetrics,
   PipeHydraulicsInputs,
@@ -276,6 +298,15 @@ import { MODULE_META } from './data/moduleMeta';
 import { useHotkeys } from './hooks/useHotkeys';
 import { useDebouncedPersistence } from './hooks/useDebouncedPersistence';
 import { ModuleSuspenseFallback, ModalSuspenseFallback } from './components/ui/LazySuspenseFallbacks';
+import { StepByStepPanel } from './components/StepByStepPanel';
+import {
+  BEAM_WORKED_EXAMPLES,
+  CONTINUOUS_BEAM_WORKED_EXAMPLES,
+  ALL_WORKED_EXAMPLES,
+  parseStructuralDeepLink,
+  buildWorkedExampleUrl,
+  WorkedExampleEntry,
+} from './data/workedExamples';
 
 // Dynamic Lazy Imports for Heavy Module Views & Modals
 const SiteManagementHub = React.lazy(() =>
@@ -392,12 +423,19 @@ export default function App() {
   const [profilePreferencesModalOpen, setProfilePreferencesModalOpen] = useState(false);
   const [profileModalInitialTab, setProfileModalInitialTab] = useState<'profile' | 'preferences' | 'presets'>('profile');
   const [printPreviewModalOpen, setPrintPreviewModalOpen] = useState(false);
-  const [analyticalViewMode, setAnalyticalViewMode] = useState<'graphical' | 'tabular' | 'both'>('graphical');
+  const [analyticalViewMode, setAnalyticalViewMode] = useState<'graphical' | 'tabular' | 'steps' | 'both'>('graphical');
   const [isTableCompact, setIsTableCompact] = useState(false);
   const [denseTableSearch, setDenseTableSearch] = useState('');
   const [showGoverningEquations, setShowGoverningEquations] = useState(false);
   const [exportToolsMenuOpen, setExportToolsMenuOpen] = useState(false);
   const exportToolsRef = useRef<HTMLDivElement>(null);
+  const [workedExamplesMenuOpen, setWorkedExamplesMenuOpen] = useState(false);
+  const workedExamplesRef = useRef<HTMLDivElement>(null);
+  const [pendingDeepLinkOverwrite, setPendingDeepLinkOverwrite] = useState<{
+    title: string;
+    subtitle: string;
+    onConfirm: () => void;
+  } | null>(null);
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [activeReportQr, setActiveReportQr] = useState<GeneratedReportQrResult | null>(null);
   const [verifiedReportRecord, setVerifiedReportRecord] = useState<PublicEngineeringReportRecord | null>(null);
@@ -494,6 +532,93 @@ export default function App() {
           return;
         }
       }
+
+      // 3. Structural Worked Example & Parameter URL Deep-Linking (?module=...&example=...&q=...)
+      const deepLink = parseStructuralDeepLink(search);
+      if (deepLink) {
+        const matchedExample = deepLink.exampleId
+          ? ALL_WORKED_EXAMPLES.find((ex) => ex.id === deepLink.exampleId)
+          : undefined;
+        const targetMod: 'beam-analysis' | 'continuous-beam' =
+          deepLink.module || matchedExample?.module || 'beam-analysis';
+
+        const applyDeepLinkPayload = () => {
+          setUndoStack((u) => [...u.slice(-19), activeWorkspace]);
+          setRedoStack([]);
+          updateActiveWorkspace((ws) => {
+            if (targetMod === 'beam-analysis') {
+              const baseBeam = matchedExample?.module === 'beam-analysis'
+                ? { ...ws.beam, ...matchedExample.params }
+                : { ...ws.beam };
+              return {
+                ...ws,
+                activeModule: 'beam-analysis',
+                beam: {
+                  ...baseBeam,
+                  ...(deepLink.overrides.L !== undefined ? { spanLengthM: deepLink.overrides.L } : {}),
+                  ...(deepLink.overrides.q !== undefined ? { uniformLoadKnPerM: deepLink.overrides.q } : {}),
+                  ...(deepLink.overrides.P !== undefined ? { pointLoadKn: deepLink.overrides.P } : {}),
+                  ...(deepLink.overrides.a !== undefined ? { pointLoadPositionM: deepLink.overrides.a } : {}),
+                },
+              };
+            }
+            const baseCb = matchedExample?.module === 'continuous-beam'
+              ? matchedExample.params
+              : ws.continuousBeam || defaultContinuousBeam;
+            return {
+              ...ws,
+              activeModule: 'continuous-beam',
+              continuousBeam: baseCb,
+            };
+          });
+          setIsDashboardView(false);
+          setActiveTabId(`tab-${targetMod}`);
+          setOpenTabs((prev) =>
+            prev.some((t) => t.moduleId === targetMod)
+              ? prev
+              : [
+                  ...prev,
+                  {
+                    id: `tab-${targetMod}`,
+                    type: 'module',
+                    moduleId: targetMod,
+                    title: MODULE_META[targetMod]?.shortLabel || targetMod,
+                    shortCode: TOOL_REGISTRY_MAP[targetMod]?.shortCode,
+                  },
+                ]
+          );
+          civilLab.setActivePage('calculator', targetMod);
+          setShowSplash(false);
+          triggerCelebration(
+            matchedExample ? `Loaded: ${matchedExample.title}` : 'URL Parameters Applied',
+            'Structural model synchronized from shareable URL',
+            'celebrate'
+          );
+        };
+
+        const hasUserModifiedData =
+          targetMod === 'beam-analysis'
+            ? activeWorkspace.beam.spanLengthM > 0 ||
+              activeWorkspace.beam.uniformLoadKnPerM > 0 ||
+              activeWorkspace.beam.pointLoadKn > 0
+            : Boolean(
+                activeWorkspace.continuousBeam &&
+                  activeWorkspace.continuousBeam.spans.some((s) => s.lengthM > 0 && s.udlKnPerM > 0)
+              );
+
+        if (hasUserModifiedData) {
+          setShowSplash(false);
+          setPendingDeepLinkOverwrite({
+            title: matchedExample ? matchedExample.title : `Custom ${MODULE_META[targetMod].label} URL`,
+            subtitle: matchedExample
+              ? matchedExample.subtitle
+              : `Apply URL parameters to ${MODULE_META[targetMod].label}?`,
+            onConfirm: applyDeepLinkPayload,
+          });
+        } else {
+          applyDeepLinkPayload();
+        }
+      }
     } catch (err) {
       console.warn('Error reading verification parameters:', err);
     }
@@ -557,7 +682,8 @@ export default function App() {
       activeWorkspace.converter.fromUnit,
       activeWorkspace.converter.toUnit,
       activeWorkspace.converter.category,
-      appState.customUnits
+      appState.customUnits,
+      activeWorkspace.converter.regionalLandPreset || 'standard'
     );
   }, [
     activeModule,
@@ -565,6 +691,7 @@ export default function App() {
     activeWorkspace.converter.fromUnit,
     activeWorkspace.converter.toUnit,
     activeWorkspace.converter.category,
+    activeWorkspace.converter.regionalLandPreset,
     appState.customUnits,
   ]);
 
@@ -601,6 +728,14 @@ export default function App() {
     sectionDepthMm: 600,
     sectionWidthMm: 300,
   }), []);
+
+  const defaultFrameTruss2d = useMemo(() => createDefaultFrameTruss2D(), []);
+
+  const defaultSectionAnalyzer = useMemo(() => createDefaultSectionAnalyzer(), []);
+
+  const defaultRcColumn = useMemo(() => createDefaultRcColumnDesign(), []);
+
+  const defaultStrutAndTie = useMemo(() => createDefaultStrutAndTie(), []);
 
   const defaultPile = useMemo(() => ({
     pileType: 'bored-cast-in-situ' as const,
@@ -666,6 +801,14 @@ export default function App() {
         return computeChannelHydraulics(activeWorkspace.channel);
       case 'continuous-beam':
         return computeContinuousBeam(activeWorkspace.continuousBeam || defaultContinuousBeam);
+      case 'frame-truss-2d':
+        return computeFrameTruss2D(activeWorkspace.frameTruss2d || defaultFrameTruss2d);
+      case 'section-analyzer':
+        return computeSectionMechanics(activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer);
+      case 'rc-column-design':
+        return computeRcColumnDesign(activeWorkspace.rcColumn || defaultRcColumn);
+      case 'strut-and-tie':
+        return computeStrutAndTie(activeWorkspace.strutAndTie || defaultStrutAndTie);
       case 'pile-capacity':
         return computePileCapacity(activeWorkspace.pile || defaultPile);
       case 'pipe-hydraulics':
@@ -889,6 +1032,10 @@ export default function App() {
       rateAnalysisUnitRate?: number;
       continuousBeamMaxMomentKnm?: number;
       surveyingLandAreaSqM?: number;
+      rcColWidthMm?: number;
+      rcColDepthMm?: number;
+      rcColBarCount?: number;
+      rcColBarDiaMm?: number;
     } = {
       surveyingLandAreaSqM: activeWorkspace.surveying?.computedAreaSqM || 0,
     };
@@ -922,6 +1069,15 @@ export default function App() {
     }
     if (activeModule === 'continuous-beam') {
       res.continuousBeamMaxMomentKnm = (currentEnvelope.result as any)?.maxSaggingMomentKnm;
+    }
+    if (activeModule === 'rc-column-design') {
+      const cRes = currentEnvelope.result as RcColumnDesignResult | undefined;
+      if (cRes) {
+        res.rcColWidthMm = cRes.widthB_Mm;
+        res.rcColDepthMm = cRes.depthH_Mm;
+        res.rcColBarCount = cRes.totalBarCount;
+        res.rcColBarDiaMm = cRes.longitudinalBarDiaMm;
+      }
     }
     return res;
   }, [isDashboardView, activeModule, currentEnvelope, activeWorkspace.rebarBbs, activeWorkspace.surveying]);
@@ -1174,18 +1330,21 @@ export default function App() {
     document.documentElement.classList.toggle('sunlight-mode', sunlightMode);
   }, [sunlightMode]);
 
-  // Handle outside click for Export & Tools menu
+  // Handle outside click for Export & Tools and Worked Examples menus
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (exportToolsRef.current && !exportToolsRef.current.contains(e.target as Node)) {
         setExportToolsMenuOpen(false);
       }
+      if (workedExamplesRef.current && !workedExamplesRef.current.contains(e.target as Node)) {
+        setWorkedExamplesMenuOpen(false);
+      }
     };
-    if (exportToolsMenuOpen) {
+    if (exportToolsMenuOpen || workedExamplesMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [exportToolsMenuOpen]);
+  }, [exportToolsMenuOpen, workedExamplesMenuOpen]);
 
   // Fork a calculation record into an independent project workspace
   const handleForkRecordToProject = (record: CalculationRecord) => {
@@ -1212,6 +1371,10 @@ export default function App() {
         record.moduleId === 'earthwork-alignment' ? 'earthwork' :
         record.moduleId === 'concrete-materials' ? 'concreteMaterials' :
         record.moduleId === 'continuous-beam' ? 'continuousBeam' :
+        record.moduleId === 'frame-truss-2d' ? 'frameTruss2d' :
+        record.moduleId === 'section-analyzer' ? 'sectionAnalyzer' :
+        record.moduleId === 'rc-column-design' ? 'rcColumn' :
+        record.moduleId === 'strut-and-tie' ? 'strutAndTie' :
         record.moduleId === 'pile-capacity' ? 'pile' :
         record.moduleId === 'pipe-hydraulics' ? 'pipe' : 'boq';
       (newWorkspace as any)[modKey] = {
@@ -1423,6 +1586,35 @@ export default function App() {
     triggerCelebration(
       'Continuous Beam Steel Designed',
       `Continuous Beam Design (+M=${maxSagM.toFixed(1)}, -M=${maxHogM.toFixed(1)} kN·m): Bottom ${design.bottomBars.count}-Ø${design.bottomBars.diaMm}mm, Top ${design.topBars.count}-Ø${design.topBars.diaMm}mm, Stirrups Ø${design.stirrups.diaMm}@${design.stirrups.spacingMm}mm c/c.`,
+      'celebrate'
+    );
+  };
+
+  const handleTransferRcColumnToRebar = () => {
+    const col = activeWorkspace.rcColumn || defaultRcColumn;
+    const colEnv = (activeModule === 'rc-column-design' ? currentEnvelope : computeRcColumnDesign(col)) as CalculationEnvelope<RcColumnDesignResult>;
+    const totalBars = colEnv.result?.totalBarCount ?? Math.max(4, 2 * Math.max(2, col.barsAlongWidthB) + 2 * Math.max(0, col.barsAlongDepthH - 2));
+
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      activeModule: 'rebar-bbs',
+      rebarBbs: {
+        ...ws.rebarBbs,
+        elementType: 'column',
+        clearCoverMm: col.clearCoverMm,
+        colLengthMm: col.depthH_Mm,
+        colWidthMm: col.widthB_Mm,
+        colHeightM: col.unsupportedLengthLu_M,
+        colMainBarDiaMm: col.longitudinalBarDiaMm,
+        colMainBarCount: totalBars,
+        tieBarDiaMm: col.tieBarDiaMm,
+        tieSpacingMm: col.tieSpacingMm,
+      },
+    }));
+    navigateToModule('rebar-bbs');
+    triggerCelebration(
+      'RC Column Rebar Synced to BBS',
+      `Synced ${col.widthB_Mm}×${col.depthH_Mm}mm column (${col.unsupportedLengthLu_M}m height) with ${totalBars}-Ø${col.longitudinalBarDiaMm}mm main bars & Ø${col.tieBarDiaMm}@${col.tieSpacingMm}mm ties to Column Rebar BBS.`,
       'celebrate'
     );
   };
@@ -1806,6 +1998,10 @@ export default function App() {
           record.moduleId === 'earthwork-alignment' ? 'earthwork' :
           record.moduleId === 'concrete-materials' ? 'concreteMaterials' :
           record.moduleId === 'continuous-beam' ? 'continuousBeam' :
+          record.moduleId === 'frame-truss-2d' ? 'frameTruss2d' :
+          record.moduleId === 'section-analyzer' ? 'sectionAnalyzer' :
+          record.moduleId === 'rc-column-design' ? 'rcColumn' :
+          record.moduleId === 'strut-and-tie' ? 'strutAndTie' :
           record.moduleId === 'pile-capacity' ? 'pile' :
           record.moduleId === 'pipe-hydraulics' ? 'pipe' : 'boq';
         return {
@@ -1967,6 +2163,18 @@ export default function App() {
       }
       if (payload.continuousBeam) {
         nextWs.continuousBeam = { ...nextWs.continuousBeam, ...payload.continuousBeam } as any;
+      }
+      if (payload.frameTruss2d) {
+        nextWs.frameTruss2d = { ...(nextWs.frameTruss2d || defaultFrameTruss2d), ...payload.frameTruss2d } as any;
+      }
+      if (payload.sectionAnalyzer) {
+        nextWs.sectionAnalyzer = { ...(nextWs.sectionAnalyzer || defaultSectionAnalyzer), ...payload.sectionAnalyzer } as any;
+      }
+      if (payload.rcColumn) {
+        nextWs.rcColumn = { ...(nextWs.rcColumn || defaultRcColumn), ...payload.rcColumn } as any;
+      }
+      if (payload.strutAndTie) {
+        nextWs.strutAndTie = { ...(nextWs.strutAndTie || defaultStrutAndTie), ...payload.strutAndTie } as any;
       }
       if (payload.pile) {
         nextWs.pile = { ...nextWs.pile, ...payload.pile } as any;
@@ -2638,6 +2846,82 @@ export default function App() {
           { label: 'DCR', value: `${(contRes.utilizationRatio * 100).toFixed(1)}%`, unit: 'ratio' },
         ],
         inputsSnapshot: { ...(activeWorkspace.continuousBeam || defaultContinuousBeam) },
+      };
+    } else if (activeModule === 'frame-truss-2d') {
+      const ftRes = currentEnvelope.result as FrameTruss2DResult;
+      if (!ftRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'frame-truss-2d',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · 2D Frame & Truss (${ftRes.nodeCount}N/${ftRes.memberCount}M)`,
+        notes: `${ftRes.analysisMode === 'second-order-p-delta' ? '2nd-Order P-Δ' : '1st-Order'}, Δ_max=${ftRes.maxDisplacementMm.toFixed(2)} mm, α_cr=${Number.isFinite(ftRes.criticalBucklingFactorAlphaCr) ? ftRes.criticalBucklingFactorAlphaCr.toFixed(2) : '∞'}`,
+        status: ftRes.status,
+        keyMetrics: [
+          { label: 'Max Disp', value: ftRes.maxDisplacementMm.toFixed(2), unit: 'mm' },
+          { label: 'Max Moment', value: ftRes.maxAbsMomentKnm.toFixed(1), unit: 'kN·m' },
+          { label: 'Buckling α_cr', value: Number.isFinite(ftRes.criticalBucklingFactorAlphaCr) ? ftRes.criticalBucklingFactorAlphaCr.toFixed(2) : '∞', unit: 'ratio' },
+          { label: 'DCR', value: `${(ftRes.utilizationRatio * 100).toFixed(1)}%`, unit: 'ratio' },
+        ],
+        inputsSnapshot: { ...(activeWorkspace.frameTruss2d || defaultFrameTruss2d) },
+      };
+    } else if (activeModule === 'section-analyzer') {
+      const saRes = currentEnvelope.result as SectionAnalyzerResult;
+      if (!saRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'section-analyzer',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Section Analyzer (${saRes.presetName})`,
+        notes: `${saRes.classification.classLabel}, σ_vM=${saRes.vonMisesMaxMpa.toFixed(1)} MPa, M_N,y,Rd=${saRes.mNyReducedRdKnm.toFixed(1)} kN·m`,
+        status: saRes.status,
+        keyMetrics: [
+          { label: 'Class', value: `Class ${saRes.classification.sectionClass}`, unit: saRes.designCode },
+          { label: 'Peak σ_vM', value: saRes.vonMisesMaxMpa.toFixed(1), unit: 'MPa' },
+          { label: 'M_N,y,Rd', value: saRes.mNyReducedRdKnm.toFixed(1), unit: 'kN·m' },
+          { label: 'DCR', value: `${(saRes.governingDcr * 100).toFixed(1)}%`, unit: 'ratio' },
+        ],
+        inputsSnapshot: { ...(activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer) },
+      };
+    } else if (activeModule === 'rc-column-design') {
+      const colRes = currentEnvelope.result as RcColumnDesignResult;
+      if (!colRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'rc-column-design',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · RC Column ${colRes.widthB_Mm}×${colRes.depthH_Mm} (${colRes.designCode})`,
+        notes: `${colRes.totalBarCount}-Ø${colRes.longitudinalBarDiaMm}, Pu=${colRes.axialLoadPu_Kn} kN, Bresler DCR=${(colRes.breslerContourDcr * 100).toFixed(1)}%`,
+        status: colRes.status,
+        keyMetrics: [
+          { label: 'Section', value: `${colRes.widthB_Mm}×${colRes.depthH_Mm}`, unit: 'mm' },
+          { label: 'φM_nx', value: colRes.xAxis.phiMnAtPuKnm.toFixed(1), unit: 'kN·m' },
+          { label: 'Bresler DCR', value: `${(colRes.breslerContourDcr * 100).toFixed(1)}%`, unit: 'ratio' },
+          { label: 'Gov DCR', value: `${(colRes.governingDcr * 100).toFixed(1)}%`, unit: 'ratio' },
+        ],
+        inputsSnapshot: { ...(activeWorkspace.rcColumn || defaultRcColumn) },
+      };
+    } else if (activeModule === 'strut-and-tie') {
+      const stmRes = currentEnvelope.result as StrutAndTieResult;
+      if (!stmRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'strut-and-tie',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · STM (${stmRes.presetName})`,
+        notes: `Partial Scope · Max Strut ${stmRes.maxCompressionStrutKn.toFixed(1)} kN, Max Tie +${stmRes.maxTensionTieKn.toFixed(1)} kN, As,req=${stmRes.totalRequiredTieSteelMm2.toFixed(0)} mm²`,
+        status: stmRes.status,
+        keyMetrics: [
+          { label: 'Max Strut', value: stmRes.maxCompressionStrutKn.toFixed(1), unit: 'kN' },
+          { label: 'Max Tie', value: `+${stmRes.maxTensionTieKn.toFixed(1)}`, unit: 'kN' },
+          { label: 'Req As,tie', value: stmRes.totalRequiredTieSteelMm2.toFixed(0), unit: 'mm²' },
+          { label: 'DCR', value: `${(stmRes.governingDcr * 100).toFixed(1)}%`, unit: 'ratio' },
+        ],
+        inputsSnapshot: { ...(activeWorkspace.strutAndTie || defaultStrutAndTie) },
       };
     } else if (activeModule === 'pile-capacity') {
       const pileRes = currentEnvelope.result as PileCapacityResult;
@@ -3366,9 +3650,106 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 </h1>
               </div>
 
-              {/* Status, Unit Quick-Toggle & Action Buttons */}
+              {/* Status, Worked Examples, Unit Quick-Toggle & Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
                 {renderStatusBadge()}
+
+                {(activeModule === 'beam-analysis' || activeModule === 'continuous-beam') && (
+                  <div className="relative" ref={workedExamplesRef}>
+                    <button
+                      type="button"
+                      onClick={() => setWorkedExamplesMenuOpen((prev) => !prev)}
+                      className="min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                      aria-expanded={workedExamplesMenuOpen}
+                      aria-haspopup="true"
+                      title="Load verified textbook & BNBC worked engineering examples"
+                    >
+                      <BookOpenCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                      <span>Worked Examples</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${workedExamplesMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {workedExamplesMenuOpen && (
+                      <div
+                        role="menu"
+                        className="absolute right-0 mt-1.5 w-80 max-w-[90vw] rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 z-30 space-y-1 text-xs font-sans"
+                      >
+                        <div className="px-2.5 py-1.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
+                          <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-[var(--md-sys-color-primary)]">
+                            Verified Benchmarks &amp; Examples
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentExList =
+                                activeModule === 'beam-analysis'
+                                  ? BEAM_WORKED_EXAMPLES
+                                  : CONTINUOUS_BEAM_WORKED_EXAMPLES;
+                              const shareUrl = buildWorkedExampleUrl(
+                                activeModule,
+                                currentExList[0].id,
+                                activeModule === 'beam-analysis' ? activeWorkspace.beam : undefined
+                              );
+                              navigator.clipboard?.writeText(shareUrl);
+                              setWorkedExamplesMenuOpen(false);
+                              triggerCelebration('Shareable Link Copied', 'URL copied with active structural parameters', 'info');
+                            }}
+                            className="text-[10px] font-mono font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 cursor-pointer"
+                            title="Copy shareable URL for current state"
+                          >
+                            <Share2 className="w-3 h-3" />
+                            <span>Copy URL</span>
+                          </button>
+                        </div>
+
+                        {(activeModule === 'beam-analysis'
+                          ? BEAM_WORKED_EXAMPLES
+                          : CONTINUOUS_BEAM_WORKED_EXAMPLES
+                        ).map((ex: WorkedExampleEntry) => (
+                          <button
+                            key={ex.id}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setWorkedExamplesMenuOpen(false);
+                              if (ex.module === 'beam-analysis') {
+                                updateActiveWorkspace((ws) => ({
+                                  ...ws,
+                                  beam: { ...ws.beam, ...ex.params },
+                                }));
+                                const nextUrl = buildWorkedExampleUrl('beam-analysis', ex.id, ex.params);
+                                window.history.replaceState({}, '', nextUrl);
+                              } else {
+                                updateActiveWorkspace((ws) => ({
+                                  ...ws,
+                                  continuousBeam: ex.params,
+                                }));
+                                const nextUrl = buildWorkedExampleUrl('continuous-beam', ex.id);
+                                window.history.replaceState({}, '', nextUrl);
+                              }
+                              triggerCelebration(
+                                `Loaded Example: ${ex.title}`,
+                                'Press Undo anytime to restore previous workspace parameters',
+                                'celebrate'
+                              );
+                            }}
+                            className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer space-y-0.5"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-[var(--md-sys-color-on-surface)]">{ex.title}</span>
+                              <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] shrink-0">
+                                {ex.category}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug">
+                              {ex.subtitle}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="h-4 w-px bg-[var(--md-sys-color-outline-variant)] mx-1 hidden sm:block" />
 
@@ -3439,6 +3820,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 onTransferBearingToPile={handleTransferBearingToPile}
                 onTransferBeamToRebar={handleTransferBeamToRebar}
                 onTransferContinuousBeamToRebar={handleTransferContinuousBeamToRebar}
+                onTransferRcColumnToRebar={handleTransferRcColumnToRebar}
                 onTransferMixToMaterials={handleTransferMixToMaterials}
                 onTransferMaterialsToBoq={handleTransferMaterialsToBoq}
                 onTransferMasonryToBoq={handleTransferMasonryToBoq}
@@ -3451,6 +3833,10 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 currencySymbol={getCurrencySymbol(activeWorkspace.currency)}
                 bbsSteelWeightKg={crossLinkMetrics.bbsSteelWeightKg}
                 beamMaxMomentKnm={crossLinkMetrics.beamMaxMomentKnm}
+                rcColWidthMm={crossLinkMetrics.rcColWidthMm}
+                rcColDepthMm={crossLinkMetrics.rcColDepthMm}
+                rcColBarCount={crossLinkMetrics.rcColBarCount}
+                rcColBarDiaMm={crossLinkMetrics.rcColBarDiaMm}
                 masonryNetVolumeM3={crossLinkMetrics.masonryNetVolumeM3}
                 masonryBricksCount={crossLinkMetrics.masonryBricksCount}
                 pileConcreteVolumeM3={crossLinkMetrics.pileConcreteVolumeM3}
@@ -3691,6 +4077,41 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   />
                 )}
 
+                {/* MODULE: 2D FRAME & TRUSS + P-DELTA */}
+                {activeModule === 'frame-truss-2d' && (
+                  <FrameTruss2DInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                  />
+                )}
+
+                {/* MODULE: SECTION STRESSES & PLASTIC N-M INTERACTION */}
+                {activeModule === 'section-analyzer' && (
+                  <SectionAnalyzerInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    result={currentEnvelope.result as any}
+                  />
+                )}
+
+                {/* MODULE: RC COLUMN N-M INTERACTION & SLENDERNESS */}
+                {activeModule === 'rc-column-design' && (
+                  <RcColumnInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    result={currentEnvelope.result as any}
+                  />
+                )}
+
+                {/* MODULE: STRUT-AND-TIE MODEL (STM) DISCONTINUITY SOLVER */}
+                {activeModule === 'strut-and-tie' && (
+                  <StrutAndTieInputs
+                    activeWorkspace={activeWorkspace}
+                    updateActiveWorkspace={updateActiveWorkspace}
+                    result={currentEnvelope.result as any}
+                  />
+                )}
+
                 {/* MODULE: PILE CAPACITY */}
                 {activeModule === 'pile-capacity' && (
                   <PileCapacityInputs
@@ -3767,6 +4188,22 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                       <button
                         type="button"
                         role="radio"
+                        aria-checked={analyticalViewMode === 'steps'}
+                        onClick={() => setAnalyticalViewMode('steps')}
+                        className={`touch-target-48 sm:touch-target-auto px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          analyticalViewMode === 'steps'
+                            ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs font-bold'
+                            : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                        }`}
+                        title="View Step-by-Step Hand Calculation & Engine Cross-Verification"
+                      >
+                        <BookOpenCheck className="w-3.5 h-3.5" />
+                        <span>Step-by-Step</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        role="radio"
                         aria-checked={analyticalViewMode === 'both'}
                         onClick={() => setAnalyticalViewMode('both')}
                         className={`touch-target-48 sm:touch-target-auto px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -3774,7 +4211,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                             ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs font-bold'
                             : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
                         }`}
-                        title="Split View: Both CAD Diagram and Detailed Table"
+                        title="Split / All View: CAD Diagram, Calculation Table & Step-by-Step Derivations"
                       >
                         <Columns className="w-3.5 h-3.5" />
                         <span>Split</span>
@@ -3978,6 +4415,18 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     {activeModule === 'continuous-beam' && currentEnvelope.result && (
                       <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} />
                     )}
+                    {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
+                      <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'section-analyzer' && currentEnvelope.result && (
+                      <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'rc-column-design' && currentEnvelope.result && (
+                      <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} />
+                    )}
+                    {activeModule === 'strut-and-tie' && currentEnvelope.result && (
+                      <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} />
+                    )}
                     {activeModule === 'pile-capacity' && currentEnvelope.result && (
                       <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} />
                     )}
@@ -4023,6 +4472,17 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   </div>
                 )}
 
+                {/* Step-by-Step Hand Calculation Engine & Verification Panel */}
+                {(analyticalViewMode === 'steps' ||
+                  (analyticalViewMode === 'both' &&
+                    Boolean((currentEnvelope as any).handCalculationSteps || (currentEnvelope as any).scopeAndLimits))) && (
+                  <StepByStepPanel
+                    moduleTitle={MODULE_META[activeModule].label}
+                    steps={(currentEnvelope as any).handCalculationSteps}
+                    scopeAndLimits={(currentEnvelope as any).scopeAndLimits}
+                  />
+                )}
+
                 {/* Dynamic Metrics Cards (Lazy Rendered based on Active Module) */}
                 {activeModule === 'concrete-materials' && currentEnvelope.result && (
                   <ConcreteMaterialsMetrics
@@ -4066,6 +4526,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     category={activeWorkspace.converter.category}
                     conversionResult={activeConversionResult}
                     customUnits={appState.customUnits}
+                    regionalLandPreset={activeWorkspace.converter.regionalLandPreset || 'standard'}
                     onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
                   />
                 )}
@@ -4105,6 +4566,28 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 )}
                 {activeModule === 'continuous-beam' && currentEnvelope.result && (
                   <ContinuousBeamMetrics
+                    result={currentEnvelope.result as any}
+                  />
+                )}
+                {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
+                  <FrameTruss2DMetrics
+                    result={currentEnvelope.result as any}
+                  />
+                )}
+                {activeModule === 'section-analyzer' && currentEnvelope.result && (
+                  <SectionAnalyzerMetrics
+                    result={currentEnvelope.result as any}
+                    activeWorkspace={activeWorkspace}
+                  />
+                )}
+                {activeModule === 'rc-column-design' && currentEnvelope.result && (
+                  <RcColumnMetrics
+                    result={currentEnvelope.result as any}
+                    activeWorkspace={activeWorkspace}
+                  />
+                )}
+                {activeModule === 'strut-and-tie' && currentEnvelope.result && (
+                  <StrutAndTieMetrics
                     result={currentEnvelope.result as any}
                   />
                 )}
@@ -4531,6 +5014,55 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
           boqItems={activeWorkspace.boq.items}
         />
       </div>
+      )}
+
+      {/* Non-destructive URL Deep-Link Confirmation Modal */}
+      {pendingDeepLinkOverwrite && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="deeplink-confirm-title"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h3 id="deeplink-confirm-title" className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                  Load Worked Example from URL?
+                </h3>
+                <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
+                  Your current workspace already contains active structural parameters. Loading{' '}
+                  <strong className="text-[var(--md-sys-color-on-surface)]">{pendingDeepLinkOverwrite.title}</strong>{' '}
+                  will replace those inputs (Undo remains available).
+                </p>
+                <div className="text-[11px] font-mono text-[var(--md-sys-color-primary)] pt-1">
+                  {pendingDeepLinkOverwrite.subtitle}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
+              <button
+                type="button"
+                onClick={() => setPendingDeepLinkOverwrite(null)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
+              >
+                Keep Current Workspace
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const fn = pendingDeepLinkOverwrite.onConfirm;
+                  setPendingDeepLinkOverwrite(null);
+                  fn();
+                }}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 cursor-pointer"
+              >
+                Load Example
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Isolated root-level container for pristine vector print / PDF execution (never clipped by screen layout) */}

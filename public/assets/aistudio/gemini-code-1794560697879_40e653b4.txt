@@ -1,0 +1,22 @@
+Add a new mechanics of materials & steel section module `"section-analyzer"` ("Section Stresses & Plastic N-M Interaction") to BD. CivilLab, matching the exact UI aesthetic, unit system preset engine, DCR limit-state gauges, Step-by-Step panel, and certified PDF report system.
+
+### 1. Schema & Default Hydration (`src/types/civil.ts`, `src/utils/storage.ts`)
+- Add `'section-analyzer'` to `EngineeringModuleId` and optional `sectionAnalyzer?: SectionAnalyzerParams` to `CivilWorkspace` with safe fallback defaults.
+- Support:
+  - **Section Shapes:** `'rectangular' | 'circular' | 'hollow-box' | 'i-beam' | 't-section' | 'channel' | 'custom-polygon'`
+  - **Preset Steel Catalogue:** Standard IPE, HEA, HEB, UB, UC sections (e.g., IPE 200, IPE 300, HEB 200, UC 203x203x46) with auto-populated dimensions.
+  - **Material & Code:** Yield strength $f_y$ (MPa), Young's modulus $E$, partial factor $\gamma_{M0}$, Eurocode 3 / AISC 360 section classification check (Class 1, 2, 3, or 4).
+  - **Applied Internal Forces:** Axial force $N$ (kN), Bending moments $M_y, M_z$ (kN·m), Shear forces $V_y, V_z$ (kN), Torsion $T$ (kN·m).
+
+### 2. Analytical Engine (`src/utils/sectionMechanics.ts`)
+- Compute exact geometric properties: Cross-sectional Area $A$, Centroid $(\bar{y}, \bar{z})$, Second Moments of Area $I_y, I_z$, Radii of Gyration $r_y, r_z$, Elastic Section Moduli $W_{el,y}, W_{el,z}$, and Plastic Section Moduli $W_{pl,y}, W_{pl,z}$.
+- **Elastic Stress Distribution:** Compute combined normal stress $\sigma(y,z) = \frac{N}{A} + \frac{M_y z}{I_y} - \frac{M_z y}{I_z}$ (extreme top/bottom/corner fiber stresses) and transverse shear stress $\tau = \frac{V Q}{I t}$.
+- **Plastic $N\text{--}M$ Interaction:** Compute exact Plastic Neutral Axis (PNA) shift under axial load $N$ and generate the full $N/N_{pl}$ vs $M_y/M_{pl,y}$ and $M_y\text{--}M_z$ interaction envelope.
+- **Explicit Scope Guardrail:** If section classifies as Class 3 or Class 4 (slender), explicitly display a warning badge and block Plastic Interaction calculation rather than erroneously treating it as Class 2.
+- Generate full `handCalculationSteps` (Parallel Axis Theorem $I = \sum (I_i + A_i d_i^2)$, PNA depth derivation, and stress superposition) verified against the numerical integration engine.
+
+### 3. Interactive Visualization & UI
+- Build `SectionAnalyzerInputs.tsx` and `SectionAnalyzerMetrics.tsx` + SVG schematics in `EngineeringDiagrams.tsx`:
+  - **Cross-Section & Stress Profile SVG:** Side-by-side drawing of the cross-section (showing Elastic Neutral Axis & Plastic Neutral Axis) and the linear/plastic normal stress ($\sigma$) and parabolic shear stress ($\tau$) distribution diagrams.
+  - **$N\text{--}M$ Plastic Interaction Chart SVG:** Interactive plot showing the plastic yield boundary, elastic limit boundary, and the user's plotted load point $(N, M)$ with live DCR utilization ratio $\eta$.
+- Wire into `Sidebar.tsx`, `App.tsx`, `DcrGaugeSuite`, `AnalyticalDenseTable.tsx`, and `analyticalExport.ts`.

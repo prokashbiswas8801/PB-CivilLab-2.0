@@ -16,6 +16,10 @@ import {
   PileCapacityResult,
   PipeHydraulicsResult,
 } from './calculations';
+import { FrameTruss2DResult } from './frameSolver2d';
+import { SectionAnalyzerResult } from './sectionMechanics';
+import { RcColumnDesignResult } from './rcColumnEngine';
+import { StrutAndTieResult } from './strutAndTieEngine';
 
 export interface GoverningEquationInfo {
   codeStandard: string;
@@ -371,6 +375,142 @@ export function getGoverningEquations(moduleId: EngineeringModuleId): GoverningE
         ],
       };
 
+    case 'frame-truss-2d':
+      return {
+        codeStandard: 'BNBC-2020 Part 6 / AISC 360 Appendix 8 / Eurocode 3 §5.2',
+        category: '2D Matrix Structural Analysis & Second-Order P-Delta Stability',
+        equations: [
+          {
+            name: 'Direct Stiffness Equilibrium with Geometric Stiffness [K_G]',
+            formula: '([K_E] + [K_G(P)]) · {D} = {F_nodal} - Σ [T]ᵀ {f_FEF}',
+            description: 'Global 3-DOF-per-node equilibrium combining elastic stiffness [K_E] and axial-load-dependent geometric stiffness [K_G].',
+            variables: ['[K_E] = Global elastic stiffness', '[K_G] = Geometric P-Delta stiffness', '{D} = Nodal displacements (u_x, u_y, θ_z)'],
+          },
+          {
+            name: 'Static Condensation for Internal Member Hinges',
+            formula: '[k_cond] = [k_RR] - [k_RC] · [k_CC]⁻¹ · [k_CR]',
+            description: 'Condenses released start/end rotational DOFs from local element stiffness and fixed-end load vectors prior to global assembly.',
+            variables: ['R = Retained element DOFs', 'C = Condensed hinge rotational DOFs'],
+          },
+          {
+            name: 'Elastic Critical Buckling & B₂ Sway Amplification',
+            formula: 'α_cr = 1 / λ_max([K_E]⁻¹ [-K_G]) ,   B₂ = 1 / (1 - 1 / α_cr)',
+            description: 'Evaluates elastic critical buckling safety ratio α_cr against second-order sway sensitivity threshold (α_cr < 10).',
+            variables: ['α_cr = Elastic critical buckling load factor', 'B₂ = Second-order sway amplifier'],
+          },
+        ],
+        assumptions: [
+          'Planar 2D Euler-Bernoulli frame and pin-jointed truss elements under small strains.',
+          'Second-Order P-Delta iterates geometric stiffness [K_G(P)] until displacement norm converges (< 10⁻⁶).',
+          'Thermal expansion ΔT strains are flagged outside Second-Order P-Delta scope.',
+        ],
+      };
+
+    case 'section-analyzer':
+      return {
+        codeStandard: 'EN 1993-1-1 (EC3) / AISC 360-22 / BNBC 2020 Part 6 Ch 10',
+        category: 'Mechanics of Materials & Plastic N-M Section Resistance',
+        equations: [
+          {
+            name: 'Combined Elastic Normal Stress (Biaxial Flexure + Axial)',
+            formula: 'σ(y, z) = N / A + (M_y · z) / I_y - (M_z · y) / I_z',
+            description: 'Exact Navier linear normal stress superposition with centroidal principal coordinates (+N tension).',
+            variables: ['A = Cross-sectional area (mm²)', 'I_y, I_z = Second moments of area (mm⁴)', 'y, z = Distances from centroid (mm)'],
+          },
+          {
+            name: 'Jourawski Transverse Shear & von Mises Stress',
+            formula: 'τ(z) = (V_z · Q_y(z)) / (I_y · t(z)) ,   σ_vM = √(σ² + 3·τ²)',
+            description: 'Parabolic shear stress distribution integrated over sub-section widths and combined via Hencky-von Mises yield criterion.',
+            variables: ['Q_y(z) = First moment of area above cut z', 't(z) = Section web/stem thickness at height z'],
+          },
+          {
+            name: 'Shifted Plastic Neutral Axis & Reduced M_N,y,Rd',
+            formula: 'A_below = 0.5 · (A - N / f_yd) ,   M_N,y,Rd = ∫ (z - z̄) · σ_pl(z) dA',
+            description: 'Fully plastic stress block equilibrium with Plastic Neutral Axis shifted by axial force N, verified against 400-slice fiber mesh.',
+            variables: ['f_yd = f_y / γ_M0', 'σ_pl(z) = ±f_yd above/below PNA'],
+          },
+          {
+            name: 'EN 1993-1-1 / AISC Class 1–4 Guardrail',
+            formula: 'ε = √(235 / f_y) : Class 1/2 Compact → Plastic N-M Allowed | Class 3/4 → Elastic Limit Only',
+            description: 'Flange outstand and web internal c/t checks enforce mandatory elastic design when local buckling prevents full plastic hinge formation.',
+            variables: ['c/t = Flat plate width-to-thickness ratio'],
+          },
+        ],
+        assumptions: [
+          'Plane sections remain plane (Euler-Bernoulli hypothesis) prior to local plate buckling.',
+          'For Class 3 (Semi-Compact) and Class 4 (Slender) sections, plastic N-M interaction capacity is explicitly blocked.',
+          'Restrained warping torsion and lateral-torsional buckling (LTB) along span are outside single cross-section scope.',
+        ],
+      };
+
+    case 'rc-column-design':
+      return {
+        codeStandard: 'BNBC 2020 Part 6 §6.3 / ACI 318-19 Ch. 6 & 22 / Eurocode 2 §5.8 & §6.1',
+        category: 'Reinforced Concrete Column N-M Interaction & Slenderness',
+        equations: [
+          {
+            name: 'Strain-Compatibility Concrete & Steel Equilibrium',
+            formula: 'P_n = 0.85·f\'_c·b·a + Σ A_si·(f_si − 0.85·f\'_c) ,   M_n = F_c·(h/2 − a/2) + Σ F_si·(h/2 − d_i)',
+            description: 'Whitney rectangular stress block a = β₁·c coupled with linear strain profile ε_si = ε_cu·(c − d_i)/c across all discretized longitudinal bars.',
+            variables: ['ε_cu = 0.003 (BNBC/ACI) or 0.0035 (EC2)', 'β₁ = Stress block depth factor', 'φ = 0.65 (compression) to 0.90 (tension)'],
+          },
+          {
+            name: 'Pure Axial Cutoff & Balanced Failure Point',
+            formula: 'φP_n,max = 0.80·φ·[0.85·f\'_c·(A_g − A_st) + f_y·A_st] ,   c_b = d · ε_cu / (ε_cu + ε_y)',
+            description: 'Minimum eccentricity cutoff for tied columns and simultaneous concrete crushing + extreme tension bar yielding.',
+            variables: ['A_g = b·h gross section', 'A_st = Total longitudinal steel area'],
+          },
+          {
+            name: 'Second-Order Slenderness & Moment Magnifier (δ_ns)',
+            formula: 'δ_ns = C_m / [1 − P_u / (0.75·P_c)] ≥ 1.0 ,   P_c = π²·(EI)_eff / (k·L_u)²',
+            description: 'Non-sway moment magnification applied when slenderness ratio k·L_u / r exceeds code threshold (34 − 12·M₁/M₂ or 22).',
+            variables: ['(EI)_eff = 0.4·E_c·I_g / (1 + β_dns)', 'r = 0.30·h rectangular gyration radius'],
+          },
+          {
+            name: 'Bresler Load Contour Biaxial Interaction',
+            formula: '(M_cx / φM_nx)^α + (M_cy / φM_ny)^α ≤ 1.0',
+            description: 'Biaxial flexural-axial interaction envelope evaluated at factored axial load P_u with exponent α ∈ [1.15, 1.55].',
+            variables: ['φM_nx, φM_ny = Uniaxial design moment capacities at P_u'],
+          },
+        ],
+        assumptions: [
+          'Linear strain distribution (plane sections remain plane) with zero concrete tensile strength.',
+          'Symmetrical rectangular tied column reinforcement perimeter layout.',
+          'Non-sway braced / unbraced slenderness magnification uses cracked-section (EI)_eff = 0.4·Ec·Ig / (1 + β_dns).',
+        ],
+      };
+
+    case 'strut-and-tie':
+      return {
+        codeStandard: 'ACI 318-19 Ch. 23 / BNBC 2020 (Partial Scope: Truss Equilibrium)',
+        category: 'Discontinuity Region (D-Region) Strut-and-Tie Modeling',
+        equations: [
+          {
+            name: '2D Truss Direct Stiffness & Method of Joints',
+            formula: '[K]·{u} = {F} ,   ΣF_x,i = 0 ,   ΣF_y,i = 0 ,   ΣM_o = 0',
+            description: 'Solves nodal displacements, support reactions, and axial member forces (+ Tension Tie, - Compression Strut) in pin-jointed STM trusses.',
+            variables: ['k_local = (E·A / L) transformed to global 2-DOF per node'],
+          },
+          {
+            name: 'Effective Strut Concrete Capacity (ACI 318-19 §23.4)',
+            formula: 'f_ce,strut = 0.85 · β_s · f\'_c ,   φ_STM = 0.75',
+            description: 'Advisory axial compressive stress verification against prismatic (β_s=1.0) or bottle-shaped (β_s=0.75) strut efficiency.',
+            variables: ['β_s = Strut efficiency factor', 'σ_strut = |F_strut| / A_strut'],
+          },
+          {
+            name: 'Tension Tie Steel Requirement',
+            formula: 'A_s,tie,req = F_tie / (φ_STM · f_y)',
+            description: 'Required longitudinal reinforcement area to carry factored tension tie force across D-region.',
+            variables: ['φ_STM = 0.75', 'f_y = Rebar yield strength (MPa)'],
+          },
+        ],
+        assumptions: [
+          'Partial Scope: Covers 2D truss equilibrium, member forces, strut/tie classification, and required tie steel A_s,req.',
+          'Nodal zone bearing dimensions (CCC/CCT/CTT) and hook/anchorage development lengths are advisory and must be detailed separately.',
+          'All STM members are assumed pin-connected at concentrated node centers.',
+        ],
+      };
+
     case 'pile-capacity':
       return {
         codeStandard: 'BNBC 2020 Part 6 Ch 3 / ACI 543R / Tomlinson / Meyerhof',
@@ -592,6 +732,91 @@ export function getCapacityUtilization(
             ? 'Advisory: Operating within 85%-100% of allowable bending capacity.'
             : 'CRITICAL: Section flexural stress exceeds allowable limit (DCR > 1.0). Increase moment of inertia.',
         referenceLimit: `Allowable Stress: ${workspace.continuousBeam?.allowableStressMpa || 250} MPa`,
+      };
+    }
+
+    case 'frame-truss-2d': {
+      const ftRes = result as FrameTruss2DResult;
+      const dcr = ftRes.utilizationRatio || 0;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical';
+      return {
+        metricLabel: 'Combined Axial + Flexural Stress DCR',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: pct,
+        status,
+        description:
+          dcr <= 0.85
+            ? `Safe: Peak combined stress (${ftRes.maxCombinedStressMpa.toFixed(1)} MPa) well within allowable limit.`
+            : dcr <= 1.0
+            ? 'Advisory: Combined axial + bending stress approaching allowable capacity.'
+            : 'CRITICAL: Combined stress exceeds allowable limit (DCR > 1.0). Increase section A or I.',
+        referenceLimit: `Allowable Stress: ${ftRes.allowableStressMpa} MPa`,
+      };
+    }
+
+    case 'section-analyzer': {
+      const saRes = result as SectionAnalyzerResult;
+      const dcr = saRes.governingDcr || 0;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical';
+      const classNote = saRes.classification.isPlasticAllowed
+        ? `${saRes.classification.classLabel} (Plastic N-M Active)`
+        : `${saRes.classification.classLabel} (Plastic Blocked — Elastic M_el Limit)`;
+      return {
+        metricLabel: 'Governing Section Utilization DCR',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: pct,
+        status,
+        description:
+          dcr <= 0.85
+            ? `Safe: ${classNote}. Peak von Mises ${saRes.vonMisesMaxMpa.toFixed(1)} MPa ≤ f_yd ${saRes.fydMpa.toFixed(1)} MPa.`
+            : dcr <= 1.0
+            ? `Advisory: ${classNote}. Section demand approaching capacity limit.`
+            : `CRITICAL: ${classNote}. Applied N-M-V forces exceed section design capacity (DCR > 1.0).`,
+        referenceLimit: `f_yd = ${saRes.fydMpa.toFixed(1)} MPa | M_N,y,Rd = ${saRes.mNyReducedRdKnm.toFixed(1)} kN·m`,
+      };
+    }
+
+    case 'rc-column-design': {
+      const colRes = result as RcColumnDesignResult;
+      const dcr = colRes.governingDcr || 0;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical';
+      return {
+        metricLabel: 'RC Column Governing P-M Interaction DCR',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: pct,
+        status,
+        description:
+          dcr <= 0.85
+            ? `Safe (${colRes.designCode}): Load (P_u=${colRes.axialLoadPu_Kn} kN) sits inside φP-M interaction envelope (Bresler ${(colRes.breslerContourDcr * 100).toFixed(1)}%).`
+            : dcr <= 1.0
+            ? `Advisory (${colRes.designCode}): Column approaching φP-M envelope limit.`
+            : `CRITICAL (${colRes.designCode}): Factored action exceeds column P-M capacity (DCR > 100%). Increase section or bar size.`,
+        referenceLimit: `φP_n,max = ${colRes.phiPnMaxKn.toFixed(0)} kN | φM_nx = ${colRes.xAxis.phiMnAtPuKnm.toFixed(1)} kN·m`,
+      };
+    }
+
+    case 'strut-and-tie': {
+      const stmRes = result as StrutAndTieResult;
+      const dcr = stmRes.governingDcr || 0;
+      const pct = Math.min(100, Math.max(4, Math.round(dcr * 100)));
+      const status: 'safe' | 'warning' | 'critical' =
+        dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical';
+      return {
+        metricLabel: 'STM Strut/Tie Stress DCR (Partial Scope)',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: pct,
+        status,
+        description:
+          dcr <= 1.0
+            ? `Truss equilibrium verified (ΣF residual ${stmRes.equilibriumResidualKn.toExponential(1)} kN). Required tie steel A_s,req = ${stmRes.totalRequiredTieSteelMm2.toFixed(0)} mm².`
+            : `CRITICAL: Strut/Tie stress exceeds ACI 318-19 Ch. 23 advisory limit (DCR > 100%).`,
+        referenceLimit: `Max Strut ${stmRes.maxCompressionStrutKn.toFixed(0)} kN | Max Tie +${stmRes.maxTensionTieKn.toFixed(0)} kN`,
       };
     }
 
@@ -914,6 +1139,167 @@ export function getAllCapacityUtilizations(
       break;
     }
 
+    case 'frame-truss-2d': {
+      const ftRes = result as FrameTruss2DResult;
+      const dcr = ftRes.utilizationRatio || 0;
+      gauges.push({
+        metricLabel: 'Combined Axial + Flexural DCR',
+        formattedValue: `${(dcr * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(dcr * 100))),
+        status: dcr <= 0.85 ? 'safe' : dcr <= 1.0 ? 'warning' : 'critical',
+        description: `Peak combined member stress σ_max = ${ftRes.maxCombinedStressMpa.toFixed(1)} MPa across ${ftRes.memberCount} members.`,
+        referenceLimit: `σ_allow = ${ftRes.allowableStressMpa} MPa`,
+      });
+
+      const alphaCr = ftRes.criticalBucklingFactorAlphaCr;
+      const stabPct = Number.isFinite(alphaCr)
+        ? Math.min(100, Math.max(4, Math.round((10 / Math.max(alphaCr, 0.1)) * 45)))
+        : 6;
+      const stabStatus: 'safe' | 'warning' | 'critical' =
+        !Number.isFinite(alphaCr) || alphaCr >= 10
+          ? 'safe'
+          : alphaCr > 1.5
+          ? 'warning'
+          : 'critical';
+      gauges.push({
+        metricLabel: 'Elastic Sway & Buckling Stability (α_cr)',
+        formattedValue: Number.isFinite(alphaCr) ? `α_cr = ${alphaCr.toFixed(2)}` : 'α_cr = ∞',
+        percentage: stabPct,
+        status: stabStatus,
+        description:
+          !Number.isFinite(alphaCr) || alphaCr >= 10
+            ? 'Non-sway / stiff stability frame (α_cr ≥ 10.0).'
+            : 'Sway-sensitive frame (α_cr < 10.0): Second-Order P-Delta amplification active.',
+        referenceLimit: `B₂ Sway Amplifier = ${ftRes.b2AmplificationFactor.toFixed(3)}×`,
+      });
+
+      const eqOk = ftRes.equilibriumResidualKn < 1e-2;
+      gauges.push({
+        metricLabel: 'Global Matrix Equilibrium Balance',
+        formattedValue: eqOk ? 'ΣF, ΣM = 0 Verified' : `Residual ${ftRes.equilibriumResidualKn.toExponential(1)}`,
+        percentage: eqOk ? 10 : 95,
+        status: eqOk ? 'safe' : 'warning',
+        description: `Residual across ΣFx, ΣFy, ΣMo = ${ftRes.equilibriumResidualKn.toExponential(2)} kN.`,
+        referenceLimit: `Tolerance < 10⁻⁴ kN`,
+      });
+      break;
+    }
+
+    case 'section-analyzer': {
+      const saRes = result as SectionAnalyzerResult;
+      const elDcr = saRes.elasticStressDcr || 0;
+      gauges.push({
+        metricLabel: 'Combined Elastic von Mises Stress DCR (σ_vM / f_yd)',
+        formattedValue: `${(elDcr * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(elDcr * 100))),
+        status: elDcr <= 0.85 ? 'safe' : elDcr <= 1.0 ? 'warning' : 'critical',
+        description: `Peak combined σ_vM = ${saRes.vonMisesMaxMpa.toFixed(1)} MPa (|σ|_max = ${saRes.sigmaAbsMaxMpa.toFixed(1)} MPa).`,
+        referenceLimit: `f_yd = ${saRes.fydMpa.toFixed(1)} MPa (γ_M0 = ${saRes.gammaM0})`,
+      });
+
+      if (saRes.classification.isPlasticAllowed && saRes.plasticInteractionDcr !== null) {
+        const plDcr = saRes.plasticInteractionDcr;
+        gauges.push({
+          metricLabel: 'Plastic N-M_y-M_z Interaction DCR (Class 1/2)',
+          formattedValue: `${(plDcr * 100).toFixed(1)}%`,
+          percentage: Math.min(100, Math.max(4, Math.round(plDcr * 100))),
+          status: plDcr <= 0.85 ? 'safe' : plDcr <= 1.0 ? 'warning' : 'critical',
+          description: `Reduced plastic moment capacity at N = ${saRes.axialForceN_Kn} kN is M_N,y,Rd = ${saRes.mNyReducedRdKnm.toFixed(1)} kN·m.`,
+          referenceLimit: `M_pl,y,Rd = ${saRes.mPlYRdKnm.toFixed(1)} kN·m · N_pl,Rd = ${saRes.nPlRdKn.toFixed(0)} kN`,
+        });
+      } else {
+        gauges.push({
+          metricLabel: 'Plastic N-M Redistribution Guardrail',
+          formattedValue: `Blocked (${saRes.classification.classLabel})`,
+          percentage: 90,
+          status: 'warning',
+          description: saRes.classification.plasticBlockedReason || 'Class 3/4 local buckling prohibits plastic N-M hinge formation.',
+          referenceLimit: `${saRes.classification.governingPart}`,
+        });
+      }
+
+      const vDcr = saRes.shearStressDcr || 0;
+      gauges.push({
+        metricLabel: 'Transverse Shear + Torsion Yield DCR',
+        formattedValue: `${(vDcr * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(vDcr * 100))),
+        status: vDcr <= 0.85 ? 'safe' : vDcr <= 1.0 ? 'warning' : 'critical',
+        description: `Peak total shear τ_max = ${saRes.tauTotalMaxMpa.toFixed(1)} MPa vs shear yield f_yd / √3 = ${(saRes.fydMpa / Math.sqrt(3)).toFixed(1)} MPa.`,
+        referenceLimit: `Plastic Shear V_pl,z,Rd = ${saRes.vPlZRdKn.toFixed(1)} kN`,
+      });
+      break;
+    }
+
+    case 'rc-column-design': {
+      const colRes = result as RcColumnDesignResult;
+      const uniDcr = Math.max(colRes.xAxis.uniaxialDcr, colRes.yAxis.uniaxialDcr);
+      gauges.push({
+        metricLabel: 'Uniaxial P-M Envelope DCR (Max X / Y)',
+        formattedValue: `${(uniDcr * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(uniDcr * 100))),
+        status: uniDcr <= 0.85 ? 'safe' : uniDcr <= 1.0 ? 'warning' : 'critical',
+        description: `X-Axis ${(colRes.xAxis.uniaxialDcr * 100).toFixed(1)}% (δ_ns=${colRes.xAxis.magnifierDeltaNs.toFixed(2)}×) · Y-Axis ${(colRes.yAxis.uniaxialDcr * 100).toFixed(1)}%.`,
+        referenceLimit: `φM_nx = ${colRes.xAxis.phiMnAtPuKnm.toFixed(1)} kN·m | φM_ny = ${colRes.yAxis.phiMnAtPuKnm.toFixed(1)} kN·m`,
+      });
+
+      const bresDcr = colRes.breslerContourDcr;
+      gauges.push({
+        metricLabel: 'Bresler Biaxial Load Contour DCR',
+        formattedValue: `${(bresDcr * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(bresDcr * 100))),
+        status: bresDcr <= 0.85 ? 'safe' : bresDcr <= 1.0 ? 'warning' : 'critical',
+        description: `(M_cx/φM_nx)^${colRes.breslerAlpha.toFixed(2)} + (M_cy/φM_ny)^${colRes.breslerAlpha.toFixed(2)} ≤ 1.00.`,
+        referenceLimit: `Axial P_u / φP_n,max = ${(colRes.axialDcr * 100).toFixed(1)}%`,
+      });
+
+      const slendernessRatio = Math.max(
+        colRes.xAxis.slendernessRatioKluR / colRes.xAxis.slendernessLimit,
+        colRes.yAxis.slendernessRatioKluR / colRes.yAxis.slendernessLimit
+      );
+      gauges.push({
+        metricLabel: 'Slenderness & Steel Ratio Check (kL_u/r & ρ_g)',
+        formattedValue: `${Math.max(colRes.xAxis.slendernessRatioKluR, colRes.yAxis.slendernessRatioKluR).toFixed(1)} (${colRes.rhoPercent.toFixed(2)}%)`,
+        percentage: Math.min(100, Math.max(4, Math.round(slendernessRatio * 100))),
+        status: colRes.rhoOk && colRes.tieDetailingOk ? (colRes.xAxis.isSlender || colRes.yAxis.isSlender ? 'warning' : 'safe') : 'warning',
+        description: `${colRes.xAxis.isSlender || colRes.yAxis.isSlender ? 'Slender column (δ_ns active)' : 'Short column'} · Rebar ${colRes.totalBarCount}-Ø${colRes.longitudinalBarDiaMm}.`,
+        referenceLimit: `Tie max spacing ≤ ${colRes.maxAllowedTieSpacingMm} mm`,
+      });
+      break;
+    }
+
+    case 'strut-and-tie': {
+      const stmRes = result as StrutAndTieResult;
+      const maxDcr = stmRes.governingDcr || 0;
+      gauges.push({
+        metricLabel: 'Governing Strut/Tie Stress DCR',
+        formattedValue: `${(maxDcr * 100).toFixed(1)}%`,
+        percentage: Math.min(100, Math.max(4, Math.round(maxDcr * 100))),
+        status: maxDcr <= 0.85 ? 'safe' : maxDcr <= 1.0 ? 'warning' : 'critical',
+        description: `Peak strut compression ${stmRes.maxCompressionStrutKn.toFixed(1)} kN · Peak tie tension +${stmRes.maxTensionTieKn.toFixed(1)} kN.`,
+        referenceLimit: `${stmRes.strutCount} Struts (Dashed) / ${stmRes.tieCount} Ties (Solid)`,
+      });
+
+      const eqOk = stmRes.equilibriumResidualKn < 1e-2 && stmRes.momentResidualKnm < 1e-2;
+      gauges.push({
+        metricLabel: 'Global Equilibrium Closure (ΣFx, ΣFy, ΣM)',
+        formattedValue: eqOk ? 'Converged' : `${stmRes.equilibriumResidualKn.toExponential(1)} kN`,
+        percentage: eqOk ? 12 : 92,
+        status: eqOk ? 'safe' : 'warning',
+        description: `Applied ΣFy = ${stmRes.totalAppliedFyKn.toFixed(1)} kN balanced by ΣRy = ${stmRes.totalReactionRyKn.toFixed(1)} kN.`,
+        referenceLimit: `Required Tie Steel A_s,req = ${stmRes.totalRequiredTieSteelMm2.toFixed(0)} mm²`,
+      });
+
+      gauges.push({
+        metricLabel: 'STM Scope Advisory Status',
+        formattedValue: 'Partial (Equilibrium)',
+        percentage: 65,
+        status: 'warning',
+        description: 'Truss forces & A_s,tie computed. Verify CCC/CCT/CTT nodal zone geometry & bar anchorage separately.',
+        referenceLimit: `ACI 318-19 Ch. 23 · φ = 0.75`,
+      });
+      break;
+    }
+
     case 'pile-capacity': {
       const pRes = result as PileCapacityResult;
       const axialDcr = pRes.utilizationRatio || 0;
@@ -1202,6 +1588,85 @@ export function exportAnalyticalScheduleCsv(
       lines.push(`"ID","SPAN","X_SPAN (m)","X_TOTAL (m)","TYPE","SHEAR (kN)","MOMENT (kN·m)","DESCRIPTION"`);
       r.criticalCoordinates.forEach((cp) => {
         lines.push(`"${cp.label}","Span ${cp.spanIndex + 1}",${cp.xSpanM},${cp.xTotalM},"${cp.type}",${cp.shearKn},${cp.momentKnm},"${cp.significance.replace(/"/g, '""')}"`);
+      });
+      break;
+    }
+
+    case 'frame-truss-2d': {
+      const r = result as FrameTruss2DResult;
+      lines.push(`"2D FRAME & TRUSS DIRECT STIFFNESS + SECOND-ORDER P-DELTA SCHEDULE"`);
+      lines.push(`"Analysis Mode","${r.analysisMode}","Governing Code","${r.governingCode}","DCR (%)",${(r.utilizationRatio * 100).toFixed(1)}`);
+      lines.push(`"Max Displacement (mm)",${r.maxDisplacementMm.toFixed(3)},"Critical Node","${r.maxDisplacementNodeLabel}","Buckling Factor alpha_cr",${Number.isFinite(r.criticalBucklingFactorAlphaCr) ? r.criticalBucklingFactorAlphaCr.toFixed(3) : 'Infinity'}`);
+      lines.push(`"Equilibrium Residual (kN)",${r.equilibriumResidualKn.toExponential(3)},"B2 Amplifier",${r.b2AmplificationFactor.toFixed(4)}`);
+      lines.push(``);
+      lines.push(`"MEMBER ENVELOPE SCHEDULE"`);
+      lines.push(`"MEMBER","TYPE","CONNECTIVITY","LENGTH (m)","AXIAL N (kN)","MAX |V| (kN)","MAX |M| (kN·m)","STRESS (MPa)","DCR (%)"`);
+      r.memberResults.forEach((mr) => {
+        lines.push(`"${mr.label}","${mr.memberType}","${mr.startLabel}->${mr.endLabel}",${mr.lengthM.toFixed(3)},${mr.axialStartKn.toFixed(2)},${mr.maxAbsShearKn.toFixed(2)},${mr.maxAbsMomentKnm.toFixed(2)},${mr.combinedStressMpa.toFixed(2)},${(mr.dcrRatio * 100).toFixed(1)}`);
+      });
+      lines.push(``);
+      lines.push(`"NODAL DISPLACEMENTS & SUPPORT REACTIONS"`);
+      lines.push(`"NODE","SUPPORT","ux (mm)","uy (mm)","theta_z (mrad)","Rx (kN)","Ry (kN)","Mz (kN·m)"`);
+      r.nodalResults.forEach((nr) => {
+        lines.push(`"${nr.label}","${nr.support}",${nr.uxMm.toFixed(4)},${nr.uyMm.toFixed(4)},${nr.rzMrad.toFixed(4)},${nr.reactionFxKn.toFixed(3)},${nr.reactionFyKn.toFixed(3)},${nr.reactionMzKnm.toFixed(3)}`);
+      });
+      break;
+    }
+
+    case 'section-analyzer': {
+      const r = result as SectionAnalyzerResult;
+      lines.push(`"SECTION GEOMETRIC PROPERTIES & RESISTANCES"`);
+      lines.push(`"PROPERTY","VALUE","UNIT"`);
+      lines.push(`"Profile / Shape","${r.presetName}","-"`);
+      lines.push(`"Classification","${r.classification.classLabel} (${r.classification.aiscEquivalent})","-"`);
+      lines.push(`"Area A",${r.areaCm2.toFixed(3)},"cm^2"`);
+      lines.push(`"Second Moment Iy",${r.iyCm4.toFixed(2)},"cm^4"`);
+      lines.push(`"Second Moment Iz",${r.izCm4.toFixed(2)},"cm^4"`);
+      lines.push(`"Elastic Modulus Wel,y",${r.welYMinCm3.toFixed(2)},"cm^3"`);
+      lines.push(`"Plastic Modulus Wpl,y",${r.wplYCm3.toFixed(2)},"cm^3"`);
+      lines.push(`"Shifted PNA (from centroid)",${r.plasticNeutralAxisZMm.toFixed(2)},"mm"`);
+      lines.push(`"N_pl,Rd",${r.nPlRdKn.toFixed(2)},"kN"`);
+      lines.push(`"M_pl,y,Rd",${r.mPlYRdKnm.toFixed(2)},"kN.m"`);
+      lines.push(`"M_N,y,Rd (Reduced)",${r.mNyReducedRdKnm.toFixed(2)},"kN.m"`);
+      lines.push(`"Governing DCR",${(r.governingDcr * 100).toFixed(2)},"%"`);
+      lines.push(``);
+      lines.push(`"CORNER & EXTREME FIBER STRESSES"`);
+      lines.push(`"FIBER","y (mm)","z (mm)","sigma (MPa)","tau (MPa)","von Mises (MPa)"`);
+      r.cornerStresses.forEach((c) => {
+        lines.push(`"${c.label}",${c.yMm.toFixed(2)},${c.zMm.toFixed(2)},${c.sigmaMpa.toFixed(2)},${c.tauMpa.toFixed(2)},${c.vonMisesMpa.toFixed(2)}`);
+      });
+      break;
+    }
+
+    case 'rc-column-design': {
+      const r = result as RcColumnDesignResult;
+      lines.push(`"RC COLUMN N-M INTERACTION & SLENDERNESS SCHEDULE (${r.designCode})"`);
+      lines.push(`"Section b x h (mm)","${r.widthB_Mm} x ${r.depthH_Mm}","Rebar","${r.totalBarCount}-Phi${r.longitudinalBarDiaMm} (${r.rhoPercent.toFixed(2)}%)"`);
+      lines.push(`"Concrete f'c (MPa)",${r.concreteFcMpa},"Steel fy (MPa)",${r.rebarFyMpa}`);
+      lines.push(`"Factored Load Pu (kN)",${r.axialLoadPu_Kn},"Mux / Muy (kN.m)","${r.momentMux_Knm} / ${r.momentMuy_Knm}"`);
+      lines.push(`"Phi Pn,max (kN)",${r.phiPnMaxKn.toFixed(2)},"Bresler Biaxial DCR (%)",${(r.breslerContourDcr * 100).toFixed(2)}`);
+      lines.push(`"X-Axis Phi Mn at Pu (kN.m)",${r.xAxis.phiMnAtPuKnm.toFixed(2)},"X-Axis Delta_ns",${r.xAxis.magnifierDeltaNs.toFixed(3)}`);
+      lines.push(`"Y-Axis Phi Mn at Pu (kN.m)",${r.yAxis.phiMnAtPuKnm.toFixed(2)},"Y-Axis Delta_ns",${r.yAxis.magnifierDeltaNs.toFixed(3)}`);
+      lines.push(``);
+      lines.push(`"X-AXIS P-M INTERACTION ENVELOPE"`);
+      lines.push(`"Regime","c (mm)","epsilon_t","phi","Pn (kN)","Mn (kN.m)","phi*Pn (kN)","phi*Mn (kN.m)"`);
+      r.xAxis.curve.forEach((pt) => {
+        lines.push(`"${pt.regime}",${pt.cMm.toFixed(2)},${pt.epsilonT.toFixed(5)},${pt.phi.toFixed(3)},${pt.pnKn.toFixed(2)},${pt.mnKnm.toFixed(2)},${pt.phiPnKn.toFixed(2)},${pt.phiMnKnm.toFixed(2)}`);
+      });
+      break;
+    }
+
+    case 'strut-and-tie': {
+      const r = result as StrutAndTieResult;
+      lines.push(`"STRUT-AND-TIE MODEL (STM) TRUSS EQUILIBRIUM SCHEDULE (PARTIAL SCOPE)"`);
+      lines.push(`"Template","${r.presetName}","f'c / fy (MPa)","${r.concreteFcMpa} / ${r.rebarFyMpa}"`);
+      lines.push(`"Max Compression Strut (kN)",${r.maxCompressionStrutKn.toFixed(2)},"Max Tension Tie (kN)",${r.maxTensionTieKn.toFixed(2)}`);
+      lines.push(`"Total Required Tie Steel As,req (mm^2)",${r.totalRequiredTieSteelMm2.toFixed(1)},"Equilibrium Residual (kN)",${r.equilibriumResidualKn.toExponential(3)}`);
+      lines.push(``);
+      lines.push(`"MEMBER FORCES & CLASSIFICATION"`);
+      lines.push(`"Member","Start","End","Role","Length (m)","Axial Force (kN)","Stress (MPa)","Limit (MPa)","As,tie (mm^2)","DCR (%)"`);
+      r.memberResults.forEach((m) => {
+        lines.push(`"${m.label}","${m.startLabel}","${m.endLabel}","${m.role.toUpperCase()}",${m.lengthM.toFixed(3)},${m.axialForceKn.toFixed(2)},${m.stressMpa.toFixed(2)},${m.allowableLimitMpa.toFixed(2)},${m.requiredTieSteelMm2.toFixed(1)},${(m.dcrRatio * 100).toFixed(1)}`);
       });
       break;
     }

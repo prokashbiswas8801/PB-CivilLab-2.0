@@ -14,6 +14,7 @@ export interface UnitInfo {
   bengaliName?: string;
   bengaliSymbol?: string;
   aliases?: string[];
+  dimensionGroup?: string;
 }
 
 /**
@@ -409,14 +410,16 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'kip/in', name: 'Kips / Inch', symbol: 'kip/in', category: 'distributed_load', toBaseFactor: 175126.835246, description: 'High intensity structural bearing line load', system: 'imperial' },
   ],
   section_properties: [
-    { id: 'mm4', name: 'Millimeter⁴ (Moment of Inertia)', symbol: 'mm⁴', category: 'section_properties', toBaseFactor: 1.0, description: 'SI steel/concrete cross-section inertia Ix, Iy', system: 'metric' },
-    { id: 'cm4', name: 'Centimeter⁴', symbol: 'cm⁴', category: 'section_properties', toBaseFactor: 1e4, description: 'Metric handbook section inertia (1 cm⁴ = 10,000 mm⁴)', system: 'metric' },
-    { id: 'm4', name: 'Meter⁴', symbol: 'm⁴', category: 'section_properties', toBaseFactor: 1e12, description: 'Large civil bridge section inertia', system: 'metric' },
-    { id: 'in4', name: 'Inch⁴', symbol: 'in⁴', category: 'section_properties', toBaseFactor: 416231.4256, description: 'AISC structural steel table inertia (1 in⁴ = 416,231 mm⁴)', system: 'imperial' },
-    { id: 'ft4', name: 'Foot⁴', symbol: 'ft⁴', category: 'section_properties', toBaseFactor: 86309690.6, description: 'Large foundation footing moment of inertia', system: 'imperial' },
-    { id: 'mm3_sec', name: 'Millimeter³ (Section Modulus Z/S)', symbol: 'mm³', category: 'section_properties', toBaseFactor: 1.0, description: 'Elastic section modulus Sx / plastic modulus Zx', system: 'metric' },
-    { id: 'cm3_sec', name: 'Centimeter³', symbol: 'cm³', category: 'section_properties', toBaseFactor: 1000.0, description: 'Metric handbook modulus (1 cm³ = 1000 mm³)', system: 'metric' },
-    { id: 'in3_sec', name: 'Inch³', symbol: 'in³', category: 'section_properties', toBaseFactor: 16387.064, description: 'AISC section modulus (1 in³ = 16,387 mm³)', system: 'imperial' },
+    { id: 'mm4', name: 'Millimeter⁴ (Moment of Inertia)', symbol: 'mm⁴', category: 'section_properties', toBaseFactor: 1.0, description: 'SI steel/concrete cross-section inertia Ix, Iy', system: 'metric', dimensionGroup: 'inertia' },
+    { id: 'cm4', name: 'Centimeter⁴', symbol: 'cm⁴', category: 'section_properties', toBaseFactor: 1e4, description: 'Metric handbook section inertia (1 cm⁴ = 10,000 mm⁴)', system: 'metric', dimensionGroup: 'inertia' },
+    { id: 'm4', name: 'Meter⁴', symbol: 'm⁴', category: 'section_properties', toBaseFactor: 1e12, description: 'Large civil bridge section inertia', system: 'metric', dimensionGroup: 'inertia' },
+    { id: 'in4', name: 'Inch⁴', symbol: 'in⁴', category: 'section_properties', toBaseFactor: 416231.4256, description: 'AISC structural steel table inertia (1 in⁴ = 416,231.4 mm⁴)', system: 'imperial', dimensionGroup: 'inertia' },
+    { id: 'ft4', name: 'Foot⁴', symbol: 'ft⁴', category: 'section_properties', toBaseFactor: 8630974841.2416, description: 'Large foundation footing moment of inertia (1 ft⁴ = 8.631×10⁹ mm⁴)', system: 'imperial', dimensionGroup: 'inertia' },
+    { id: 'mm3_sec', name: 'Millimeter³ (Section Modulus Z/S)', symbol: 'mm³', category: 'section_properties', toBaseFactor: 1.0, description: 'Elastic section modulus Sx / plastic modulus Zx', system: 'metric', dimensionGroup: 'modulus' },
+    { id: 'cm3_sec', name: 'Centimeter³ (Section Modulus)', symbol: 'cm³', category: 'section_properties', toBaseFactor: 1000.0, description: 'Metric handbook modulus (1 cm³ = 1000 mm³)', system: 'metric', dimensionGroup: 'modulus' },
+    { id: 'm3_sec', name: 'Meter³ (Section Modulus)', symbol: 'm³', category: 'section_properties', toBaseFactor: 1e9, description: 'Large bridge girder section modulus (1 m³ = 10⁹ mm³)', system: 'metric', dimensionGroup: 'modulus' },
+    { id: 'in3_sec', name: 'Inch³ (Section Modulus)', symbol: 'in³', category: 'section_properties', toBaseFactor: 16387.064, description: 'AISC section modulus (1 in³ = 16,387.064 mm³)', system: 'imperial', dimensionGroup: 'modulus' },
+    { id: 'ft3_sec', name: 'Foot³ (Section Modulus)', symbol: 'ft³', category: 'section_properties', toBaseFactor: 28316846.592, description: 'Large footing section modulus (1 ft³ = 2.8317×10⁷ mm³)', system: 'imperial', dimensionGroup: 'modulus' },
   ],
   density: [
     { id: 'kN/m3', name: 'Kilonewton / m³', symbol: 'kN/m³', category: 'density', toBaseFactor: 1.0, description: 'Canonical civil soil gamma (e.g. 18 kN/m³)', system: 'metric' },
@@ -425,9 +428,9 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'g/cm3', name: 'Gram / cm³', symbol: 'g/cm³', category: 'density', toBaseFactor: 9.80665, description: 'Specific gravity basis (water = 1.0 g/cm³ = 9.81 kN/m³)', system: 'metric' },
     { id: 'g/L', name: 'Gram / Liter', symbol: 'g/L', category: 'density', toBaseFactor: 0.00980665, description: 'Dissolved solid / salinity density', system: 'metric' },
     { id: 'pcf', name: 'Pounds / Cu Foot (pcf)', symbol: 'pcf', category: 'density', toBaseFactor: 0.157087463, description: 'Imperial unit weight (e.g. 150 pcf concrete ≈ 23.56 kN/m³)', system: 'imperial' },
-    { id: 'lb/in3', name: 'Pounds / Cu Inch', symbol: 'lb/in³', category: 'density', toBaseFactor: 271.4468, description: 'Steel density (0.283 lb/in³ = 490 pcf = 76.97 kN/m³)', system: 'imperial' },
+    { id: 'lb/in3', name: 'Pounds / Cu Inch', symbol: 'lb/in³', category: 'density', toBaseFactor: 271.447136, description: 'Steel density (0.283 lb/in³ = 490 pcf = 76.97 kN/m³)', system: 'imperial' },
     { id: 'kip/ft3', name: 'Kips / Cu Foot', symbol: 'kip/ft³', category: 'density', toBaseFactor: 157.087463, description: 'High-density geotechnical ballast', system: 'imperial' },
-    { id: 'lb/gal', name: 'Pounds / US Gallon', symbol: 'lb/gal', category: 'density', toBaseFactor: 1.17511, description: 'Drilling mud density (water = 8.34 lb/gal)', system: 'imperial' },
+    { id: 'lb/gal', name: 'Pounds / US Gallon', symbol: 'lb/gal', category: 'density', toBaseFactor: 1.1750958, description: 'Drilling mud density (water = 8.34 lb/gal)', system: 'imperial' },
     { id: 'kg/L', name: 'Kilogram / Liter', symbol: 'kg/L', category: 'density', toBaseFactor: 9.80665, description: 'Liquid batch density', system: 'metric' },
     { id: 'tonne/m3', name: 'Metric Tonne / m³', symbol: 't/m³', category: 'density', toBaseFactor: 9.80665, description: 'Bulk earth/aggregate density', system: 'metric' },
   ],
@@ -446,21 +449,21 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'mgd', name: 'Million Gallons / Day (MGD)', symbol: 'MGD', category: 'flow_rate', toBaseFactor: EXACT_CONVERSION.MGD_TO_M3S, description: 'Municipal water supply discharge (0.04381 m³/s)', system: 'imperial' },
   ],
   viscosity: [
-    { id: 'Pa.s', name: 'Pascal · Second (Dynamic)', symbol: 'Pa·s', category: 'viscosity', toBaseFactor: 1.0, description: 'SI base dynamic viscosity unit (1 Pa·s = 10 Poise)', system: 'metric' },
-    { id: 'mPa.s', name: 'Millipascal · Second', symbol: 'mPa·s', category: 'viscosity', toBaseFactor: 0.001, description: 'Water viscosity at 20°C (1.002 mPa·s = 1.002 cP)', system: 'metric' },
-    { id: 'P', name: 'Poise (CGS)', symbol: 'P', category: 'viscosity', toBaseFactor: 0.1, description: 'CGS dynamic viscosity unit (0.1 Pa·s)', system: 'metric' },
-    { id: 'cP', name: 'Centipoise', symbol: 'cP', category: 'viscosity', toBaseFactor: 0.001, description: 'Standard fluid viscosity unit (1 cP = 1 mPa·s)', system: 'metric' },
-    { id: 'lb_ft_s', name: 'Pound / (Foot · Second)', symbol: 'lb/(ft·s)', category: 'viscosity', toBaseFactor: 1.4881639, description: 'Imperial dynamic viscosity', system: 'imperial' },
-    { id: 'm2_s', name: 'm² / Second (Kinematic)', symbol: 'm²/s', category: 'viscosity', toBaseFactor: 1.0, description: 'SI base kinematic viscosity ν = μ / ρ', system: 'metric' },
-    { id: 'mm2_s', name: 'mm² / Second', symbol: 'mm²/s', category: 'viscosity', toBaseFactor: 1e-6, description: 'Kinematic viscosity (1 mm²/s = 1 cSt)', system: 'metric' },
-    { id: 'St', name: 'Stokes (CGS)', symbol: 'St', category: 'viscosity', toBaseFactor: 1e-4, description: 'CGS kinematic unit (1 cm²/s = 10⁻⁴ m²/s)', system: 'metric' },
-    { id: 'cSt', name: 'Centistokes', symbol: 'cSt', category: 'viscosity', toBaseFactor: 1e-6, description: 'Common oil & bitumen kinematic unit (1 cSt = 10⁻⁶ m²/s)', system: 'metric' },
-    { id: 'ft2_s', name: 'Foot² / Second', symbol: 'ft²/s', category: 'viscosity', toBaseFactor: 0.09290304, description: 'Imperial kinematic viscosity', system: 'imperial' },
-    { id: 'm_s_perm', name: 'Permeability k (m/s)', symbol: 'm/s', category: 'viscosity', toBaseFactor: 1.0, description: 'Soil hydraulic conductivity k (clean gravel ~10⁻² m/s, clay ~10⁻⁹ m/s)', system: 'metric' },
-    { id: 'cm_s_perm', name: 'Permeability k (cm/s)', symbol: 'cm/s', category: 'viscosity', toBaseFactor: 0.01, description: 'Geotechnical soil coefficient of permeability', system: 'metric' },
-    { id: 'm_day', name: 'Permeability (m/day)', symbol: 'm/day', category: 'viscosity', toBaseFactor: 1 / 86400, description: 'Hydrogeological groundwater seepage velocity', system: 'metric' },
-    { id: 'ft_day', name: 'Permeability (ft/day)', symbol: 'ft/day', category: 'viscosity', toBaseFactor: 0.3048 / 86400, description: 'US aquifer hydraulic conductivity', system: 'imperial' },
-    { id: 'gal_day_ft2', name: 'Gallon / (Day · ft²)', symbol: 'gpd/ft²', category: 'viscosity', toBaseFactor: 0.003785411784 / (86400 * 0.09290304), description: 'US Meinzer aquifer permeability unit', system: 'imperial' },
+    { id: 'Pa.s', name: 'Pascal · Second (Dynamic)', symbol: 'Pa·s', category: 'viscosity', toBaseFactor: 1.0, description: 'SI base dynamic viscosity unit (1 Pa·s = 10 Poise)', system: 'metric', dimensionGroup: 'dynamic' },
+    { id: 'mPa.s', name: 'Millipascal · Second', symbol: 'mPa·s', category: 'viscosity', toBaseFactor: 0.001, description: 'Water viscosity at 20°C (1.002 mPa·s = 1.002 cP)', system: 'metric', dimensionGroup: 'dynamic' },
+    { id: 'P', name: 'Poise (CGS)', symbol: 'P', category: 'viscosity', toBaseFactor: 0.1, description: 'CGS dynamic viscosity unit (0.1 Pa·s)', system: 'metric', dimensionGroup: 'dynamic' },
+    { id: 'cP', name: 'Centipoise', symbol: 'cP', category: 'viscosity', toBaseFactor: 0.001, description: 'Standard fluid viscosity unit (1 cP = 1 mPa·s)', system: 'metric', dimensionGroup: 'dynamic' },
+    { id: 'lb_ft_s', name: 'Pound / (Foot · Second)', symbol: 'lb/(ft·s)', category: 'viscosity', toBaseFactor: 1.4881639, description: 'Imperial dynamic viscosity', system: 'imperial', dimensionGroup: 'dynamic' },
+    { id: 'm2_s', name: 'm² / Second (Kinematic)', symbol: 'm²/s', category: 'viscosity', toBaseFactor: 1.0, description: 'SI base kinematic viscosity ν = μ / ρ', system: 'metric', dimensionGroup: 'kinematic' },
+    { id: 'mm2_s', name: 'mm² / Second', symbol: 'mm²/s', category: 'viscosity', toBaseFactor: 1e-6, description: 'Kinematic viscosity (1 mm²/s = 1 cSt)', system: 'metric', dimensionGroup: 'kinematic' },
+    { id: 'St', name: 'Stokes (CGS)', symbol: 'St', category: 'viscosity', toBaseFactor: 1e-4, description: 'CGS kinematic unit (1 cm²/s = 10⁻⁴ m²/s)', system: 'metric', dimensionGroup: 'kinematic' },
+    { id: 'cSt', name: 'Centistokes', symbol: 'cSt', category: 'viscosity', toBaseFactor: 1e-6, description: 'Common oil & bitumen kinematic unit (1 cSt = 10⁻⁶ m²/s)', system: 'metric', dimensionGroup: 'kinematic' },
+    { id: 'ft2_s', name: 'Foot² / Second', symbol: 'ft²/s', category: 'viscosity', toBaseFactor: 0.09290304, description: 'Imperial kinematic viscosity', system: 'imperial', dimensionGroup: 'kinematic' },
+    { id: 'm_s_perm', name: 'Permeability k (m/s)', symbol: 'm/s', category: 'viscosity', toBaseFactor: 1.0, description: 'Soil hydraulic conductivity k (clean gravel ~10⁻² m/s, clay ~10⁻⁹ m/s)', system: 'metric', dimensionGroup: 'permeability' },
+    { id: 'cm_s_perm', name: 'Permeability k (cm/s)', symbol: 'cm/s', category: 'viscosity', toBaseFactor: 0.01, description: 'Geotechnical soil coefficient of permeability', system: 'metric', dimensionGroup: 'permeability' },
+    { id: 'm_day', name: 'Permeability (m/day)', symbol: 'm/day', category: 'viscosity', toBaseFactor: 1 / 86400, description: 'Hydrogeological groundwater seepage velocity', system: 'metric', dimensionGroup: 'permeability' },
+    { id: 'ft_day', name: 'Permeability (ft/day)', symbol: 'ft/day', category: 'viscosity', toBaseFactor: 0.3048 / 86400, description: 'US aquifer hydraulic conductivity', system: 'imperial', dimensionGroup: 'permeability' },
+    { id: 'gal_day_ft2', name: 'Gallon / (Day · ft²)', symbol: 'gpd/ft²', category: 'viscosity', toBaseFactor: 0.003785411784 / (86400 * 0.09290304), description: 'US Meinzer aquifer permeability unit', system: 'imperial', dimensionGroup: 'permeability' },
   ],
   temperature: [
     {
@@ -619,40 +622,40 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     },
   ],
   time_frequency: [
-    { id: 's', name: 'Second', symbol: 's', category: 'time_frequency', toBaseFactor: 1.0, description: 'SI base time unit', system: 'universal' },
-    { id: 'ms', name: 'Millisecond', symbol: 'ms', category: 'time_frequency', toBaseFactor: 0.001, description: 'Vibration & blast wave response time (10⁻³ s)', system: 'metric' },
-    { id: 'us', name: 'Microsecond', symbol: 'µs', category: 'time_frequency', toBaseFactor: 1e-6, description: 'Ultrasonic pulse velocity testing time', system: 'metric' },
-    { id: 'ns', name: 'Nanosecond', symbol: 'ns', category: 'time_frequency', toBaseFactor: 1e-9, description: 'Laser EDM transit timing', system: 'metric' },
-    { id: 'min', name: 'Minute', symbol: 'min', category: 'time_frequency', toBaseFactor: 60.0, description: '60 seconds', system: 'universal' },
-    { id: 'hr', name: 'Hour', symbol: 'hr', category: 'time_frequency', toBaseFactor: 3600.0, description: '3,600 seconds', system: 'universal' },
-    { id: 'day', name: 'Day', symbol: 'd', category: 'time_frequency', toBaseFactor: 86400.0, description: '24 hours = 86,400 seconds', system: 'universal' },
-    { id: 'week', name: 'Week', symbol: 'wk', category: 'time_frequency', toBaseFactor: 604800.0, description: '7 days schedule roster duration', system: 'universal' },
-    { id: 'month', name: 'Month (Average 30.44 d)', symbol: 'mo', category: 'time_frequency', toBaseFactor: 2629800.0, description: 'Civil project calendar month (30.4375 days)', system: 'universal' },
-    { id: 'year', name: 'Year (365.25 d)', symbol: 'yr', category: 'time_frequency', toBaseFactor: 31557600.0, description: 'Asset lifecycle & design return period (365.25 days)', system: 'universal' },
-    { id: 'Hz', name: 'Hertz (Frequency)', symbol: 'Hz', category: 'time_frequency', toBaseFactor: 1.0, description: 'Structural natural frequency & vibration cycles per sec', system: 'universal' },
-    { id: 'kHz', name: 'Kilohertz', symbol: 'kHz', category: 'time_frequency', toBaseFactor: 1000.0, description: 'Ultrasonic concrete pulse velocity frequency', system: 'universal' },
-    { id: 'MHz', name: 'Megahertz', symbol: 'MHz', category: 'time_frequency', toBaseFactor: 1e6, description: 'Ground Penetrating Radar (GPR) frequency (400 - 900 MHz)', system: 'universal' },
-    { id: 'GHz', name: 'Gigahertz', symbol: 'GHz', category: 'time_frequency', toBaseFactor: 1e9, description: 'Micro-radar and satellite communication frequency', system: 'universal' },
-    { id: 'RPM', name: 'Revolutions / Minute', symbol: 'RPM', category: 'time_frequency', toBaseFactor: 1 / 60, description: 'Pump, engine & mixer motor shaft rotational speed', system: 'universal' },
-    { id: 'rad_s', name: 'Radian / Second', symbol: 'rad/s', category: 'time_frequency', toBaseFactor: 1 / (2 * Math.PI), description: 'Angular circular frequency ω = 2πf', system: 'universal' },
+    { id: 's', name: 'Second', symbol: 's', category: 'time_frequency', toBaseFactor: 1.0, description: 'SI base time unit', system: 'universal', dimensionGroup: 'time' },
+    { id: 'ms', name: 'Millisecond', symbol: 'ms', category: 'time_frequency', toBaseFactor: 0.001, description: 'Vibration & blast wave response time (10⁻³ s)', system: 'metric', dimensionGroup: 'time' },
+    { id: 'us', name: 'Microsecond', symbol: 'µs', category: 'time_frequency', toBaseFactor: 1e-6, description: 'Ultrasonic pulse velocity testing time', system: 'metric', dimensionGroup: 'time' },
+    { id: 'ns', name: 'Nanosecond', symbol: 'ns', category: 'time_frequency', toBaseFactor: 1e-9, description: 'Laser EDM transit timing', system: 'metric', dimensionGroup: 'time' },
+    { id: 'min', name: 'Minute', symbol: 'min', category: 'time_frequency', toBaseFactor: 60.0, description: '60 seconds', system: 'universal', dimensionGroup: 'time' },
+    { id: 'hr', name: 'Hour', symbol: 'hr', category: 'time_frequency', toBaseFactor: 3600.0, description: '3,600 seconds', system: 'universal', dimensionGroup: 'time' },
+    { id: 'day', name: 'Day', symbol: 'd', category: 'time_frequency', toBaseFactor: 86400.0, description: '24 hours = 86,400 seconds', system: 'universal', dimensionGroup: 'time' },
+    { id: 'week', name: 'Week', symbol: 'wk', category: 'time_frequency', toBaseFactor: 604800.0, description: '7 days schedule roster duration', system: 'universal', dimensionGroup: 'time' },
+    { id: 'month', name: 'Month (Average 30.44 d)', symbol: 'mo', category: 'time_frequency', toBaseFactor: 2629800.0, description: 'Civil project calendar month (30.4375 days)', system: 'universal', dimensionGroup: 'time' },
+    { id: 'year', name: 'Year (365.25 d)', symbol: 'yr', category: 'time_frequency', toBaseFactor: 31557600.0, description: 'Asset lifecycle & design return period (365.25 days)', system: 'universal', dimensionGroup: 'time' },
+    { id: 'Hz', name: 'Hertz (Frequency)', symbol: 'Hz', category: 'time_frequency', toBaseFactor: 1.0, description: 'Structural natural frequency & vibration cycles per sec', system: 'universal', dimensionGroup: 'frequency' },
+    { id: 'kHz', name: 'Kilohertz', symbol: 'kHz', category: 'time_frequency', toBaseFactor: 1000.0, description: 'Ultrasonic concrete pulse velocity frequency', system: 'universal', dimensionGroup: 'frequency' },
+    { id: 'MHz', name: 'Megahertz', symbol: 'MHz', category: 'time_frequency', toBaseFactor: 1e6, description: 'Ground Penetrating Radar (GPR) frequency (400 - 900 MHz)', system: 'universal', dimensionGroup: 'frequency' },
+    { id: 'GHz', name: 'Gigahertz', symbol: 'GHz', category: 'time_frequency', toBaseFactor: 1e9, description: 'Micro-radar and satellite communication frequency', system: 'universal', dimensionGroup: 'frequency' },
+    { id: 'RPM', name: 'Revolutions / Minute', symbol: 'RPM', category: 'time_frequency', toBaseFactor: 1 / 60, description: 'Pump, engine & mixer motor shaft rotational speed', system: 'universal', dimensionGroup: 'frequency' },
+    { id: 'rad_s', name: 'Radian / Second', symbol: 'rad/s', category: 'time_frequency', toBaseFactor: 1 / (2 * Math.PI), description: 'Angular circular frequency ω = 2πf', system: 'universal', dimensionGroup: 'frequency' },
   ],
   digital_storage: [
-    { id: 'B', name: 'Byte', symbol: 'B', category: 'digital_storage', toBaseFactor: 1.0, description: 'Standard 8-bit digital byte', system: 'universal' },
-    { id: 'bit', name: 'Bit', symbol: 'bit', category: 'digital_storage', toBaseFactor: 0.125, description: 'Fundamental binary unit (1 Byte = 8 bits)', system: 'universal' },
-    { id: 'KB', name: 'Kilobyte (Decimal 10³ B)', symbol: 'KB', category: 'digital_storage', toBaseFactor: 1000.0, description: '1,000 Bytes', system: 'universal' },
-    { id: 'MB', name: 'Megabyte (Decimal 10⁶ B)', symbol: 'MB', category: 'digital_storage', toBaseFactor: 1e6, description: '1,000,000 Bytes (CAD file size)', system: 'universal' },
-    { id: 'GB', name: 'Gigabyte (Decimal 10⁹ B)', symbol: 'GB', category: 'digital_storage', toBaseFactor: 1e9, description: '1,000,000,000 Bytes (BIM model & LiDAR point cloud)', system: 'universal' },
-    { id: 'TB', name: 'Terabyte (Decimal 10¹² B)', symbol: 'TB', category: 'digital_storage', toBaseFactor: 1e12, description: '1,000 GB drone photogrammetry server storage', system: 'universal' },
-    { id: 'PB', name: 'Petabyte (Decimal 10¹⁵ B)', symbol: 'PB', category: 'digital_storage', toBaseFactor: 1e15, description: 'Enterprise geospatial & satellite imagery archive', system: 'universal' },
-    { id: 'KiB', name: 'Kibibyte (Binary 2¹⁰ B)', symbol: 'KiB', category: 'digital_storage', toBaseFactor: 1024.0, description: '1,024 Bytes IEC binary prefix', system: 'universal' },
-    { id: 'MiB', name: 'Mebibyte (Binary 2²⁰ B)', symbol: 'MiB', category: 'digital_storage', toBaseFactor: 1048576.0, description: '1,048,576 Bytes RAM / OS standard', system: 'universal' },
-    { id: 'GiB', name: 'Gibibyte (Binary 2³⁰ B)', symbol: 'GiB', category: 'digital_storage', toBaseFactor: 1073741824.0, description: '1,073,741,824 Bytes storage drive capacity', system: 'universal' },
-    { id: 'TiB', name: 'Tebibyte (Binary 2⁴⁰ B)', symbol: 'TiB', category: 'digital_storage', toBaseFactor: 1099511627776.0, description: '1,024 GiB file server volume', system: 'universal' },
-    { id: 'bps', name: 'Bits / Second', symbol: 'bps', category: 'digital_storage', toBaseFactor: 0.125, description: 'Base network transfer speed (bits/sec)', system: 'universal' },
-    { id: 'Kbps', name: 'Kilobits / Second', symbol: 'Kbps', category: 'digital_storage', toBaseFactor: 125.0, description: 'Telemetry & IoT site sensor data transmission', system: 'universal' },
-    { id: 'Mbps', name: 'Megabits / Second', symbol: 'Mbps', category: 'digital_storage', toBaseFactor: 125000.0, description: 'Broadband network bandwidth (100 Mbps ≈ 12.5 MB/s)', system: 'universal' },
-    { id: 'Gbps', name: 'Gigabits / Second', symbol: 'Gbps', category: 'digital_storage', toBaseFactor: 125000000.0, description: 'Fiber optic LAN transfer rate', system: 'universal' },
-    { id: 'MB_s', name: 'Megabytes / Second', symbol: 'MB/s', category: 'digital_storage', toBaseFactor: 1e6, description: 'Disk write / download speed in megabytes per sec', system: 'universal' },
+    { id: 'B', name: 'Byte', symbol: 'B', category: 'digital_storage', toBaseFactor: 1.0, description: 'Standard 8-bit digital byte', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'bit', name: 'Bit', symbol: 'bit', category: 'digital_storage', toBaseFactor: 0.125, description: 'Fundamental binary unit (1 Byte = 8 bits)', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'KB', name: 'Kilobyte (Decimal 10³ B)', symbol: 'KB', category: 'digital_storage', toBaseFactor: 1000.0, description: '1,000 Bytes', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'MB', name: 'Megabyte (Decimal 10⁶ B)', symbol: 'MB', category: 'digital_storage', toBaseFactor: 1e6, description: '1,000,000 Bytes (CAD file size)', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'GB', name: 'Gigabyte (Decimal 10⁹ B)', symbol: 'GB', category: 'digital_storage', toBaseFactor: 1e9, description: '1,000,000,000 Bytes (BIM model & LiDAR point cloud)', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'TB', name: 'Terabyte (Decimal 10¹² B)', symbol: 'TB', category: 'digital_storage', toBaseFactor: 1e12, description: '1,000 GB drone photogrammetry server storage', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'PB', name: 'Petabyte (Decimal 10¹⁵ B)', symbol: 'PB', category: 'digital_storage', toBaseFactor: 1e15, description: 'Enterprise geospatial & satellite imagery archive', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'KiB', name: 'Kibibyte (Binary 2¹⁰ B)', symbol: 'KiB', category: 'digital_storage', toBaseFactor: 1024.0, description: '1,024 Bytes IEC binary prefix', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'MiB', name: 'Mebibyte (Binary 2²⁰ B)', symbol: 'MiB', category: 'digital_storage', toBaseFactor: 1048576.0, description: '1,048,576 Bytes RAM / OS standard', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'GiB', name: 'Gibibyte (Binary 2³⁰ B)', symbol: 'GiB', category: 'digital_storage', toBaseFactor: 1073741824.0, description: '1,073,741,824 Bytes storage drive capacity', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'TiB', name: 'Tebibyte (Binary 2⁴⁰ B)', symbol: 'TiB', category: 'digital_storage', toBaseFactor: 1099511627776.0, description: '1,024 GiB file server volume', system: 'universal', dimensionGroup: 'storage' },
+    { id: 'bps', name: 'Bits / Second', symbol: 'bps', category: 'digital_storage', toBaseFactor: 0.125, description: 'Base network transfer speed (bits/sec)', system: 'universal', dimensionGroup: 'bandwidth' },
+    { id: 'Kbps', name: 'Kilobits / Second', symbol: 'Kbps', category: 'digital_storage', toBaseFactor: 125.0, description: 'Telemetry & IoT site sensor data transmission', system: 'universal', dimensionGroup: 'bandwidth' },
+    { id: 'Mbps', name: 'Megabits / Second', symbol: 'Mbps', category: 'digital_storage', toBaseFactor: 125000.0, description: 'Broadband network bandwidth (100 Mbps ≈ 12.5 MB/s)', system: 'universal', dimensionGroup: 'bandwidth' },
+    { id: 'Gbps', name: 'Gigabits / Second', symbol: 'Gbps', category: 'digital_storage', toBaseFactor: 125000000.0, description: 'Fiber optic LAN transfer rate', system: 'universal', dimensionGroup: 'bandwidth' },
+    { id: 'MB_s', name: 'Megabytes / Second', symbol: 'MB/s', category: 'digital_storage', toBaseFactor: 1e6, description: 'Disk write / download speed in megabytes per sec', system: 'universal', dimensionGroup: 'bandwidth' },
   ],
   fuel_economy: [
     {
@@ -713,8 +716,27 @@ export const STANDARD_UNITS: Record<UnitCategoryKey, UnitInfo[]> = {
     { id: 'px_96', name: 'Pixel at 96 DPI (Web CSS px)', symbol: 'px (96)', category: 'cad_typography', toBaseFactor: EXACT_CONVERSION.PX96_TO_MM, description: 'Standard web screen pixel at 96 DPI (1 px = 0.2646 mm)', system: 'universal' },
     { id: 'px_300', name: 'Pixel at 300 DPI (High-Res Print)', symbol: 'px (300)', category: 'cad_typography', toBaseFactor: EXACT_CONVERSION.PX300_TO_MM, description: 'Press-ready print pixel at 300 DPI (1 px = 0.0847 mm)', system: 'universal' },
     { id: 'twip', name: 'Twip (1/20 pt = 1/1440 in)', symbol: 'twip', category: 'cad_typography', toBaseFactor: EXACT_CONVERSION.TWIP_TO_MM, description: 'Twentieth of a point (1 twip = 17.639 µm)', system: 'universal' },
+    { id: 'mil', name: 'Mil / Thou (0.001 in)', symbol: 'mil', category: 'cad_typography', toBaseFactor: 0.0254, description: '1/1000 inch CAD lineweight & PCB trace spacing (0.0254 mm)', system: 'imperial' },
   ],
 };
+
+/**
+ * Resolves effective toBaseFactor accounting for Bangladesh Regional Land Presets
+ */
+export function getEffectiveToBaseFactor(
+  info: UnitInfo,
+  regionalLandPreset: 'standard' | 'rajshahi' | 'chattogram' = 'standard'
+): number {
+  if (info.category === 'area') {
+    if (regionalLandPreset === 'rajshahi') {
+      if (info.id === 'katha') return 1440 * EXACT_CONVERSION.SFT_TO_M2;
+      if (info.id === 'bigha') return 28800 * EXACT_CONVERSION.SFT_TO_M2;
+    } else if (regionalLandPreset === 'chattogram') {
+      if (info.id === 'kani') return EXACT_CONVERSION.KANI_SHAHI_TO_M2;
+    }
+  }
+  return info.toBaseFactor;
+}
 
 /**
  * Normalizes any value in a given unit to the Canonical Base SI unit.
@@ -724,7 +746,8 @@ export function normalizeToBase(
   value: number,
   unitId: string,
   category: UnitCategoryKey,
-  customUnits: CustomUnitDefinition[] = []
+  customUnits: CustomUnitDefinition[] = [],
+  regionalLandPreset: 'standard' | 'rajshahi' | 'chattogram' = 'standard'
 ): number {
   if (isNaN(value)) return 0;
   if (unitId === BASE_UNITS[category]) return value;
@@ -744,7 +767,7 @@ export function normalizeToBase(
     return cleanPrecision(info.toBase(value));
   }
 
-  return cleanPrecision(value * info.toBaseFactor);
+  return cleanPrecision(value * getEffectiveToBaseFactor(info, regionalLandPreset));
 }
 
 /**
@@ -754,7 +777,8 @@ export function denormalizeFromBase(
   baseValue: number,
   targetUnitId: string,
   category: UnitCategoryKey,
-  customUnits: CustomUnitDefinition[] = []
+  customUnits: CustomUnitDefinition[] = [],
+  regionalLandPreset: 'standard' | 'rajshahi' | 'chattogram' = 'standard'
 ): number {
   if (isNaN(baseValue)) return 0;
   if (targetUnitId === BASE_UNITS[category]) return baseValue;
@@ -773,8 +797,9 @@ export function denormalizeFromBase(
     return cleanPrecision(info.fromBase(baseValue));
   }
 
-  if (info.toBaseFactor === 0) return baseValue;
-  return cleanPrecision(baseValue / info.toBaseFactor);
+  const effFactor = getEffectiveToBaseFactor(info, regionalLandPreset);
+  if (effFactor === 0) return baseValue;
+  return cleanPrecision(baseValue / effFactor);
 }
 
 /**
@@ -785,11 +810,12 @@ export function convertDirect(
   fromUnitId: string,
   toUnitId: string,
   category: UnitCategoryKey,
-  customUnits: CustomUnitDefinition[] = []
+  customUnits: CustomUnitDefinition[] = [],
+  regionalLandPreset: 'standard' | 'rajshahi' | 'chattogram' = 'standard'
 ): number {
   if (fromUnitId === toUnitId) return value;
-  const baseVal = normalizeToBase(value, fromUnitId, category, customUnits);
-  return denormalizeFromBase(baseVal, toUnitId, category, customUnits);
+  const baseVal = normalizeToBase(value, fromUnitId, category, customUnits, regionalLandPreset);
+  return denormalizeFromBase(baseVal, toUnitId, category, customUnits, regionalLandPreset);
 }
 
 /**
@@ -800,7 +826,8 @@ export function convertUnitValue(
   fromUnitId: string,
   toUnitId: string,
   category: UnitCategoryKey,
-  customUnits: CustomUnitDefinition[] = []
+  customUnits: CustomUnitDefinition[] = [],
+  regionalLandPreset: 'standard' | 'rajshahi' | 'chattogram' = 'standard'
 ): { result: number; formula: string } {
   if (fromUnitId === toUnitId) {
     return { result: value, formula: `${value} ${fromUnitId} = ${value} ${toUnitId}` };
@@ -829,8 +856,8 @@ export function convertUnitValue(
     return { result: value, formula: 'Conversion unit definition not found' };
   }
 
-  const baseVal = normalizeToBase(value, fromUnitId, category, customUnits);
-  const targetVal = denormalizeFromBase(baseVal, toUnitId, category, customUnits);
+  const baseVal = normalizeToBase(value, fromUnitId, category, customUnits, regionalLandPreset);
+  const targetVal = denormalizeFromBase(baseVal, toUnitId, category, customUnits, regionalLandPreset);
 
   // Exact specialized formula derivations:
   let formula = '';
@@ -877,13 +904,16 @@ export function convertUnitValue(
     return { result: targetVal, formula };
   }
 
+  const fromFactor = getEffectiveToBaseFactor(fromInfo, regionalLandPreset);
+  const toFactor = getEffectiveToBaseFactor(toInfo, regionalLandPreset);
+
   if (category === 'area' && (fromInfo.isRegional || toInfo.isRegional)) {
-    formula = `1 ${fromInfo.name} (${fromInfo.toBaseFactor} m²) ⇄ ${toInfo.name} (${toInfo.toBaseFactor} m²) = ${parseFloat(targetVal.toPrecision(7))} ${toInfo.symbol}`;
+    formula = `1 ${fromInfo.name} (${parseFloat(fromFactor.toPrecision(6))} m²) ⇄ ${toInfo.name} (${parseFloat(toFactor.toPrecision(6))} m²) = ${parseFloat(targetVal.toPrecision(7))} ${toInfo.symbol}`;
     return { result: targetVal, formula };
   }
 
   const baseSymbol = BASE_UNITS[category];
-  formula = `${value} ${fromInfo.symbol} × ${fromInfo.toBaseFactor} = ${parseFloat(baseVal.toPrecision(7))} ${baseSymbol} ÷ ${toInfo.toBaseFactor} = ${parseFloat(targetVal.toPrecision(7))} ${toInfo.symbol}`;
+  formula = `${value} ${fromInfo.symbol} × ${fromFactor} = ${parseFloat(baseVal.toPrecision(7))} ${baseSymbol} ÷ ${toFactor} = ${parseFloat(targetVal.toPrecision(7))} ${toInfo.symbol}`;
   return { result: targetVal, formula };
 }
 
@@ -926,13 +956,14 @@ export function computeRegionalLandBreakdown(
   customUnits: CustomUnitDefinition[] = [],
   preset: 'standard' | 'rajshahi' | 'chattogram' = 'standard'
 ): RegionalLandBreakdown {
-  const sqmMeters = normalizeToBase(value, fromUnitId, 'area', customUnits);
+  const sqmMeters = normalizeToBase(value, fromUnitId, 'area', customUnits, preset);
 
   // Katha factor based on regional preset:
-  // Standard BD = 720 sft, Rajshahi / North Bengal custom = 435.6 sft (1 Katha = 1 Decimal)
-  const kathaSft = preset === 'rajshahi' ? 435.6 : 720;
+  // Standard BD = 720 sft, Rajshahi / North Bengal Regional = 1,440 sft (double standard / 3.3058 decimals)
+  const kathaSft = preset === 'rajshahi' ? 1440 : 720;
   const kathaM2 = kathaSft * EXACT_CONVERSION.SFT_TO_M2;
   const bighaM2 = kathaM2 * 20;
+  const kaniM2 = preset === 'chattogram' ? EXACT_CONVERSION.KANI_SHAHI_TO_M2 : EXACT_CONVERSION.KANI_TO_M2;
 
   const acres = sqmMeters / EXACT_CONVERSION.ACRE_TO_M2;
   const hectares = sqmMeters / EXACT_CONVERSION.HECTARE_TO_M2;
@@ -940,7 +971,7 @@ export function computeRegionalLandBreakdown(
   const katha = sqmMeters / kathaM2;
   const bigha = sqmMeters / bighaM2;
   const chataks = sqmMeters / EXACT_CONVERSION.CHHATAK_TO_M2;
-  const kanis = sqmMeters / EXACT_CONVERSION.KANI_TO_M2;
+  const kanis = sqmMeters / kaniM2;
   const shahiKanis = sqmMeters / EXACT_CONVERSION.KANI_SHAHI_TO_M2;
   const gondas = sqmMeters / EXACT_CONVERSION.GONDA_TO_M2;
   const karas = sqmMeters / EXACT_CONVERSION.KARA_TO_M2;
@@ -1252,6 +1283,52 @@ export function formatFeetInches(value: number, options?: FormatFeetInchesOption
   return `${sign}${finalFt}'-${finalWholeInches}${fractionText}"${sutaText}`;
 }
 
+export interface FeetInchDualResult {
+  decimalFtStr: string;
+  compoundFtInStr: string;
+  metricStr: string;
+  decimalFeet: number;
+  meters: number;
+  mm: number;
+}
+
+export function formatFeetInchDual(
+  meters: number,
+  options?: FormatFeetInchesOptions
+): FeetInchDualResult {
+  if (isNaN(meters) || !isFinite(meters)) {
+    return {
+      decimalFtStr: '—',
+      compoundFtInStr: '—',
+      metricStr: '—',
+      decimalFeet: 0,
+      meters: 0,
+      mm: 0,
+    };
+  }
+  const decimalFeet = meters / EXACT_CONVERSION.FT_TO_M;
+  const prec = options?.precision ?? 2;
+  const decimalFtStr = `${decimalFeet.toFixed(prec)} ft`;
+  const compoundFtInStr = formatFeetInches(meters, { isMeters: true, ...options });
+  const metricStr = Math.abs(meters) < 0.01 ? `${(meters * 1000).toFixed(1)} mm` : `${meters.toFixed(3)} m`;
+
+  return {
+    decimalFtStr,
+    compoundFtInStr,
+    metricStr,
+    decimalFeet,
+    meters,
+    mm: meters * 1000,
+  };
+}
+
+export function formatLengthDual(
+  meters: number,
+  options?: FormatFeetInchesOptions
+): FeetInchDualResult {
+  return formatFeetInchDual(meters, options);
+}
+
 export interface FormatNumberOptions {
   maxDecimals?: number;
   minDecimals?: number;
@@ -1556,3 +1633,46 @@ export function parseNaturalConversionExpression(
 
   return { parsed: false };
 }
+
+/* -------------------------------------------------------------
+   REBAR BAR DESIGNATION MAPPING (ASTM #3–#18 & ISO/BS 8mm–50mm)
+------------------------------------------------------------- */
+export interface RebarDesignationEntry {
+  id: string;
+  standard: 'ISO/BS/BDS' | 'ASTM';
+  label: string;
+  diameterMm: number;
+  diameterIn: number;
+  suta: number;
+  areaMm2: number;
+  areaIn2: number;
+  unitWeightKgPerM: number;
+  unitWeightLbPerFt: number;
+  nearestEquivalent: string;
+}
+
+export const REBAR_BAR_DESIGNATIONS: RebarDesignationEntry[] = [
+  { id: 'iso-8', standard: 'ISO/BS/BDS', label: '8 mm', diameterMm: 8, diameterIn: 0.315, suta: 2.52, areaMm2: 50.27, areaIn2: 0.078, unitWeightKgPerM: 0.395, unitWeightLbPerFt: 0.265, nearestEquivalent: '#2.5 (~3/8" #3)' },
+  { id: 'astm-3', standard: 'ASTM', label: '#3 (3/8")', diameterMm: 9.525, diameterIn: 0.375, suta: 3.0, areaMm2: 71.26, areaIn2: 0.11, unitWeightKgPerM: 0.560, unitWeightLbPerFt: 0.376, nearestEquivalent: '10 mm (BDS/ISO)' },
+  { id: 'iso-10', standard: 'ISO/BS/BDS', label: '10 mm', diameterMm: 10, diameterIn: 0.394, suta: 3.15, areaMm2: 78.54, areaIn2: 0.122, unitWeightKgPerM: 0.617, unitWeightLbPerFt: 0.415, nearestEquivalent: '#3 (3 Suta)' },
+  { id: 'iso-12', standard: 'ISO/BS/BDS', label: '12 mm', diameterMm: 12, diameterIn: 0.472, suta: 3.78, areaMm2: 113.10, areaIn2: 0.175, unitWeightKgPerM: 0.888, unitWeightLbPerFt: 0.597, nearestEquivalent: '#4 (4 Suta)' },
+  { id: 'astm-4', standard: 'ASTM', label: '#4 (1/2")', diameterMm: 12.70, diameterIn: 0.500, suta: 4.0, areaMm2: 126.68, areaIn2: 0.196, unitWeightKgPerM: 0.994, unitWeightLbPerFt: 0.668, nearestEquivalent: '12 mm (BDS/ISO)' },
+  { id: 'astm-5', standard: 'ASTM', label: '#5 (5/8")', diameterMm: 15.875, diameterIn: 0.625, suta: 5.0, areaMm2: 197.93, areaIn2: 0.307, unitWeightKgPerM: 1.552, unitWeightLbPerFt: 1.043, nearestEquivalent: '16 mm (BDS/ISO)' },
+  { id: 'iso-16', standard: 'ISO/BS/BDS', label: '16 mm', diameterMm: 16, diameterIn: 0.630, suta: 5.04, areaMm2: 201.06, areaIn2: 0.312, unitWeightKgPerM: 1.578, unitWeightLbPerFt: 1.060, nearestEquivalent: '#5 (5 Suta)' },
+  { id: 'astm-6', standard: 'ASTM', label: '#6 (3/4")', diameterMm: 19.05, diameterIn: 0.750, suta: 6.0, areaMm2: 285.02, areaIn2: 0.442, unitWeightKgPerM: 2.235, unitWeightLbPerFt: 1.502, nearestEquivalent: '20 mm (BDS/ISO)' },
+  { id: 'iso-20', standard: 'ISO/BS/BDS', label: '20 mm', diameterMm: 20, diameterIn: 0.787, suta: 6.30, areaMm2: 314.16, areaIn2: 0.487, unitWeightKgPerM: 2.466, unitWeightLbPerFt: 1.657, nearestEquivalent: '#6 (6 Suta)' },
+  { id: 'astm-7', standard: 'ASTM', label: '#7 (7/8")', diameterMm: 22.225, diameterIn: 0.875, suta: 7.0, areaMm2: 387.95, areaIn2: 0.601, unitWeightKgPerM: 3.042, unitWeightLbPerFt: 2.044, nearestEquivalent: '22 mm (BDS/ISO)' },
+  { id: 'iso-22', standard: 'ISO/BS/BDS', label: '22 mm', diameterMm: 22, diameterIn: 0.866, suta: 6.93, areaMm2: 380.13, areaIn2: 0.589, unitWeightKgPerM: 2.984, unitWeightLbPerFt: 2.005, nearestEquivalent: '#7 (7 Suta)' },
+  { id: 'iso-25', standard: 'ISO/BS/BDS', label: '25 mm', diameterMm: 25, diameterIn: 0.984, suta: 7.87, areaMm2: 490.87, areaIn2: 0.761, unitWeightKgPerM: 3.853, unitWeightLbPerFt: 2.589, nearestEquivalent: '#8 (8 Suta)' },
+  { id: 'astm-8', standard: 'ASTM', label: '#8 (1")', diameterMm: 25.40, diameterIn: 1.000, suta: 8.0, areaMm2: 506.71, areaIn2: 0.785, unitWeightKgPerM: 3.973, unitWeightLbPerFt: 2.670, nearestEquivalent: '25 mm (BDS/ISO)' },
+  { id: 'iso-28', standard: 'ISO/BS/BDS', label: '28 mm', diameterMm: 28, diameterIn: 1.102, suta: 8.82, areaMm2: 615.75, areaIn2: 0.954, unitWeightKgPerM: 4.834, unitWeightLbPerFt: 3.248, nearestEquivalent: '#9 (9 Suta)' },
+  { id: 'astm-9', standard: 'ASTM', label: '#9 (1.128")', diameterMm: 28.65, diameterIn: 1.128, suta: 9.02, areaMm2: 644.68, areaIn2: 1.000, unitWeightKgPerM: 5.060, unitWeightLbPerFt: 3.400, nearestEquivalent: '28 mm (BDS/ISO)' },
+  { id: 'iso-32', standard: 'ISO/BS/BDS', label: '32 mm', diameterMm: 32, diameterIn: 1.260, suta: 10.08, areaMm2: 804.25, areaIn2: 1.247, unitWeightKgPerM: 6.313, unitWeightLbPerFt: 4.242, nearestEquivalent: '#10 (10 Suta)' },
+  { id: 'astm-10', standard: 'ASTM', label: '#10 (1.27")', diameterMm: 32.26, diameterIn: 1.270, suta: 10.16, areaMm2: 817.37, areaIn2: 1.267, unitWeightKgPerM: 6.404, unitWeightLbPerFt: 4.303, nearestEquivalent: '32 mm (BDS/ISO)' },
+  { id: 'astm-11', standard: 'ASTM', label: '#11 (1.41")', diameterMm: 35.81, diameterIn: 1.410, suta: 11.28, areaMm2: 1007.15, areaIn2: 1.561, unitWeightKgPerM: 7.907, unitWeightLbPerFt: 5.313, nearestEquivalent: '36 mm (BDS/ISO)' },
+  { id: 'iso-40', standard: 'ISO/BS/BDS', label: '40 mm', diameterMm: 40, diameterIn: 1.575, suta: 12.60, areaMm2: 1256.64, areaIn2: 1.948, unitWeightKgPerM: 9.865, unitWeightLbPerFt: 6.629, nearestEquivalent: '#14 (Heavy Pier)' },
+  { id: 'astm-14', standard: 'ASTM', label: '#14 (1.693")', diameterMm: 43.00, diameterIn: 1.693, suta: 13.54, areaMm2: 1452.20, areaIn2: 2.251, unitWeightKgPerM: 11.38, unitWeightLbPerFt: 7.650, nearestEquivalent: '40 mm (Heavy Pier)' },
+  { id: 'iso-50', standard: 'ISO/BS/BDS', label: '50 mm', diameterMm: 50, diameterIn: 1.969, suta: 15.75, areaMm2: 1963.50, areaIn2: 3.043, unitWeightKgPerM: 15.41, unitWeightLbPerFt: 10.355, nearestEquivalent: '#18 (Mega Pile)' },
+  { id: 'astm-18', standard: 'ASTM', label: '#18 (2.257")', diameterMm: 57.33, diameterIn: 2.257, suta: 18.06, areaMm2: 2581.39, areaIn2: 4.001, unitWeightKgPerM: 20.24, unitWeightLbPerFt: 13.600, nearestEquivalent: '50 mm (Mega Pile)' },
+];
+

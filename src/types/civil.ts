@@ -21,6 +21,10 @@ export type EngineeringModuleId =
   | 'concrete-mix'
   | 'open-channel'
   | 'continuous-beam'
+  | 'frame-truss-2d'
+  | 'section-analyzer'
+  | 'rc-column-design'
+  | 'strut-and-tie'
   | 'pile-capacity'
   | 'pipe-hydraulics'
   | 'surveying-suite'
@@ -37,7 +41,7 @@ export type EngineeringModuleId =
 
 export type BuildingCode = 'BNBC-2020' | 'ACI-318' | 'IS-456';
 
-export type SupportCondition = 'simply-supported' | 'cantilever' | 'fixed-ends';
+export type SupportCondition = 'simply-supported' | 'cantilever' | 'fixed-ends' | 'overhanging';
 
 /* Currency Types & Metadata */
 export type CurrencyCode =
@@ -283,6 +287,11 @@ export interface BeamParameters {
   supportCondition: SupportCondition;
   allowableStressMpa: number;
   sectionDepthMm: number;
+  // Extended boundary & distributed load options (all optional for schema backward compatibility):
+  overhangLeftM?: number;
+  overhangRightM?: number;
+  distributedLoadType?: 'uniform' | 'triangular-increasing' | 'triangular-decreasing' | 'trapezoidal';
+  endLoadKnPerM?: number;
   // Governing Building Code & Load Combinations:
   codeStandard?: BuildingCode | 'Eurocode-2' | 'AISC-360';
   deadLoadKnPerM?: number; // Service Dead Load (D)
@@ -893,10 +902,183 @@ export interface CivilWorkspace {
   earthwork: EarthworkParameters;
   surveying?: SurveyingParameters;
   continuousBeam?: ContinuousBeamParameters;
+  frameTruss2d?: FrameTruss2DParams;
+  sectionAnalyzer?: SectionAnalyzerParams;
+  rcColumn?: RcColumnParams;
+  strutAndTie?: StrutAndTieParams;
   pile?: PileCapacityParameters;
   pipe?: PipeHydraulicsParameters;
   unitPreferences?: WorkspaceUnitPreferences;
   architecture?: ArchitectureParameters;
+}
+
+/* -------------------------------------------------------------
+   2D FRAME & TRUSS DIRECT STIFFNESS + SECOND-ORDER P-DELTA
+------------------------------------------------------------- */
+export type FrameTruss2DSupportType =
+  | 'none'
+  | 'pin'
+  | 'roller-x'
+  | 'roller-y'
+  | 'fixed'
+  | 'spring';
+
+export interface FrameTruss2DNode {
+  id: string;
+  label: string;
+  xM: number;
+  yM: number;
+  support: FrameTruss2DSupportType;
+  springKx?: number; // kN/m
+  springKy?: number; // kN/m
+  springKr?: number; // kN·m/rad
+}
+
+export interface FrameTruss2DMember {
+  id: string;
+  label: string;
+  startNodeId: string;
+  endNodeId: string;
+  memberType: 'frame' | 'truss';
+  startHinge: boolean;
+  endHinge: boolean;
+  areaCm2: number;
+  inertiaCm4: number;
+  elasticModulusGpa: number;
+  udlKnPerM: number;
+  pointLoadKn: number;
+  pointLoadRatio: number; // 0..1 along local member axis from startNode
+}
+
+export interface FrameTruss2DNodalLoad {
+  nodeId: string;
+  fxKn: number;
+  fyKn: number;
+  mzKnm: number;
+}
+
+export type FrameTruss2DAnalysisMode = 'first-order-linear' | 'second-order-p-delta';
+
+export interface FrameTruss2DParams {
+  code?: BuildingCode;
+  presetName?: string;
+  nodes: FrameTruss2DNode[];
+  members: FrameTruss2DMember[];
+  nodalLoads: FrameTruss2DNodalLoad[];
+  analysisMode: FrameTruss2DAnalysisMode;
+  allowableStressMpa?: number;
+  sectionDepthMm?: number;
+  thermalDeltaC?: number; // Explicit diagnostic if non-zero in P-Delta mode
+}
+
+/* -------------------------------------------------------------
+   SECTION MECHANICS, STRESSES & PLASTIC N-M INTERACTION
+------------------------------------------------------------- */
+export type SectionShapeType =
+  | 'rectangular'
+  | 'circular'
+  | 'hollow-box'
+  | 'i-beam'
+  | 't-section'
+  | 'channel'
+  | 'custom-polygon';
+
+export type SectionStandardCode = 'Eurocode-3' | 'AISC-360' | 'BNBC-2020';
+
+export interface SectionPolygonVertex {
+  id: string;
+  yMm: number;
+  zMm: number;
+}
+
+export interface SectionAnalyzerParams {
+  shape: SectionShapeType;
+  presetId?: string;
+  designCode: SectionStandardCode;
+  // Geometric dimensions in mm
+  depthH_Mm: number;
+  widthB_Mm: number;
+  webThicknessTw_Mm: number;
+  flangeThicknessTf_Mm: number;
+  wallThicknessT_Mm: number;
+  polygonPointsMm: SectionPolygonVertex[];
+  // Material & resistance parameters
+  fyMpa: number;
+  elasticModulusGpa: number;
+  gammaM0: number;
+  // Applied Internal Forces (tension positive for N -> sigma = N/A + My*z/Iy - Mz*y/Iz)
+  axialForceN_Kn: number;
+  momentMy_Knm: number;
+  momentMz_Knm: number;
+  shearVy_Kn: number;
+  shearVz_Kn: number;
+  torsionT_Knm: number;
+}
+
+/* -------------------------------------------------------------
+   RC COLUMN UNIAXIAL & BIAXIAL N-M INTERACTION + SLENDERNESS
+------------------------------------------------------------- */
+export type RcColumnDesignCode = 'BNBC-2020' | 'ACI-318-19' | 'Eurocode-2';
+
+export interface RcColumnParams {
+  designCode: RcColumnDesignCode;
+  widthB_Mm: number; // Column width b (mm)
+  depthH_Mm: number; // Column depth h (mm)
+  clearCoverMm: number; // Clear concrete cover to ties (mm)
+  unsupportedLengthLu_M: number; // Unsupported height Lu (m)
+  effectiveLengthFactorK: number; // k factor (e.g. 0.85 braced, 1.3 unbraced)
+  isBracedFrame: boolean;
+  concreteFcMpa: number; // Cylinder f'c (MPa)
+  rebarFyMpa: number; // Longitudinal yield fy (MPa)
+  longitudinalBarDiaMm: number; // Main rebar diameter (mm)
+  barsAlongWidthB: number; // Bars on each b-face (>= 2)
+  barsAlongDepthH: number; // Bars on each h-face (>= 2)
+  tieBarDiaMm: number; // Transverse tie diameter (mm)
+  tieSpacingMm: number; // Tie spacing c/c (mm)
+  axialLoadPu_Kn: number; // Factored axial load Pu (kN, compression positive)
+  momentMux_Knm: number; // Factored bending moment about X-axis / depth h (kN·m)
+  momentMuy_Knm: number; // Factored bending moment about Y-axis / width b (kN·m)
+  sustainedLoadRatioBetaDns?: number; // Sustained axial load ratio beta_dns (0..1)
+}
+
+/* -------------------------------------------------------------
+   STRUT-AND-TIE MODEL (STM) DISCONTINUITY SOLVER
+------------------------------------------------------------- */
+export type StmSupportType = 'none' | 'pin' | 'roller-x' | 'roller-y';
+
+export interface StmNode {
+  id: string;
+  label: string;
+  xM: number;
+  yM: number;
+  support: StmSupportType;
+}
+
+export interface StmMember {
+  id: string;
+  label: string;
+  startNodeId: string;
+  endNodeId: string;
+  areaCm2: number;
+  strutBetaS?: number; // Efficiency factor beta_s (default 0.75)
+}
+
+export interface StmNodalLoad {
+  nodeId: string;
+  fxKn: number;
+  fyKn: number;
+}
+
+export interface StrutAndTieParams {
+  presetId?: string;
+  presetName: string;
+  code: BuildingCode;
+  memberThicknessMm: number;
+  concreteFcMpa: number;
+  rebarFyMpa: number;
+  nodes: StmNode[];
+  members: StmMember[];
+  nodalLoads: StmNodalLoad[];
 }
 
 /* -------------------------------------------------------------
@@ -984,6 +1166,10 @@ export interface EngineeringPreset {
     rebarBbs?: Partial<RebarBBSParameters>;
     boq?: Partial<BOQParameters>;
     continuousBeam?: Partial<ContinuousBeamParameters>;
+    frameTruss2d?: Partial<FrameTruss2DParams>;
+    sectionAnalyzer?: Partial<SectionAnalyzerParams>;
+    rcColumn?: Partial<RcColumnParams>;
+    strutAndTie?: Partial<StrutAndTieParams>;
     pile?: Partial<PileCapacityParameters>;
     pipe?: Partial<PipeHydraulicsParameters>;
     surveying?: Partial<SurveyingParameters>;

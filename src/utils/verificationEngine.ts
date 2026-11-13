@@ -143,6 +143,30 @@ export function extractCompactInputs(
         { label: 'Total Beam Length', value: (workspace.continuousBeam?.spans || []).reduce((acc, s) => acc + s.lengthM, 0), unit: 'm' },
         { label: 'Allowable Bending Stress', value: workspace.continuousBeam?.allowableStressMpa || 250, unit: 'MPa' },
       ];
+    case 'frame-truss-2d':
+      return [
+        { label: 'Nodes / Members', value: `${workspace.frameTruss2d?.nodes?.length || 4} / ${workspace.frameTruss2d?.members?.length || 3}` },
+        { label: 'Analysis Mode', value: workspace.frameTruss2d?.analysisMode === 'second-order-p-delta' ? '2nd-Order P-Delta' : '1st-Order Linear' },
+        { label: 'Allowable Stress', value: workspace.frameTruss2d?.allowableStressMpa || 250, unit: 'MPa' },
+      ];
+    case 'section-analyzer':
+      return [
+        { label: 'Section Profile', value: workspace.sectionAnalyzer?.presetId ? workspace.sectionAnalyzer.presetId.toUpperCase() : (workspace.sectionAnalyzer?.shape || 'IPE 300') },
+        { label: 'Steel Grade f_y', value: workspace.sectionAnalyzer?.fyMpa || 275, unit: 'MPa' },
+        { label: 'Design Actions (N / M_y)', value: `${workspace.sectionAnalyzer?.axialForceN_Kn ?? -420} kN / ${workspace.sectionAnalyzer?.momentMy_Knm ?? 115} kN·m` },
+      ];
+    case 'rc-column-design':
+      return [
+        { label: 'Column Section (b × h)', value: `${workspace.rcColumn?.widthB_Mm ?? 400} × ${workspace.rcColumn?.depthH_Mm ?? 500}`, unit: 'mm' },
+        { label: 'Code & Materials', value: `${workspace.rcColumn?.designCode || 'BNBC-2020'} · f'c=${workspace.rcColumn?.concreteFcMpa ?? 28} / fy=${workspace.rcColumn?.rebarFyMpa ?? 420} MPa` },
+        { label: 'Factored Actions', value: `Pu=${workspace.rcColumn?.axialLoadPu_Kn ?? 1850} kN, Mux=${workspace.rcColumn?.momentMux_Knm ?? 140}, Muy=${workspace.rcColumn?.momentMuy_Knm ?? 65} kN·m` },
+      ];
+    case 'strut-and-tie':
+      return [
+        { label: 'STM D-Region Model', value: workspace.strutAndTie?.presetName || 'Deep Beam STM' },
+        { label: 'Materials & Thickness', value: `t=${workspace.strutAndTie?.memberThicknessMm ?? 400}mm · f'c=${workspace.strutAndTie?.concreteFcMpa ?? 28} / fy=${workspace.strutAndTie?.rebarFyMpa ?? 420} MPa` },
+        { label: 'Scope Status', value: 'Partial (Truss Equilibrium & Member Forces)' },
+      ];
     case 'pile-capacity':
       return [
         { label: 'Pile Type', value: workspace.pile?.pileType === 'bored-cast-in-situ' ? 'Bored Cast-in-Situ' : 'Driven Precast' },
@@ -236,6 +260,34 @@ export function extractCompactOutputs(
         { label: 'Max Negative Moment', value: result.maxHoggingMomentKnm, unit: 'kN·m', status: 'pass' },
         { label: 'Max Critical Shear', value: result.maxShearKn, unit: 'kN', status: 'pass' },
         { label: 'Flexural DCR', value: `${((result.utilizationRatio || 0) * 100).toFixed(1)}%`, status: (result.utilizationRatio || 0) <= 1.0 ? 'pass' : 'fail' },
+      ];
+    case 'frame-truss-2d':
+      return [
+        { label: 'Max Displacement Δ_max', value: Number(result.maxDisplacementMm || 0).toFixed(2), unit: 'mm', status: 'pass' },
+        { label: 'Buckling Factor α_cr', value: Number.isFinite(result.criticalBucklingFactorAlphaCr) ? result.criticalBucklingFactorAlphaCr.toFixed(2) : 'Infinity', status: !Number.isFinite(result.criticalBucklingFactorAlphaCr) || result.criticalBucklingFactorAlphaCr > 1.05 ? 'pass' : 'fail' },
+        { label: 'Max Moment |M|_max', value: Number(result.maxAbsMomentKnm || 0).toFixed(2), unit: 'kN·m', status: 'pass' },
+        { label: 'Combined Stress DCR', value: `${((result.utilizationRatio || 0) * 100).toFixed(1)}%`, status: (result.utilizationRatio || 0) <= 1.0 ? 'pass' : 'fail' },
+      ];
+    case 'section-analyzer':
+      return [
+        { label: 'Section Class', value: result.classification?.classLabel || 'Class 1', status: result.classification?.isPlasticAllowed ? 'pass' : 'fail' },
+        { label: 'Peak von Mises σ_vM', value: Number(result.vonMisesMaxMpa || 0).toFixed(1), unit: 'MPa', status: (result.elasticStressDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+        { label: 'Reduced M_N,y,Rd', value: Number(result.mNyReducedRdKnm || 0).toFixed(1), unit: 'kN·m', status: 'pass' },
+        { label: 'Governing Section DCR', value: `${((result.governingDcr || 0) * 100).toFixed(1)}%`, status: (result.governingDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+      ];
+    case 'rc-column-design':
+      return [
+        { label: 'Design φM_nx / φM_ny', value: `${Number(result.xAxis?.phiMnAtPuKnm || 0).toFixed(1)} / ${Number(result.yAxis?.phiMnAtPuKnm || 0).toFixed(1)}`, unit: 'kN·m', status: 'pass' },
+        { label: 'Bresler Biaxial DCR', value: `${((result.breslerContourDcr || 0) * 100).toFixed(1)}%`, status: (result.breslerContourDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+        { label: 'Slenderness δ_ns', value: `${Number(result.xAxis?.magnifierDeltaNs || 1).toFixed(2)}×`, status: 'pass' },
+        { label: 'Governing Column DCR', value: `${((result.governingDcr || 0) * 100).toFixed(1)}%`, status: (result.governingDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+      ];
+    case 'strut-and-tie':
+      return [
+        { label: 'Max Compression Strut', value: Number(result.maxCompressionStrutKn || 0).toFixed(1), unit: 'kN', status: 'pass' },
+        { label: 'Max Tension Tie', value: `+${Number(result.maxTensionTieKn || 0).toFixed(1)}`, unit: 'kN', status: 'pass' },
+        { label: 'Required Tie Steel A_s,req', value: Number(result.totalRequiredTieSteelMm2 || 0).toFixed(0), unit: 'mm²', status: 'pass' },
+        { label: 'Governing STM Stress DCR', value: `${((result.governingDcr || 0) * 100).toFixed(1)}%`, status: (result.governingDcr || 0) <= 1.0 ? 'pass' : 'fail' },
       ];
     case 'pile-capacity':
       return [

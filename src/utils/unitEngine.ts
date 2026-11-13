@@ -9,6 +9,9 @@ import {
   parseFeetInchString,
   FeetInchParseResult,
   formatFeetInches,
+  formatFeetInchDual,
+  formatLengthDual,
+  FeetInchDualResult,
   FormatFeetInchesOptions,
   EXACT_CONVERSION,
   RegionalLandBreakdown,
@@ -30,6 +33,8 @@ export {
   EXACT_CONVERSION,
   parseFeetInchString,
   formatFeetInches,
+  formatFeetInchDual,
+  formatLengthDual,
   computeRegionalLandBreakdown,
   formatSmartNumber,
   formatNumberWhileTyping,
@@ -38,6 +43,7 @@ export {
 export type {
   FeetInchParseResult,
   FormatFeetInchesOptions,
+  FeetInchDualResult,
   RegionalLandBreakdown,
   FormatNumberOptions,
   NaturalExpressionParseResult,
@@ -466,7 +472,12 @@ export function parseSmartUnitInput(
       // Evaluate only valid mathematical operations without variable access
       const evaluated = Function(`'use strict'; return (${sanitized});`)();
       if (typeof evaluated === 'number' && !isNaN(evaluated) && isFinite(evaluated)) {
-        return { parsedValue: evaluated, detectedUnitId: currentUnitId, isValid: true };
+        let archResult: FeetInchParseResult | undefined = undefined;
+        if (category === 'length') {
+          const feet = currentUnitId === 'm' ? evaluated / EXACT_CONVERSION.FT_TO_M : currentUnitId === 'in' ? evaluated / 12 : currentUnitId === 'mm' ? (evaluated / 1000) / EXACT_CONVERSION.FT_TO_M : evaluated;
+          archResult = parseFeetInchString(`${feet} ft`);
+        }
+        return { parsedValue: evaluated, detectedUnitId: currentUnitId, isValid: true, architecturalResult: archResult };
       }
     } catch {
       // Ignore evaluation error and proceed to standard parsing
@@ -476,7 +487,12 @@ export function parseSmartUnitInput(
   // 5. Standard Float Parsing
   const numericVal = parseFloat(sanitized);
   if (!isNaN(numericVal) && isFinite(numericVal)) {
-    return { parsedValue: numericVal, detectedUnitId: currentUnitId, isValid: true };
+    let archResult: FeetInchParseResult | undefined = undefined;
+    if (category === 'length') {
+      const feet = currentUnitId === 'm' ? numericVal / EXACT_CONVERSION.FT_TO_M : currentUnitId === 'in' ? numericVal / 12 : currentUnitId === 'mm' ? (numericVal / 1000) / EXACT_CONVERSION.FT_TO_M : numericVal;
+      archResult = parseFeetInchString(`${feet} ft`);
+    }
+    return { parsedValue: numericVal, detectedUnitId: currentUnitId, isValid: true, architecturalResult: archResult };
   }
 
   return { parsedValue: 0, detectedUnitId: currentUnitId, isValid: false, errorMessage: 'Invalid number format' };

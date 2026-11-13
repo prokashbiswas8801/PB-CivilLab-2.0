@@ -26,6 +26,7 @@ interface WorkflowCrossLinkBannerProps {
   onApplyRateToBoq: () => void;
   onTransferContinuousBeamToRebar?: () => void;
   onTransferBeamToRebar?: () => void;
+  onTransferRcColumnToRebar?: () => void;
   onTransferMasonryToBoq?: () => void;
   onTransferPileToBoq?: () => void;
   onTransferSurveyingToBoq?: () => void;
@@ -39,6 +40,10 @@ interface WorkflowCrossLinkBannerProps {
   bearingAppliedLoadKn?: number;
   beamSpanM?: number;
   beamMaxMomentKnm?: number;
+  rcColWidthMm?: number;
+  rcColDepthMm?: number;
+  rcColBarCount?: number;
+  rcColBarDiaMm?: number;
   masonryNetVolumeM3?: number;
   masonryBricksCount?: number;
   pileTotalCount?: number;
@@ -68,6 +73,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   onApplyRateToBoq,
   onTransferContinuousBeamToRebar,
   onTransferBeamToRebar,
+  onTransferRcColumnToRebar,
   onTransferMasonryToBoq,
   onTransferPileToBoq,
   onTransferSurveyingToBoq,
@@ -81,6 +87,10 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   bearingAppliedLoadKn,
   beamSpanM,
   beamMaxMomentKnm,
+  rcColWidthMm,
+  rcColDepthMm,
+  rcColBarCount,
+  rcColBarDiaMm,
   masonryNetVolumeM3,
   masonryBricksCount,
   pileTotalCount,
@@ -605,6 +615,45 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
         >
           <Boxes className="w-3.5 h-3.5" />
           <span>Sync Ceilings to Store Ledger</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+        </button>
+      </div>
+    );
+  }
+
+  // 14. RC Column Design -> Rebar BBS Schedule
+  if (activeModule === 'rc-column-design' && onTransferRcColumnToRebar) {
+    const colB = rcColWidthMm ?? activeWorkspace.rcColumn?.widthB_Mm ?? 400;
+    const colH = rcColDepthMm ?? activeWorkspace.rcColumn?.depthH_Mm ?? 500;
+    const colBars = rcColBarCount ?? 10;
+    const colDia = rcColBarDiaMm ?? activeWorkspace.rcColumn?.longitudinalBarDiaMm ?? 20;
+
+    return (
+      <div className="bg-gradient-to-r from-indigo-900/10 via-blue-900/10 to-transparent border border-indigo-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Hammer className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+              <span>One-Click Cross-Link: RC Column Design → Rebar BBS Schedule</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded">
+                Column Detailing
+              </span>
+            </div>
+            <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
+              Push <strong>{colB}×{colH} mm</strong> column with <strong>{colBars}-φ{colDia}mm</strong> longitudinal bars and ties directly into Column Rebar BBS.
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onTransferRcColumnToRebar}
+          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+        >
+          <Hammer className="w-3.5 h-3.5" />
+          <span>Sync Column Rebar to BBS Schedule</span>
           <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
         </button>
       </div>

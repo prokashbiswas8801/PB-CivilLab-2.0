@@ -73,7 +73,11 @@ export const SIDEBAR_CATEGORIES: SidebarCategory[] = [
     items: [
       { id: 'beam-bending', name: 'Beam Bending & Shear', subtitle: 'AISC 360 / Eurocode 3', moduleId: 'beam-analysis', actionType: 'module' },
       { id: 'frame-analysis', name: 'Frame & Continuous Beam', subtitle: '3-Span Clapeyron Stiffness', moduleId: 'continuous-beam', actionType: 'module' },
-      { id: 'column-buckling', name: 'Column Buckling & Design', subtitle: 'Euler / Slenderness', moduleId: 'rebar-bbs', actionType: 'module' },
+      { id: 'frame-truss-2d', name: '2D Frame & Truss + P-Δ', subtitle: 'Direct Stiffness & Buckling α_cr', moduleId: 'frame-truss-2d', actionType: 'module', badge: 'FEM' },
+      { id: 'section-analyzer', name: 'Section Stresses & N-M Plastic', subtitle: 'EC3 Class 1–4, σ/τ & PNA Shift', moduleId: 'section-analyzer', actionType: 'module', badge: 'STEEL' },
+      { id: 'rc-column-design', name: 'RC Column N-M & Slenderness', subtitle: 'BNBC / ACI 318 / EC2 Biaxial', moduleId: 'rc-column-design', actionType: 'module', badge: 'RCC' },
+      { id: 'strut-and-tie', name: 'Strut-and-Tie (STM) Solver', subtitle: 'Deep Beams, Corbels & Pile Caps', moduleId: 'strut-and-tie', actionType: 'module', badge: 'STM' },
+      { id: 'column-buckling', name: 'Column Rebar BBS Detailing', subtitle: 'Ties, Laps & Bar Schedule', moduleId: 'rebar-bbs', actionType: 'module' },
       { id: 'singly-doubly-beam', name: 'Singly / Doubly RC Beam', subtitle: 'Flexure & Strain Limits', moduleId: 'beam-analysis', actionType: 'module' },
       { id: 'slab-design', name: 'Two-Way & One-Way Slab', subtitle: 'Moment Coefficient Method', moduleId: 'rebar-bbs', actionType: 'module' },
       { id: 'footing-structural', name: 'Isolated & Combined Footing', subtitle: 'Punching Shear & Flexure', moduleId: 'bearing-capacity', actionType: 'module' },

@@ -52,6 +52,8 @@ import {
   formatFeetInches,
   parseNaturalConversionExpression,
   NaturalExpressionParseResult,
+  REBAR_BAR_DESIGNATIONS,
+  UnitInfo,
 } from '../../utils/unitConverter';
 import { parseSmartUnitInput } from '../../utils/unitEngine';
 import { ExplainConversionModal } from '../modals/ExplainConversionModal';
@@ -413,7 +415,7 @@ const COMMON_CATEGORY_PAIRS: Record<
   section_properties: [
     { label: 'mm⁴ ⇄ in⁴', from: 'mm4', to: 'in4', title: 'Moment of Inertia mm⁴ ↔ in⁴' },
     { label: 'cm⁴ ⇄ in⁴', from: 'cm4', to: 'in4', title: 'cm⁴ ↔ in⁴' },
-    { label: 'mm³ ⇄ in³', from: 'mm3', to: 'in3', title: 'Section Modulus mm³ ↔ in³' },
+    { label: 'mm³ ⇄ in³', from: 'mm3_sec', to: 'in3_sec', title: 'Section Modulus mm³ ↔ in³' },
   ],
   slope: [
     { label: 'degree ⇄ % grade', from: 'degree', to: 'percent', title: 'Slope Angle Degree ↔ Percent Grade' },
@@ -438,19 +440,19 @@ const COMMON_CATEGORY_PAIRS: Record<
     { label: '°F ⇄ K', from: 'f', to: 'k', title: 'Fahrenheit ↔ Kelvin' },
   ],
   energy: [
-    { label: 'kJ ⇄ BTU', from: 'kJ', to: 'btu', title: 'Kilojoules ↔ British Thermal Units' },
+    { label: 'kJ ⇄ BTU', from: 'kJ', to: 'BTU', title: 'Kilojoules ↔ British Thermal Units' },
     { label: 'kWh ⇄ MJ', from: 'kWh', to: 'MJ', title: 'Kilowatt-hours ↔ Megajoules' },
     { label: 'kcal ⇄ kJ', from: 'kcal', to: 'kJ', title: 'Kilocalories ↔ Kilojoules' },
   ],
   power: [
     { label: 'kW ⇄ HP', from: 'kW', to: 'hp', title: 'Kilowatts ↔ Horsepower (1 HP ≈ 0.7457 kW)' },
     { label: 'TR ⇄ kW', from: 'TR', to: 'kW', title: 'Tons of Refrigeration (TR) ↔ kW (1 TR ≈ 3.5168 kW)' },
-    { label: 'BTU/h ⇄ kW', from: 'btu_h', to: 'kW', title: 'BTU/h ↔ kW' },
+    { label: 'BTU/h ⇄ kW', from: 'btu_hr', to: 'kW', title: 'BTU/h ↔ kW' },
   ],
   time_frequency: [
     { label: 'hr ⇄ min', from: 'hr', to: 'min', title: 'Hours ↔ Minutes' },
     { label: 'day ⇄ hr', from: 'day', to: 'hr', title: 'Days ↔ Hours' },
-    { label: 'Hz ⇄ kHz', from: 'hz', to: 'khz', title: 'Hertz ↔ Kilohertz' },
+    { label: 'Hz ⇄ kHz', from: 'Hz', to: 'kHz', title: 'Hertz ↔ Kilohertz' },
   ],
   digital_storage: [
     { label: 'MB ⇄ GB', from: 'MB', to: 'GB', title: 'Megabytes ↔ Gigabytes' },
@@ -470,11 +472,23 @@ const COMMON_CATEGORY_PAIRS: Record<
 // -----------------------------------------------------------------------------
 // Component Props
 // -----------------------------------------------------------------------------
+export const DIMENSION_GROUP_LABELS: Record<string, { label: string; badge: string }> = {
+  inertia: { label: 'Moment of Inertia (L⁴)', badge: 'Ix / Iy' },
+  modulus: { label: 'Section Modulus (L³)', badge: 'Sx / Zx' },
+  dynamic: { label: 'Dynamic Viscosity (μ)', badge: 'Pa·s / cP' },
+  kinematic: { label: 'Kinematic Viscosity (ν)', badge: 'm²/s / cSt' },
+  permeability: { label: 'Hydraulic Permeability (k)', badge: 'm/s / m/day' },
+  time: { label: 'Time & Duration', badge: 's / hr / yr' },
+  frequency: { label: 'Frequency & Speed', badge: 'Hz / RPM' },
+  storage: { label: 'File & BIM Storage', badge: 'B / GB / GiB' },
+  bandwidth: { label: 'Network Transfer Speed', badge: 'bps / Mbps' },
+};
+
 export interface UnitConverterInputsProps {
   activeWorkspace: CivilWorkspace;
   updateActiveWorkspace: (updater: (ws: CivilWorkspace) => CivilWorkspace) => void;
   customUnits: CustomUnitDefinition[];
-  availableCategoryUnits: Array<{ id: string; name: string; symbol: string; isRegional?: boolean }>;
+  availableCategoryUnits: Array<{ id: string; name: string; symbol: string; isRegional?: boolean; dimensionGroup?: string }>;
   activeFeetInchResult: FeetInchParseResult;
   onOpenCustomUnitsModal: () => void;
   conversionResult?: {
@@ -497,7 +511,8 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   const [isExplainModalOpen, setIsExplainModalOpen] = useState(false);
   const [activeMacroDomain, setActiveMacroDomain] = useState<MacroDomain>('all');
   const [omniSearchQuery, setOmniSearchQuery] = useState('');
-  const [isBentoExpanded, setIsBentoExpanded] = useState(false);
+  const [isBentoExpanded, setIsBentoExpanded] = useState(true);
+  const [selectedRebarId, setSelectedRebarId] = useState<string>('iso-16');
   const [pinnedCategories, setPinnedCategories] = useState<UnitCategoryKey[]>(() => {
     try {
       const stored = localStorage.getItem('bdcivillab_pinned_categories');
@@ -507,10 +522,19 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     }
     return ['length', 'area', 'volume', 'mass', 'pressure'];
   });
+  const [recentCategories, setRecentCategories] = useState<UnitCategoryKey[]>(() => {
+    try {
+      const stored = localStorage.getItem('bdcivillab_recent_categories');
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // ignore
+    }
+    return ['area', 'length', 'pressure'];
+  });
 
   // Table filter and scientific notation options for All-Units Live Comparison Grid
   const [comparisonSearch, setComparisonSearch] = useState('');
-  const [comparisonPrecision, setComparisonPrecision] = useState<number>(4);
+  const [comparisonPrecision, setComparisonPrecision] = useState<number | 'auto'>('auto');
   const [isScientific, setIsScientific] = useState(false);
   const [copiedUnitId, setCopiedUnitId] = useState<string | null>(null);
 
@@ -519,6 +543,44 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   const converter = activeWorkspace.converter;
   const currentCategory = converter.category;
   const regionalLandPreset = converter.regionalLandPreset || 'standard';
+
+  // Track recent categories when category changes
+  useEffect(() => {
+    setRecentCategories((prev) => {
+      const next = [currentCategory, ...prev.filter((c) => c !== currentCategory)].slice(0, 6);
+      try {
+        localStorage.setItem('bdcivillab_recent_categories', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [currentCategory]);
+
+  // Dimension sub-groups for multi-dimension categories (prevents mixing L^4 vs L^3, Pa.s vs m/s, s vs Hz, B vs Mbps)
+  const dimensionGroups = useMemo(() => {
+    const stdUnits: UnitInfo[] = STANDARD_UNITS[currentCategory] || [];
+    const groups = Array.from(
+      new Set(stdUnits.map((u) => u.dimensionGroup).filter((g): g is string => Boolean(g)))
+    );
+    return groups;
+  }, [currentCategory]);
+
+  const activeDimensionGroup = useMemo(() => {
+    if (dimensionGroups.length <= 1) return undefined;
+    const stdUnits: UnitInfo[] = STANDARD_UNITS[currentCategory] || [];
+    const fromDef = stdUnits.find((u) => u.id === converter.fromUnit);
+    return fromDef?.dimensionGroup || dimensionGroups[0];
+  }, [dimensionGroups, currentCategory, converter.fromUnit]);
+
+  const scopedCategoryUnits = useMemo(() => {
+    if (!activeDimensionGroup) return availableCategoryUnits;
+    const stdUnits: UnitInfo[] = STANDARD_UNITS[currentCategory] || [];
+    const allowedIds = new Set(
+      stdUnits.filter((u) => !u.dimensionGroup || u.dimensionGroup === activeDimensionGroup).map((u) => u.id)
+    );
+    return availableCategoryUnits.filter((u) => allowedIds.has(u.id) || !stdUnits.some((s) => s.id === u.id));
+  }, [activeDimensionGroup, availableCategoryUnits, currentCategory]);
 
   // Toggle Pinned status
   const togglePinCategory = (cat: UnitCategoryKey, e: React.MouseEvent) => {
@@ -569,20 +631,21 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
 
   // Calculate live conversion result if not passed
   const currentConvertedValue = useMemo(() => {
-    if (conversionResult) return conversionResult.result;
+    if (conversionResult && currentCategory !== 'area') return conversionResult.result;
     try {
       const res = convertDirect(
         converter.inputValue,
         converter.fromUnit,
         converter.toUnit,
         converter.category,
-        customUnits
+        customUnits,
+        regionalLandPreset
       );
       return isNaN(res) || !isFinite(res) ? null : res;
     } catch {
       return null;
     }
-  }, [conversionResult, converter.inputValue, converter.fromUnit, converter.toUnit, converter.category, customUnits]);
+  }, [conversionResult, converter.inputValue, converter.fromUnit, converter.toUnit, converter.category, currentCategory, customUnits, regionalLandPreset]);
 
   // Exhaustive regional land breakdown matrix when discipline is 'area'
   const landBreakdown = useMemo(() => {
@@ -595,9 +658,9 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     );
   }, [currentCategory, converter.inputValue, converter.fromUnit, customUnits, regionalLandPreset]);
 
-  // Multi-unit live comparison grid: Compute values for ALL units in the active category
+  // Multi-unit live comparison grid: Compute values for ALL units in the active dimension group
   const comparisonRows = useMemo(() => {
-    const units = availableCategoryUnits;
+    const units = scopedCategoryUnits;
     return units.map((u) => {
       let val = 0;
       let formatted = '—';
@@ -607,14 +670,23 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
           converter.fromUnit,
           u.id,
           converter.category,
-          customUnits
+          customUnits,
+          regionalLandPreset
         );
+        const effDecimals =
+          comparisonPrecision === 'auto'
+            ? Math.abs(val) >= 1000
+              ? 2
+              : Math.abs(val) >= 1
+              ? 4
+              : 6
+            : comparisonPrecision;
         if (isNaN(val) || !isFinite(val)) {
           formatted = 'N/A';
         } else if (isScientific) {
-          formatted = val.toExponential(comparisonPrecision);
+          formatted = val.toExponential(effDecimals);
         } else {
-          formatted = formatSmartNumber(val, comparisonPrecision);
+          formatted = formatSmartNumber(val, effDecimals);
         }
       } catch {
         formatted = 'Error';
@@ -628,12 +700,13 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
       };
     });
   }, [
-    availableCategoryUnits,
+    scopedCategoryUnits,
     converter.inputValue,
     converter.fromUnit,
     converter.toUnit,
     converter.category,
     customUnits,
+    regionalLandPreset,
     isScientific,
     comparisonPrecision,
   ]);
@@ -654,7 +727,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   const displayedCategories = useMemo(() => {
     let cats: UnitCategoryKey[] = [];
     if (activeMacroDomain === 'pinned') {
-      cats = pinnedCategories;
+      cats = Array.from(new Set([...pinnedCategories, ...recentCategories]));
     } else {
       const domainInfo = MACRO_DOMAINS.find((d) => d.id === activeMacroDomain);
       cats = domainInfo ? domainInfo.categories : MACRO_DOMAINS[0].categories;
@@ -666,14 +739,21 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     return cats.filter((c) => {
       const meta = CATEGORY_METAS[c];
       if (!meta) return false;
+      const units = STANDARD_UNITS[c] || [];
       return (
         meta.nameEn.toLowerCase().includes(q) ||
         meta.nameBn.toLowerCase().includes(q) ||
         meta.id.toLowerCase().includes(q) ||
-        meta.topPreviews.some((p) => p.toLowerCase().includes(q))
+        meta.topPreviews.some((p) => p.toLowerCase().includes(q)) ||
+        units.some(
+          (u) =>
+            u.name.toLowerCase().includes(q) ||
+            u.symbol.toLowerCase().includes(q) ||
+            (u.bengaliName && u.bengaliName.toLowerCase().includes(q))
+        )
       );
     });
-  }, [activeMacroDomain, pinnedCategories, omniSearchQuery]);
+  }, [activeMacroDomain, pinnedCategories, recentCategories, omniSearchQuery]);
 
   // Copy handler
   const handleCopyComparisonValue = (text: string, unitId: string) => {
@@ -819,7 +899,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
               type="text"
               value={omniSearchQuery}
               onChange={(e) => setOmniSearchQuery(e.target.value)}
-              placeholder="Omni-Search or Expression (e.g. '5 katha to sft', '25 mpa to psi', '100 c to f', '12'-6&quot; in mm') — Press '/'"
+              placeholder={`Omni-Search or Expression (e.g. '5 katha to sft', '25 mpa to psi', '100 c to f', '12'-6" in mm') — Press '/'`}
               className="w-full pl-9 pr-14 py-2.5 text-xs sm:text-sm font-mono rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
             />
             <kbd className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
@@ -915,7 +995,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
             const isActive = activeMacroDomain === dom.id;
             const count =
               dom.id === 'pinned'
-                ? pinnedCategories.length
+                ? Array.from(new Set([...pinnedCategories, ...recentCategories])).length
                 : dom.id === 'all'
                 ? 21
                 : dom.categories.length;
@@ -1070,6 +1150,46 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
         </div>
       )}
 
+      {/* Dimension Sub-Group Switcher for multi-dimension categories (e.g. Inertia L⁴ vs Section Modulus L³) */}
+      {dimensionGroups.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mr-1">
+            Physical Quantity:
+          </span>
+          {dimensionGroups.map((grp) => {
+            const info = DIMENSION_GROUP_LABELS[grp] || { label: grp, badge: grp };
+            const isSelected = activeDimensionGroup === grp;
+            const grpUnits = (STANDARD_UNITS[currentCategory] || []).filter((u) => u.dimensionGroup === grp);
+            return (
+              <button
+                key={grp}
+                type="button"
+                onClick={() => {
+                  if (grpUnits.length > 0 && !isSelected) {
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      converter: {
+                        ...ws.converter,
+                        fromUnit: grpUnits[0].id,
+                        toUnit: grpUnits[1]?.id || grpUnits[0].id,
+                      },
+                    }));
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  isSelected
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
+                    : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container-low)]'
+                }`}
+              >
+                <span>{info.label}</span>
+                <span className="text-[10px] font-mono opacity-80">({info.badge})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ------------------------------------------------------------------- */}
       {/* 4. Main Conversion Direction: Source Unit (From) ⇄ Swap ⇄ Target Unit (To) */}
       {/* ------------------------------------------------------------------- */}
@@ -1098,7 +1218,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
               }}
               className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
             >
-              {availableCategoryUnits.map((u) => (
+              {scopedCategoryUnits.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name} ({u.symbol}) {u.isRegional ? '★ Regional' : ''}
                 </option>
@@ -1149,7 +1269,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
               }}
               className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
             >
-              {availableCategoryUnits.map((u) => (
+              {scopedCategoryUnits.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name} ({u.symbol}) {u.isRegional ? '★ Regional' : ''}
                 </option>
@@ -1307,7 +1427,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 { label: 'Katha / কাঠা', val: landBreakdown.katha, unit: 'katha', sub: regionalLandPreset === 'rajshahi' ? '1,440 sft' : '720 sft' },
                 { label: 'Bigha / বিঘা', val: landBreakdown.bigha, unit: 'bigha', sub: '20 Katha' },
                 { label: 'Chhatak / ছটাক', val: landBreakdown.chataks, unit: 'chhatak', sub: '45 sft' },
-                { label: 'Kani / কানি', val: landBreakdown.kanis, unit: 'kani', sub: '20 Gonda' },
+                { label: 'Kani / কানি', val: landBreakdown.kanis, unit: regionalLandPreset === 'chattogram' ? 'kani_shahi' : 'kani', sub: regionalLandPreset === 'chattogram' ? '120 Dec (52,272 sft)' : '20 Gonda (40 Dec)' },
                 { label: 'Gonda / গণ্ডা', val: landBreakdown.gondas, unit: 'gonda', sub: '864 sft' },
                 { label: 'Kara / কড়া', val: landBreakdown.karas, unit: 'kara', sub: '216 sft' },
                 { label: 'Acre / একর', val: landBreakdown.acres, unit: 'acre', sub: '43,560 sft' },
@@ -1354,7 +1474,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
           <div className="flex items-center gap-1.5">
             <span className="text-sm">📊</span>
             <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-              Multi-Unit Live Comparison Grid ({availableCategoryUnits.length} Units)
+              Multi-Unit Live Comparison Grid ({scopedCategoryUnits.length} Units)
             </label>
           </div>
 
@@ -1398,7 +1518,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
               <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
                 Dec:
               </span>
-              {[2, 4, 6, 8].map((p) => (
+              {(['auto', 2, 4, 6, 8] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -1409,7 +1529,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                       : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
                   }`}
                 >
-                  {p}
+                  {p === 'auto' ? 'Auto' : p}
                 </button>
               ))}
             </div>
@@ -1523,8 +1643,9 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
       </div>
 
       {/* ------------------------------------------------------------------- */}
-      {/* 8. Architectural Feet-Inch String Parser Card */}
+      {/* 8. Architectural Feet-Inch String Parser Card (Length & Area) */}
       {/* ------------------------------------------------------------------- */}
+      {(currentCategory === 'length' || currentCategory === 'area') && (
       <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-1">
           <div className="flex items-center gap-1.5">
@@ -1564,7 +1685,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
         <div className="relative">
           <input
             type="text"
-            placeholder="e.g. 14'-6 3/4&quot;, 12 ft 4 in, 3/4&quot;, 3810mm, or 3.81m"
+            placeholder={`e.g. 14'-6 3/4", 12 ft 4 in, 3/4", 3810mm, or 3.81m`}
             value={converter.feetInchRawString}
             onChange={(e) => {
               const str = e.target.value;
@@ -1705,6 +1826,63 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
           )
         )}
       </div>
+      )}
+
+      {/* ------------------------------------------------------------------- */}
+      {/* 9. Rebar Bar Designation Converter (ASTM #3–#18 ⇄ ISO/BS 8–50mm) */}
+      {/* ------------------------------------------------------------------- */}
+      {(currentCategory === 'length' || currentCategory === 'area' || currentCategory === 'mass') && (() => {
+        const selectedBar = REBAR_BAR_DESIGNATIONS.find((b) => b.id === selectedRebarId) || REBAR_BAR_DESIGNATIONS[6];
+        return (
+          <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">🔩</span>
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                  Rebar Bar Designation Equivalence (ASTM #3–#18 ⇄ ISO/BDS 8mm–50mm)
+                </label>
+              </div>
+              <select
+                value={selectedBar.id}
+                onChange={(e) => setSelectedRebarId(e.target.value)}
+                className="px-2.5 py-1 text-xs font-mono font-bold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+              >
+                {REBAR_BAR_DESIGNATIONS.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    [{b.standard}] {b.label} — {b.diameterMm} mm ({b.unitWeightKgPerM} kg/m)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono">
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Diameter (mm / in)</span>
+                <strong className="text-sm text-[var(--md-sys-color-primary)]">
+                  {selectedBar.diameterMm} mm ({selectedBar.diameterIn}&quot;)
+                </strong>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Bangla Suta (সূতা)</span>
+                <strong className="text-sm">{selectedBar.suta.toFixed(2)} suta</strong>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Steel Area (As)</span>
+                <strong className="text-sm">{selectedBar.areaMm2} mm² ({selectedBar.areaIn2} in²)</strong>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Unit Weight (d²/162.2)</span>
+                <strong className="text-sm text-emerald-600 dark:text-emerald-400">
+                  {selectedBar.unitWeightKgPerM} kg/m ({selectedBar.unitWeightLbPerFt} lb/ft)
+                </strong>
+              </div>
+              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Closest Cross-Standard</span>
+                <strong className="text-xs text-[var(--md-sys-color-on-surface)]">{selectedBar.nearestEquivalent}</strong>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Step-by-Step Conversion Logic & Custom Unit Factor Proof Modal */}
       <ExplainConversionModal
@@ -1715,6 +1893,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
         toUnitId={converter.toUnit}
         category={converter.category}
         customUnits={customUnits}
+        regionalLandPreset={regionalLandPreset}
         onSwapUnits={() => handleSwapUnits(false)}
         onOpenCustomUnitsModal={onOpenCustomUnitsModal}
       />
@@ -1735,6 +1914,7 @@ export interface UnitConverterMetricsProps {
     formula: string;
   };
   customUnits?: CustomUnitDefinition[];
+  regionalLandPreset?: 'standard' | 'rajshahi' | 'chattogram';
   onSwapUnits?: () => void;
   onSwapWithResult?: () => void;
   onOpenCustomUnitsModal?: () => void;
@@ -1747,6 +1927,7 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
   category,
   conversionResult,
   customUnits = [],
+  regionalLandPreset = 'standard',
   onSwapUnits,
   onSwapWithResult,
   onOpenCustomUnitsModal,
@@ -1788,7 +1969,7 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
               <span>Explain</span>
             </button>
           </div>
-          <div className="text-xs font-mono mt-1 opacity-90 truncate" title={conversionResult.formula}>
+          <div className="text-xs font-mono mt-1 opacity-90 break-words leading-relaxed" title={conversionResult.formula}>
             {conversionResult.formula}
           </div>
         </div>
@@ -1855,6 +2036,7 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
         toUnitId={toUnit}
         category={category}
         customUnits={customUnits}
+        regionalLandPreset={regionalLandPreset}
         onSwapUnits={onSwapUnits}
         onOpenCustomUnitsModal={onOpenCustomUnitsModal}
       />

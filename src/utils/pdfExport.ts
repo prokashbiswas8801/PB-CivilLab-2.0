@@ -626,6 +626,40 @@ function extractModuleInputs(
         { label: 'Overall Section Depth', value: workspace.continuousBeam?.sectionDepthMm || 600, unit: 'mm' },
       ];
 
+    case 'frame-truss-2d':
+      return [
+        { label: 'Structural Mesh Size', value: `${workspace.frameTruss2d?.nodes?.length || 4} Nodes / ${workspace.frameTruss2d?.members?.length || 3} Members` },
+        { label: 'Analysis Mode', value: workspace.frameTruss2d?.analysisMode === 'second-order-p-delta' ? 'Second-Order P-Delta [K_E + K_G]' : 'First-Order Linear [K_E]' },
+        { label: 'Allowable Combined Stress', value: workspace.frameTruss2d?.allowableStressMpa || 250, unit: 'MPa' },
+        { label: 'Template / Configuration', value: workspace.frameTruss2d?.presetName || 'Custom 2D Mesh' },
+      ];
+
+    case 'section-analyzer':
+      return [
+        { label: 'Cross-Section Shape / Profile', value: workspace.sectionAnalyzer?.presetId ? workspace.sectionAnalyzer.presetId.toUpperCase() : (workspace.sectionAnalyzer?.shape || 'IPE 300') },
+        { label: 'Steel Yield Strength f_y', value: workspace.sectionAnalyzer?.fyMpa || 275, unit: 'MPa' },
+        { label: 'Design Code Classification', value: workspace.sectionAnalyzer?.designCode || 'EC3' },
+        { label: 'Axial Force N / Major Moment M_y', value: `${workspace.sectionAnalyzer?.axialForceN_Kn ?? -420} kN / ${workspace.sectionAnalyzer?.momentMy_Knm ?? 115} kN·m` },
+        { label: 'Minor Moment M_z / Vertical Shear V_z', value: `${workspace.sectionAnalyzer?.momentMz_Knm ?? 14} kN·m / ${workspace.sectionAnalyzer?.shearVz_Kn ?? 85} kN` },
+      ];
+
+    case 'rc-column-design':
+      return [
+        { label: 'Column Cross-Section (b × h)', value: `${workspace.rcColumn?.widthB_Mm ?? 400} × ${workspace.rcColumn?.depthH_Mm ?? 500}`, unit: 'mm' },
+        { label: 'Design Code Standard', value: workspace.rcColumn?.designCode || 'BNBC-2020' },
+        { label: 'Concrete f\'c / Rebar f_y', value: `${workspace.rcColumn?.concreteFcMpa ?? 28} / ${workspace.rcColumn?.rebarFyMpa ?? 420}`, unit: 'MPa' },
+        { label: 'Unsupported Length L_u / k', value: `${workspace.rcColumn?.unsupportedLengthLu_M ?? 3.4} m / k = ${workspace.rcColumn?.effectiveLengthFactorK ?? 0.85}` },
+        { label: 'Factored Actions (P_u / M_ux / M_uy)', value: `${workspace.rcColumn?.axialLoadPu_Kn ?? 1850} kN / ${workspace.rcColumn?.momentMux_Knm ?? 140} / ${workspace.rcColumn?.momentMuy_Knm ?? 65} kN·m` },
+      ];
+
+    case 'strut-and-tie':
+      return [
+        { label: 'STM D-Region Template', value: workspace.strutAndTie?.presetName || 'Deep Beam under Single Point Load' },
+        { label: 'Member Thickness / f\'c / f_y', value: `${workspace.strutAndTie?.memberThicknessMm ?? 400} mm / ${workspace.strutAndTie?.concreteFcMpa ?? 28} / ${workspace.strutAndTie?.rebarFyMpa ?? 420} MPa` },
+        { label: 'Truss Topology', value: `${workspace.strutAndTie?.nodes?.length ?? 3} Nodes / ${workspace.strutAndTie?.members?.length ?? 3} Elements` },
+        { label: 'Scope Status', value: 'Partial (Truss Equilibrium & Member Forces)' },
+      ];
+
     case 'pile-capacity':
       return [
         { label: 'Pile Type', value: workspace.pile?.pileType === 'bored-cast-in-situ' ? 'Bored Cast-in-Situ (BCIS)' : 'Driven Precast Pile' },
@@ -765,6 +799,45 @@ function extractModuleOutputs(
         { label: 'Maximum Critical Shear Force', value: result.maxShearKn, unit: 'kN', status: 'pass' },
         { label: 'Extreme Fiber Bending Stress', value: result.bendingStressMpa, unit: 'MPa', status: result.utilizationRatio <= 1.0 ? 'pass' : 'fail' },
         { label: 'Flexural Demand-Capacity Ratio', value: `${(result.utilizationRatio * 100).toFixed(1)}%`, status: result.utilizationRatio <= 1.0 ? 'pass' : 'fail' },
+      ];
+
+    case 'frame-truss-2d':
+      return [
+        { label: 'Max Nodal Displacement Δ_max', value: Number(result.maxDisplacementMm || 0).toFixed(2), unit: 'mm', status: 'pass' },
+        { label: 'Elastic Critical Buckling α_cr', value: Number.isFinite(result.criticalBucklingFactorAlphaCr) ? result.criticalBucklingFactorAlphaCr.toFixed(2) : 'Infinity', unit: 'ratio', status: !Number.isFinite(result.criticalBucklingFactorAlphaCr) || result.criticalBucklingFactorAlphaCr > 1.05 ? 'pass' : 'fail' },
+        { label: 'Peak Bending Moment |M|_max', value: Number(result.maxAbsMomentKnm || 0).toFixed(2), unit: 'kN·m', status: 'pass' },
+        { label: 'Peak Shear Force |V|_max', value: Number(result.maxAbsShearKn || 0).toFixed(2), unit: 'kN', status: 'pass' },
+        { label: 'Peak Axial Force |N|_max', value: Number(result.maxAbsAxialKn || 0).toFixed(2), unit: 'kN', status: 'pass' },
+        { label: 'Combined Stress DCR', value: `${((result.utilizationRatio || 0) * 100).toFixed(1)}%`, status: (result.utilizationRatio || 0) <= 1.0 ? 'pass' : 'fail' },
+      ];
+
+    case 'section-analyzer':
+      return [
+        { label: 'Section Area A & Major Inertia I_y', value: `${Number(result.areaCm2 || 0).toFixed(1)} cm² / ${Number(result.iyCm4 || 0).toFixed(0)} cm⁴`, status: 'pass' },
+        { label: 'Elastic & Plastic Moduli W_el,y / W_pl,y', value: `${Number(result.welYMinCm3 || 0).toFixed(1)} / ${Number(result.wplYCm3 || 0).toFixed(1)} cm³`, status: 'pass' },
+        { label: 'Section Class (Local Buckling)', value: `${result.classification?.classLabel || 'Class 1'}`, status: result.classification?.isPlasticAllowed ? 'pass' : 'fail' },
+        { label: 'Peak von Mises Stress σ_vM', value: Number(result.vonMisesMaxMpa || 0).toFixed(1), unit: 'MPa', status: (result.elasticStressDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+        { label: 'Reduced Plastic Moment M_N,y,Rd', value: Number(result.mNyReducedRdKnm || 0).toFixed(1), unit: 'kN·m', status: 'pass' },
+        { label: 'Governing Utilization DCR', value: `${((result.governingDcr || 0) * 100).toFixed(1)}%`, status: (result.governingDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+      ];
+
+    case 'rc-column-design':
+      return [
+        { label: 'Max Design Axial Cutoff φP_n,max', value: Number(result.phiPnMaxKn || 0).toFixed(1), unit: 'kN', status: (result.axialDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+        { label: 'Major Flexural Capacity φM_nx at P_u', value: Number(result.xAxis?.phiMnAtPuKnm || 0).toFixed(1), unit: 'kN·m', status: (result.xAxis?.uniaxialDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+        { label: 'Minor Flexural Capacity φM_ny at P_u', value: Number(result.yAxis?.phiMnAtPuKnm || 0).toFixed(1), unit: 'kN·m', status: (result.yAxis?.uniaxialDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+        { label: 'Slenderness Magnifier δ_ns (X / Y)', value: `${Number(result.xAxis?.magnifierDeltaNs || 1).toFixed(2)}× / ${Number(result.yAxis?.magnifierDeltaNs || 1).toFixed(2)}×`, status: 'pass' },
+        { label: 'Bresler Biaxial Load Contour DCR', value: `${((result.breslerContourDcr || 0) * 100).toFixed(1)}%`, status: (result.breslerContourDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+        { label: 'Governing Column DCR', value: `${((result.governingDcr || 0) * 100).toFixed(1)}%`, status: (result.governingDcr || 0) <= 1.0 ? 'pass' : 'fail' },
+      ];
+
+    case 'strut-and-tie':
+      return [
+        { label: 'Max Compression Strut Force', value: Number(result.maxCompressionStrutKn || 0).toFixed(1), unit: 'kN', status: 'pass' },
+        { label: 'Max Tension Tie Force', value: `+${Number(result.maxTensionTieKn || 0).toFixed(1)}`, unit: 'kN', status: 'pass' },
+        { label: 'Total Required Tie Steel A_s,req', value: Number(result.totalRequiredTieSteelMm2 || 0).toFixed(0), unit: 'mm²', status: 'pass' },
+        { label: 'Equilibrium Residual (ΣF)', value: `${Number(result.equilibriumResidualKn || 0).toExponential(2)} kN`, status: (result.equilibriumResidualKn || 0) < 1e-2 ? 'pass' : 'fail' },
+        { label: 'Governing Strut/Tie Stress DCR', value: `${((result.governingDcr || 0) * 100).toFixed(1)}%`, status: (result.governingDcr || 0) <= 1.0 ? 'pass' : 'fail' },
       ];
 
     case 'pile-capacity':

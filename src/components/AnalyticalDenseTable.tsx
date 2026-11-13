@@ -20,6 +20,10 @@ import {
   PipeHydraulicsResult,
   getCurrencySymbol,
 } from '../utils/calculations';
+import { FrameTruss2DResult } from '../utils/frameSolver2d';
+import { SectionAnalyzerResult } from '../utils/sectionMechanics';
+import { RcColumnDesignResult } from '../utils/rcColumnEngine';
+import { StrutAndTieResult } from '../utils/strutAndTieEngine';
 import { CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 
 export interface AnalyticalDenseTableProps {
@@ -913,6 +917,457 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                           {mom.toFixed(1)} kN·m
                         </td>
                         <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 12B. 2D FRAME & TRUSS + P-DELTA MATRIX SCHEDULE */}
+      {activeModule === 'frame-truss-2d' && (() => {
+        const ftRes = result as FrameTruss2DResult;
+        const filteredMembers = (ftRes.memberResults || []).filter((mr) =>
+          matchesSearch([mr.label, mr.startLabel, mr.endLabel, mr.memberType])
+        );
+        const filteredNodes = (ftRes.nodalResults || []).filter((nr) =>
+          matchesSearch([nr.label, nr.support])
+        );
+
+        return (
+          <div className="space-y-3">
+            {/* Member Envelopes & Combined Stress DCR */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <div className="p-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                  Member Internal Force Envelopes &amp; Combined Stress DCR ({ftRes.analysisMode === 'second-order-p-delta' ? '2nd-Order P-Δ' : '1st-Order Linear'})
+                </span>
+                <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                  α_cr = {Number.isFinite(ftRes.criticalBucklingFactorAlphaCr) ? ftRes.criticalBucklingFactorAlphaCr.toFixed(2) : '∞'} · B₂ = {ftRes.b2AmplificationFactor.toFixed(3)}×
+                </span>
+              </div>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Member</th>
+                    <th className={`${cellPadding} text-center`}>Connectivity</th>
+                    <th className={`${cellPadding} text-right`}>L (m)</th>
+                    <th className={`${cellPadding} text-right`}>Axial N (kN)</th>
+                    <th className={`${cellPadding} text-right`}>|V|_max (kN)</th>
+                    <th className={`${cellPadding} text-right`}>|M|_max (kN·m)</th>
+                    <th className={`${cellPadding} text-right`}>σ_comb (MPa)</th>
+                    <th className={`${cellPadding} text-center`}>DCR</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  {filteredMembers.map((mr) => {
+                    const mStatus = mr.dcrRatio > 1.0 ? 'critical' : mr.dcrRatio > 0.85 ? 'warning' : 'nominal';
+                    return (
+                      <tr key={mr.memberId} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                        <td className={`${cellPadding} font-bold text-[var(--md-sys-color-primary)]`}>
+                          {mr.label} <span className="text-[10px] opacity-70 uppercase">({mr.memberType})</span>
+                        </td>
+                        <td className={`${cellPadding} text-center`}>{mr.startLabel} → {mr.endLabel}</td>
+                        <td className={`${cellPadding} text-right`}>{mr.lengthM.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right font-semibold ${mr.axialStartKn >= 0 ? 'text-cyan-600 dark:text-cyan-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {mr.axialStartKn >= 0 ? `+${mr.axialStartKn.toFixed(1)} (T)` : `${mr.axialStartKn.toFixed(1)} (C)`}
+                        </td>
+                        <td className={`${cellPadding} text-right`}>{mr.maxAbsShearKn.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right font-semibold`}>{mr.maxAbsMomentKnm.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right`}>{mr.combinedStressMpa.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-center`}>
+                          <div className="inline-flex items-center gap-1.5">
+                            <span>{(mr.dcrRatio * 100).toFixed(1)}%</span>
+                            {renderStatusBadge(mStatus)}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Nodal Displacements & Support Reactions */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <div className="p-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                  Nodal Displacements &amp; Support Reactions
+                </span>
+                <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                  Equilibrium Residual: {ftRes.equilibriumResidualKn.toExponential(2)} kN
+                </span>
+              </div>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Node</th>
+                    <th className={`${cellPadding} text-center`}>Support</th>
+                    <th className={`${cellPadding} text-right`}>ux (mm)</th>
+                    <th className={`${cellPadding} text-right`}>uy (mm)</th>
+                    <th className={`${cellPadding} text-right`}>θz (mrad)</th>
+                    <th className={`${cellPadding} text-right`}>Rx (kN)</th>
+                    <th className={`${cellPadding} text-right`}>Ry (kN)</th>
+                    <th className={`${cellPadding} text-right`}>Mz (kN·m)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  {filteredNodes.map((nr) => (
+                    <tr key={nr.nodeId} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                      <td className={`${cellPadding} font-bold text-[var(--md-sys-color-primary)]`}>{nr.label}</td>
+                      <td className={`${cellPadding} text-center uppercase text-[10px]`}>{nr.support}</td>
+                      <td className={`${cellPadding} text-right`}>{nr.uxMm.toFixed(3)}</td>
+                      <td className={`${cellPadding} text-right`}>{nr.uyMm.toFixed(3)}</td>
+                      <td className={`${cellPadding} text-right`}>{nr.rzMrad.toFixed(3)}</td>
+                      <td className={`${cellPadding} text-right font-semibold`}>{nr.reactionFxKn.toFixed(2)}</td>
+                      <td className={`${cellPadding} text-right font-semibold`}>{nr.reactionFyKn.toFixed(2)}</td>
+                      <td className={`${cellPadding} text-right font-semibold`}>{nr.reactionMzKnm.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 12C. SECTION STRESSES & PLASTIC N-M INTERACTION SCHEDULE */}
+      {activeModule === 'section-analyzer' && (() => {
+        const saRes = result as SectionAnalyzerResult;
+        const filteredCorners = (saRes.cornerStresses || []).filter((c) =>
+          matchesSearch([c.label])
+        );
+        return (
+          <div className="space-y-3">
+            {/* Classification & Geometric Properties Table */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Section Property / Capacity Metric</th>
+                    <th className={`${cellPadding} text-center`}>Symbol</th>
+                    <th className={`${cellPadding} text-right`}>Computed Value</th>
+                    <th className={`${cellPadding} text-center`}>Unit</th>
+                    <th className={cellPadding}>Notes / Verification</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Cross-Sectional Area</td>
+                    <td className={`${cellPadding} text-center`}>A</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{saRes.areaCm2.toFixed(2)}</td>
+                    <td className={`${cellPadding} text-center`}>cm²</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>Fiber Δ: {saRes.numericalAreaErrorPct.toFixed(2)}% ({saRes.massKgPerM.toFixed(1)} kg/m)</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Centroid Coordinates</td>
+                    <td className={`${cellPadding} text-center`}>(ȳ, z̄)</td>
+                    <td className={`${cellPadding} text-right`}>({saRes.centroidYMm.toFixed(1)}, {saRes.centroidZMm.toFixed(1)})</td>
+                    <td className={`${cellPadding} text-center`}>mm</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>From bounding box bottom-left</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Second Moments of Area</td>
+                    <td className={`${cellPadding} text-center`}>I_y / I_z</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{saRes.iyCm4.toFixed(1)} / {saRes.izCm4.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-center`}>cm⁴</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>I_y fiber Δ: {saRes.numericalIyErrorPct.toFixed(2)}%</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Radii of Gyration</td>
+                    <td className={`${cellPadding} text-center`}>r_y / r_z</td>
+                    <td className={`${cellPadding} text-right`}>{saRes.ryMm.toFixed(1)} / {saRes.rzMm.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-center`}>mm</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>Major / minor axis</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Elastic & Plastic Moduli (Major)</td>
+                    <td className={`${cellPadding} text-center`}>W_el,y / W_pl,y</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{saRes.welYMinCm3.toFixed(1)} / {saRes.wplYCm3.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-center`}>cm³</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>Shape factor k_y = {saRes.shapeFactorY.toFixed(3)}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Torsion Constant</td>
+                    <td className={`${cellPadding} text-center`}>J</td>
+                    <td className={`${cellPadding} text-right`}>{saRes.torsionConstantJCm4.toFixed(2)}</td>
+                    <td className={`${cellPadding} text-center`}>cm⁴</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>Saint-Venant closed/thin-walled J</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Section Classification ({saRes.designCode})</td>
+                    <td className={`${cellPadding} text-center`}>Class</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{saRes.classification.classLabel}</td>
+                    <td className={`${cellPadding} text-center`}>—</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>AISC: {saRes.classification.aiscEquivalent} · {saRes.classification.governingPart}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Shifted Plastic Neutral Axis (PNA)</td>
+                    <td className={`${cellPadding} text-center`}>z_PNA</td>
+                    <td className={`${cellPadding} text-right`}>{saRes.plasticNeutralAxisZMm.toFixed(1)} ({saRes.plasticNeutralAxisFromBottomMm.toFixed(1)} mm soffit)</td>
+                    <td className={`${cellPadding} text-center`}>mm</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>Reduced M_N,y,Rd = {saRes.mNyReducedRdKnm.toFixed(1)} kN·m</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Design Axial & Plastic Moment Resistance</td>
+                    <td className={`${cellPadding} text-center`}>N_pl,Rd / M_pl,y,Rd</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{saRes.nPlRdKn.toFixed(1)} kN / {saRes.mPlYRdKnm.toFixed(1)} kN·m</td>
+                    <td className={`${cellPadding} text-center`}>kN / kN·m</td>
+                    <td className={`${cellPadding} font-sans text-xs text-[var(--md-sys-color-on-surface-variant)]`}>M_el,y,Rd = {saRes.mElYRdKnm.toFixed(1)} kN·m, V_pl,z,Rd = {saRes.vPlZRdKn.toFixed(1)} kN</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Corner / Extreme Fiber Stress Audit */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <div className="px-3 py-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                  Extreme Fiber & Corner Stress Schedule (+σ Tension / -σ Compression)
+                </span>
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-primary)] font-semibold">
+                  f_yd = {saRes.fydMpa.toFixed(1)} MPa · Governing DCR = {(saRes.governingDcr * 100).toFixed(1)}%
+                </span>
+              </div>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Fiber / Vertex</th>
+                    <th className={`${cellPadding} text-right`}>y (mm)</th>
+                    <th className={`${cellPadding} text-right`}>z (mm)</th>
+                    <th className={`${cellPadding} text-right`}>σ_normal (MPa)</th>
+                    <th className={`${cellPadding} text-right`}>τ_shear (MPa)</th>
+                    <th className={`${cellPadding} text-right`}>σ_vM (MPa)</th>
+                    <th className={`${cellPadding} text-center`}>Yield Check</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  {filteredCorners.map((c, idx) => {
+                    const over = c.vonMisesMpa > saRes.fydMpa + 1e-3;
+                    return (
+                      <tr key={idx} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                        <td className={`${cellPadding} font-sans font-semibold`}>{c.label}</td>
+                        <td className={`${cellPadding} text-right`}>{c.yMm.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right`}>{c.zMm.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right font-semibold ${c.sigmaMpa >= 0 ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-error)]'}`}>
+                          {c.sigmaMpa >= 0 ? `+${c.sigmaMpa.toFixed(2)}` : c.sigmaMpa.toFixed(2)}
+                        </td>
+                        <td className={`${cellPadding} text-right`}>{c.tauMpa.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right font-bold`}>{c.vonMisesMpa.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-center`}>{renderStatusBadge(over ? 'critical' : 'nominal')}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 12D. RC COLUMN N-M INTERACTION & SLENDERNESS SCHEDULE */}
+      {activeModule === 'rc-column-design' && (() => {
+        const colRes = result as RcColumnDesignResult;
+        const filteredBars = (colRes.bars || []).filter((b) =>
+          matchesSearch([b.id, b.xMm, b.yMm])
+        );
+        return (
+          <div className="space-y-3">
+            {/* Uniaxial, Biaxial & Slenderness Summary */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Column Check / Interaction Metric ({colRes.designCode})</th>
+                    <th className={`${cellPadding} text-right`}>Major Axis (X-X)</th>
+                    <th className={`${cellPadding} text-right`}>Minor Axis (Y-Y)</th>
+                    <th className={`${cellPadding} text-center`}>Unit / Limit</th>
+                    <th className={`${cellPadding} text-center`}>Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Pure Axial &amp; Max Design Cutoff (P₀ / φP_n,max)</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{colRes.p0Kn.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{colRes.phiPnMaxKn.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-center`}>kN (P_u = {colRes.axialLoadPu_Kn.toFixed(1)})</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge(colRes.axialDcr <= 1.0 ? 'nominal' : 'critical')}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Balanced Point (φP_b / φM_b)</td>
+                    <td className={`${cellPadding} text-right`}>{colRes.xAxis.phiPBalancedKn.toFixed(1)} kN / {colRes.xAxis.phiMBalancedKnm.toFixed(1)} kN·m</td>
+                    <td className={`${cellPadding} text-right`}>{colRes.yAxis.phiPBalancedKn.toFixed(1)} kN / {colRes.yAxis.phiMBalancedKnm.toFixed(1)} kN·m</td>
+                    <td className={`${cellPadding} text-center`}>c_bx={colRes.xAxis.cBalancedMm.toFixed(0)} mm</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Slenderness Ratio (kL_u / r) &amp; Euler P_c</td>
+                    <td className={`${cellPadding} text-right`}>{colRes.xAxis.slendernessRatioKluR.toFixed(1)} (P_c={colRes.xAxis.pcEulerKn.toFixed(0)} kN)</td>
+                    <td className={`${cellPadding} text-right`}>{colRes.yAxis.slendernessRatioKluR.toFixed(1)} (P_c={colRes.yAxis.pcEulerKn.toFixed(0)} kN)</td>
+                    <td className={`${cellPadding} text-center`}>Limit ≤ {colRes.xAxis.slendernessLimit.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge(colRes.xAxis.isSlender || colRes.yAxis.isSlender ? 'warning' : 'nominal')}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Moment Magnifier δ_ns &amp; Design M_c</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{colRes.xAxis.magnifierDeltaNs.toFixed(3)}× → {colRes.xAxis.magnifiedMomentKnm.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{colRes.yAxis.magnifierDeltaNs.toFixed(3)}× → {colRes.yAxis.magnifiedMomentKnm.toFixed(1)}</td>
+                    <td className={`${cellPadding} text-center`}>kN·m (incl. e_min)</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge(Math.max(colRes.xAxis.uniaxialDcr, colRes.yAxis.uniaxialDcr) <= 1.0 ? 'nominal' : 'critical')}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Design Flexural Capacity at P_u (φM_n)</td>
+                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{colRes.xAxis.phiMnAtPuKnm.toFixed(1)} kN·m</td>
+                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{colRes.yAxis.phiMnAtPuKnm.toFixed(1)} kN·m</td>
+                    <td className={`${cellPadding} text-center`}>Uniaxial {(colRes.xAxis.uniaxialDcr * 100).toFixed(1)}% / {(colRes.yAxis.uniaxialDcr * 100).toFixed(1)}%</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge(colRes.status)}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Bresler Load Contour Biaxial Check</td>
+                    <td className={`${cellPadding} text-right font-bold`}>(M_cx/φM_nx)^α + (M_cy/φM_ny)^α</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{(colRes.breslerContourDcr * 100).toFixed(1)}% (α={colRes.breslerAlpha.toFixed(2)})</td>
+                    <td className={`${cellPadding} text-center`}>≤ 100.0%</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge(colRes.breslerContourDcr <= 1.0 ? 'nominal' : 'critical')}</td>
+                  </tr>
+                  <tr className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-sans font-semibold`}>Reinforcement Ratio ρ_g &amp; Tie Detailing</td>
+                    <td className={`${cellPadding} text-right`}>{colRes.totalBarCount}-Ø{colRes.longitudinalBarDiaMm} ({colRes.rhoPercent.toFixed(2)}%)</td>
+                    <td className={`${cellPadding} text-right`}>Ties Ø{colRes.tieBarDiaMm}@{colRes.tieSpacingMm} mm</td>
+                    <td className={`${cellPadding} text-center`}>1%–8% · s_max={colRes.maxAllowedTieSpacingMm} mm</td>
+                    <td className={`${cellPadding} text-center`}>{renderStatusBadge(colRes.rhoOk && colRes.tieDetailingOk ? 'nominal' : 'warning')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Longitudinal Bar Coordinates Schedule */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <div className="px-3 py-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                  Discretized Longitudinal Bar Coordinates (Centroidal Origin)
+                </span>
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-primary)] font-semibold">
+                  {colRes.totalBarCount} Bars · Total A_st = {colRes.astProvidedMm2.toFixed(0)} mm²
+                </span>
+              </div>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Bar ID</th>
+                    <th className={`${cellPadding} text-right`}>x (mm)</th>
+                    <th className={`${cellPadding} text-right`}>y (mm)</th>
+                    <th className={`${cellPadding} text-right`}>Area A_b (mm²)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  {filteredBars.map((b) => (
+                    <tr key={b.id} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                      <td className={`${cellPadding} font-bold`}>{b.id}</td>
+                      <td className={`${cellPadding} text-right`}>{b.xMm.toFixed(1)}</td>
+                      <td className={`${cellPadding} text-right`}>{b.yMm.toFixed(1)}</td>
+                      <td className={`${cellPadding} text-right`}>{b.areaMm2.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 12E. STRUT-AND-TIE MODEL (STM) TRUSS EQUILIBRIUM SCHEDULE */}
+      {activeModule === 'strut-and-tie' && (() => {
+        const stmRes = result as StrutAndTieResult;
+        const filteredMembers = (stmRes.memberResults || []).filter((m) =>
+          matchesSearch([m.label, m.startLabel, m.endLabel, m.role])
+        );
+        const filteredNodes = (stmRes.nodeResults || []).filter((n) =>
+          matchesSearch([n.label, n.support])
+        );
+        return (
+          <div className="space-y-3">
+            {/* Member Forces & Classification */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <div className="px-3 py-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                  STM Member Axial Forces, Strut/Tie Classification &amp; Required Tie Steel
+                </span>
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-primary)] font-semibold">
+                  Partial Scope (Truss Equilibrium) · ΣF Residual = {stmRes.equilibriumResidualKn.toExponential(1)} kN
+                </span>
+              </div>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Element</th>
+                    <th className={cellPadding}>Connectivity</th>
+                    <th className={`${cellPadding} text-center`}>Role</th>
+                    <th className={`${cellPadding} text-right`}>Length (m)</th>
+                    <th className={`${cellPadding} text-right`}>Angle (°)</th>
+                    <th className={`${cellPadding} text-right`}>Axial Force (kN)</th>
+                    <th className={`${cellPadding} text-right`}>Stress (MPa)</th>
+                    <th className={`${cellPadding} text-right`}>Req. A_s,tie (mm²)</th>
+                    <th className={`${cellPadding} text-center`}>Check</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  {filteredMembers.map((m) => (
+                    <tr key={m.memberId} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                      <td className={`${cellPadding} font-sans font-semibold`}>{m.label}</td>
+                      <td className={cellPadding}>{m.startLabel} → {m.endLabel}</td>
+                      <td className={`${cellPadding} text-center font-bold uppercase ${m.role === 'strut' ? 'text-amber-600 dark:text-amber-400' : m.role === 'tie' ? 'text-sky-600 dark:text-sky-400' : ''}`}>
+                        {m.role}
+                      </td>
+                      <td className={`${cellPadding} text-right`}>{m.lengthM.toFixed(3)}</td>
+                      <td className={`${cellPadding} text-right`}>{m.angleDeg.toFixed(1)}°</td>
+                      <td className={`${cellPadding} text-right font-bold ${m.axialForceKn < 0 ? 'text-amber-600 dark:text-amber-400' : m.axialForceKn > 0 ? 'text-sky-600 dark:text-sky-400' : ''}`}>
+                        {m.axialForceKn >= 0 ? `+${m.axialForceKn.toFixed(2)}` : m.axialForceKn.toFixed(2)}
+                      </td>
+                      <td className={`${cellPadding} text-right`}>{m.stressMpa.toFixed(2)} / {m.allowableLimitMpa.toFixed(1)}</td>
+                      <td className={`${cellPadding} text-right font-semibold`}>{m.requiredTieSteelMm2 > 0 ? m.requiredTieSteelMm2.toFixed(0) : '—'}</td>
+                      <td className={`${cellPadding} text-center`}>{renderStatusBadge(m.dcrRatio <= 1.0 ? 'nominal' : 'critical')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Nodal Equilibrium & Reactions */}
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <div className="px-3 py-2 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                  Joint Equilibrium, Displacements &amp; Support Reactions
+                </span>
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                  Total Required Tie Steel = {stmRes.totalRequiredTieSteelMm2.toFixed(0)} mm²
+                </span>
+              </div>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Node</th>
+                    <th className={cellPadding}>Support</th>
+                    <th className={`${cellPadding} text-right`}>(x, y) m</th>
+                    <th className={`${cellPadding} text-right`}>Applied (Fx, Fy) kN</th>
+                    <th className={`${cellPadding} text-right`}>Reaction (Rx, Ry) kN</th>
+                    <th className={`${cellPadding} text-right`}>Disp (ux, uy) mm</th>
+                    <th className={`${cellPadding} text-right`}>|ΣF| Residual (kN)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  {filteredNodes.map((n) => {
+                    const resMag = Math.hypot(n.sumFxResidualKn, n.sumFyResidualKn);
+                    return (
+                      <tr key={n.nodeId} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                        <td className={`${cellPadding} font-sans font-semibold`}>{n.label}</td>
+                        <td className={cellPadding}>{n.support}</td>
+                        <td className={`${cellPadding} text-right`}>({n.xM.toFixed(2)}, {n.yM.toFixed(2)})</td>
+                        <td className={`${cellPadding} text-right`}>({n.appliedFxKn.toFixed(1)}, {n.appliedFyKn.toFixed(1)})</td>
+                        <td className={`${cellPadding} text-right font-bold`}>({n.reactionRxKn.toFixed(2)}, {n.reactionRyKn.toFixed(2)})</td>
+                        <td className={`${cellPadding} text-right`}>({n.uxMm.toFixed(3)}, {n.uyMm.toFixed(3)})</td>
+                        <td className={`${cellPadding} text-right`}>{resMag.toExponential(1)}</td>
                       </tr>
                     );
                   })}

@@ -25,7 +25,14 @@ export const PresetQuickBar: React.FC<PresetQuickBarProps> = ({
     if (activeModule === 'rate-analysis' || activeModule === 'boq-estimator') {
       return p.category === 'material-rates';
     }
-    if (activeModule === 'beam-analysis') {
+    if (
+      activeModule === 'beam-analysis' ||
+      activeModule === 'continuous-beam' ||
+      activeModule === 'frame-truss-2d' ||
+      activeModule === 'section-analyzer' ||
+      activeModule === 'rc-column-design' ||
+      activeModule === 'strut-and-tie'
+    ) {
       return p.category === 'structural-beam';
     }
     if (activeModule === 'bearing-capacity') {

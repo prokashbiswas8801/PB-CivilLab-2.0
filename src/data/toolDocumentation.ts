@@ -214,6 +214,276 @@ export const TOOL_DOCUMENTATION: Record<string, ToolDocumentation> = {
   },
 
   // =========================================================================
+  // 2B. 2D FRAME & TRUSS SOLVER + P-DELTA (STR-04)
+  // =========================================================================
+  'frame-truss-2d': {
+    id: 'frame-truss-2d',
+    title: '2D Frame & Truss Direct Stiffness + Second-Order P-Delta Solver',
+    shortLabel: '2D Frame & Truss',
+    discipline: 'Structural Engineering',
+    standardUsed: 'Direct Stiffness Method / BNBC 2020 / AISC 360 / Eurocode 3',
+    overview:
+      'A full 3-DOF-per-node Direct Stiffness Matrix structural solver for 2D moment-resisting frames, pin-jointed roof trusses, hybrid frame-truss brackets, and spring-supported foundations. Computes both first-order linear elastic responses and iterative Second-Order P-Delta geometric nonlinearity with elastic critical buckling load factor α_cr.',
+    capabilities: [
+      'Assembles global [K] from 6×6 transformed Euler-Bernoulli frame and axial truss elements',
+      'Applies exact static condensation on element stiffness and fixed-end loads for internal start/end hinges',
+      'Supports Fixed, Pin, Roller-X, Roller-Y, and Elastic Foundation Spring (Kx, Ky, Kr) boundaries',
+      'Solves iterative geometric stiffness ([K_E] + [K_G(P)]) and computes critical buckling factor α_cr & B₂ amplification',
+      'Verifies global equilibrium residuals (ΣFx, ΣFy, ΣM) and renders interactive BMD, SFD, AFD, and scaled deformed curves',
+    ],
+    howItWorks: {
+      methodology:
+        'Each planar node carries 3 degrees of freedom (u_x, u_y, θ_z). Member local matrices are statically condensed for hinges, rotated via [T]^T[k][T], and solved via partial-pivoted elimination. Under Second-Order P-Delta mode, member axial compression forces update the geometric stiffness matrix [K_G] iteratively until displacement convergence.',
+      governingEquations: [
+        {
+          name: 'Second-Order Direct Stiffness Equilibrium',
+          formula: '([K_E] + [K_G(P)]) {D} = {F_nodal} - Σ [T]^T {f_FEF}',
+          description: 'Global stiffness system incorporating compression-induced lateral softening [K_G].',
+        },
+        {
+          name: 'Elastic Critical Buckling & B₂ Sway Amplification',
+          formula: 'α_cr = 1 / λ_max([K_E]⁻¹ [-K_G]) ,   B₂ = 1 / (1 - 1 / α_cr)',
+          description: 'Sway sensitivity check per BNBC-2020 / AISC 360 / Eurocode 3 §5.2.1.',
+        },
+      ],
+      codeStandards: ['BNBC 2020 Part 6', 'AISC 360 Appendix 8', 'Eurocode 3 EN 1993-1-1 §5.2'],
+      assumptions: [
+        'Planar 2D structural framing with small strains and linear elastic material behavior',
+        'Thermal ΔT strains are not coupled into geometric [K_G] iteration and trigger an explicit scope warning',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Choose Benchmark Template or Build Custom Mesh',
+        instruction: 'Start from Portal Sway Frame, Pratt Roof Truss, 2-Story Moment Frame, or Cantilever Bracket Truss, or edit nodes, members, hinges, and nodal loads directly.',
+      },
+      {
+        step: 2,
+        title: 'Select First-Order vs. Second-Order P-Delta Mode',
+        instruction: 'Toggle Second-Order P-Delta to capture column/strut axial destabilization and compute α_cr and displacement/moment amplification.',
+      },
+      {
+        step: 3,
+        title: 'Inspect Diagrams, Reactions & Equilibrium Check',
+        instruction: 'Switch between BMD, SFD, AFD (tension/compression), and Deformed Shape overlays, and audit member DCR and global reaction balance.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'When α_cr < 10.0, BNBC 2020 and Eurocode 3 prohibit neglecting second-order sway effects; enable Second-Order P-Delta analysis.',
+      'For hybrid frame-truss joints, switch chord elements to Frame and web diagonals to Truss (pinned both ends) to prevent artificial bending in diagonals.',
+    ],
+    limitationsAndNotes: [
+      'Thermal ΔT load is flagged outside Second-Order P-Delta solver scope when non-zero.',
+    ],
+  },
+
+  // =========================================================================
+  // 2C. SECTION ANALYZER & PLASTIC N-M INTERACTION (STR-05)
+  // =========================================================================
+  'section-analyzer': {
+    id: 'section-analyzer',
+    title: 'Section Stresses & Plastic N-M Interaction',
+    shortLabel: 'Section Stress & N-M',
+    discipline: 'Mechanics of Materials / Steel',
+    standardUsed: 'EN 1993-1-1 (EC3) / AISC 360-22 / BNBC 2020',
+    overview:
+      'High-precision cross-sectional stress & capacity engine computing exact geometric properties (A, ȳ, z̄, I_y, I_z, W_el, W_pl, J) for 7 shapes including custom polygons and standard steel profiles, overlaid with combined elastic normal stress σ(y,z), Jourawski transverse shear τ = VQ/(It), von Mises yield check, EN 1993-1-1 / AISC Class 1–4 local buckling guardrails, and exact PNA-shifted N–M and biaxial M_y–M_z plastic interaction envelopes.',
+    capabilities: [
+      'Computes exact centroid, principal inertias I_y/I_z, radii of gyration r_y/r_z, W_el, W_pl, and torsion constant J for 7 shapes + custom polygons',
+      'Includes built-in steel section catalogue (IPE 200/300/400, HEA 200, HEB 200/300, UB, UC, RHS, SHS, PFC)',
+      'Plots combined Navier normal stress σ(y,z), Jourawski transverse shear τ(z), and Hencky–von Mises σ_vM yield profiles',
+      'Enforces EN 1993-1-1 / AISC Class 1–4 local buckling classification and automatically blocks Plastic N-M on Class 3/4 sections',
+      'Cross-verifies exact PNA-shifted N–M interaction and biaxial M_y–M_z envelopes against 400-slice numerical fiber integration',
+    ],
+    howItWorks: {
+      methodology:
+        'Cross-sections are decomposed analytically via Green\'s theorem / Parallel Axis Theorem and verified against a 400-slice numerical horizontal fiber mesh. Flange and web c/t ratios classify local buckling into Class 1–4, gating plastic N–M interaction when non-compact.',
+      governingEquations: [
+        {
+          name: 'Combined Elastic Normal Stress (Navier Biaxial)',
+          formula: 'σ(y, z) = N / A + (M_y · z) / I_y - (M_z · y) / I_z',
+          description: 'Linear superposition of axial tension/compression (+N tension) and biaxial bending stresses relative to centroidal axes.',
+        },
+        {
+          name: 'Transverse Shear & von Mises Equivalent Stress',
+          formula: 'τ(z) = (V_z · Q_y(z)) / (I_y · t(z)) ,   σ_vM = √(σ² + 3·τ²)',
+          description: 'Parabolic shear distribution across web/stem thickness combined with normal stress via Hencky–von Mises yield criterion.',
+        },
+        {
+          name: 'Plastic Neutral Axis Shift & Reduced M_N,y,Rd',
+          formula: 'A_below = 0.5 · (A - N / f_yd) ,   M_N,y,Rd = ∫ (z - z̄) · σ_pl(z) dA',
+          description: 'Exact shifted Plastic Neutral Axis (PNA) equilibrium under axial force N with 400-slice numerical fiber integration verification.',
+        },
+        {
+          name: 'Biaxial Plastic & Local Buckling Guardrail',
+          formula: 'Class 1/2 (Compact): N–M Plastic Allowed | Class 3/4: Blocked (Elastic M_el Limit)',
+          description: 'Automatically classifies flange and web c/t ratios against ε = √(235/f_y) and blocks plastic N–M utilization for slender sections.',
+        },
+      ],
+      codeStandards: ['EN 1993-1-1 (EC3) §5.5 & §6.2', 'AISC 360-22 Chapter B & H', 'BNBC 2020 Part 6 Ch 10'],
+      assumptions: [
+        'Plane sections remain plane (Euler-Bernoulli hypothesis) prior to local plate buckling',
+        'Class 3 (Semi-Compact) and Class 4 (Slender) sections block plastic N–M capacity and default to elastic yield verification',
+        'Restrained warping torsion and span lateral-torsional buckling (LTB) are outside single cross-section scope',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Choose Cross-Section Shape or Standard Steel Profile',
+        instruction: 'Pick an I-Beam, Hollow Box, Channel, T-Section, Circular, Rectangular, or Custom Polygon, or select a catalogued profile such as IPE 300 or SHS 150×150×4.',
+      },
+      {
+        step: 2,
+        title: 'Audit EC3 / AISC Class 1–4 Buckling Status',
+        instruction: 'Verify flange and web slenderness limits. If Class 3 or Class 4 is flagged, plastic redistribution is blocked and design defaults to elastic yield stress verification.',
+      },
+      {
+        step: 3,
+        title: 'Inspect ENA/PNA Shifts, Stress Contours & N–M Envelope',
+        instruction: 'Toggle Elastic vs Plastic Yield Stress overlays and N–M / Biaxial M_y–M_z interaction plots, then review the 400-slice cross-verified hand calculation steps.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Use SHS 150×150×4 or an open slender section to test automatic Class 4 blocking of plastic N–M interaction capacity.',
+      'For asymmetric T-sections, Channels, or Custom L-Angles, observe the offset between the Elastic Neutral Axis (ENA) and shifted Plastic Neutral Axis (PNA).',
+    ],
+    limitationsAndNotes: [
+      'Restrained warping torsion (B_w) and lateral-torsional buckling (LTB) along member span are outside pure cross-section analysis scope.',
+    ],
+  },
+
+  // =========================================================================
+  // 2D. RC COLUMN N-M INTERACTION & SLENDERNESS (STR-06)
+  // =========================================================================
+  'rc-column-design': {
+    id: 'rc-column-design',
+    title: 'RC Column Uniaxial & Biaxial N-M Interaction & Slenderness',
+    shortLabel: 'RC Column N-M',
+    discipline: 'Reinforced Concrete Design',
+    standardUsed: 'BNBC 2020 / ACI 318-19 / Eurocode 2',
+    overview:
+      'Strain-compatibility reinforced concrete column solver sweeping the neutral axis c from pure compression through balanced failure to pure tension. Generates Nominal (P_n–M_n) and Design (φP_n–φM_n) envelopes for both major (X-X) and minor (Y-Y) axes, checks slenderness magnification (δ_ns), evaluates Bresler Load Contour biaxial interaction, and pushes longitudinal/tie schedules directly to Rebar BBS.',
+    capabilities: [
+      'Sweeps neutral axis c across 20+ strain-compatibility points for both X-X and Y-Y bending axes',
+      'Plots Nominal (P_n–M_n) and Factored Design (φP_n–φM_n) curves with Balanced point and φP_n,max axial cutoff',
+      'Evaluates slenderness ratio kL_u/r and second-order moment magnifier δ_ns',
+      'Verifies biaxial bending via Bresler Load Contour (M_cx/φM_nx)^α + (M_cy/φM_ny)^α ≤ 1.0',
+      'One-click "Sync Column Rebar to BBS Schedule" cross-link pushes section & bar layout into Rebar BBS',
+    ],
+    howItWorks: {
+      methodology:
+        'Each longitudinal bar is placed in 2D cross-section coordinates respecting clear cover and tie diameter. Sweeping neutral axis depth c determines concrete compression block a = β₁c and bar strains ε_si = ε_cu(c - d_i)/c with displaced concrete subtraction.',
+      governingEquations: [
+        {
+          name: 'Strain-Compatibility Axial & Moment Equilibrium',
+          formula: 'P_n = 0.85·f\'_c·b·a + Σ A_si·(f_si − 0.85·f\'_c) ,   M_n = F_c·(h/2 − a/2) + Σ F_si·(h/2 − d_i)',
+          description: 'Integrates Whitney rectangular concrete block and elasto-plastic bar forces about the geometric centroid.',
+        },
+        {
+          name: 'Slenderness Moment Magnifier & Bresler Contour',
+          formula: 'δ_ns = C_m / [1 − P_u / (0.75·P_c)] ≥ 1.0 ,   (M_cx/φM_nx)^α + (M_cy/φM_ny)^α ≤ 1.0',
+          description: 'Applies cracked-section second-order magnification when kL_u/r exceeds code limit and checks biaxial interaction.',
+        },
+      ],
+      codeStandards: ['BNBC 2020 Part 6 §6.3', 'ACI 318-19 Chapters 6, 10 & 22', 'Eurocode 2 EN 1992-1-1'],
+      assumptions: [
+        'Plane sections remain plane (linear strain distribution)',
+        'Concrete carries zero tensile stress; Whitney block uses α_c = 0.85 and β₁ per code',
+        'Perimeter symmetrical rectangular bar arrangement with transverse ties',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Define Column Geometry, Concrete & Rebar Layout',
+        instruction: 'Set width b, depth h, clear cover, unsupported length L_u, end restraint k, f\'_c, f_y, and perimeter bar counts along X and Y faces.',
+      },
+      {
+        step: 2,
+        title: 'Apply Factored Axial & Biaxial Moments',
+        instruction: 'Enter factored P_u, M_ux, and M_uy (or select a load-case preset) and inspect where the demand marker sits inside the φP-M curve.',
+      },
+      {
+        step: 3,
+        title: 'Sync Column Reinforcement to Rebar BBS',
+        instruction: 'Click "Sync Column Rebar to BBS Schedule" in the Cross-Link banner to export cutting lengths and weights into Rebar BBS.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Always verify transverse tie spacing satisfies the smallest of 16d_b, 48d_tie, and min(b, h).',
+      'Watch for slender columns (kL_u/r > 34 - 12·M₁/M₂) where δ_ns amplifies applied design moments.',
+    ],
+    limitationsAndNotes: [
+      'Circular spiral columns and unsymmetrical L/T-shaped shear-wall boundary elements are not covered in rectangular perimeter mode.',
+    ],
+  },
+
+  // =========================================================================
+  // 2E. STRUT-AND-TIE MODEL (STM) DISCONTINUITY SOLVER (STR-07)
+  // =========================================================================
+  'strut-and-tie': {
+    id: 'strut-and-tie',
+    title: 'Strut-and-Tie Model (STM) Discontinuity Solver',
+    shortLabel: 'Strut & Tie STM',
+    discipline: 'Reinforced Concrete D-Regions',
+    standardUsed: 'ACI 318-19 Ch. 23 / BNBC 2020 (Partial Scope)',
+    overview:
+      '2D truss Direct Stiffness and Method of Joints solver for concrete Discontinuity Regions (D-regions) such as deep transfer beams, corbel brackets, and pile caps. Automatically classifies Compression Struts (dashed) and Tension Ties (solid), verifies global equilibrium residuals, and sizes required tension tie steel area A_s,tie.',
+    capabilities: [
+      'Includes 3 benchmark Worked Examples: Single-Load Deep Beam, Two-Point Transfer Girder, and Corbel Bracket STM',
+      'Auto-classifies Compression Struts (dashed amber/red) and Tension Ties (solid blue) from axial force sign',
+      'Verifies global equilibrium ΣF_x = 0, ΣF_y = 0, ΣM = 0 and joint-by-joint Method of Joints steps',
+      'Explicitly flags Partial Scope status so nodal bearing zones (CCC/CCT/CTT) and anchorage hooks are verified separately',
+    ],
+    howItWorks: {
+      methodology:
+        'Assembles a 2D pin-jointed Direct Stiffness matrix [K] with 2 DOFs per node, solves nodal displacements and support reactions, computes member axial forces, and checks joint-by-joint Method of Joints equilibrium.',
+      governingEquations: [
+        {
+          name: '2D Truss Direct Stiffness & Equilibrium',
+          formula: '[K]·{u} = {F} ,   ΣF_x,i = 0 ,   ΣF_y,i = 0 ,   ΣM = 0',
+          description: 'Solves indeterminate and determinate STM trusses with sub-millinewton equilibrium closure.',
+        },
+        {
+          name: 'Strut Concrete Efficiency & Tie Steel Sizing',
+          formula: 'f_ce = 0.85 · β_s · f\'_c ,   A_s,tie,req = F_tie / (0.75 · f_y)',
+          description: 'Checks advisory strut compressive stress and computes required tension tie reinforcement area.',
+        },
+      ],
+      codeStandards: ['ACI 318-19 Chapter 23 (STM Truss Equilibrium)', 'BNBC 2020 Part 6'],
+      assumptions: [
+        'Partial Scope: Covers truss equilibrium, member forces, strut/tie classification, and tie steel area A_s,req',
+        'CCC/CCT/CTT nodal zone geometry and hooked bar anchorage development lengths are advisory and require separate detailing',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Load a D-Region Worked Example or Edit Nodes',
+        instruction: 'Choose Deep Beam, Two-Point Transfer Girder, or Corbel Bracket STM, or edit node coordinates, supports, and point loads.',
+      },
+      {
+        step: 2,
+        title: 'Inspect Strut & Tie Forces in the Diagram',
+        instruction: 'Review dashed compression struts and solid tension ties alongside stress DCR and required tie steel area A_s,req.',
+      },
+      {
+        step: 3,
+        title: 'Verify Method of Joints Hand Steps',
+        instruction: 'Check the Step-by-Step Hand Calculation panel for joint-by-joint ΣFx=0, ΣFy=0 closure and Partial-scope detailing reminders.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Keep strut-to-tie angles ≥ 25° per ACI 318-19 §23.2.7 to avoid excessive cracking and strain incompatibility.',
+    ],
+    limitationsAndNotes: [
+      'Partial Scope: Nodal zone bearing stress (CCC/CCT/CTT) and anchorage development length l_dh must be detailed separately.',
+    ],
+  },
+
+  // =========================================================================
   // 3. REBAR BBS & REINFORCEMENT (STR-03)
   // =========================================================================
   'rebar-bbs': {

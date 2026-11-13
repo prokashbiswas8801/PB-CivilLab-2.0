@@ -15,6 +15,10 @@ import {
   PileCapacityResult,
   PipeHydraulicsResult,
 } from '../utils/calculations';
+import { FrameTruss2DResult } from '../utils/frameSolver2d';
+import { SectionAnalyzerResult } from '../utils/sectionMechanics';
+import { RcColumnDesignResult } from '../utils/rcColumnEngine';
+import { StrutAndTieResult } from '../utils/strutAndTieEngine';
 import {
   BeamParameters,
   BearingParameters,
@@ -27,6 +31,10 @@ import {
   BOQParameters,
   RateAnalysisParameters,
   ContinuousBeamParameters,
+  FrameTruss2DParams,
+  SectionAnalyzerParams,
+  RcColumnParams,
+  StrutAndTieParams,
   PileCapacityParameters,
   PipeHydraulicsParameters,
 } from '../types/civil';
@@ -171,11 +179,17 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
   result,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [hoverData, setHoverData] = useState<{ x: number; shearKn: number; momentKnm: number; px: number } | null>(null);
+  const [hoverData, setHoverData] = useState<{
+    x: number;
+    shearKn: number;
+    momentKnm: number;
+    signedDeflMm: number;
+    px: number;
+  } | null>(null);
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
 
   const width = 680;
-  const height = 330;
+  const height = 408;
   const padLeft = 58;
   const padRight = 130; // Room for beam section vignette
   const plotW = width - padLeft - padRight;
@@ -196,43 +210,102 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
     );
   }
 
-  const L = Math.max(0.1, params.spanLengthM);
+  const isOverhanging = params.supportCondition === 'overhanging';
+  const ovL = isOverhanging ? Math.max(0, result.overhangLeftM ?? params.overhangLeftM ?? 0) : 0;
+  const ovR = isOverhanging ? Math.max(0, result.overhangRightM ?? params.overhangRightM ?? 0) : 0;
+  const L_main = Math.max(0.1, params.spanLengthM);
+  const L_tot = Math.max(0.1, result.totalLengthM ?? (ovL + L_main + ovR));
+  const xA = ovL;
+  const xB = ovL + L_main;
+
   const maxV = Math.max(0.1, result.maxShearKn);
   const maxM = Math.max(0.1, result.maxMomentKnm);
-  const toX = (xM: number) => padLeft + (Math.max(0, Math.min(L, xM)) / L) * plotW;
+  const maxD = Math.max(0.01, result.maxDeflectionMm);
+  const toX = (xM: number) => padLeft + (Math.max(0, Math.min(L_tot, xM)) / L_tot) * plotW;
+
+  const supportAX = toX(xA);
+  const supportBX = toX(xB);
 
   const shearCenterY = 142;
-  const shearAmp = 38;
+  const shearAmp = 36;
   const shearPoints = result.points
     .map((pt) => `${toX(pt.x).toFixed(1)},${(shearCenterY - (pt.shearKn / maxV) * shearAmp).toFixed(1)}`)
     .join(' ');
   const shearAreaPoints = `${padLeft},${shearCenterY} ${shearPoints} ${padLeft + plotW},${shearCenterY}`;
 
-  const momentCenterY = 254;
-  const momentAmp = 40;
+  const momentCenterY = 236;
+  const momentAmp = 36;
   const momentPoints = result.points
     .map((pt) => `${toX(pt.x).toFixed(1)},${(momentCenterY + (pt.momentKnm / maxM) * momentAmp).toFixed(1)}`)
     .join(' ');
   const momentAreaPoints = `${padLeft},${momentCenterY} ${momentPoints} ${padLeft + plotW},${momentCenterY}`;
-  const pointLoadX = toX(Math.min(L, params.pointLoadPositionM));
 
-  // Serviceability limit state check (L/250)
-  const allowableDeflMm = (L * 1000) / 250;
+  // Elastic Deflected Shape Curve y(x): signedDeflectionMm < 0 means downward sag (draw below baseline)
+  const deflCenterY = 342;
+  const deflAmp = 32;
+  const getSignedDefl = (pt: typeof result.points[0]) =>
+    pt.signedDeflectionMm !== undefined ? pt.signedDeflectionMm : -pt.deflectionMm;
+
+  const deflPoints = result.points
+    .map((pt) => {
+      const signed = getSignedDefl(pt);
+      return `${toX(pt.x).toFixed(1)},${(deflCenterY - (signed / maxD) * deflAmp).toFixed(1)}`;
+    })
+    .join(' ');
+  const deflAreaPoints = `${padLeft},${deflCenterY} ${deflPoints} ${padLeft + plotW},${deflCenterY}`;
+
+  // Subtle overlay curve directly along beam axis
+  const beamOverlayDeflPoints = result.points
+    .map((pt) => {
+      const signed = getSignedDefl(pt);
+      return `${toX(pt.x).toFixed(1)},${(57 - (signed / maxD) * 14).toFixed(1)}`;
+    })
+    .join(' ');
+
+  const pointLoadX = toX(Math.min(L_tot, params.pointLoadPositionM));
+
+  // Distributed load envelope intensities
+  const distType = params.distributedLoadType || 'uniform';
+  const wLeft = distType === 'triangular-increasing' ? 0 : Math.max(0, params.uniformLoadKnPerM || 0);
+  const wRight =
+    distType === 'uniform'
+      ? Math.max(0, params.uniformLoadKnPerM || 0)
+      : distType === 'triangular-decreasing'
+        ? 0
+        : distType === 'triangular-increasing'
+          ? Math.max(0, params.endLoadKnPerM !== undefined ? params.endLoadKnPerM : params.uniformLoadKnPerM || 0)
+          : Math.max(0, params.endLoadKnPerM !== undefined ? params.endLoadKnPerM : (params.uniformLoadKnPerM || 0) * 1.5);
+  const maxW = Math.max(0.1, wLeft, wRight);
+
+  // Serviceability limit state check
+  const allowableDeflMm = result.allowableDeflectionMm || (L_main * 1000) / (result.deflectionLimitFactor || 360);
   const deflRatio = result.maxDeflectionMm / Math.max(0.001, allowableDeflMm);
-  const isDeflPassing = deflRatio <= 1.0;
   const deflStatusColor = deflRatio <= 0.8 ? '#10b981' : deflRatio <= 1.0 ? '#f59e0b' : '#ef4444';
-  const deflStatusText = deflRatio <= 0.8 ? 'PASS · Serviceability Satisfied' : deflRatio <= 1.0 ? 'ATTENTION · High Deflection' : 'EXCEEDED · Deflection > L/250';
+  const deflStatusText =
+    deflRatio <= 0.8
+      ? 'PASS · Serviceability Satisfied'
+      : deflRatio <= 1.0
+        ? 'ATTENTION · High Deflection'
+        : `EXCEEDED · Deflection > L/${result.deflectionLimitFactor || 360}`;
+
+  const inflectionPoints = result.inflectionPointsM || [];
+  const maxDeflLocM = result.maxDeflectionLocationM ?? L_tot / 2;
+  const maxDeflPt = result.points.reduce(
+    (best, pt) => (pt.deflectionMm > best.deflectionMm ? pt : best),
+    result.points[0] || { x: maxDeflLocM, deflectionMm: result.maxDeflectionMm, signedDeflectionMm: -result.maxDeflectionMm, shearKn: 0, momentKnm: 0 }
+  );
+  const maxDeflSvgX = toX(maxDeflPt.x);
+  const maxDeflSvgY = deflCenterY - (getSignedDefl(maxDeflPt) / maxD) * deflAmp;
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || result.points.length === 0) return;
     const rect = svgRef.current.getBoundingClientRect();
     const clientX = e.clientX - rect.left;
     const scaleX = width / rect.width;
     const svgX = clientX * scaleX;
 
     if (svgX >= padLeft && svgX <= padLeft + plotW) {
-      const curX = ((svgX - padLeft) / plotW) * L;
-      // Interpolate or find nearest point
+      const curX = ((svgX - padLeft) / plotW) * L_tot;
       let nearest = result.points[0];
       let minDiff = Infinity;
       for (const pt of result.points) {
@@ -246,6 +319,7 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
         x: nearest.x,
         shearKn: nearest.shearKn,
         momentKnm: nearest.momentKnm,
+        signedDeflMm: getSignedDefl(nearest),
         px: toX(nearest.x),
       });
     } else {
@@ -265,83 +339,98 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
       >
         <defs>
           <linearGradient id="beamGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="var(--md-sys-color-primary)" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="var(--md-sys-color-primary)" stopOpacity="0.4" />
+            <stop offset="0%" stopColor="var(--md-sys-color-primary)" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="var(--md-sys-color-primary)" stopOpacity="0.45" />
           </linearGradient>
           <pattern id="diagonalHatch" width="6" height="6" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--md-sys-color-outline)" strokeWidth="1.2" />
           </pattern>
         </defs>
 
         {/* Header / Limit State Indicator with Hover Tooltip */}
         <text x={12} y={22} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
-          STRUCTURAL ACTIONS &amp; DEFLECTION CHECK
+          STRUCTURAL ACTIONS &amp; ELASTIC CURVE
         </text>
         <g
           {...bindHover({
             title: 'Serviceability Deflection Check',
-            formula: 'δ_max = (5·w·L⁴)/(384·E·I) + (P·a·b(L+b)√(3a(L+b)))/(27·E·I·L) ≤ L/250',
-            substitution: `δ = ${result.maxDeflectionMm.toFixed(2)} mm ≤ ${allowableDeflMm.toFixed(1)} mm (Ratio: ${(deflRatio * 100).toFixed(1)}%)`,
-            codeRef: 'BNBC 2020 Part 6 / ACI 318 §24.2',
-            description: 'Midspan vertical elastic displacement limit preventing aesthetic distortion and plaster cracks.',
+            formula: `EI·y(x) = ∬M(x)dx² ≤ L/${result.deflectionLimitFactor || 360}`,
+            substitution: `δ_max = ${result.maxDeflectionMm.toFixed(2)} mm ≤ ${allowableDeflMm.toFixed(1)} mm (${(deflRatio * 100).toFixed(1)}%)`,
+            codeRef: `${result.governingCode || 'BNBC 2020'} Serviceability Limit`,
+            description: 'Double-integrated Euler-Bernoulli elastic deflection check against structural serviceability limit.',
           })}
         >
           <title>{`Deflection Check: δ = ${result.maxDeflectionMm.toFixed(2)}mm ≤ ${allowableDeflMm.toFixed(1)}mm`}</title>
-          <rect x={width - 250} y={10} width={240} height={20} rx={4} fill={deflStatusColor} fillOpacity="0.12" stroke={deflStatusColor} strokeWidth="1" />
-          <circle cx={width - 240} cy={20} r={4} fill={deflStatusColor} />
-          <text x={width - 230} y={23} fontSize="9" fontWeight="700" fill={deflStatusColor}>
-            {deflStatusText} ({result.maxDeflectionMm.toFixed(2)}mm / {allowableDeflMm.toFixed(1)}mm)
+          <rect x={width - 268} y={10} width={258} height={20} rx={4} fill={deflStatusColor} fillOpacity="0.12" stroke={deflStatusColor} strokeWidth="1" />
+          <text x={width - 258} y={23} fontSize="8.5" fontWeight="700" fill={deflStatusColor}>
+            {deflStatusText} ({result.maxDeflectionMm.toFixed(2)} / {allowableDeflMm.toFixed(1)}mm)
           </text>
         </g>
 
         {/* 1. Beam & Loads with Hover Formula Tooltips */}
         <text x={12} y={54} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">LOADS</text>
-        {params.uniformLoadKnPerM > 0 && (
-          <g
-            {...bindHover({
-              title: 'Uniformly Distributed Gravity Load (UDL)',
-              formula: 'w = UDL (kN/m) · Total Load W = w · L',
-              substitution: `w = ${params.uniformLoadKnPerM} kN/m, L = ${L.toFixed(2)} m → Total = ${(params.uniformLoadKnPerM * L).toFixed(1)} kN`,
-              codeRef: 'BNBC 2020 / AISC 15th Ed',
-              description: 'Uniform gravity load producing parabolic bending moment and linear shear gradient.',
-            })}
-          >
-            <title>{`Uniform Load: w = ${params.uniformLoadKnPerM} kN/m, Total = ${(params.uniformLoadKnPerM * L).toFixed(1)} kN`}</title>
-            <line x1={padLeft} y1={36} x2={padLeft + plotW} y2={36} stroke="var(--md-sys-color-primary)" strokeWidth="1.5" />
-            {Array.from({ length: 9 }).map((_, i) => {
-              const xPos = padLeft + (i / 8) * plotW;
-              return (
-                <g key={i}>
-                  <line x1={xPos} y1={36} x2={xPos} y2={50} stroke="var(--md-sys-color-primary)" strokeWidth="1" />
-                  <polygon points={`${xPos - 2.5},47 ${xPos + 2.5},47 ${xPos},51`} fill="var(--md-sys-color-primary)" />
-                </g>
-              );
-            })}
-            <text x={padLeft + plotW / 2} y={32} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              w = {params.uniformLoadKnPerM} kN/m
-            </text>
-          </g>
-        )}
+        {(wLeft > 0 || wRight > 0) && (() => {
+          const yBase = 51;
+          const hLeft = 4 + (wLeft / maxW) * 16;
+          const hRight = 4 + (wRight / maxW) * 16;
+          const yLeftTop = yBase - hLeft;
+          const yRightTop = yBase - hRight;
+          return (
+            <g
+              {...bindHover({
+                title: `Distributed Gravity Load (${distType})`,
+                formula: distType === 'uniform' ? 'W_dist = w · L_tot' : 'W_dist = 0.5 · (w₁ + w₂) · L_tot',
+                substitution: `w₁ = ${wLeft.toFixed(1)} kN/m → w₂ = ${wRight.toFixed(1)} kN/m across L_tot = ${L_tot.toFixed(2)} m`,
+                codeRef: 'BNBC 2020 / ASCE 7-16',
+                description: 'Distributed line load intensity generating continuous shear gradient and parabolic/cubic moments.',
+              })}
+            >
+              <polygon
+                points={`${padLeft},${yBase} ${padLeft},${yLeftTop} ${padLeft + plotW},${yRightTop} ${padLeft + plotW},${yBase}`}
+                fill="var(--md-sys-color-primary)"
+                fillOpacity="0.12"
+                stroke="var(--md-sys-color-primary)"
+                strokeWidth="1.2"
+              />
+              {Array.from({ length: 9 }).map((_, i) => {
+                const frac = i / 8;
+                const xPos = padLeft + frac * plotW;
+                const yTop = yLeftTop + frac * (yRightTop - yLeftTop);
+                if (yBase - yTop < 5) return null;
+                return (
+                  <g key={i}>
+                    <line x1={xPos} y1={yTop} x2={xPos} y2={yBase - 1} stroke="var(--md-sys-color-primary)" strokeWidth="1" />
+                    <polygon points={`${xPos - 2.2},${yBase - 4} ${xPos + 2.2},${yBase - 4} ${xPos},${yBase}`} fill="var(--md-sys-color-primary)" />
+                  </g>
+                );
+              })}
+              <text x={padLeft + plotW / 2} y={Math.min(yLeftTop, yRightTop) - 3} textAnchor="middle" fontSize="8.5" fontWeight="600" fill="var(--md-sys-color-primary)">
+                {distType === 'uniform'
+                  ? `w = ${wLeft.toFixed(1)} kN/m`
+                  : `w₁=${wLeft.toFixed(1)} → w₂=${wRight.toFixed(1)} kN/m`}
+              </text>
+            </g>
+          );
+        })()}
         {params.pointLoadKn > 0 && (
           <g
             {...bindHover({
               title: 'Concentrated Point Load (P)',
-              formula: 'R_A = P·(L - a)/L, R_B = P·a/L · M_point = P·a·b/L',
-              substitution: `P = ${params.pointLoadKn} kN at a = ${params.pointLoadPositionM.toFixed(2)} m (b = ${(L - params.pointLoadPositionM).toFixed(2)} m)`,
+              formula: 'Shear step ΔV = −P · Moment slope cusp',
+              substitution: `P = ${params.pointLoadKn} kN at x = ${params.pointLoadPositionM.toFixed(2)} m`,
               codeRef: 'Static Equilibrium: ΣM = 0',
               description: 'Single point force causing vertical step discontinuity in SFD and peak cusp in BMD.',
             })}
           >
-            <title>{`Point Load: P = ${params.pointLoadKn} kN at x = ${params.pointLoadPositionM} m`}</title>
-            <line x1={pointLoadX} y1={25} x2={pointLoadX} y2={50} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
+            <line x1={pointLoadX} y1={24} x2={pointLoadX} y2={50} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
             <polygon points={`${pointLoadX - 4},44 ${pointLoadX + 4},44 ${pointLoadX},52`} fill="var(--md-sys-color-tertiary)" />
-            <text x={pointLoadX + 6} y={32} fontSize="9" fontWeight="700" fill="var(--md-sys-color-tertiary)">
+            <text x={Math.min(padLeft + plotW - 55, pointLoadX + 6)} y={31} fontSize="8.5" fontWeight="700" fill="var(--md-sys-color-tertiary)">
               P = {params.pointLoadKn} kN
             </text>
           </g>
         )}
 
-        {params.uniformLoadKnPerM === 0 && params.pointLoadKn === 0 && (
+        {wLeft === 0 && wRight === 0 && params.pointLoadKn === 0 && (
           <g>
             <rect x={padLeft + plotW / 2 - 120} y={26} width={240} height={20} rx={4} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline-variant)" />
             <text x={padLeft + plotW / 2} y={39} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">
@@ -350,55 +439,75 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
           </g>
         )}
 
-        {/* Beam Solid Geometry & Span Callout */}
+        {/* Beam Solid Geometry & Subtle Axis Deflection Overlay */}
         <g
           {...bindHover({
-            title: 'Beam Clear Span & Modulus of Rigidity',
-            formula: 'Span L · Moment of Inertia I = b·h³/12 · Rigidity = E·I',
-            substitution: `L = ${L.toFixed(2)} m, b = ${(params as any).sectionWidthMm || 250} mm, h = ${params.sectionDepthMm || 450} mm`,
+            title: 'Beam Geometry & Deformed Axis Overlay',
+            formula: 'L_tot = L_ovL + L_main + L_ovR · Dashed curve = scaled y(x)',
+            substitution: `L_tot = ${L_tot.toFixed(2)} m, d = ${params.sectionDepthMm || 450} mm`,
             codeRef: 'Mechanics of Deformable Bodies',
-            description: 'Flexural member transmitting gravity loads across clear distance to end supports.',
+            description: 'Flexural member showing boundary supports and scaled elastic centerline deformation.',
           })}
         >
-          <title>{`Beam Span: L = ${L.toFixed(2)} m`}</title>
           <rect x={padLeft} y={52} width={plotW} height={10} rx={2} fill="url(#beamGradient)" />
-          {/* Span Dimension */}
-          <text x={padLeft + plotW / 2} y={80} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-            Span L = {L.toFixed(2)} m
+          {result.points.length > 1 && (
+            <polyline
+              fill="none"
+              stroke="#0ea5e9"
+              strokeWidth="1.5"
+              strokeDasharray="3 2"
+              opacity="0.85"
+              points={beamOverlayDeflPoints}
+            />
+          )}
+          <text x={padLeft + plotW / 2} y={84} textAnchor="middle" fontSize="9.5" fill="var(--md-sys-color-on-surface-variant)">
+            {isOverhanging
+              ? `L_tot = ${L_tot.toFixed(2)} m (OvL ${ovL.toFixed(1)}m + Span ${L_main.toFixed(1)}m + OvR ${ovR.toFixed(1)}m)`
+              : `Span L = ${L_main.toFixed(2)} m (${params.supportCondition})`}
           </text>
         </g>
 
-        {/* Pinned Support (Left Reaction) with Tooltip */}
-        <g
-          {...bindHover({
-            title: 'Left Pinned Support Reaction (R_A)',
-            formula: 'R_A = (w · L)/2 + P · (L - a)/L',
-            substitution: `R_A = ${(result.reactionLeftKn || (params.uniformLoadKnPerM * L) / 2).toFixed(1)} kN`,
-            codeRef: 'Equilibrium: ΣM_B = 0, ΣF_y = 0',
-            description: 'Upward vertical reaction resisting combined tributary uniform and concentrated loading.',
-          })}
-        >
-          <title>{`Left Reaction: R_A = ${(result.reactionLeftKn || 0).toFixed(1)} kN`}</title>
-          <polygon points={`${padLeft},62 ${padLeft - 7},74 ${padLeft + 7},74`} fill="var(--md-sys-color-outline)" />
-          <line x1={padLeft - 10} y1={74} x2={padLeft + 10} y2={74} stroke="var(--md-sys-color-outline)" strokeWidth="2" />
-        </g>
-
-        {/* Roller Support (Right Reaction) with Tooltip */}
-        <g
-          {...bindHover({
-            title: 'Right Roller Support Reaction (R_B)',
-            formula: 'R_B = (w · L)/2 + P · a/L',
-            substitution: `R_B = ${(result.reactionRightKn || (params.uniformLoadKnPerM * L) / 2).toFixed(1)} kN`,
-            codeRef: 'Equilibrium: ΣM_A = 0, ΣF_y = 0',
-            description: 'Upward vertical reaction at roller boundary permitting longitudinal axial/thermal expansion.',
-          })}
-        >
-          <title>{`Right Reaction: R_B = ${(result.reactionRightKn || 0).toFixed(1)} kN`}</title>
-          <polygon points={`${padLeft + plotW},62 ${padLeft + plotW - 7},71 ${padLeft + plotW + 7},71`} fill="var(--md-sys-color-outline)" />
-          <circle cx={padLeft + plotW - 4} cy={74} r={2} fill="var(--md-sys-color-outline)" />
-          <circle cx={padLeft + plotW + 4} cy={74} r={2} fill="var(--md-sys-color-outline)" />
-          <line x1={padLeft + plotW - 10} y1={77} x2={padLeft + plotW + 10} y2={77} stroke="var(--md-sys-color-outline)" strokeWidth="2" />
-        </g>
+        {/* Boundary Condition Support Graphics */}
+        {(params.supportCondition === 'cantilever' || params.supportCondition === 'fixed-ends') ? (
+          <g>
+            {/* Left Encastré Wall */}
+            <rect x={padLeft - 10} y={40} width={10} height={34} fill="url(#diagonalHatch)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
+            <line x1={padLeft} y1={40} x2={padLeft} y2={74} stroke="var(--md-sys-color-on-surface)" strokeWidth="2.5" />
+            <text x={padLeft + 4} y={96} fontSize="8" fontWeight="700" fill="var(--md-sys-color-primary)">
+              R_A={result.reactionLeftKn.toFixed(1)}kN · M_A=−{(result.fixedEndMomentLeftKnm ?? 0).toFixed(1)}
+            </text>
+            {params.supportCondition === 'fixed-ends' && (
+              <>
+                <rect x={padLeft + plotW} y={40} width={10} height={34} fill="url(#diagonalHatch)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
+                <line x1={padLeft + plotW} y1={40} x2={padLeft + plotW} y2={74} stroke="var(--md-sys-color-on-surface)" strokeWidth="2.5" />
+                <text x={padLeft + plotW - 4} y={96} textAnchor="end" fontSize="8" fontWeight="700" fill="var(--md-sys-color-primary)">
+                  R_B={result.reactionRightKn.toFixed(1)}kN
+                </text>
+              </>
+            )}
+          </g>
+        ) : (
+          <>
+            {/* Pinned Support A at xA */}
+            <g>
+              <polygon points={`${supportAX},62 ${supportAX - 7},73 ${supportAX + 7},73`} fill="var(--md-sys-color-outline)" />
+              <line x1={supportAX - 10} y1={73} x2={supportAX + 10} y2={73} stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+              <text x={supportAX} y={96} textAnchor="middle" fontSize="8" fontWeight="700" fill="var(--md-sys-color-primary)">
+                R_A={result.reactionLeftKn.toFixed(1)}kN
+              </text>
+            </g>
+            {/* Roller Support B at xB */}
+            <g>
+              <polygon points={`${supportBX},62 ${supportBX - 7},70 ${supportBX + 7},70`} fill="var(--md-sys-color-outline)" />
+              <circle cx={supportBX - 4} cy={73} r={2} fill="var(--md-sys-color-outline)" />
+              <circle cx={supportBX + 4} cy={73} r={2} fill="var(--md-sys-color-outline)" />
+              <line x1={supportBX - 10} y1={76} x2={supportBX + 10} y2={76} stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+              <text x={supportBX} y={96} textAnchor="middle" fontSize="8" fontWeight="700" fill="var(--md-sys-color-primary)">
+                R_B={result.reactionRightKn.toFixed(1)}kN
+              </text>
+            </g>
+          </>
+        )}
 
         {/* 2. SFD with Hover Tooltip */}
         <text x={12} y={146} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">SFD (kN)</text>
@@ -412,91 +521,134 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
             description: 'Internal transverse shear force envelope; zero-shear crossing corresponds to peak flexural moment.',
           })}
         >
-          <title>{`SFD: Max V = ${maxV.toFixed(1)} kN`}</title>
           <polygon points={shearAreaPoints} fill="var(--md-sys-color-primary)" fillOpacity="0.18" />
           <polyline fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2" points={shearPoints} />
         </g>
-        <text x={padLeft + 4} y={shearCenterY - shearAmp + 6} fontSize="9" fill="var(--md-sys-color-primary)" fontWeight="600">
+        <text x={padLeft + 4} y={shearCenterY - shearAmp + 6} fontSize="8.5" fill="var(--md-sys-color-primary)" fontWeight="600">
           +{maxV.toFixed(1)}
         </text>
-        <text x={padLeft + 4} y={shearCenterY + shearAmp} fontSize="9" fill="var(--md-sys-color-primary)" fontWeight="600">
+        <text x={padLeft + 4} y={shearCenterY + shearAmp} fontSize="8.5" fill="var(--md-sys-color-primary)" fontWeight="600">
           -{maxV.toFixed(1)}
         </text>
 
-        {/* 3. BMD with Hover Tooltip */}
-        <text x={12} y={258} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">BMD (kN·m)</text>
+        {/* 3. BMD with Hover Tooltip + Contraflexure Markers */}
+        <text x={12} y={240} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">BMD (kN·m)</text>
         <line x1={padLeft} y1={momentCenterY} x2={padLeft + plotW} y2={momentCenterY} stroke="var(--md-sys-color-outline)" strokeWidth="1" strokeDasharray="3 3" />
         <g
           {...bindHover({
             title: 'Bending Moment Diagram (BMD)',
-            formula: 'M(x) = ∫ V(x)dx → M_max = (w·L²)/8 + (P·a·b)/L',
-            substitution: `Peak Moment M_max = ${maxM.toFixed(1)} kN·m`,
+            formula: 'M(x) = ∫ V(x)dx · Sagging (+) / Hogging (−)',
+            substitution: `|M|_max = ${maxM.toFixed(1)} kN·m${inflectionPoints.length > 0 ? ` · Contraflexure @ ${inflectionPoints.map((ip) => `${ip.toFixed(2)}m`).join(', ')}` : ''}`,
             codeRef: 'Euler-Bernoulli Flexural Theory',
-            description: 'Internal bending moment envelope governing required bottom tension rebar area (As = M / 0.87·fy·d).',
+            description: 'Internal bending moment envelope governing positive bottom and negative top flexural reinforcement.',
           })}
         >
-          <title>{`BMD: Max M = ${maxM.toFixed(1)} kN·m`}</title>
           <polygon points={momentAreaPoints} fill="var(--md-sys-color-secondary)" fillOpacity="0.20" />
           <polyline fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2" points={momentPoints} />
         </g>
-        <text x={padLeft + 4} y={momentCenterY + momentAmp} fontSize="9" fill="var(--md-sys-color-secondary)" fontWeight="600">
-          M_max = {maxM.toFixed(1)} kN·m
+        {inflectionPoints.map((ip, idx) => {
+          const ipX = toX(ip);
+          return (
+            <g key={`beam-ip-${idx}`}>
+              <polygon
+                points={`${ipX},${momentCenterY - 4.5} ${ipX + 4.5},${momentCenterY} ${ipX},${momentCenterY + 4.5} ${ipX - 4.5},${momentCenterY}`}
+                fill="#eab308"
+                stroke="#713f12"
+                strokeWidth="1"
+              />
+              <text x={ipX} y={momentCenterY - 7} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#b45309">
+                IP {ip.toFixed(2)}m
+              </text>
+            </g>
+          );
+        })}
+        <text x={padLeft + 4} y={momentCenterY + momentAmp} fontSize="8.5" fill="var(--md-sys-color-secondary)" fontWeight="600">
+          |M|_max = {maxM.toFixed(1)} kN·m
         </text>
+
+        {/* 4. ELASTIC DEFLECTED SHAPE CURVE y(x) */}
+        <text x={12} y={338} fontSize="9" fontWeight="700" fill="#0284c7">DEFL y(x)</text>
+        <text x={12} y={350} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">(mm)</text>
+        <line x1={padLeft} y1={deflCenterY} x2={padLeft + plotW} y2={deflCenterY} stroke="var(--md-sys-color-outline)" strokeWidth="1" strokeDasharray="3 3" />
+        <g
+          {...bindHover({
+            title: 'Elastic Deflected Shape Curve y(x)',
+            formula: 'EI · d²y/dx² = M(x)  (Double Integration)',
+            substitution: `δ_max = ${result.maxDeflectionMm.toFixed(2)} mm @ x = ${maxDeflLocM.toFixed(2)} m`,
+            codeRef: `${result.governingCode || 'BNBC-2020'} L/${result.deflectionLimitFactor || 360} Limit`,
+            description: 'Exact vertical elastic displacement profile showing downward sagging and upward cantilever/overhang uplift.',
+          })}
+        >
+          <polygon points={deflAreaPoints} fill="#0ea5e9" fillOpacity="0.16" />
+          <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.2" points={deflPoints} />
+        </g>
+        {result.points.length > 0 && (
+          <g>
+            <circle cx={maxDeflSvgX} cy={maxDeflSvgY} r={4} fill="#0ea5e9" stroke="#ffffff" strokeWidth="1.5" />
+            <text
+              x={Math.min(padLeft + plotW - 95, Math.max(padLeft + 6, maxDeflSvgX + 6))}
+              y={Math.min(height - 10, maxDeflSvgY + 12)}
+              fontSize="8.5"
+              fontWeight="800"
+              fill="#0284c7"
+            >
+              δ_max = {result.maxDeflectionMm.toFixed(2)} mm @ {maxDeflLocM.toFixed(2)}m
+            </text>
+          </g>
+        )}
 
         {/* Beam Cross Section Vignette with Hover Tooltip */}
         <g
-          transform={`translate(${width - 110}, 85)`}
+          transform={`translate(${width - 110}, 105)`}
           {...bindHover({
             title: 'Reinforced Concrete Beam Section',
-            formula: 'M_n = A_s · f_y · (d - a/2) where a = (A_s · f_y) / (0.85 · f\'_c · b)',
-            substitution: `Section = ${(params as any).sectionWidthMm || 250} × ${params.sectionDepthMm || 450} mm (Main: 3-Ø16)`,
+            formula: 'M_n = A_s · f_y · (d - a/2)',
+            substitution: `Section = ${(params as any).sectionWidthMm || 250} × ${params.sectionDepthMm || 450} mm`,
             codeRef: 'ACI 318-19 / BNBC 2020 Ch 6',
-            description: 'Singly reinforced rectangular cross-section flexural capacity and transverse shear stirrup ties.',
+            description: 'Cross-section flexural profile and transverse shear stirrup ties.',
           })}
         >
-          <title>{`Beam Section: ${(params as any).sectionWidthMm || 250} × ${params.sectionDepthMm || 450} mm`}</title>
           <rect x={0} y={0} width={100} height={190} rx={6} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
           <text x={50} y={18} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">
             SECTION
           </text>
-          {/* Concrete Core */}
           <rect x={15} y={28} width={70} height={120} rx={3} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
-          {/* Stirrup Tie */}
           <rect x={20} y={33} width={60} height={110} rx={2} fill="none" stroke="var(--md-sys-color-tertiary)" strokeWidth="1.2" strokeDasharray="2 1" />
-          {/* Top Bars (Hanger) */}
           <circle cx={26} cy={39} r={3} fill="var(--md-sys-color-on-surface)" />
           <circle cx={74} cy={39} r={3} fill="var(--md-sys-color-on-surface)" />
-          {/* Bottom Bars (Main Tension) */}
           <circle cx={26} cy={137} r={4} fill="var(--md-sys-color-primary)" />
           <circle cx={50} cy={137} r={4} fill="var(--md-sys-color-primary)" />
           <circle cx={74} cy={137} r={4} fill="var(--md-sys-color-primary)" />
-          {/* Dimensions */}
           <text x={50} y={160} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">
             {(params as any).sectionWidthMm || 250} × {params.sectionDepthMm || 450} mm
           </text>
           <text x={50} y={174} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">
-            Main: 3-Ø16
+            DCR: {(result.utilizationRatio * 100).toFixed(0)}%
           </text>
         </g>
 
         {/* Interactive Inspection Crosshair */}
         {hoverData && (
           <g pointerEvents="none">
-            <line x1={hoverData.px} y1={25} x2={hoverData.px} y2={305} stroke="var(--md-sys-color-primary)" strokeWidth="1.5" strokeDasharray="3 2" />
+            <line x1={hoverData.px} y1={25} x2={hoverData.px} y2={390} stroke="var(--md-sys-color-primary)" strokeWidth="1.5" strokeDasharray="3 2" />
             <circle cx={hoverData.px} cy={shearCenterY - (hoverData.shearKn / maxV) * shearAmp} r={4.5} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1.5" />
             <circle cx={hoverData.px} cy={momentCenterY + (hoverData.momentKnm / maxM) * momentAmp} r={4.5} fill="var(--md-sys-color-secondary)" stroke="#ffffff" strokeWidth="1.5" />
+            <circle cx={hoverData.px} cy={deflCenterY - (hoverData.signedDeflMm / maxD) * deflAmp} r={4.5} fill="#0ea5e9" stroke="#ffffff" strokeWidth="1.5" />
 
             {/* Floating Value Tag */}
-            <g transform={`translate(${Math.min(width - 230, Math.max(padLeft, hoverData.px - 60))}, 92)`}>
-              <rect x={0} y={0} width={135} height={38} rx={6} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))" />
-              <text x={8} y={15} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+            <g transform={`translate(${Math.min(width - 280, Math.max(padLeft, hoverData.px - 75))}, 96)`}>
+              <rect x={0} y={0} width={166} height={50} rx={6} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))" />
+              <text x={8} y={14} fontSize="8.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">
                 x = {hoverData.x.toFixed(2)} m
               </text>
-              <text x={8} y={28} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              <text x={8} y={28} fontSize="8.5" fontWeight="600" fill="var(--md-sys-color-primary)">
                 V: {hoverData.shearKn.toFixed(1)} kN
               </text>
-              <text x={70} y={28} fontSize="9" fontWeight="600" fill="var(--md-sys-color-secondary)">
+              <text x={82} y={28} fontSize="8.5" fontWeight="600" fill="var(--md-sys-color-secondary)">
                 M: {hoverData.momentKnm.toFixed(1)} kNm
+              </text>
+              <text x={8} y={42} fontSize="8.5" fontWeight="700" fill="#0284c7">
+                Defl y: {hoverData.signedDeflMm.toFixed(2)} mm
               </text>
             </g>
           </g>
@@ -504,7 +656,7 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
       </svg>
       {!hoverData && (
         <div className="absolute top-2 left-16 text-[10px] text-zinc-400 dark:text-zinc-500 pointer-events-none select-none font-mono">
-          Hover or drag across span to inspect shear &amp; moment coordinates
+          Hover or drag across span to inspect shear, moment &amp; elastic deflection
         </div>
       )}
       <FormulaTooltipOverlay tooltip={tooltip} />
@@ -2816,18 +2968,19 @@ export const ContinuousBeamDiagramSvg: React.FC<{
 }> = ({ params, result }) => {
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const svgRef = useRef<SVGSVGElement>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'sfd' | 'bmd' | 'coordinates'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'sfd' | 'bmd' | 'deflection' | 'coordinates'>('all');
   const [hoverData, setHoverData] = useState<{
     xTotal: number;
     xSpan: number;
     spanIndex: number;
     shearKn: number;
     momentKnm: number;
+    deflectionMm: number;
     px: number;
   } | null>(null);
 
   const width = 820;
-  const height = activeTab === 'all' ? 440 : 360;
+  const height = activeTab === 'all' ? 525 : 360;
 
   if (result.totalLengthM <= 0 || params.spans.every((s) => s.lengthM <= 0)) {
     return (
@@ -2854,13 +3007,16 @@ export const ContinuousBeamDiagramSvg: React.FC<{
 
   const maxV = Math.max(0.1, result.maxShearKn);
   const maxM = Math.max(0.1, Math.max(result.maxSaggingMomentKnm, result.maxHoggingMomentKnm));
+  const maxD = Math.max(0.01, result.maxDeflectionMm || result.codeChecks.maxDeflectionEstimateMm || 1);
 
   // Vertical layout centers based on activeTab
   const elevY = activeTab === 'all' ? 70 : 80;
-  const sfdCenterY = activeTab === 'all' ? 200 : 220;
-  const sfdAmp = activeTab === 'all' ? 45 : 75;
-  const bmdCenterY = activeTab === 'all' ? 335 : 230;
-  const bmdAmp = activeTab === 'all' ? 52 : 85;
+  const sfdCenterY = activeTab === 'all' ? 195 : 220;
+  const sfdAmp = activeTab === 'all' ? 42 : 75;
+  const bmdCenterY = activeTab === 'all' ? 320 : 230;
+  const bmdAmp = activeTab === 'all' ? 48 : 85;
+  const deflCenterY = activeTab === 'all' ? 450 : 235;
+  const deflAmp = activeTab === 'all' ? 38 : 75;
 
   // Support X positions
   const supportPositions: number[] = [padLeft];
@@ -2900,6 +3056,7 @@ export const ContinuousBeamDiagramSvg: React.FC<{
         spanIndex: closestPt.spanIndex,
         shearKn: closestPt.shearKn,
         momentKnm: closestPt.momentKnm,
+        deflectionMm: closestPt.deflectionMm ?? 0,
         px: toX(closestPt.xTotal),
       });
     }
@@ -2909,15 +3066,10 @@ export const ContinuousBeamDiagramSvg: React.FC<{
     setHoverData(null);
   };
 
-  /* ==============================================================
-     NORMALIZED SAMPLING FOR FLUID FRAMER MOTION PATH MORPHING
-     By keeping an identical number of path commands (M + 100 L + Z),
-     Framer Motion smoothly interpolates coordinates between any state!
-     ============================================================== */
   const NUM_MORPH_POINTS = 100;
 
   const samplePointAt = (xM: number) => {
-    if (!result.points || result.points.length === 0) return { shearKn: 0, momentKnm: 0 };
+    if (!result.points || result.points.length === 0) return { shearKn: 0, momentKnm: 0, deflectionMm: 0 };
     let low = 0;
     let high = result.points.length - 1;
     while (low <= high) {
@@ -2933,25 +3085,29 @@ export const ContinuousBeamDiagramSvg: React.FC<{
     const p1 = result.points[idx1];
     const p2 = result.points[idx2];
     if (idx1 === idx2 || Math.abs(p2.xTotal - p1.xTotal) < 1e-6) {
-      return { shearKn: p1.shearKn, momentKnm: p1.momentKnm };
+      return { shearKn: p1.shearKn, momentKnm: p1.momentKnm, deflectionMm: p1.deflectionMm ?? 0 };
     }
     const frac = (xM - p1.xTotal) / (p2.xTotal - p1.xTotal);
+    const d1 = p1.deflectionMm ?? 0;
+    const d2 = p2.deflectionMm ?? 0;
     return {
       shearKn: p1.shearKn + frac * (p2.shearKn - p1.shearKn),
       momentKnm: p1.momentKnm + frac * (p2.momentKnm - p1.momentKnm),
+      deflectionMm: d1 + frac * (d2 - d1),
     };
   };
 
-  const { sfdStrokePathD, sfdAreaPathD, bmdStrokePathD, bmdAreaPathD } = useMemo(() => {
-    const points: { px: number; ySFD: number; yBMD: number }[] = [];
+  const { sfdStrokePathD, sfdAreaPathD, bmdStrokePathD, bmdAreaPathD, deflStrokePathD, deflAreaPathD } = useMemo(() => {
+    const points: { px: number; ySFD: number; yBMD: number; yDEFL: number }[] = [];
     for (let i = 0; i <= NUM_MORPH_POINTS; i++) {
       const u = i / NUM_MORPH_POINTS;
       const xM = u * totalL;
       const px = padLeft + u * plotW;
-      const { shearKn, momentKnm } = samplePointAt(xM);
+      const { shearKn, momentKnm, deflectionMm } = samplePointAt(xM);
       const ySFD = sfdCenterY - (shearKn / maxV) * sfdAmp;
       const yBMD = bmdCenterY - (momentKnm / maxM) * bmdAmp;
-      points.push({ px, ySFD, yBMD });
+      const yDEFL = deflCenterY - (deflectionMm / maxD) * deflAmp;
+      points.push({ px, ySFD, yBMD, yDEFL });
     }
 
     const sfdStroke = points
@@ -2972,25 +3128,34 @@ export const ContinuousBeamDiagramSvg: React.FC<{
       points.map((p) => `L ${p.px.toFixed(2)} ${p.yBMD.toFixed(2)}`).join(' ') +
       ` L ${(padLeft + plotW).toFixed(2)} ${bmdCenterY.toFixed(2)} Z`;
 
+    const deflStroke = points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.px.toFixed(2)} ${p.yDEFL.toFixed(2)}`)
+      .join(' ');
+
+    const deflArea =
+      `M ${padLeft.toFixed(2)} ${deflCenterY.toFixed(2)} ` +
+      points.map((p) => `L ${p.px.toFixed(2)} ${p.yDEFL.toFixed(2)}`).join(' ') +
+      ` L ${(padLeft + plotW).toFixed(2)} ${deflCenterY.toFixed(2)} Z`;
+
     return {
       sfdStrokePathD: sfdStroke,
       sfdAreaPathD: sfdArea,
       bmdStrokePathD: bmdStroke,
       bmdAreaPathD: bmdArea,
+      deflStrokePathD: deflStroke,
+      deflAreaPathD: deflArea,
     };
-  }, [result.points, totalL, plotW, padLeft, maxV, maxM, sfdCenterY, sfdAmp, bmdCenterY, bmdAmp]);
+  }, [result.points, totalL, plotW, padLeft, maxV, maxM, maxD, sfdCenterY, sfdAmp, bmdCenterY, bmdAmp, deflCenterY, deflAmp]);
 
-  // Framer Motion transition curves
   const pathTransition: Transition = { duration: 0.45, ease: [0.22, 1, 0.36, 1] };
   const springTransition: Transition = { type: 'spring', damping: 25, stiffness: 220 };
 
-  // Safety status color styling
   const safetyColor =
     result.safetyStatus === 'PASS'
-      ? '#10b981' // Green
+      ? '#10b981'
       : result.safetyStatus === 'WARNING'
-      ? '#f59e0b' // Amber
-      : '#f43f5e'; // Red
+      ? '#f59e0b'
+      : '#f43f5e';
 
   const safetyBg =
     result.safetyStatus === 'PASS'
@@ -3008,32 +3173,26 @@ export const ContinuousBeamDiagramSvg: React.FC<{
           className="flex flex-wrap items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-xs font-mono"
         >
           <div className="flex items-center gap-2">
-            {/* Animated Safety Status Pill */}
-            <div className={`px-2.5 py-0.5 rounded-full border text-[11px] font-bold flex items-center gap-1.5 ${safetyBg}`}>
-              <motion.span
-                animate={{ scale: [1, 1.3, 1], opacity: [0.8, 1, 0.8] }}
-                transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: safetyColor }}
-              />
+            <div className={`px-2.5 py-0.5 rounded-md border text-[11px] font-bold flex items-center gap-1.5 ${safetyBg}`}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: safetyColor }} />
               <span>{result.safetyStatus}</span>
-              <span className="opacity-70 font-normal">
-                DCR = {(result.utilizationRatio * 100).toFixed(1)}%
+              <span className="opacity-75 font-normal tabular-nums">
+                DCR {(result.utilizationRatio * 100).toFixed(1)}%
               </span>
             </div>
 
             <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] hidden sm:inline">
-              ACI 318 / BNBC 2020 Flexure &amp; Shear Limit
+              ACI 318 / BNBC 2020 · δ_max = {(result.maxDeflectionMm ?? result.codeChecks.maxDeflectionEstimateMm).toFixed(2)} mm
             </span>
           </div>
 
-          {/* View Mode Tabs with Framer Motion Sliding Pill */}
           <div className="flex items-center gap-1 rounded bg-[var(--md-sys-color-surface-container-high)] p-0.5 relative">
             {(
               [
                 { id: 'all', label: 'All Envelopes' },
-                { id: 'sfd', label: 'SFD Focus' },
-                { id: 'bmd', label: 'BMD Focus' },
+                { id: 'sfd', label: 'SFD' },
+                { id: 'bmd', label: 'BMD' },
+                { id: 'deflection', label: 'Deflected Curve' },
                 { id: 'coordinates', label: 'Critical Coordinates' },
               ] as const
             ).map((tab) => (
@@ -3157,7 +3316,7 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                 </defs>
 
                 {/* 1. BEAM ELEVATION, LOADS & REALISTIC STRUCTURAL SUPPORTS */}
-                {(activeTab === 'all' || activeTab === 'sfd' || activeTab === 'bmd') && (
+                {(activeTab === 'all' || activeTab === 'sfd' || activeTab === 'bmd' || activeTab === 'deflection') && (
                   <g id="elevation-group">
                     <text x={12} y={elevY - 35} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
                       BEAM ELEVATION
@@ -3583,10 +3742,73 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                   </g>
                 )}
 
+                {/* 3.5 CONTINUOUS ELASTIC DEFLECTED SHAPE CURVE y(x) */}
+                {(activeTab === 'all' || activeTab === 'deflection') && (
+                  <g
+                    id="deflection-group"
+                    {...bindHover({
+                      title: 'Continuous Beam Elastic Deflected Shape y(x)',
+                      formula: 'EI_i · d²y/dx² = M(x) with y(support) = 0 and θ_L = θ_R',
+                      substitution: `Max δ_max = ${(result.maxDeflectionMm ?? result.codeChecks.maxDeflectionEstimateMm).toFixed(2)} mm @ x = ${(result.maxDeflectionLocationM ?? 0).toFixed(2)} m (${result.codeChecks.deflectionRatio})`,
+                      codeRef: `${result.codeChecks.governingCode} Table 24.2.2`,
+                      description: 'Continuous deflected shape curve solved by piecewise curvature double-integration.',
+                    })}
+                  >
+                    <title>Elastic Deflected Shape Curve y(x)</title>
+                    <text x={12} y={deflCenterY - 14} fontSize="10" fontWeight="700" fill="#0284c7">
+                      DEFL y(x)
+                    </text>
+                    <text x={12} y={deflCenterY - 2} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+                      δ_max = {(result.maxDeflectionMm ?? result.codeChecks.maxDeflectionEstimateMm).toFixed(2)} mm
+                    </text>
+
+                    <line x1={padLeft} y1={deflCenterY} x2={padLeft + plotW} y2={deflCenterY} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1.2" strokeDasharray="3 3" />
+
+                    <motion.path
+                      animate={{ d: deflAreaPathD }}
+                      transition={pathTransition}
+                      fill="#0ea5e9"
+                      fillOpacity="0.16"
+                    />
+                    <motion.path
+                      animate={{ d: deflStrokePathD }}
+                      transition={pathTransition}
+                      fill="none"
+                      stroke="#0ea5e9"
+                      strokeWidth="2.3"
+                      strokeLinejoin="round"
+                    />
+
+                    {supportPositions.map((supX, sIdx) => (
+                      <motion.circle
+                        key={`sup-defl-node-${sIdx}`}
+                        animate={{ cx: supX }}
+                        transition={springTransition}
+                        cy={deflCenterY}
+                        r="3"
+                        fill="var(--md-sys-color-surface)"
+                        stroke="var(--md-sys-color-on-surface)"
+                        strokeWidth="1.5"
+                      />
+                    ))}
+
+                    {result.maxDeflectionLocationM !== undefined && (
+                      <text
+                        x={Math.min(padLeft + plotW - 110, Math.max(padLeft + 10, toX(result.maxDeflectionLocationM)))}
+                        y={deflCenterY + deflAmp + 11}
+                        fontSize="8"
+                        fontWeight="800"
+                        fill="#0284c7"
+                      >
+                        δ_max = {(result.maxDeflectionMm ?? 0).toFixed(2)} mm @ {result.maxDeflectionLocationM.toFixed(2)}m
+                      </text>
+                    )}
+                  </g>
+                )}
+
                 {/* 4. REAL-TIME INTERACTIVE CROSSHAIR & FLOATING HUD TRACKER */}
                 {hoverData && (
                   <g id="hover-crosshair-group">
-                    {/* Vertical guideline across all diagrams */}
                     <line
                       x1={hoverData.px}
                       y1={20}
@@ -3597,7 +3819,6 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                       strokeDasharray="4 3"
                     />
 
-                    {/* Point on SFD */}
                     {(activeTab === 'all' || activeTab === 'sfd') && (
                       <circle
                         cx={hoverData.px}
@@ -3609,7 +3830,6 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                       />
                     )}
 
-                    {/* Point on BMD */}
                     {(activeTab === 'all' || activeTab === 'bmd') && (
                       <circle
                         cx={hoverData.px}
@@ -3621,10 +3841,21 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                       />
                     )}
 
+                    {(activeTab === 'all' || activeTab === 'deflection') && (
+                      <circle
+                        cx={hoverData.px}
+                        cy={deflCenterY - (hoverData.deflectionMm / maxD) * deflAmp}
+                        r="4.5"
+                        fill="#0ea5e9"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                      />
+                    )}
+
                     {/* Floating Tooltip HUD */}
                     {(() => {
-                      const boxW = 150;
-                      const boxH = 58;
+                      const boxW = 166;
+                      const boxH = 68;
                       let boxX = hoverData.px + 12;
                       if (boxX + boxW > width - 10) boxX = hoverData.px - boxW - 12;
                       const boxY = 22;
@@ -3653,7 +3884,10 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                               {hoverData.momentKnm >= 0 ? `+${hoverData.momentKnm.toFixed(2)}` : hoverData.momentKnm.toFixed(2)} kN·m
                             </tspan>
                           </text>
-                          <text x={boxX + 8} y={boxY + 52} fontSize="7" fill="var(--md-sys-color-on-surface-variant)">
+                          <text x={boxX + 8} y={boxY + 54} fontSize="8" fill="var(--md-sys-color-on-surface)">
+                            Defl y: <tspan fontWeight="700" fill="#0284c7">{hoverData.deflectionMm.toFixed(2)} mm</tspan>
+                          </text>
+                          <text x={boxX + 8} y={boxY + 64} fontSize="6.8" fill="var(--md-sys-color-on-surface-variant)">
                             {hoverData.momentKnm >= 0 ? 'Tension on Bottom' : 'Tension on Top (Hogging)'}
                           </text>
                         </g>
@@ -4473,5 +4707,1773 @@ export const PipeHydraulicsDiagramSvg: React.FC<{
     </div>
   );
 };
+
+/* ==============================================================
+   2D FRAME & TRUSS + P-DELTA INTERACTIVE CAD DIAGRAM
+   ============================================================== */
+export const FrameTruss2DDiagramSvg: React.FC<{
+  params: FrameTruss2DParams;
+  result: FrameTruss2DResult;
+}> = ({ params, result }) => {
+  const [overlayMode, setOverlayMode] = useState<'deformed' | 'bmd' | 'sfd' | 'afd'>('bmd');
+  const [showDeformedGhost, setShowDeformedGhost] = useState(true);
+  const [deformScale, setDeformScale] = useState(40);
+  const { tooltip, containerRef, bindHover } = useFormulaTooltip();
+
+  const svgW = 760;
+  const svgH = 440;
+  const padX = 95;
+  const padTop = 64;
+  const padBottom = 74;
+
+  const nodes = params.nodes || [];
+  const members = params.members || [];
+
+  const bounds = useMemo(() => {
+    if (nodes.length === 0) {
+      return { minX: 0, maxX: 6, minY: 0, maxY: 4, scale: 50, offsetX: padX, offsetY: svgH - padBottom };
+    }
+    const xs = nodes.map((n) => n.xM);
+    const ys = nodes.map((n) => n.yM);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const spanX = Math.max(1e-3, maxX - minX);
+    const spanY = Math.max(1e-3, maxY - minY);
+    const availW = svgW - padX * 2;
+    const availH = svgH - padTop - padBottom;
+    const scale = Math.min(availW / spanX, availH / spanY);
+    const drawnW = spanX * scale;
+    const drawnH = spanY * scale;
+    const offsetX = padX + (availW - drawnW) / 2;
+    const offsetY = padTop + (availH - drawnH) / 2 + drawnH;
+    return { minX, maxX, minY, maxY, scale, offsetX, offsetY };
+  }, [nodes]);
+
+  const toSvg = (xM: number, yM: number) => ({
+    x: bounds.offsetX + (xM - bounds.minX) * bounds.scale,
+    y: bounds.offsetY - (yM - bounds.minY) * bounds.scale,
+  });
+
+  // Auto-normalize displacement visual exaggeration so max displacement is visibly clear yet bounded
+  const autoDispScalePxPerM = useMemo(() => {
+    const maxDispM = Math.max(result.maxDisplacementMm / 1000, 1e-6);
+    const targetMaxPx = (deformScale / 100) * 65;
+    return targetMaxPx / maxDispM;
+  }, [result.maxDisplacementMm, deformScale]);
+
+  // Scale factor for BMD / SFD / AFD perpendicular plots
+  const diagramMaxPx = 42;
+  const maxValForMode = useMemo(() => {
+    if (overlayMode === 'bmd') return Math.max(result.maxAbsMomentKnm, 1e-4);
+    if (overlayMode === 'sfd') return Math.max(result.maxAbsShearKn, 1e-4);
+    if (overlayMode === 'afd') return Math.max(result.maxAbsAxialKn, 1e-4);
+    return 1;
+  }, [overlayMode, result]);
+
+  const nodeById = useMemo(() => {
+    const map = new Map<string, (typeof result.nodalResults)[0]>();
+    result.nodalResults.forEach((nr) => map.set(nr.nodeId, nr));
+    return map;
+  }, [result.nodalResults]);
+
+  return (
+    <div ref={containerRef} className="relative space-y-2.5">
+      {/* Interactive Overlay Controls Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+        <div
+          role="radiogroup"
+          aria-label="2D Frame diagram overlay"
+          className="inline-flex items-center p-0.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[11px] font-mono"
+        >
+          {[
+            { id: 'bmd' as const, label: 'BMD (M)' },
+            { id: 'sfd' as const, label: 'SFD (V)' },
+            { id: 'afd' as const, label: 'AFD (N)' },
+            { id: 'deformed' as const, label: 'Deformed Only' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="radio"
+              aria-checked={overlayMode === tab.id}
+              onClick={() => setOverlayMode(tab.id)}
+              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                overlayMode === tab.id
+                  ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs font-bold'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 text-[11px] font-mono">
+          {overlayMode !== 'deformed' && (
+            <label className="flex items-center gap-1.5 cursor-pointer text-[var(--md-sys-color-on-surface-variant)]">
+              <input
+                type="checkbox"
+                checked={showDeformedGhost}
+                onChange={(e) => setShowDeformedGhost(e.target.checked)}
+              />
+              <span>Deformed Shape</span>
+            </label>
+          )}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[var(--md-sys-color-on-surface-variant)]">Δ Scale:</span>
+            <input
+              type="range"
+              min={10}
+              max={100}
+              step={5}
+              value={deformScale}
+              onChange={(e) => setDeformScale(Number(e.target.value))}
+              aria-label="Deformation visual magnification scale"
+              className="w-20 accent-[var(--md-sys-color-primary)] cursor-pointer"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main CAD Viewport */}
+      <svg
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        className="w-full h-auto rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
+        role="img"
+        aria-label={`2D Frame and Truss Structural Diagram (${overlayMode.toUpperCase()})`}
+      >
+        <defs>
+          <pattern id="ft-grid-minor" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path
+              d="M 24 0 L 0 0 0 24"
+              fill="none"
+              stroke="var(--md-sys-color-outline-variant)"
+              strokeWidth="0.4"
+              strokeOpacity="0.35"
+            />
+          </pattern>
+          <pattern id="ft-fixed-hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--md-sys-color-on-surface-variant)" strokeWidth="1.5" />
+          </pattern>
+        </defs>
+
+        <rect x={0} y={0} width={svgW} height={svgH} fill="url(#ft-grid-minor)" />
+
+        {/* Header Status Strip inside SVG */}
+        <g transform="translate(14, 20)">
+          <text x={0} y={0} fontSize="10" fontWeight="700" fontFamily="monospace" fill="var(--md-sys-color-on-surface)">
+            {result.analysisMode === 'second-order-p-delta'
+              ? `2ND-ORDER P-Δ ([K_E + K_G]) · α_cr = ${Number.isFinite(result.criticalBucklingFactorAlphaCr) ? result.criticalBucklingFactorAlphaCr.toFixed(2) : '∞'}`
+              : '1ST-ORDER LINEAR ([K_E])'}
+          </text>
+          <text x={0} y={14} fontSize="9" fontFamily="monospace" fill="var(--md-sys-color-on-surface-variant)">
+            {overlayMode === 'bmd' && `BMD Peak |M| = ${result.maxAbsMomentKnm.toFixed(2)} kN·m`}
+            {overlayMode === 'sfd' && `SFD Peak |V| = ${result.maxAbsShearKn.toFixed(2)} kN`}
+            {overlayMode === 'afd' && `AFD Peak |N| = ${result.maxAbsAxialKn.toFixed(2)} kN (Cyan = Tension +, Rose = Compression -)`}
+            {overlayMode === 'deformed' && `Peak Δ = ${result.maxDisplacementMm.toFixed(2)} mm @ ${result.maxDisplacementNodeLabel}`}
+          </text>
+        </g>
+
+        {/* 1. Undeformed Structural Wireframe + Member Loads */}
+        {result.memberResults.map((mr) => {
+          const mSpec = members.find((m) => m.id === mr.memberId);
+          const n1 = nodeById.get(mr.startNodeId);
+          const n2 = nodeById.get(mr.endNodeId);
+          if (!n1 || !n2) return null;
+          const p1 = toSvg(n1.xM, n1.yM);
+          const p2 = toSvg(n2.xM, n2.yM);
+          const midX = (p1.x + p2.x) / 2;
+          const midY = (p1.y + p2.y) / 2;
+
+          // Unit outward normal in SVG space perpendicular to member axis (local +y' direction)
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const lenPx = Math.hypot(dx, dy) || 1;
+          // Local +y' in world is (-sin, cos) -> in SVG (y down) is (-dy/lenPx_y_flipped) -> wait:
+          // World (cos, sin) -> SVG (dx, dy) with dy = -sin*L*scale.
+          // World local +y' = (-sin, cos) -> SVG (-(-dy)/len, -dx/len) wait: x'=(dx,-dy), y'=(dy,dx) in world, in SVG (-dy_world...):
+          // Let's compute directly from world angle!
+          const angleRad = (mr.angleDeg * Math.PI) / 180;
+          const c = Math.cos(angleRad);
+          const s = Math.sin(angleRad);
+          // World +y' vector = (-s, c). In SVG pixels (x right, y down), direction is (-s, -c).
+          const nySvgX = -s;
+          const nySvgY = -c;
+
+          // Internal Force Diagram Polygon (BMD / SFD / AFD)
+          let diagPolyPoints = '';
+          let diagStrokeColor = 'var(--md-sys-color-primary)';
+          let diagFillColor = 'rgba(37, 99, 235, 0.16)';
+
+          if (overlayMode !== 'deformed') {
+            const ptsUpper: string[] = [];
+            const ptsBase: string[] = [];
+            const valFor = (st: (typeof mr.stations)[0]) =>
+              overlayMode === 'bmd'
+                ? st.bendingMomentKnm
+                : overlayMode === 'sfd'
+                  ? st.shearForceKn
+                  : st.axialForceKn;
+
+            if (overlayMode === 'sfd') {
+              diagStrokeColor = '#0ea5e9';
+              diagFillColor = 'rgba(14, 165, 233, 0.18)';
+            } else if (overlayMode === 'bmd') {
+              diagStrokeColor = '#6366f1';
+              diagFillColor = 'rgba(99, 102, 241, 0.18)';
+            } else if (overlayMode === 'afd') {
+              const isTension = mr.axialStartKn >= 0;
+              diagStrokeColor = isTension ? '#06b6d4' : '#f43f5e';
+              diagFillColor = isTension ? 'rgba(6, 182, 212, 0.20)' : 'rgba(244, 63, 94, 0.20)';
+            }
+
+            mr.stations.forEach((st) => {
+              const base = toSvg(st.xGlobalM, st.yGlobalM);
+              const val = valFor(st);
+              // Plot BMD on tension face (positive sagging opposite local +y'), SFD & AFD along +y'
+              const signDir = overlayMode === 'bmd' ? -1 : 1;
+              const offsetPx = (val / maxValForMode) * diagramMaxPx * signDir;
+              ptsUpper.push(`${(base.x + nySvgX * offsetPx).toFixed(1)},${(base.y + nySvgY * offsetPx).toFixed(1)}`);
+              ptsBase.unshift(`${base.x.toFixed(1)},${base.y.toFixed(1)}`);
+            });
+            diagPolyPoints = [...ptsUpper, ...ptsBase].join(' ');
+          }
+
+          // Deformed member curve coordinates
+          const deformedPathD = mr.stations
+            .map((st, sIdx) => {
+              const base = toSvg(st.xGlobalM, st.yGlobalM);
+              const sx = base.x + (st.uxGlobalMm / 1000) * autoDispScalePxPerM;
+              const sy = base.y - (st.uyGlobalMm / 1000) * autoDispScalePxPerM;
+              return `${sIdx === 0 ? 'M' : 'L'} ${sx.toFixed(1)} ${sy.toFixed(1)}`;
+            })
+            .join(' ');
+
+          // Member UDL arrow visualization (local -y' direction = SVG (-nySvgX, -nySvgY))
+          const udlArrows =
+            mSpec && Math.abs(mSpec.udlKnPerM) > 1e-3
+              ? [0.15, 0.32, 0.5, 0.68, 0.85].map((r) => {
+                  const bx = p1.x + dx * r;
+                  const by = p1.y + dy * r;
+                  const tipX = bx + nySvgX * 4;
+                  const tipY = by + nySvgY * 4;
+                  const tailX = bx + nySvgX * 22;
+                  const tailY = by + nySvgY * 22;
+                  return { tipX, tipY, tailX, tailY };
+                })
+              : [];
+
+          return (
+            <g
+              key={mr.memberId}
+              {...bindHover({
+                title: `Member ${mr.label} (${mr.startLabel} → ${mr.endLabel})`,
+                formula: `L = ${mr.lengthM.toFixed(2)} m · ${mr.memberType.toUpperCase()}`,
+                substitution: `N = ${mr.axialStartKn.toFixed(1)} kN (${mr.axialStartKn >= 0 ? 'Tension' : 'Compression'}) · |V|_max = ${mr.maxAbsShearKn.toFixed(1)} kN · |M|_max = ${mr.maxAbsMomentKnm.toFixed(1)} kN·m`,
+                codeRef: `${result.governingCode} Member Envelope`,
+                description: `Combined Stress σ = ${mr.combinedStressMpa.toFixed(1)} MPa (DCR ${(mr.dcrRatio * 100).toFixed(1)}%).`,
+              })}
+            >
+              {/* Force Diagram Fill */}
+              {overlayMode !== 'deformed' && diagPolyPoints && (
+                <polygon
+                  points={diagPolyPoints}
+                  fill={diagFillColor}
+                  stroke={diagStrokeColor}
+                  strokeWidth="1.5"
+                />
+              )}
+
+              {/* Undeformed Reference Wireframe */}
+              <line
+                x1={p1.x}
+                y1={p1.y}
+                x2={p2.x}
+                y2={p2.y}
+                stroke="var(--md-sys-color-on-surface)"
+                strokeWidth={overlayMode === 'deformed' ? '1.5' : '2.6'}
+                strokeDasharray={overlayMode === 'deformed' ? '4 3' : undefined}
+                strokeOpacity={overlayMode === 'deformed' ? 0.5 : 0.9}
+              />
+
+              {/* Curved Deformed Shape Overlay */}
+              {(overlayMode === 'deformed' || showDeformedGhost) && (
+                <path
+                  d={deformedPathD}
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth={overlayMode === 'deformed' ? '2.6' : '1.7'}
+                  strokeDasharray={overlayMode === 'deformed' ? undefined : '5 3'}
+                />
+              )}
+
+              {/* Member UDL Arrows */}
+              {udlArrows.length > 0 && (
+                <g opacity={0.85}>
+                  <line
+                    x1={udlArrows[0].tailX}
+                    y1={udlArrows[0].tailY}
+                    x2={udlArrows[udlArrows.length - 1].tailX}
+                    y2={udlArrows[udlArrows.length - 1].tailY}
+                    stroke="#f59e0b"
+                    strokeWidth="1.4"
+                  />
+                  {udlArrows.map((arr, aIdx) => (
+                    <g key={aIdx}>
+                      <line
+                        x1={arr.tailX}
+                        y1={arr.tailY}
+                        x2={arr.tipX}
+                        y2={arr.tipY}
+                        stroke="#f59e0b"
+                        strokeWidth="1.3"
+                      />
+                      <circle cx={arr.tipX} cy={arr.tipY} r="1.5" fill="#f59e0b" />
+                    </g>
+                  ))}
+                  <text
+                    x={(udlArrows[0].tailX + udlArrows[udlArrows.length - 1].tailX) / 2}
+                    y={(udlArrows[0].tailY + udlArrows[udlArrows.length - 1].tailY) / 2 - 5}
+                    fontSize="8"
+                    fontWeight="700"
+                    fontFamily="monospace"
+                    textAnchor="middle"
+                    fill="#d97706"
+                  >
+                    w={mSpec?.udlKnPerM} kN/m
+                  </text>
+                </g>
+              )}
+
+              {/* Internal Hinges (Open Circles) */}
+              {mSpec && (mSpec.startHinge || mSpec.memberType === 'truss') && (
+                <circle
+                  cx={p1.x + (dx / lenPx) * 8}
+                  cy={p1.y + (dy / lenPx) * 8}
+                  r="3.6"
+                  fill="var(--md-sys-color-surface)"
+                  stroke="var(--md-sys-color-on-surface)"
+                  strokeWidth="1.6"
+                />
+              )}
+              {mSpec && (mSpec.endHinge || mSpec.memberType === 'truss') && (
+                <circle
+                  cx={p2.x - (dx / lenPx) * 8}
+                  cy={p2.y - (dy / lenPx) * 8}
+                  r="3.6"
+                  fill="var(--md-sys-color-surface)"
+                  stroke="var(--md-sys-color-on-surface)"
+                  strokeWidth="1.6"
+                />
+              )}
+
+              {/* Member Label + Peak Diagram Value Callout */}
+              <g transform={`translate(${midX}, ${midY})`}>
+                <rect
+                  x={-20}
+                  y={-8}
+                  width={40}
+                  height={14}
+                  rx="3"
+                  fill="var(--md-sys-color-surface)"
+                  stroke="var(--md-sys-color-outline-variant)"
+                  strokeWidth="0.8"
+                />
+                <text
+                  x={0}
+                  y={2}
+                  fontSize="8"
+                  fontWeight="700"
+                  fontFamily="monospace"
+                  textAnchor="middle"
+                  fill="var(--md-sys-color-on-surface)"
+                >
+                  {mr.label}
+                </text>
+              </g>
+            </g>
+          );
+        })}
+
+        {/* 2. Support Boundary Symbols, Nodal Loads & Deformed Joints */}
+        {result.nodalResults.map((nr) => {
+          const p = toSvg(nr.xM, nr.yM);
+          const load = (params.nodalLoads || []).find((l) => l.nodeId === nr.nodeId);
+          const rxLabel =
+            nr.support !== 'none'
+              ? `R=(${nr.reactionFxKn.toFixed(1)}, ${nr.reactionFyKn.toFixed(1)}) kN`
+              : `Δ=(${nr.uxMm.toFixed(1)}, ${nr.uyMm.toFixed(1)}) mm`;
+
+          return (
+            <g
+              key={nr.nodeId}
+              {...bindHover({
+                title: `Joint ${nr.label} (${nr.xM.toFixed(2)}m, ${nr.yM.toFixed(2)}m)`,
+                formula: `Support: ${nr.support.toUpperCase()} · |Δ| = ${nr.displacementMagMm.toFixed(2)} mm`,
+                substitution: rxLabel,
+                codeRef: `${result.governingCode} Nodal DOF Response`,
+                description: `u_x = ${nr.uxMm.toFixed(2)} mm, u_y = ${nr.uyMm.toFixed(2)} mm, θ_z = ${nr.rzMrad.toFixed(2)} mrad.`,
+              })}
+            >
+              {/* Support Glyphs */}
+              {nr.support === 'fixed' && (
+                <g transform={`translate(${p.x}, ${p.y})`}>
+                  <rect x={-12} y={0} width={24} height={9} fill="url(#ft-fixed-hatch)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.3" />
+                  <line x1={-14} y1={0} x2={14} y2={0} stroke="var(--md-sys-color-on-surface)" strokeWidth="2.2" />
+                </g>
+              )}
+              {nr.support === 'pin' && (
+                <g transform={`translate(${p.x}, ${p.y})`}>
+                  <polygon points="0,0 -9,13 9,13" fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
+                  <line x1={-12} y1={14} x2={12} y2={14} stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
+                </g>
+              )}
+              {nr.support === 'roller-x' && (
+                <g transform={`translate(${p.x}, ${p.y})`}>
+                  <polygon points="0,0 -8,11 8,11" fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.4" />
+                  <circle cx={-4.5} cy={14} r="2.2" fill="var(--md-sys-color-on-surface)" />
+                  <circle cx={4.5} cy={14} r="2.2" fill="var(--md-sys-color-on-surface)" />
+                  <line x1={-12} y1={17} x2={12} y2={17} stroke="var(--md-sys-color-on-surface)" strokeWidth="1.4" />
+                </g>
+              )}
+              {nr.support === 'roller-y' && (
+                <g transform={`translate(${p.x}, ${p.y})`}>
+                  <polygon points="0,0 -11,-7 -11,7" fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.4" />
+                  <circle cx={-14} cy={-4} r="2.1" fill="var(--md-sys-color-on-surface)" />
+                  <circle cx={-14} cy={4} r="2.1" fill="var(--md-sys-color-on-surface)" />
+                  <line x1={-17} y1={-11} x2={-17} y2={11} stroke="var(--md-sys-color-on-surface)" strokeWidth="1.4" />
+                </g>
+              )}
+              {nr.support === 'spring' && (
+                <g transform={`translate(${p.x}, ${p.y})`}>
+                  <polyline
+                    points="0,0 0,4 -5,7 5,11 -5,15 5,19 0,22 0,25"
+                    fill="none"
+                    stroke="#14b8a6"
+                    strokeWidth="1.8"
+                  />
+                  <line x1={-10} y1={25} x2={10} y2={25} stroke="#14b8a6" strokeWidth="1.6" />
+                </g>
+              )}
+
+              {/* Nodal Load Force Vectors */}
+              {load && Math.abs(load.fxKn) > 1e-3 && (
+                <g>
+                  {(() => {
+                    const dir = load.fxKn > 0 ? 1 : -1;
+                    return (
+                      <>
+                        <line x1={p.x - dir * 34} y1={p.y} x2={p.x - dir * 7} y2={p.y} stroke="#f43f5e" strokeWidth="2.2" />
+                        <polygon
+                          points={`${p.x - dir * 5},${p.y} ${p.x - dir * 13},${p.y - 4} ${p.x - dir * 13},${p.y + 4}`}
+                          fill="#f43f5e"
+                        />
+                        <text x={p.x - dir * 36} y={p.y - 6} fontSize="8" fontWeight="700" fontFamily="monospace" textAnchor={dir > 0 ? 'end' : 'start'} fill="#f43f5e">
+                          Fx={load.fxKn}kN
+                        </text>
+                      </>
+                    );
+                  })()}
+                </g>
+              )}
+              {load && Math.abs(load.fyKn) > 1e-3 && (
+                <g>
+                  {(() => {
+                    const down = load.fyKn < 0;
+                    const yTail = down ? p.y - 34 : p.y + 34;
+                    const yTip = down ? p.y - 6 : p.y + 6;
+                    return (
+                      <>
+                        <line x1={p.x} y1={yTail} x2={p.x} y2={yTip} stroke="#f43f5e" strokeWidth="2.2" />
+                        <polygon
+                          points={`${p.x},${yTip} ${p.x - 4},${yTip + (down ? -8 : 8)} ${p.x + 4},${yTip + (down ? -8 : 8)}`}
+                          fill="#f43f5e"
+                        />
+                        <text x={p.x + 6} y={yTail + (down ? 4 : -2)} fontSize="8" fontWeight="700" fontFamily="monospace" fill="#f43f5e">
+                          Fy={load.fyKn}kN
+                        </text>
+                      </>
+                    );
+                  })()}
+                </g>
+              )}
+
+              {/* Joint Dot & Label */}
+              <circle cx={p.x} cy={p.y} r="4.2" fill="var(--md-sys-color-primary)" stroke="var(--md-sys-color-surface)" strokeWidth="1.3" />
+              <text
+                x={p.x + 7}
+                y={p.y - 6}
+                fontSize="8.5"
+                fontWeight="700"
+                fontFamily="monospace"
+                fill="var(--md-sys-color-on-surface)"
+              >
+                {nr.label}
+              </text>
+              {nr.support !== 'none' && (
+                <text
+                  x={p.x}
+                  y={p.y + 32}
+                  fontSize="7.5"
+                  fontWeight="700"
+                  fontFamily="monospace"
+                  textAnchor="middle"
+                  fill="var(--md-sys-color-primary)"
+                >
+                  R=({nr.reactionFxKn.toFixed(1)}, {nr.reactionFyKn.toFixed(1)})
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+
+      <FormulaTooltipOverlay tooltip={tooltip} />
+      <DiagramFormulaHint />
+    </div>
+  );
+};
+
+/* ==============================================================
+   16. SECTION ANALYZER: CROSS-SECTION, STRESS PROFILE & N-M CHART
+   ============================================================== */
+export const SectionAnalyzerDiagramSvg: React.FC<{
+  params: SectionAnalyzerParams;
+  result: SectionAnalyzerResult;
+}> = ({ params, result }) => {
+  const { containerRef, tooltip, bindHover } = useFormulaTooltip();
+  const [panelMode, setPanelMode] = useState<'dual' | 'stress' | 'nm'>('dual');
+  const [showPlasticOverlay, setShowPlasticOverlay] = useState(true);
+  const [interactionView, setInteractionView] = useState<'nm' | 'mymz'>('nm');
+
+  const cls = result.classification;
+  const plasticAllowed = cls.isPlasticAllowed;
+
+  // Cross-section + Stress profiles coordinates (viewBox 0..680 x 0..310 for single or side-by-side)
+  const svgWidth = panelMode === 'dual' ? 760 : 680;
+  const svgHeight = 320;
+
+  // Section bounding coordinates (centered at centroid (0,0))
+  const secW = Math.max(1, result.yMaxMm - result.yMinMm);
+  const secH = Math.max(1, result.zMaxMm - result.zMinMm);
+
+  const secBox = panelMode === 'dual'
+    ? { x: 24, y: 42, w: 120, h: 220 }
+    : { x: 56, y: 42, w: 190, h: 220 };
+  const scaleSec = Math.min(secBox.w / secW, secBox.h / secH);
+  const secCx = secBox.x + secBox.w / 2;
+  const secCy = secBox.y + secBox.h / 2;
+  const secCenterYMid = (result.yMinMm + result.yMaxMm) / 2;
+  const secCenterZMid = (result.zMinMm + result.zMaxMm) / 2;
+
+  const mapSecX = (yRel: number) => secCx + (yRel - secCenterYMid) * scaleSec;
+  const mapSecY = (zRel: number) => secCy - (zRel - secCenterZMid) * scaleSec; // +z up -> SVG y down
+
+  const zTopPx = mapSecY(result.zMaxMm);
+  const zBotPx = mapSecY(result.zMinMm);
+  const zCentroidPx = mapSecY(0);
+  const zPnaPx = mapSecY(result.plasticNeutralAxisZMm);
+  const zEnaZeroPx =
+    result.elasticNeutralAxisZMm !== null
+      ? Math.max(zTopPx - 14, Math.min(zBotPx + 14, mapSecY(result.elasticNeutralAxisZMm)))
+      : null;
+
+  // Sigma stress plot region
+  const sigmaBox = panelMode === 'dual'
+    ? { x: 168, y: 42, w: 105, h: 220 }
+    : { x: 288, y: 42, w: 165, h: 220 };
+  const sigmaCenterX = sigmaBox.x + sigmaBox.w / 2;
+  const maxSigmaScale = Math.max(
+    result.fydMpa * 1.15,
+    result.sigmaAbsMaxMpa * 1.15,
+    25
+  );
+  const mapSigmaX = (sigMpa: number) =>
+    sigmaCenterX + (sigMpa / maxSigmaScale) * (sigmaBox.w * 0.44);
+
+  // Tau shear stress plot region
+  const tauBox = panelMode === 'dual'
+    ? { x: 292, y: 42, w: 72, h: 220 }
+    : { x: 492, y: 42, w: 135, h: 220 };
+  const maxTauScale = Math.max(result.tauMaxShearZMpa * 1.2, 10);
+  const mapTauX = (tauMpa: number) =>
+    tauBox.x + 8 + (tauMpa / maxTauScale) * (tauBox.w - 16);
+
+  // Build sigma polygon path & tau polygon path synchronized with mapSecY(zRel)
+  const elasticSigmaPts = [
+    `${sigmaCenterX},${mapSecY(result.zMaxMm)}`,
+    ...result.stressProfile.map((sp) => `${mapSigmaX(sp.sigmaTotalMpa)},${mapSecY(sp.zMm)}`),
+    `${sigmaCenterX},${mapSecY(result.zMinMm)}`,
+  ].join(' ');
+
+  const tauPts = [
+    `${tauBox.x + 8},${mapSecY(result.zMaxMm)}`,
+    ...result.stressProfile.map((sp) => `${mapTauX(sp.tauShearZMpa)},${mapSecY(sp.zMm)}`),
+    `${tauBox.x + 8},${mapSecY(result.zMinMm)}`,
+  ].join(' ');
+
+  // N-M / My-Mz Chart region
+  const chartBox = panelMode === 'dual'
+    ? { x: 405, y: 42, w: 325, h: 220 }
+    : { x: 105, y: 42, w: 470, h: 220 };
+
+  const nmCx = chartBox.x + 48; // M=0 on left vertical axis (symmetric +|M| rightwards, N from -1 to +1)
+  const nmPlotW = chartBox.w - 68;
+  const nmCy = chartBox.y + chartBox.h / 2;
+  const nmHalfH = chartBox.h * 0.44;
+  const maxMRatioAxis = Math.max(
+    1.18,
+    ...result.nmInteractionCurve.map((p) => p.mRatio),
+    result.mPlYRdKnm > 1e-6 ? Math.abs(result.momentMy_Knm) / result.mPlYRdKnm + 0.12 : 1.18
+  );
+  const maxNRatioAxis = Math.max(
+    1.15,
+    result.nPlRdKn > 1e-6 ? Math.abs(result.axialForceN_Kn) / result.nPlRdKn + 0.12 : 1.15
+  );
+
+  const mapNmX = (mRatio: number) => nmCx + (Math.max(0, mRatio) / maxMRatioAxis) * nmPlotW;
+  const mapNmY = (nRatio: number) => nmCy - (nRatio / maxNRatioAxis) * nmHalfH;
+
+  const plasticNmPath = result.nmInteractionCurve
+    .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapNmX(pt.mRatio).toFixed(1)} ${mapNmY(pt.nRatio).toFixed(1)}`)
+    .join(' ');
+
+  const elasticNmPath = result.nmInteractionCurve
+    .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapNmX(pt.elasticMRatio || 0).toFixed(1)} ${mapNmY(pt.nRatio).toFixed(1)}`)
+    .join(' ');
+
+  const loadMRatio = result.mPlYRdKnm > 1e-6 ? Math.abs(result.momentMy_Knm) / result.mPlYRdKnm : 0;
+  const loadNRatio = result.nPlRdKn > 1e-6 ? result.axialForceN_Kn / result.nPlRdKn : 0;
+  const loadPtPx = { x: mapNmX(loadMRatio), y: mapNmY(loadNRatio) };
+
+  // My-Mz Biaxial coordinates
+  const biaxOriginX = chartBox.x + 52;
+  const biaxOriginY = chartBox.y + chartBox.h - 22;
+  const biaxW = chartBox.w - 75;
+  const biaxH = chartBox.h - 42;
+  const loadMyRatio = result.mNyReducedRdKnm > 1e-6 ? Math.abs(result.momentMy_Knm) / result.mNyReducedRdKnm : 0;
+  const loadMzRatio = result.mPlZRdKnm > 1e-6 ? Math.abs(result.momentMz_Knm) / result.mPlZRdKnm : 0;
+  const biaxMaxAxis = Math.max(1.2, loadMyRatio + 0.12, loadMzRatio + 0.12);
+  const mapBiaxX = (myR: number) => biaxOriginX + (myR / biaxMaxAxis) * biaxW;
+  const mapBiaxY = (mzR: number) => biaxOriginY - (mzR / biaxMaxAxis) * biaxH;
+
+  const biaxPath =
+    result.myMzInteractionCurve
+      .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapBiaxX(pt.myRatio).toFixed(1)} ${mapBiaxY(pt.mzRatio).toFixed(1)}`)
+      .join(' ') +
+    ` L ${mapBiaxX(0).toFixed(1)} ${mapBiaxY(0).toFixed(1)} Z`;
+
+  return (
+    <div ref={containerRef} className="relative w-full space-y-2.5">
+      {/* Diagram Toolbar Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[11px] font-mono">
+          {([
+            { id: 'dual', label: 'Side-by-Side' },
+            { id: 'stress', label: 'Section & Stress (σ, τ)' },
+            { id: 'nm', label: 'Interaction Chart' },
+          ] as const).map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setPanelMode(m.id)}
+              className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                panelMode === m.id
+                  ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-2xs'
+                  : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] font-mono">
+          {panelMode !== 'nm' && plasticAllowed && (
+            <button
+              type="button"
+              onClick={() => setShowPlasticOverlay((v) => !v)}
+              className={`px-2.5 py-1 rounded-md border transition-colors cursor-pointer ${
+                showPlasticOverlay
+                  ? 'border-amber-500/70 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold'
+                  : 'border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)]'
+              }`}
+            >
+              {showPlasticOverlay ? '✓ Plastic Yield Block' : 'Show Plastic Block'}
+            </button>
+          )}
+          {panelMode !== 'stress' && (
+            <div className="inline-flex items-center p-0.5 rounded-md bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
+              <button
+                type="button"
+                onClick={() => setInteractionView('nm')}
+                className={`px-2 py-0.5 rounded cursor-pointer ${
+                  interactionView === 'nm'
+                    ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] font-bold'
+                    : 'text-[var(--md-sys-color-on-surface-variant)]'
+                }`}
+              >
+                N–M_y Curve
+              </button>
+              <button
+                type="button"
+                onClick={() => setInteractionView('mymz')}
+                className={`px-2 py-0.5 rounded cursor-pointer ${
+                  interactionView === 'mymz'
+                    ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] font-bold'
+                    : 'text-[var(--md-sys-color-on-surface-variant)]'
+                }`}
+              >
+                Biaxial M_y–M_z
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <svg
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        className="w-full h-auto select-none font-mono"
+        role="img"
+        aria-label="Cross-section geometry, normal & shear stress distributions, and N-M interaction diagram"
+      >
+        <defs>
+          <pattern id="steelHatchPattern" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--md-sys-color-primary)" strokeOpacity="0.22" strokeWidth="1.5" />
+          </pattern>
+        </defs>
+
+        {/* ============================================================
+            PANEL A: CROSS-SECTION + NORMAL STRESS (σ) + SHEAR STRESS (τ)
+           ============================================================ */}
+        {panelMode !== 'nm' && (
+          <g>
+            {/* Title */}
+            <text x={secBox.x} y={20} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+              CROSS-SECTION &amp; ELASTIC / PLASTIC AXES
+            </text>
+            <text x={sigmaBox.x} y={20} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+              σ(z) NORMAL STRESS
+            </text>
+            <text x={tauBox.x} y={20} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+              τ(z) SHEAR
+            </text>
+
+            {/* Cross-Section Outer Polygons */}
+            <g
+              {...bindHover({
+                title: `${result.presetName} · Geometric Properties`,
+                formula: 'I_y = Σ(I_0 + A·d²),  W_el = I_y / |z_max|,  W_pl = ∫|z − z_EAA| dA',
+                substitution: `A = ${result.areaCm2.toFixed(1)} cm², I_y = ${result.iyCm4.toFixed(0)} cm⁴, W_pl,y = ${result.wplYCm3.toFixed(0)} cm³`,
+                codeRef: `${result.designCode} · ${cls.classLabel}`,
+                description: `Section centroid at (${result.centroidYMm.toFixed(1)}, ${result.centroidZMm.toFixed(1)}) mm from bottom-left.`,
+              })}
+            >
+              {result.outlinePolygons.map((poly, idx) => (
+                <polygon
+                  key={`sec-out-${idx}`}
+                  points={poly.map((p) => `${mapSecX(p.yMm).toFixed(1)},${mapSecY(p.zMm).toFixed(1)}`).join(' ')}
+                  fill="url(#steelHatchPattern)"
+                  stroke="var(--md-sys-color-primary)"
+                  strokeWidth="2"
+                />
+              ))}
+              {result.holePolygons.map((poly, idx) => (
+                <polygon
+                  key={`sec-hole-${idx}`}
+                  points={poly.map((p) => `${mapSecX(p.yMm).toFixed(1)},${mapSecY(p.zMm).toFixed(1)}`).join(' ')}
+                  fill="var(--md-sys-color-surface-container-low)"
+                  stroke="var(--md-sys-color-primary)"
+                  strokeWidth="1.5"
+                />
+              ))}
+            </g>
+
+            {/* Centroid / Elastic Neutral Axis */}
+            <line
+              x1={secBox.x - 10}
+              y1={zCentroidPx}
+              x2={secBox.x + secBox.w + 10}
+              y2={zCentroidPx}
+              stroke="#0ea5e9"
+              strokeWidth="1.2"
+              strokeDasharray="4 3"
+            />
+            <text x={secBox.x - 8} y={zCentroidPx - 4} fontSize="7.5" fontWeight="700" fill="#0ea5e9">
+              ENA (z=0)
+            </text>
+
+            {/* Zero-stress line if shifted by Axial N */}
+            {zEnaZeroPx !== null && Math.abs(zEnaZeroPx - zCentroidPx) > 3 && (
+              <>
+                <line
+                  x1={secBox.x - 4}
+                  y1={zEnaZeroPx}
+                  x2={secBox.x + secBox.w + 4}
+                  y2={zEnaZeroPx}
+                  stroke="#06b6d4"
+                  strokeWidth="1"
+                  strokeDasharray="2 2"
+                />
+                <text x={secBox.x + secBox.w + 6} y={zEnaZeroPx + 3} fontSize="7" fill="#06b6d4">
+                  σ=0
+                </text>
+              </>
+            )}
+
+            {/* Plastic Neutral Axis (PNA) when Class 1 or 2 */}
+            {plasticAllowed && (
+              <g
+                {...bindHover({
+                  title: 'Shifted Plastic Neutral Axis (PNA)',
+                  formula: 'A_below(PNA) = 0.5 · (A − N / f_yd)',
+                  substitution: `z_PNA = ${result.plasticNeutralAxisZMm >= 0 ? '+' : ''}${result.plasticNeutralAxisZMm.toFixed(1)} mm from centroid (${result.plasticNeutralAxisFromBottomMm.toFixed(1)} mm from bottom)`,
+                  codeRef: `${result.designCode} Plastic Stress Block`,
+                  description: 'Boundary separating +f_yd plastic tension block from -f_yd compression block under axial load N.',
+                })}
+              >
+                <line
+                  x1={secBox.x - 10}
+                  y1={zPnaPx}
+                  x2={secBox.x + secBox.w + 10}
+                  y2={zPnaPx}
+                  stroke="#f59e0b"
+                  strokeWidth="1.8"
+                  strokeDasharray="5 3"
+                />
+                <text x={secBox.x + secBox.w - 4} y={zPnaPx - 5} textAnchor="end" fontSize="7.5" fontWeight="700" fill="#d97706">
+                  PNA ({result.plasticNeutralAxisZMm >= 0 ? '+' : ''}{result.plasticNeutralAxisZMm.toFixed(0)}mm)
+                </text>
+              </g>
+            )}
+
+            {/* Dimension labels */}
+            <text x={secCx} y={zBotPx + 18} textAnchor="middle" fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+              b = {result.widthMm.toFixed(0)} × h = {result.depthMm.toFixed(0)} mm
+            </text>
+
+            {/* Normal Stress σ(z) Diagram */}
+            <g
+              {...bindHover({
+                title: 'Combined Elastic Normal Stress σ(z)',
+                formula: 'σ(y,z) = N/A + (M_y·z)/I_y − (M_z·y)/I_z',
+                substitution: `σ_top = ${result.sigmaTopMpa.toFixed(1)} MPa, σ_bot = ${result.sigmaBotMpa.toFixed(1)} MPa (f_yd = ${result.fydMpa.toFixed(1)} MPa)`,
+                codeRef: 'Navier / Bernoulli Superposition',
+                description: 'Linear strain distribution across cross-section depth; + is Tension, − is Compression.',
+              })}
+            >
+              {/* Zero-stress vertical baseline */}
+              <line x1={sigmaCenterX} y1={zTopPx - 8} x2={sigmaCenterX} y2={zBotPx + 8} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
+              {/* Yield limit vertical guides ±fyd */}
+              <line x1={mapSigmaX(result.fydMpa)} y1={zTopPx} x2={mapSigmaX(result.fydMpa)} y2={zBotPx} stroke="#10b981" strokeWidth="0.9" strokeDasharray="3 3" opacity="0.6" />
+              <line x1={mapSigmaX(-result.fydMpa)} y1={zTopPx} x2={mapSigmaX(-result.fydMpa)} y2={zBotPx} stroke="#10b981" strokeWidth="0.9" strokeDasharray="3 3" opacity="0.6" />
+
+              {/* Optional Plastic Rectangular Stress Block Overlay */}
+              {plasticAllowed && showPlasticOverlay && (
+                <g opacity="0.22">
+                  <rect
+                    x={sigmaCenterX}
+                    y={zTopPx}
+                    width={Math.max(2, mapSigmaX(result.fydMpa) - sigmaCenterX)}
+                    height={Math.max(0, zPnaPx - zTopPx)}
+                    fill="#f59e0b"
+                  />
+                  <rect
+                    x={mapSigmaX(-result.fydMpa)}
+                    y={zPnaPx}
+                    width={Math.max(2, sigmaCenterX - mapSigmaX(-result.fydMpa))}
+                    height={Math.max(0, zBotPx - zPnaPx)}
+                    fill="#f59e0b"
+                  />
+                </g>
+              )}
+
+              <polygon
+                points={elasticSigmaPts}
+                fill="#3b82f6"
+                fillOpacity="0.24"
+                stroke="#3b82f6"
+                strokeWidth="2"
+              />
+              <text x={mapSigmaX(result.sigmaTopMpa)} y={zTopPx - 6} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#2563eb">
+                {result.sigmaTopMpa >= 0 ? `+${result.sigmaTopMpa.toFixed(0)}` : result.sigmaTopMpa.toFixed(0)} MPa
+              </text>
+              <text x={mapSigmaX(result.sigmaBotMpa)} y={zBotPx + 14} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#2563eb">
+                {result.sigmaBotMpa >= 0 ? `+${result.sigmaBotMpa.toFixed(0)}` : result.sigmaBotMpa.toFixed(0)} MPa
+              </text>
+              <text x={sigmaCenterX} y={zBotPx + 27} textAnchor="middle" fontSize="7" fill="var(--md-sys-color-on-surface-variant)">
+                ±f_yd = ±{result.fydMpa.toFixed(0)} MPa
+              </text>
+            </g>
+
+            {/* Transverse Shear Stress τ(z) Profile */}
+            <g
+              {...bindHover({
+                title: 'Transverse Parabolic Shear Flow τ(z)',
+                formula: 'τ(z) = (V_z · Q_y(z)) / (I_y · t(z))',
+                substitution: `τ_max(V_z) = ${result.tauMaxShearZMpa.toFixed(1)} MPa, τ_total = ${result.tauTotalMaxMpa.toFixed(1)} MPa`,
+                codeRef: 'Jourawski Shear Flow Formula',
+                description: 'Parabolic shear distribution jumping sharply at flange-to-web thickness transition.',
+              })}
+            >
+              <line x1={tauBox.x + 8} y1={zTopPx - 8} x2={tauBox.x + 8} y2={zBotPx + 8} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
+              <polygon
+                points={tauPts}
+                fill="#14b8a6"
+                fillOpacity="0.28"
+                stroke="#0d9488"
+                strokeWidth="2"
+              />
+              <text x={tauBox.x + tauBox.w / 2} y={zBotPx + 18} textAnchor="middle" fontSize="7.5" fontWeight="700" fill="#0d9488">
+                τ_max={result.tauTotalMaxMpa.toFixed(1)}
+              </text>
+            </g>
+          </g>
+        )}
+
+        {/* ============================================================
+            PANEL B: INTERACTIVE N-M PLASTIC / ELASTIC INTERACTION CHART
+           ============================================================ */}
+        {panelMode !== 'stress' && (
+          <g>
+            {interactionView === 'nm' ? (
+              <>
+                <text x={chartBox.x} y={20} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+                  N–M INTERACTION ENVELOPE ({plasticAllowed ? 'PLASTIC + ELASTIC' : 'ELASTIC ONLY · PLASTIC BLOCKED'})
+                </text>
+
+                {/* Chart Frame & Grid */}
+                <rect
+                  x={chartBox.x}
+                  y={chartBox.y}
+                  width={chartBox.w}
+                  height={chartBox.h}
+                  rx={6}
+                  fill="var(--md-sys-color-surface)"
+                  stroke="var(--md-sys-color-outline-variant)"
+                />
+                {/* Axes M=0 & N=0 */}
+                <line x1={nmCx} y1={chartBox.y + 8} x2={nmCx} y2={chartBox.y + chartBox.h - 8} stroke="var(--md-sys-color-outline)" strokeWidth="1.2" />
+                <line x1={chartBox.x + 12} y1={nmCy} x2={chartBox.x + chartBox.w - 10} y2={nmCy} stroke="var(--md-sys-color-outline)" strokeWidth="1.2" />
+
+                {/* Reference 1.0 gridlines */}
+                <line x1={mapNmX(1)} y1={chartBox.y + 10} x2={mapNmX(1)} y2={chartBox.y + chartBox.h - 10} stroke="var(--md-sys-color-outline-variant)" strokeDasharray="3 3" />
+                <line x1={nmCx} y1={mapNmY(1)} x2={mapNmX(1)} y2={mapNmY(1)} stroke="var(--md-sys-color-outline-variant)" strokeDasharray="3 3" />
+                <line x1={nmCx} y1={mapNmY(-1)} x2={mapNmX(1)} y2={mapNmY(-1)} stroke="var(--md-sys-color-outline-variant)" strokeDasharray="3 3" />
+
+                {/* Plastic Yield Boundary */}
+                <path
+                  d={plasticNmPath}
+                  fill={plasticAllowed ? '#3b82f6' : '#94a3b8'}
+                  fillOpacity={plasticAllowed ? 0.14 : 0.06}
+                  stroke={plasticAllowed ? '#2563eb' : '#94a3b8'}
+                  strokeWidth={plasticAllowed ? '2.4' : '1.4'}
+                  strokeDasharray={plasticAllowed ? undefined : '5 4'}
+                  {...bindHover({
+                    title: plasticAllowed ? 'Plastic N–M Yield Boundary' : 'Plastic N–M Boundary (BLOCKED for Class 3/4)',
+                    formula: 'M_N,y,Rd = ∫ (z − z̄) · σ_pl(PNA) dA',
+                    substitution: `N_pl,Rd = ${result.nPlRdKn.toFixed(1)} kN, M_pl,y,Rd = ${result.mPlYRdKnm.toFixed(1)} kN·m, M_N,Rd(at N) = ${result.mNyReducedRdKnm.toFixed(1)} kN·m`,
+                    codeRef: `${result.designCode} Plastic Interaction`,
+                    description: plasticAllowed
+                      ? 'Exact full-plastification interaction envelope computed via shifted Plastic Neutral Axis.'
+                      : 'Dashed reference only: blocked because plate local buckling governs before full yield.',
+                  })}
+                />
+
+                {/* Elastic First-Yield Limit Boundary */}
+                <path
+                  d={elasticNmPath}
+                  fill={!plasticAllowed ? '#f59e0b' : 'none'}
+                  fillOpacity={!plasticAllowed ? 0.14 : 0}
+                  stroke="#f59e0b"
+                  strokeWidth={!plasticAllowed ? '2.4' : '1.6'}
+                  strokeDasharray={!plasticAllowed ? undefined : '4 3'}
+                  {...bindHover({
+                    title: 'Elastic First-Yield Limit Envelope',
+                    formula: '|N| / N_pl,Rd + |M_y| / M_el,y,Rd = 1.0',
+                    substitution: `M_el,y,Rd = ${result.mElYRdKnm.toFixed(1)} kN·m`,
+                    codeRef: 'First-Yield Governing Boundary',
+                    description: 'Linear elastic stress boundary where extreme fiber reaches f_yd.',
+                  })}
+                />
+
+                {/* Radial DCR Vector & Plotted Load Point (N, M) */}
+                <line
+                  x1={nmCx}
+                  y1={nmCy}
+                  x2={loadPtPx.x}
+                  y2={loadPtPx.y}
+                  stroke={result.governingDcr > 1.0 ? '#ef4444' : '#10b981'}
+                  strokeWidth="1.6"
+                  strokeDasharray="3 2"
+                />
+                <circle
+                  cx={loadPtPx.x}
+                  cy={loadPtPx.y}
+                  r="6"
+                  fill={result.governingDcr > 1.0 ? '#ef4444' : result.governingDcr > 0.85 ? '#f59e0b' : '#10b981'}
+                  stroke="#ffffff"
+                  strokeWidth="1.8"
+                  {...bindHover({
+                    title: 'Applied Load Point (M_y, N)',
+                    formula: 'η = Governing Utilization Ratio (DCR)',
+                    substitution: `M_y = ${result.momentMy_Knm.toFixed(1)} kN·m (${(loadMRatio * 100).toFixed(0)}% M_pl), N = ${result.axialForceN_Kn.toFixed(1)} kN (${(loadNRatio * 100).toFixed(0)}% N_pl) · DCR = ${(result.governingDcr * 100).toFixed(1)}%`,
+                    codeRef: `${cls.classLabel}`,
+                    description: result.governingDcr <= 1.0 ? 'Load point lies inside the admissible capacity envelope.' : 'OVERSTRESSED: Load point exceeds design section resistance!',
+                  })}
+                />
+
+                <text x={loadPtPx.x + 8} y={loadPtPx.y - 6} fontSize="8" fontWeight="700" fill={result.governingDcr > 1.0 ? '#dc2626' : '#059669'}>
+                  ({loadMRatio.toFixed(2)}, {loadNRatio.toFixed(2)}) · η={(result.governingDcr * 100).toFixed(0)}%
+                </text>
+
+                {/* Axis Labels */}
+                <text x={chartBox.x + chartBox.w - 12} y={nmCy - 5} textAnchor="end" fontSize="8" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+                  |M_y| / M_pl,y →
+                </text>
+                <text x={nmCx + 5} y={chartBox.y + 16} fontSize="8" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+                  +N / N_pl (Tens)
+                </text>
+                <text x={nmCx + 5} y={chartBox.y + chartBox.h - 10} fontSize="8" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+                  −N / N_pl (Comp)
+                </text>
+
+                {/* Explicit Class 3/4 Block Warning Pill inside SVG */}
+                {!plasticAllowed && (
+                  <g transform={`translate(${chartBox.x + chartBox.w - 156}, ${chartBox.y + 10})`}>
+                    <rect x={0} y={0} width={148} height={24} rx={4} fill="#fef3c7" stroke="#f59e0b" />
+                    <text x={74} y={15} textAnchor="middle" fontSize="7.5" fontWeight="800" fill="#92400e">
+                      CLASS {cls.sectionClass}: PLASTIC BLOCKED
+                    </text>
+                  </g>
+                )}
+              </>
+            ) : (
+              /* BIAXIAL My - Mz ENVELOPE */
+              <>
+                <text x={chartBox.x} y={20} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+                  BIAXIAL M_y–M_z INTERACTION AT N = {result.axialForceN_Kn.toFixed(0)} kN
+                </text>
+                <rect
+                  x={chartBox.x}
+                  y={chartBox.y}
+                  width={chartBox.w}
+                  height={chartBox.h}
+                  rx={6}
+                  fill="var(--md-sys-color-surface)"
+                  stroke="var(--md-sys-color-outline-variant)"
+                />
+                <line x1={biaxOriginX} y1={chartBox.y + 12} x2={biaxOriginX} y2={biaxOriginY} stroke="var(--md-sys-color-outline)" strokeWidth="1.2" />
+                <line x1={biaxOriginX} y1={biaxOriginY} x2={chartBox.x + chartBox.w - 14} y2={biaxOriginY} stroke="var(--md-sys-color-outline)" strokeWidth="1.2" />
+
+                <path
+                  d={biaxPath}
+                  fill="#8b5cf6"
+                  fillOpacity="0.16"
+                  stroke="#7c3aed"
+                  strokeWidth="2.2"
+                />
+                <circle
+                  cx={mapBiaxX(loadMyRatio)}
+                  cy={mapBiaxY(loadMzRatio)}
+                  r="6"
+                  fill={result.governingDcr > 1.0 ? '#ef4444' : '#10b981'}
+                  stroke="#ffffff"
+                  strokeWidth="1.8"
+                />
+                <text x={mapBiaxX(loadMyRatio) + 8} y={mapBiaxY(loadMzRatio) - 6} fontSize="8" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+                  ({loadMyRatio.toFixed(2)}, {loadMzRatio.toFixed(2)})
+                </text>
+                <text x={chartBox.x + chartBox.w - 14} y={biaxOriginY - 6} textAnchor="end" fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+                  |M_y| / M_N,y,Rd →
+                </text>
+                <text x={biaxOriginX + 6} y={chartBox.y + 20} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+                  ↑ |M_z| / M_pl,z
+                </text>
+              </>
+            )}
+          </g>
+        )}
+      </svg>
+
+      {/* Compact Legend Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-0.5 bg-[#0ea5e9]" /> ENA (Centroid)
+          </span>
+          {plasticAllowed && (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-0.5 bg-[#f59e0b]" /> PNA (Shifted)
+            </span>
+          )}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-2 bg-[#3b82f6]/30 border border-[#2563eb]" /> Normal Stress σ(z)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-2 bg-[#14b8a6]/30 border border-[#0d9488]" /> Shear Flow τ(z)
+          </span>
+        </div>
+        <div>
+          Hover diagram zones for Eurocode / AISC equations
+        </div>
+      </div>
+
+      <FormulaTooltipOverlay tooltip={tooltip} />
+      <DiagramFormulaHint />
+    </div>
+  );
+};
+
+/* ==============================================================
+   12. RC COLUMN P-M INTERACTION & CROSS-SECTION REBAR DIAGRAM
+   ============================================================== */
+export const RcColumnDiagramSvg: React.FC<{
+  params: RcColumnParams;
+  result: RcColumnDesignResult;
+}> = ({ params, result }) => {
+  const { tooltip, containerRef, bindHover } = useFormulaTooltip();
+  const [activeAxis, setActiveAxis] = useState<'X' | 'Y'>('X');
+  const [showNominal, setShowNominal] = useState(true);
+
+  const axisRes = activeAxis === 'X' ? result.xAxis : result.yAxis;
+  const curve = axisRes.curve;
+
+  // Chart Coordinate Mapping (M on X-axis, P on Y-axis)
+  const chartX = 335;
+  const chartY = 38;
+  const chartW = 355;
+  const chartH = 265;
+
+  const maxM = Math.max(
+    50,
+    ...curve.map((p) => p.mnKnm),
+    axisRes.magnifiedMomentKnm * 1.15
+  );
+  const maxP = Math.max(
+    100,
+    result.p0Kn * 1.08,
+    result.axialLoadPu_Kn * 1.08
+  );
+  const minP = Math.min(
+    -50,
+    result.ptTensionKn * 1.12,
+    result.axialLoadPu_Kn * 1.08
+  );
+
+  const mapM = (m: number) => chartX + (Math.max(0, m) / maxM) * chartW;
+  const mapP = (p: number) =>
+    chartY + ((maxP - p) / Math.max(1, maxP - minP)) * chartH;
+
+  const nominalPath = curve
+    .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapM(pt.mnKnm).toFixed(1)} ${mapP(pt.pnKn).toFixed(1)}`)
+    .join(' ');
+
+  const designPath = curve
+    .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapM(pt.phiMnKnm).toFixed(1)} ${mapP(pt.phiPnKn).toFixed(1)}`)
+    .join(' ');
+
+  const designFillPath = `${designPath} L ${mapM(0).toFixed(1)} ${mapP(result.phiPtTensionKn).toFixed(1)} L ${mapM(0).toFixed(1)} ${mapP(result.phiPnMaxKn).toFixed(1)} Z`;
+
+  // Cross-Section Geometry Mapping (Left Panel)
+  const secBoxCx = 148;
+  const secBoxCy = 168;
+  const maxSecDim = Math.max(result.widthB_Mm, result.depthH_Mm);
+  const secScale = 155 / Math.max(100, maxSecDim);
+  const drawW = result.widthB_Mm * secScale;
+  const drawH = result.depthH_Mm * secScale;
+  const secX = secBoxCx - drawW / 2;
+  const secY = secBoxCy - drawH / 2;
+  const coverDraw = result.clearCoverMm * secScale;
+
+  const demandSafe = result.governingDcr <= 1.0;
+  const demX = mapM(axisRes.magnifiedMomentKnm);
+  const demY = mapP(result.axialLoadPu_Kn);
+  const rawDemX = mapM(axisRes.appliedMomentKnm);
+  const cutoffY = mapP(result.phiPnMaxKn);
+  const zeroPY = mapP(0);
+
+  return (
+    <div ref={containerRef} className="relative w-full select-none space-y-2">
+      {/* Header Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
+          <button
+            type="button"
+            onClick={() => setActiveAxis('X')}
+            className={`px-2.5 py-1 rounded text-[11px] font-mono font-semibold cursor-pointer transition-colors ${
+              activeAxis === 'X'
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+            }`}
+          >
+            Major X-Axis (M_ux / h={result.depthH_Mm})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveAxis('Y')}
+            className={`px-2.5 py-1 rounded text-[11px] font-mono font-semibold cursor-pointer transition-colors ${
+              activeAxis === 'Y'
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+            }`}
+          >
+            Minor Y-Axis (M_uy / b={result.widthB_Mm})
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowNominal((v) => !v)}
+            className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono cursor-pointer transition-colors ${
+              showNominal
+                ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-surface)]'
+                : 'border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)]'
+            }`}
+          >
+            {showNominal ? 'Hide Nominal Pn-Mn' : 'Show Nominal Pn-Mn'}
+          </button>
+        </div>
+      </div>
+
+      <svg viewBox="0 0 720 355" className="w-full h-auto rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+        {/* Left Panel Title */}
+        <text x={secBoxCx} y={24} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface)] font-sans text-[12px] font-bold">
+          Column Section ({result.widthB_Mm}×{result.depthH_Mm} mm)
+        </text>
+        <text x={secBoxCx} y={40} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
+          {result.totalBarCount}-Ø{result.longitudinalBarDiaMm}mm (ρ_g = {result.rhoPercent.toFixed(2)}%)
+        </text>
+
+        {/* Concrete Outline */}
+        <rect
+          x={secX}
+          y={secY}
+          width={drawW}
+          height={drawH}
+          rx={2}
+          className="fill-slate-100 dark:fill-slate-800/70 stroke-[var(--md-sys-color-on-surface)]"
+          strokeWidth={2}
+        />
+
+        {/* Transverse Tie Hoop */}
+        <rect
+          x={secX + coverDraw}
+          y={secY + coverDraw}
+          width={Math.max(10, drawW - 2 * coverDraw)}
+          height={Math.max(10, drawH - 2 * coverDraw)}
+          rx={4}
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth={2}
+        />
+
+        {/* Centroid Axes */}
+        <line
+          x1={secX - 16}
+          y1={secBoxCy}
+          x2={secX + drawW + 16}
+          y2={secBoxCy}
+          stroke="#64748b"
+          strokeDasharray="4,3"
+          strokeWidth={1}
+        />
+        <line
+          x1={secBoxCx}
+          y1={secY - 14}
+          x2={secBoxCx}
+          y2={secY + drawH + 14}
+          stroke="#64748b"
+          strokeDasharray="4,3"
+          strokeWidth={1}
+        />
+
+        {/* Longitudinal Rebar Dots */}
+        {result.bars.map((bar) => {
+          const cx = secBoxCx + bar.xMm * secScale;
+          const cy = secBoxCy - bar.yMm * secScale;
+          const r = Math.max(3.5, Math.min(7, (params.longitudinalBarDiaMm / 2) * secScale));
+          return (
+            <circle
+              key={bar.id}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="#2563eb"
+              stroke="#ffffff"
+              strokeWidth={1}
+              {...bindHover({
+                title: `Longitudinal Rebar ${bar.id} (Ø${params.longitudinalBarDiaMm}mm)`,
+                formula: `A_s,bar = ${(bar.areaMm2).toFixed(0)} mm² | Coord: (${bar.xMm.toFixed(0)}, ${bar.yMm.toFixed(0)}) mm`,
+                codeRef: `${result.designCode} · Clear cover ${result.clearCoverMm} mm`,
+              })}
+            />
+          );
+        })}
+
+        {/* Width & Depth Dimension Annotations */}
+        <text x={secBoxCx} y={secY + drawH + 28} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
+          b = {result.widthB_Mm} mm
+        </text>
+        <text
+          x={secX - 18}
+          y={secBoxCy}
+          textAnchor="middle"
+          transform={`rotate(-90 ${secX - 18} ${secBoxCy})`}
+          className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]"
+        >
+          h = {result.depthH_Mm} mm
+        </text>
+        <text x={secBoxCx} y={322} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
+          Ties Ø{result.tieBarDiaMm}@{result.tieSpacingMm}mm c/c · f&apos;c={result.concreteFcMpa} / fy={result.rebarFyMpa} MPa
+        </text>
+
+        {/* Divider */}
+        <line x1={290} y1={16} x2={290} y2={338} className="stroke-[var(--md-sys-color-outline-variant)]" strokeWidth={1} />
+
+        {/* Right Panel: P-M Interaction Diagram */}
+        <text x={chartX + chartW / 2} y={22} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface)] font-sans text-[12px] font-bold">
+          {activeAxis}-Axis P–M Interaction Envelope ({result.designCode})
+        </text>
+
+        {/* Chart Grid & Zero Axial Line */}
+        <rect
+          x={chartX}
+          y={chartY}
+          width={chartW}
+          height={chartH}
+          className="fill-slate-50/70 dark:fill-slate-900/50 stroke-[var(--md-sys-color-outline-variant)]"
+          strokeWidth={1}
+        />
+        <line
+          x1={chartX}
+          y1={zeroPY}
+          x2={chartX + chartW}
+          y2={zeroPY}
+          stroke="#64748b"
+          strokeWidth={1.2}
+        />
+        <text x={chartX - 4} y={zeroPY + 3} textAnchor="end" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[9px]">
+          0
+        </text>
+        <text x={chartX - 4} y={mapP(result.p0Kn) + 4} textAnchor="end" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[9px]">
+          {result.p0Kn.toFixed(0)}
+        </text>
+        <text x={chartX - 4} y={mapP(result.ptTensionKn) + 3} textAnchor="end" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[9px]">
+          {result.ptTensionKn.toFixed(0)}
+        </text>
+        <text x={chartX - 8} y={chartY + chartH / 2} textAnchor="middle" transform={`rotate(-90 ${chartX - 24} ${chartY + chartH / 2})`} className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[9px]">
+          Axial Force P (kN)
+        </text>
+        <text x={chartX + chartW / 2} y={chartY + chartH + 28} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
+          Bending Moment M_{activeAxis.toLowerCase()} (kN·m) — Peak {maxM.toFixed(0)}
+        </text>
+
+        {/* Design Envelope Fill */}
+        <path d={designFillPath} fill="#2563eb" fillOpacity={0.1} />
+
+        {/* Nominal Pn-Mn Curve */}
+        {showNominal && (
+          <path
+            d={nominalPath}
+            fill="none"
+            stroke="#6366f1"
+            strokeWidth={1.6}
+            strokeDasharray="5,4"
+            {...bindHover({
+              title: `Nominal Strength Envelope (Pn–Mn)`,
+              formula: `P_0 = ${result.p0Kn.toFixed(0)} kN | Pure Bending M_n0 = ${(curve.find((c) => c.regime === 'pure-bending')?.mnKnm || 0).toFixed(1)} kN·m`,
+              codeRef: `Unfactored strain-compatibility curve (${result.designCode})`,
+            })}
+          />
+        )}
+
+        {/* Design phi*Pn - phi*Mn Curve */}
+        <path
+          d={designPath}
+          fill="none"
+          stroke="#2563eb"
+          strokeWidth={2.5}
+          {...bindHover({
+            title: `Design Factored Envelope (φPn–φMn)`,
+            formula: `φP_n,max = ${result.phiPnMaxKn.toFixed(0)} kN | φM_n(Pu) = ${axisRes.phiMnAtPuKnm.toFixed(1)} kN·m`,
+            codeRef: `Strength reduction φ = 0.65 (compression) → 0.90 (tension)`,
+          })}
+        />
+
+        {/* Pure Axial Cutoff Line */}
+        <line
+          x1={chartX}
+          y1={cutoffY}
+          x2={chartX + chartW}
+          y2={cutoffY}
+          stroke="#f59e0b"
+          strokeDasharray="4,3"
+          strokeWidth={1.3}
+          {...bindHover({
+            title: `Maximum Tied Axial Cutoff (φP_n,max)`,
+            formula: `φP_n,max = 0.80 · φ · P_0 = ${result.phiPnMaxKn.toFixed(1)} kN`,
+            codeRef: `ACI 318-19 Table 22.4.2.1 / BNBC 2020`,
+          })}
+        />
+        <text x={chartX + chartW - 4} y={cutoffY - 4} textAnchor="end" className="fill-amber-600 dark:fill-amber-400 font-mono text-[9px] font-semibold">
+          φP_n,max = {result.phiPnMaxKn.toFixed(0)} kN
+        </text>
+
+        {/* Balanced Point Marker */}
+        <circle
+          cx={mapM(axisRes.phiMBalancedKnm)}
+          cy={mapP(axisRes.phiPBalancedKn)}
+          r={4.5}
+          fill="#f59e0b"
+          stroke="#ffffff"
+          strokeWidth={1.5}
+          {...bindHover({
+            title: `Balanced Failure Point (c_b = ${axisRes.cBalancedMm.toFixed(1)} mm)`,
+            formula: `φP_b = ${axisRes.phiPBalancedKn.toFixed(1)} kN ,  φM_b = ${axisRes.phiMBalancedKnm.toFixed(1)} kN·m`,
+            codeRef: `Simultaneous ε_cu & ε_t = f_y / E_s`,
+          })}
+        />
+
+        {/* Unmagnified vs Magnified Demand Line */}
+        {Math.abs(demX - rawDemX) > 2 && (
+          <>
+            <line
+              x1={rawDemX}
+              y1={demY}
+              x2={demX}
+              y2={demY}
+              stroke="#ef4444"
+              strokeDasharray="3,2"
+              strokeWidth={1.5}
+            />
+            <circle cx={rawDemX} cy={demY} r={3.5} fill="#ffffff" stroke="#64748b" strokeWidth={1.5} />
+          </>
+        )}
+
+        {/* Applied Factored Load Point */}
+        <line x1={chartX} y1={demY} x2={demX} y2={demY} stroke={demandSafe ? '#10b981' : '#ef4444'} strokeDasharray="2,3" strokeWidth={1} />
+        <line x1={demX} y1={demY} x2={demX} y2={chartY + chartH} stroke={demandSafe ? '#10b981' : '#ef4444'} strokeDasharray="2,3" strokeWidth={1} />
+        <circle
+          cx={demX}
+          cy={demY}
+          r={6}
+          fill={demandSafe ? '#10b981' : '#ef4444'}
+          stroke="#ffffff"
+          strokeWidth={2}
+          {...bindHover({
+            title: `Factored Demand (P_u, M_c${activeAxis.toLowerCase()}) — ${demandSafe ? 'SAFE' : 'OVERLOADED'}`,
+            formula: `P_u = ${result.axialLoadPu_Kn} kN | M_c${activeAxis.toLowerCase()} = ${axisRes.magnifiedMomentKnm.toFixed(1)} kN·m (δ_ns = ${axisRes.magnifierDeltaNs.toFixed(2)}×)`,
+            codeRef: `Uniaxial DCR = ${(axisRes.uniaxialDcr * 100).toFixed(1)}% · Biaxial Bresler = ${(result.breslerContourDcr * 100).toFixed(1)}%`,
+          })}
+        />
+        <text
+          x={Math.min(chartX + chartW - 60, demX + 8)}
+          y={Math.max(chartY + 16, demY - 8)}
+          className={`font-mono text-[10px] font-bold ${demandSafe ? 'fill-emerald-700 dark:fill-emerald-400' : 'fill-rose-600 dark:fill-rose-400'}`}
+        >
+          ({axisRes.magnifiedMomentKnm.toFixed(0)} kN·m, {result.axialLoadPu_Kn} kN)
+        </text>
+      </svg>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] px-1">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-0.5 bg-[#2563eb]" /> Design φPn–φMn
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-0.5 border-t border-dashed border-[#6366f1]" /> Nominal Pn–Mn
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#f59e0b]" /> Balanced Point
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className={`inline-block w-2.5 h-2.5 rounded-full ${demandSafe ? 'bg-[#10b981]' : 'bg-[#ef4444]'}`} /> Applied Demand
+          </span>
+        </div>
+        <div>Hover curve &amp; bars for strain-compatibility equations</div>
+      </div>
+
+      <FormulaTooltipOverlay tooltip={tooltip} />
+      <DiagramFormulaHint />
+    </div>
+  );
+};
+
+/* ==============================================================
+   13. STRUT-AND-TIE MODEL (STM) DISCONTINUITY TRUSS DIAGRAM
+   ============================================================== */
+export const StrutAndTieDiagramSvg: React.FC<{
+  params: StrutAndTieParams;
+  result: StrutAndTieResult;
+}> = ({ params, result }) => {
+  const { tooltip, containerRef, bindHover } = useFormulaTooltip();
+
+  const xs = result.nodeResults.map((n) => n.xM);
+  const ys = result.nodeResults.map((n) => n.yM);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const spanX = Math.max(0.4, maxX - minX);
+  const spanY = Math.max(0.4, maxY - minY);
+
+  const svgW = 720;
+  const svgH = 340;
+  const padX = 90;
+  const padTop = 58;
+  const padBot = 65;
+
+  const scale = Math.min(
+    (svgW - 2 * padX) / spanX,
+    (svgH - padTop - padBot) / spanY
+  );
+  const drawW = spanX * scale;
+  const drawH = spanY * scale;
+  const offX = (svgW - drawW) / 2;
+  const offY = padTop + (svgH - padTop - padBot - drawH) / 2;
+
+  const mapX = (xM: number) => offX + (xM - minX) * scale;
+  const mapY = (yM: number) => offY + drawH - (yM - minY) * scale;
+
+  const nodeMap = new Map(result.nodeResults.map((n) => [n.nodeId, n]));
+
+  return (
+    <div ref={containerRef} className="relative w-full select-none space-y-2">
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+        {/* Title & Partial Advisory */}
+        <text x={svgW / 2} y={22} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface)] font-sans text-[12px] font-bold">
+          {params.presetName} · Strut-and-Tie Truss Equilibrium
+        </text>
+        <text x={svgW / 2} y={37} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
+          b = {params.memberThicknessMm} mm · f&apos;c = {params.concreteFcMpa} MPa · fy = {params.rebarFyMpa} MPa · Partial Scope (Equilibrium &amp; Forces)
+        </text>
+
+        {/* Concrete D-Region Envelope Silhouette */}
+        <rect
+          x={offX - 24}
+          y={offY - 20}
+          width={drawW + 48}
+          height={drawH + 40}
+          rx={4}
+          className="fill-slate-100/80 dark:fill-slate-800/40 stroke-slate-300 dark:stroke-slate-700"
+          strokeWidth={1.5}
+        />
+
+        {/* Members: Struts (Dashed Red/Amber) & Ties (Solid Blue/Emerald) */}
+        {result.memberResults.map((mr) => {
+          const n1 = nodeMap.get(mr.startNodeId);
+          const n2 = nodeMap.get(mr.endNodeId);
+          if (!n1 || !n2) return null;
+          const x1 = mapX(n1.xM);
+          const y1 = mapY(n1.yM);
+          const x2 = mapX(n2.xM);
+          const y2 = mapY(n2.yM);
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+
+          const isStrut = mr.role === 'strut';
+          const isTie = mr.role === 'tie';
+          const stroke = isStrut
+            ? '#d97706' // Amber/Red compression strut
+            : isTie
+            ? '#0284c7' // Blue tension tie
+            : '#94a3b8';
+
+          return (
+            <g
+              key={mr.memberId}
+              {...bindHover({
+                title: `${mr.label} — ${isStrut ? 'COMPRESSION STRUT' : isTie ? 'TENSION TIE' : 'ZERO-FORCE'}`,
+                formula: `Axial N = ${mr.axialForceKn >= 0 ? '+' : ''}${mr.axialForceKn.toFixed(1)} kN | Stress = ${mr.stressMpa.toFixed(1)} MPa (DCR ${(mr.dcrRatio * 100).toFixed(1)}%)`,
+                codeRef: isTie
+                  ? `Required Tie Rebar A_s = ${mr.requiredTieSteelMm2.toFixed(0)} mm² (φ = 0.75)`
+                  : `Strut capacity limit = ${mr.allowableLimitMpa.toFixed(1)} MPa`,
+              })}
+            >
+              <line
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={stroke}
+                strokeWidth={isStrut ? 5.5 : isTie ? 3.5 : 1.5}
+                strokeDasharray={isStrut ? '9,5' : isTie ? undefined : '3,4'}
+                strokeLinecap="round"
+              />
+              {/* Force Label Pill-free Clean Box */}
+              <rect
+                x={mx - 44}
+                y={my - 12}
+                width={88}
+                height={18}
+                rx={3}
+                className="fill-[var(--md-sys-color-surface)]/95 stroke-[var(--md-sys-color-outline-variant)]"
+                strokeWidth={0.8}
+              />
+              <text
+                x={mx}
+                y={my + 1}
+                textAnchor="middle"
+                className="font-mono text-[9.5px] font-bold"
+                fill={stroke}
+              >
+                {isStrut
+                  ? `-${Math.abs(mr.axialForceKn).toFixed(0)} kN (C)`
+                  : isTie
+                  ? `+${mr.axialForceKn.toFixed(0)} kN (T)`
+                  : `0 kN`}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Nodes, Support Symbols & Applied Loads */}
+        {result.nodeResults.map((nr) => {
+          const x = mapX(nr.xM);
+          const y = mapY(nr.yM);
+          const hasLoad = Math.abs(nr.appliedFxKn) > 0.1 || Math.abs(nr.appliedFyKn) > 0.1;
+
+          return (
+            <g
+              key={nr.nodeId}
+              {...bindHover({
+                title: `Node ${nr.label} (${nr.xM.toFixed(2)}m, ${nr.yM.toFixed(2)}m)`,
+                formula: `Applied: (${nr.appliedFxKn.toFixed(1)}, ${nr.appliedFyKn.toFixed(1)}) kN | Reaction: (${nr.reactionRxKn.toFixed(1)}, ${nr.reactionRyKn.toFixed(1)}) kN`,
+                codeRef: `Joint ΣFx=${nr.sumFxResidualKn.toExponential(1)}, ΣFy=${nr.sumFyResidualKn.toExponential(1)} kN`,
+              })}
+            >
+              {/* Support Geometry */}
+              {nr.support === 'pin' && (
+                <polygon
+                  points={`${x},${y + 4} ${x - 10},${y + 20} ${x + 10},${y + 20}`}
+                  fill="none"
+                  className="stroke-[var(--md-sys-color-primary)]"
+                  strokeWidth={2}
+                />
+              )}
+              {nr.support === 'roller-y' && (
+                <>
+                  <polygon
+                    points={`${x},${y + 4} ${x - 9},${y + 17} ${x + 9},${y + 17}`}
+                    fill="none"
+                    className="stroke-[var(--md-sys-color-primary)]"
+                    strokeWidth={1.8}
+                  />
+                  <circle cx={x - 5} cy={y + 21} r={2.5} className="fill-[var(--md-sys-color-primary)]" />
+                  <circle cx={x + 5} cy={y + 21} r={2.5} className="fill-[var(--md-sys-color-primary)]" />
+                </>
+              )}
+              {nr.support === 'roller-x' && (
+                <polygon
+                  points={`${x - 4},${y} ${x - 18},${y - 9} ${x - 18},${y + 9}`}
+                  fill="none"
+                  className="stroke-[var(--md-sys-color-primary)]"
+                  strokeWidth={1.8}
+                />
+              )}
+
+              {/* Applied Point Load Arrows */}
+              {hasLoad && Math.abs(nr.appliedFyKn) > 0.1 && (
+                <g>
+                  <line
+                    x1={x}
+                    y1={nr.appliedFyKn < 0 ? y - 38 : y + 38}
+                    x2={x}
+                    y2={nr.appliedFyKn < 0 ? y - 8 : y + 8}
+                    stroke="#dc2626"
+                    strokeWidth={2.5}
+                  />
+                  <polygon
+                    points={
+                      nr.appliedFyKn < 0
+                        ? `${x},${y - 6} ${x - 4.5},${y - 14} ${x + 4.5},${y - 14}`
+                        : `${x},${y + 6} ${x - 4.5},${y + 14} ${x + 4.5},${y + 14}`
+                    }
+                    fill="#dc2626"
+                  />
+                  <text
+                    x={x}
+                    y={nr.appliedFyKn < 0 ? y - 42 : y + 50}
+                    textAnchor="middle"
+                    fill="#dc2626"
+                    className="font-mono text-[10px] font-bold"
+                  >
+                    {Math.abs(nr.appliedFyKn).toFixed(0)} kN
+                  </text>
+                </g>
+              )}
+
+              {hasLoad && Math.abs(nr.appliedFxKn) > 0.1 && (
+                <g>
+                  <line
+                    x1={nr.appliedFxKn > 0 ? x + 8 : x - 8}
+                    y1={y}
+                    x2={nr.appliedFxKn > 0 ? x + 42 : x - 42}
+                    y2={y}
+                    stroke="#dc2626"
+                    strokeWidth={2.2}
+                  />
+                  <text
+                    x={nr.appliedFxKn > 0 ? x + 46 : x - 46}
+                    y={y + 3}
+                    textAnchor={nr.appliedFxKn > 0 ? 'start' : 'end'}
+                    fill="#dc2626"
+                    className="font-mono text-[10px] font-bold"
+                  >
+                    {nr.appliedFxKn > 0 ? '+' : ''}{nr.appliedFxKn.toFixed(0)} kN
+                  </text>
+                </g>
+              )}
+
+              {/* Node Dot */}
+              <circle
+                cx={x}
+                cy={y}
+                r={5.5}
+                className="fill-[var(--md-sys-color-surface)] stroke-[var(--md-sys-color-on-surface)]"
+                strokeWidth={2}
+              />
+              <text
+                x={x}
+                y={y + (nr.support !== 'none' ? 35 : -12)}
+                textAnchor="middle"
+                className="fill-[var(--md-sys-color-on-surface)] font-mono text-[9.5px] font-semibold"
+              >
+                {nr.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] px-1">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0.5 border-t-2 border-dashed border-[#d97706]" /> Compression Strut (-C)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0.5 bg-[#0284c7]" /> Tension Tie (+T)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#dc2626]" /> Factored Load
+          </span>
+        </div>
+        <div>Hover struts, ties, or nodes for Method of Joints details</div>
+      </div>
+
+      <FormulaTooltipOverlay tooltip={tooltip} />
+      <DiagramFormulaHint />
+    </div>
+  );
+};
+
+
+
 
 

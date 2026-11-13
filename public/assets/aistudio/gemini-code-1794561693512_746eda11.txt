@@ -1,0 +1,21 @@
+Add two specialized Reinforced Concrete design & discontinuity-region solvers to BD. CivilLab:
+1. `"rc-column-design"` — **RC Column Uniaxial & Biaxial $N\text{--}M$ Interaction & Slenderness Check** (BNBC 2020 / ACI 318-19 / Eurocode 2)
+2. `"strut-and-tie"` — **Strut-and-Tie Model (STM) Discontinuity Solver** (Deep Beams, Corbels & Pile Caps)
+
+Ensure zero conflicts with existing modules (`rebar-bbs`, `concrete-mix`, `boq-estimator`) and include a one-click "Sync Column Rebar to BBS Schedule" cross-link button in `WorkflowCrossLinkBanner.tsx`.
+
+### 1. Module A: `rc-column-design` (RC Column $N\text{--}M$ Interaction)
+- **Schema & Inputs:** Column width $b$ (mm), depth $h$ (mm), clear cover (mm), unsupported length $L_u$ (m), end restraint factor $k$ (braced/unbraced), concrete grade $f'_c$ (MPa), rebar yield $f_y$ (MPa), longitudinal bar diameter & arrangement (e.g., 8-$\phi$20mm or 12-$\phi$25mm), tie diameter/spacing, and factored loads $(P_u, M_{ux}, M_{uy})$.
+- **Strain-Compatibility Interaction Engine (`src/utils/rcColumnEngine.ts`):**
+  - Sweep neutral axis depth $c$ from pure compression ($P_0, \phi P_{n,max}$) through balanced failure ($c_b, P_b, M_b$) to pure bending ($P_n = 0$) and pure tension ($P_t$).
+  - Compute both **Nominal ($P_n\text{--}M_n$)** and **Design Factored ($\phi P_n\text{--}\phi M_n$)** interaction envelopes for both X and Y axes, plus Bresler's Load Contour check for biaxial bending.
+  - Evaluate Slenderness ratio $\frac{k L_u}{r}$ and Moment Magnifier ($\delta_{ns}$) if slender.
+  - Generate `handCalculationSteps` for balanced strain condition, Whitney stress block depth $a = \beta_1 c$, steel layer strains/forces, and DCR utilization.
+- **Visualization:** Interactive SVG **$P\text{--}M$ Interaction Diagram** plotting Nominal Curve, Design $\phi$-Curve, Balanced Point, Pure Axial Cutoff, and the applied load point $(M_u, P_u)$ with Safe/Overloaded status.
+- **Cross-Link:** Add a button to push the designed column reinforcement directly into `rebar-bbs` (`elementType: 'column'`).
+
+### 2. Module B: `strut-and-tie` (Strut-and-Tie Model — STM)
+- **Status Badge:** Mark explicitly as `Partial (Truss Equilibrium & Member Forces)` in `scopeAndLimits` (noting that detailed nodal zone & anchorage sizing is advisory).
+- **Inputs & Presets:** Node coordinates $(x, y)$, Pin/Roller supports, Point loads, and Truss Strut/Tie connectivity. Include 1-click Worked Examples: "Deep Beam under Single Point Load", "Symmetrical Two-Point Load Transfer Girder", and "Corbel Bracket STM".
+- **Solver & Step-by-Step:** Solve truss equilibrium using Method of Joints / Direct Stiffness, classify each member automatically as **Compression Strut (Dashed Red/Amber)** or **Tension Tie (Solid Blue/Emerald)**, verify global equilibrium ($\Sigma F_x = 0, \Sigma F_y = 0, \Sigma M = 0$), and output step-by-step joint equilibrium equations in `StepByStepPanel`.
+- **Integration:** Register both `'rc-column-design'` and `'strut-and-tie'` in `Sidebar.tsx`, `App.tsx`, `AnalyticalDenseTable.tsx`, `DcrGaugeSuite`, and `analyticalExport.ts`.

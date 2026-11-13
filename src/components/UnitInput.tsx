@@ -15,8 +15,10 @@ import {
   formatSmartNumber,
   formatNumberWhileTyping,
   formatFeetInches,
+  formatFeetInchDual,
   computeRegionalLandBreakdown,
   FeetInchParseResult,
+  EXACT_CONVERSION,
 } from '../utils/unitEngine';
 import { ChevronDown, Check, ArrowRightLeft, HelpCircle, AlertCircle, X, Info, Compass, MapPin } from 'lucide-react';
 import { evaluateMathExpression } from './ui/TechnicalInput';
@@ -291,6 +293,85 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     }
   };
 
+  // Dual-mode Feet-Inch state & stepper controls
+  const [isStepperOpen, setIsStepperOpen] = useState(false);
+
+  const lengthDual = useMemo(() => {
+    if (category !== 'length' || isNaN(siValue)) return null;
+    return formatFeetInchDual(siValue);
+  }, [category, siValue]);
+
+  const stepperFeet = useMemo(() => {
+    if (isNaN(siValue)) return 0;
+    const totalFeet = siValue / EXACT_CONVERSION.FT_TO_M;
+    return Math.floor(Math.abs(totalFeet));
+  }, [siValue]);
+
+  const stepperInches = useMemo(() => {
+    if (isNaN(siValue)) return 0;
+    const totalFeet = siValue / EXACT_CONVERSION.FT_TO_M;
+    const absFeet = Math.abs(totalFeet);
+    const wholeFt = Math.floor(absFeet);
+    return Number(((absFeet - wholeFt) * 12).toFixed(2));
+  }, [siValue]);
+
+  const handleStepperFeetDelta = (delta: number) => {
+    const newFt = Math.max(0, stepperFeet + delta);
+    const newTotalFeet = newFt + stepperInches / 12;
+    const newSI = newTotalFeet * EXACT_CONVERSION.FT_TO_M;
+    onChangeSI(newSI);
+  };
+
+  const handleStepperInchesDelta = (delta: number) => {
+    let newIn = stepperInches + delta;
+    let newFt = stepperFeet;
+    if (newIn >= 12) {
+      newFt += Math.floor(newIn / 12);
+      newIn = newIn % 12;
+    } else if (newIn < 0) {
+      const borrow = Math.ceil(Math.abs(newIn) / 12);
+      newFt = Math.max(0, newFt - borrow);
+      newIn = (newIn + borrow * 12) % 12;
+    }
+    const newTotalFeet = newFt + Number(newIn.toFixed(2)) / 12;
+    const newSI = newTotalFeet * EXACT_CONVERSION.FT_TO_M;
+    onChangeSI(newSI);
+  };
+
+  const handleDirectStepperFt = (val: number) => {
+    const newFt = Math.max(0, isNaN(val) ? 0 : val);
+    const newTotalFeet = newFt + stepperInches / 12;
+    onChangeSI(newTotalFeet * EXACT_CONVERSION.FT_TO_M);
+  };
+
+  const handleDirectStepperIn = (val: number) => {
+    let newIn = isNaN(val) ? 0 : val;
+    let newFt = stepperFeet;
+    if (newIn >= 12) {
+      newFt += Math.floor(newIn / 12);
+      newIn = newIn % 12;
+    } else if (newIn < 0) {
+      newIn = 0;
+    }
+    const newTotalFeet = newFt + Number(newIn.toFixed(2)) / 12;
+    onChangeSI(newTotalFeet * EXACT_CONVERSION.FT_TO_M);
+  };
+
+  const handleSwapLengthDisplay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!lengthDual) return;
+    if (activeUnitInfo.id === 'ft') {
+      onUnitChange('ft-in');
+      setRawText(lengthDual.compoundFtInStr);
+    } else if (activeUnitInfo.id === 'ft-in') {
+      onUnitChange('ft');
+      setRawText(lengthDual.decimalFtStr.replace("'", ''));
+    } else {
+      onUnitChange('ft-in');
+      setRawText(lengthDual.compoundFtInStr);
+    }
+  };
+
   // Explicit Zero (0) detection
   const isZeroActive =
     !disabled &&
@@ -420,6 +501,21 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
         {/* 1-Click Real-time Metric <-> Imperial Counterpart Toggle & Quick ft'-in" Option */}
         <div className="flex items-center gap-1 shrink-0">
+          {category === 'length' && (activeUnitInfo.id === 'ft' || activeUnitInfo.id === 'ft-in') && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setIsStepperOpen(!isStepperOpen)}
+              className={`px-1.5 py-0.5 text-[10px] font-mono font-bold rounded border transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 btn-tactile ${
+                isStepperOpen
+                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent'
+                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+              }`}
+              title="Toggle Feet & Inches dual stepper input boxes"
+            >
+              <span>⇄ Ft+In Box</span>
+            </button>
+          )}
           {category === 'length' && activeUnitInfo.id !== 'ft-in' && (
             <button
               type="button"
@@ -445,6 +541,69 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           )}
         </div>
       </div>
+
+      {/* Optional Linked Feet + Inches Dual Stepper Boxes */}
+      {category === 'length' && isStepperOpen && (
+        <div className="flex items-center gap-2 p-2 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] animate-fadeIn">
+          <div className="flex-1 flex items-center justify-between bg-[var(--md-sys-color-surface)] px-2 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
+            <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] mr-1">Feet (&apos;)</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => handleStepperFeetDelta(-1)}
+                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                disabled={disabled}
+                value={stepperFeet}
+                onChange={(e) => handleDirectStepperFt(parseInt(e.target.value, 10))}
+                className="w-12 text-center text-sm font-bold font-mono bg-transparent text-[var(--md-sys-color-on-surface)] focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => handleStepperFeetDelta(1)}
+                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-between bg-[var(--md-sys-color-surface)] px-2 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
+            <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] mr-1">Inches (&quot;)</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => handleStepperInchesDelta(-1)}
+                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                step="0.5"
+                disabled={disabled}
+                value={stepperInches}
+                onChange={(e) => handleDirectStepperIn(parseFloat(e.target.value))}
+                className="w-12 text-center text-sm font-bold font-mono bg-transparent text-[var(--md-sys-color-on-surface)] focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => handleStepperInchesDelta(1)}
+                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Input Field with Unit Selector Dropdown Trigger */}
       <div
@@ -592,17 +751,33 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         </div>
       </div>
 
-      {/* Real-time Architectural Feet-Inch Preview Chip */}
-      {category === 'length' && architecturalPreview && (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--md-sys-color-primary-container)]/50 text-[var(--md-sys-color-on-primary-container)] text-[11px] font-mono border border-[var(--md-sys-color-primary)]/30 animate-fadeIn">
-          <Compass className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
-          <span className="font-bold">{architecturalPreview.fractionString}</span>
-          <span className="opacity-60">≈</span>
-          <span>{architecturalPreview.metricString}</span>
-          <span className="opacity-40">|</span>
-          <span>{architecturalPreview.decimalFeetString}</span>
-          <span className="opacity-40">|</span>
-          <span>{architecturalPreview.totalMm.toFixed(1)} mm</span>
+      {/* Live Dual-Equivalent Badge on Every Length Input with 1-Click Swap */}
+      {category === 'length' && lengthDual && siValue > 0 && (
+        <div
+          onClick={handleSwapLengthDisplay}
+          className="flex items-center justify-between px-2.5 py-1 rounded-md bg-[var(--md-sys-color-primary-container)]/30 hover:bg-[var(--md-sys-color-primary-container)]/60 text-[var(--md-sys-color-on-surface)] text-[11px] font-mono border border-[var(--md-sys-color-primary)]/30 transition-all cursor-pointer group select-none animate-fadeIn"
+          title="Click to swap between Decimal Feet (12.25') and Compound Feet-Inches (12'-3&quot;)"
+        >
+          <div className="flex items-center gap-1.5 truncate">
+            <Compass className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+            {activeUnitInfo.id === 'ft-in' ? (
+              <span>
+                = <strong className="text-[var(--md-sys-color-primary)]">{lengthDual.decimalFtStr}</strong> • {lengthDual.metricStr}
+              </span>
+            ) : activeUnitInfo.id === 'ft' ? (
+              <span>
+                = <strong className="text-[var(--md-sys-color-primary)]">{lengthDual.compoundFtInStr}</strong> • {lengthDual.metricStr}
+              </span>
+            ) : (
+              <span>
+                = <strong className="text-[var(--md-sys-color-primary)]">{lengthDual.compoundFtInStr}</strong> ({lengthDual.decimalFtStr})
+              </span>
+            )}
+          </div>
+          <span className="text-[9.5px] font-bold text-[var(--md-sys-color-primary)] shrink-0 flex items-center gap-1 opacity-80 group-hover:opacity-100">
+            <ArrowRightLeft className="w-2.5 h-2.5" />
+            <span>Swap Display</span>
+          </span>
         </div>
       )}
 

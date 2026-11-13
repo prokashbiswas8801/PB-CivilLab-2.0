@@ -50,7 +50,7 @@ import {
   computeBOQEstimator,
 } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
-import { formatFeetInches } from '../../utils/unitConverter';
+import { formatFeetInches, formatFeetInchDual } from '../../utils/unitConverter';
 import {
   STANDARD_WBS_SECTIONS,
   REGIONAL_DISTRICT_ADJUSTMENTS,
