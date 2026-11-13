@@ -377,17 +377,25 @@ export function parseSmartUnitInput(
     return { parsedValue: 0, detectedUnitId: currentUnitId, isValid: false, errorMessage: 'Empty input' };
   }
 
-  // 1. If length and contains architectural symbols ', " or ft/in or architectural hyphen/space format (e.g. 12-6 1/2) or suta/সুতা
+  // 1. If length and contains architectural symbols ', " or ft/in or architectural hyphen/space format (e.g. 12-6, 12 6, 12-6 1/2) or suta/সুতা
   if (
     category === 'length' &&
     (/['"]/.test(trimmed) ||
       /\b(?:ft|feet|in|inch|inches|suta|soot|sut|সুতা|সূতা)\b/i.test(trimmed) ||
-      /^\d+\s*[-–—]\s*\d+/.test(trimmed) ||
-      /^\d+\s+\d+\s+\d+\/\d+/.test(trimmed) ||
-      /^\d+\/\d+/.test(trimmed))
+      /^\d+(?:\.\d+)?\s*[-–—]\s*\d+/.test(trimmed) ||
+      /^\d+(?:\.\d+)?\s+\d+(?:\.\d+)?(?:\s+\d+\/\d+)?$/.test(trimmed) ||
+      /^\d+\/\d+$/.test(trimmed))
   ) {
     const feetInchResult = parseFeetInchString(trimmed);
-      if (currentUnitId === 'ft-in') {
+    if (!feetInchResult.isValid) {
+      return {
+        parsedValue: 0,
+        detectedUnitId: currentUnitId,
+        isValid: false,
+        errorMessage: feetInchResult.errorMessage,
+      };
+    }
+    if (currentUnitId === 'ft-in') {
         return {
           parsedValue: feetInchResult.totalFeet,
           detectedUnitId: 'ft-in',

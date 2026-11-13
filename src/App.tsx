@@ -165,8 +165,6 @@ import {
 } from './utils/calculations';
 import {
   convertUnitValue,
-  parseFeetInchString,
-  STANDARD_UNITS,
   BASE_UNITS,
 } from './utils/unitConverter';
 import {
@@ -178,7 +176,6 @@ import {
   RebarBBSDiagramSvg,
   MasonryDiagramSvg,
   EarthworkDiagramSvg,
-  UnitConverterDiagramSvg,
   BOQCostBreakdownDiagramSvg,
   RateAnalysisBreakdownDiagramSvg,
   ContinuousBeamDiagramSvg,
@@ -257,8 +254,6 @@ import {
   BoqEstimatorTable,
   RateAnalysisInputs,
   RateAnalysisTables,
-  UnitConverterInputs,
-  UnitConverterMetrics,
   ConcreteMaterialsInputs,
   ConcreteMaterialsMetrics,
   RebarBbsInputs,
@@ -694,25 +689,6 @@ export default function App() {
     activeWorkspace.converter.regionalLandPreset,
     appState.customUnits,
   ]);
-
-  // Feet-Inch Decimal Parser Computation
-  const activeFeetInchResult = useMemo(() => {
-    return parseFeetInchString(activeWorkspace.converter?.feetInchRawString || '');
-  }, [activeWorkspace.converter?.feetInchRawString]);
-
-  // Available Category Units for Converter
-  const availableCategoryUnits = useMemo(() => {
-    const std = STANDARD_UNITS[activeWorkspace.converter.category] || [];
-    const custom = (appState.customUnits || [])
-      .filter((u) => u.category === activeWorkspace.converter.category)
-      .map((u) => ({
-        id: u.id,
-        name: u.name,
-        symbol: u.symbol,
-        isRegional: false,
-      }));
-    return [...std, ...custom];
-  }, [activeWorkspace.converter.category, appState.customUnits]);
 
   // Fallbacks for newly integrated modules if undefined in legacy workspace
   const defaultContinuousBeam = useMemo(() => ({
@@ -3924,6 +3900,15 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   />
                 </React.Suspense>
               </motion.div>
+            ) : activeModule === 'unit-converter' ? (
+              <div className="p-4 md:p-6">
+                <ConverterPage
+                  activeWorkspace={activeWorkspace}
+                  updateActiveWorkspace={updateActiveWorkspace}
+                  customUnits={appState.customUnits}
+                  onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
+                />
+              </div>
             ) : (
               <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Pane: Parameter Input Form with Smooth Unit Transition */}
@@ -3965,19 +3950,6 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     getFieldUnit={getFieldUnit}
                     updateFieldUnit={updateFieldUnit}
                     onApplyRateToBOQ={handleApplyRateToBOQ}
-                  />
-                )}
-
-                {/* MODULE: SMART UNIT CONVERTER */}
-                {activeModule === 'unit-converter' && (
-                  <UnitConverterInputs
-                    activeWorkspace={activeWorkspace}
-                    updateActiveWorkspace={updateActiveWorkspace}
-                    customUnits={appState.customUnits}
-                    availableCategoryUnits={availableCategoryUnits}
-                    activeFeetInchResult={activeFeetInchResult}
-                    onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
-                    conversionResult={activeConversionResult}
                   />
                 )}
 
@@ -4379,15 +4351,6 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     {activeModule === 'rate-analysis' && currentEnvelope.result && (
                       <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} />
                     )}
-                    {activeModule === 'unit-converter' && (
-                      <UnitConverterDiagramSvg
-                        inputVal={activeWorkspace.converter.inputValue}
-                        outputVal={activeConversionResult?.result ?? 0}
-                        fromUnit={activeWorkspace.converter.fromUnit}
-                        toUnit={activeWorkspace.converter.toUnit}
-                        category={activeWorkspace.converter.category}
-                      />
-                    )}
                     {activeModule === 'concrete-materials' && currentEnvelope.result && (
                       <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} />
                     )}
@@ -4516,18 +4479,6 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     customUnits={appState.customUnits}
                     getOutputUnit={getOutputUnit}
                     updateOutputUnit={updateOutputUnit}
-                  />
-                )}
-                {activeModule === 'unit-converter' && activeConversionResult && (
-                  <UnitConverterMetrics
-                    inputValue={activeWorkspace.converter.inputValue}
-                    fromUnit={activeWorkspace.converter.fromUnit}
-                    toUnit={activeWorkspace.converter.toUnit}
-                    category={activeWorkspace.converter.category}
-                    conversionResult={activeConversionResult}
-                    customUnits={appState.customUnits}
-                    regionalLandPreset={activeWorkspace.converter.regionalLandPreset || 'standard'}
-                    onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
                   />
                 )}
                 {activeModule === 'masonry-finishes' && currentEnvelope.result && (

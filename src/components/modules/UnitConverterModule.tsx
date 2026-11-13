@@ -7,8 +7,6 @@ import {
   HelpCircle,
   Search,
   Star,
-  Pin,
-  Filter,
   Copy,
   Maximize2,
   Ruler,
@@ -34,7 +32,10 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  BookOpen,
+  ArrowRight,
+  Compass,
+  Wrench,
+  X,
 } from 'lucide-react';
 import {
   CivilWorkspace,
@@ -44,6 +45,7 @@ import {
 import {
   STANDARD_UNITS,
   BASE_UNITS,
+  EXACT_CONVERSION,
   convertDirect,
   computeRegionalLandBreakdown,
   FeetInchParseResult,
@@ -57,6 +59,7 @@ import {
 } from '../../utils/unitConverter';
 import { parseSmartUnitInput } from '../../utils/unitEngine';
 import { ExplainConversionModal } from '../modals/ExplainConversionModal';
+import { UnitConverterDiagramSvg } from '../EngineeringDiagrams';
 
 export { ExplainConversionModal };
 
@@ -200,7 +203,7 @@ export const CATEGORY_METAS: Record<UnitCategoryKey, CategoryMeta> = {
     nameBn: 'আয়তন ও ধারকত্ব',
     icon: Boxes,
     topPreviews: ['m³', 'cft', 'Liter', 'bag (50kg)', 'brass', 'gal'],
-    description: 'Cumec, CFT, cement bag (1.226 cft), truck loads, brass, and liters',
+    description: 'Cumec, CFT, cement bag (1.25 cft), truck loads, brass, and liters',
   },
   mass: {
     id: 'mass',
@@ -348,6 +351,27 @@ export const CATEGORY_METAS: Record<UnitCategoryKey, CategoryMeta> = {
   },
 };
 
+// Top 5–6 quick unit pills per category for 1-click Source / Target switching
+const QUICK_UNIT_PILLS_BY_CATEGORY: Partial<Record<UnitCategoryKey, string[]>> = {
+  length: ['m', 'ft', 'ft-in', 'mm', 'in', 'suta'],
+  area: ['katha', 'ft2', 'decimal', 'm2', 'bigha', 'acre'],
+  volume: ['m3', 'cft', 'liter', 'brass', 'bag_cement', 'yd3'],
+  mass: ['kg', 'tonne', 'lb', 'bag50', 'maund', 'seer'],
+  force: ['kN', 'kip', 'N', 'lbf', 'MN', 'tonf'],
+  pressure: ['MPa', 'psi', 'kPa', 'psf', 'bar', 'ksi'],
+  moment: ['kN.m', 'kip.ft', 'N.m', 'lbf.ft', 'kip.in'],
+  distributed_load: ['kN/m', 'kip/ft', 'plf', 'klf', 'N/mm'],
+  density: ['kN/m3', 'pcf', 'kg/m3', 'g/cm3', 'tonne/m3'],
+  slope: ['percent', 'degree', 'ratio', 'rad', 'permille'],
+  velocity: ['m/s', 'ft/s', 'km/h', 'mph', 'knot'],
+  flow_rate: ['m3/s', 'cfs', 'L/s', 'gpm', 'm3/hr', 'L/min'],
+  temperature: ['c', 'f', 'k', 'r'],
+  energy: ['kJ', 'kWh', 'MJ', 'BTU', 'kcal', 'J'],
+  power: ['kW', 'hp', 'W', 'TR', 'btu_hr'],
+  fuel_economy: ['km_l', 'l_100km', 'mpg_us', 'mpg_uk'],
+  cad_typography: ['mm', 'pt', 'px_96', 'in', 'mil', 'cm'],
+};
+
 // Common paired units for quick single-click selection per engineering category
 const COMMON_CATEGORY_PAIRS: Record<
   UnitCategoryKey,
@@ -359,7 +383,6 @@ const COMMON_CATEGORY_PAIRS: Record<
     { label: "ft ⇄ ft'-in\"", from: 'ft', to: 'ft-in', title: 'Decimal Feet ↔ Architectural Feet-Inch' },
     { label: 'mm ⇄ in', from: 'mm', to: 'in', title: 'Rebar Millimeters ↔ Inches' },
     { label: 'suta ⇄ mm', from: 'suta', to: 'mm', title: 'Bangla Suta (1/8") ↔ Rebar mm' },
-    { label: 'm ⇄ mm', from: 'm', to: 'mm', title: 'Meters ↔ Millimeters' },
     { label: 'chain ⇄ ft', from: 'chain', to: 'ft', title: "Gunter's Chain (66 ft) ↔ Feet" },
   ],
   area: [
@@ -368,14 +391,12 @@ const COMMON_CATEGORY_PAIRS: Record<
     { label: 'decimal ⇄ katha', from: 'decimal', to: 'katha', title: 'Decimal ↔ Katha (1.65 dec/katha)' },
     { label: 'm² ⇄ sft', from: 'm2', to: 'ft2', title: 'Square Meters ↔ Square Feet' },
     { label: 'katha ⇄ bigha', from: 'katha', to: 'bigha', title: 'Katha (20 katha/bigha) ↔ Bigha' },
-    { label: 'bigha ⇄ acre', from: 'bigha', to: 'acre', title: 'Bigha (3.025 bigha/ac) ↔ Acre' },
-    { label: 'kani ⇄ decimal', from: 'kani', to: 'decimal', title: 'Kani ↔ Decimal' },
     { label: 'ha ⇄ acre', from: 'ha', to: 'acre', title: 'Hectare (2.471 ac) ↔ Acre' },
   ],
   volume: [
     { label: 'm³ ⇄ cft', from: 'm3', to: 'cft', title: 'Cubic Meters ↔ CFT (35.315 cft/m³)' },
     { label: 'm³ ⇄ Liter', from: 'm3', to: 'liter', title: 'Cubic Meters ↔ Liters' },
-    { label: 'cft ⇄ bag', from: 'cft', to: 'bag_cement', title: 'CFT ↔ Cement Bags (1.226 cft/bag)' },
+    { label: 'cft ⇄ bag', from: 'cft', to: 'bag_cement', title: 'CFT ↔ Cement Bags (1.25 cft/bag)' },
     { label: 'cft ⇄ brass', from: 'cft', to: 'brass', title: 'CFT ↔ Brass (100 CFT)' },
     { label: 'cft ⇄ US gal', from: 'cft', to: 'gal_us', title: 'CFT ↔ US Gallons' },
   ],
@@ -511,8 +532,10 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   const [isExplainModalOpen, setIsExplainModalOpen] = useState(false);
   const [activeMacroDomain, setActiveMacroDomain] = useState<MacroDomain>('all');
   const [omniSearchQuery, setOmniSearchQuery] = useState('');
-  const [isBentoExpanded, setIsBentoExpanded] = useState(true);
+  const [isBentoExpanded, setIsBentoExpanded] = useState(false);
+  const [isSecondaryToolsOpen, setIsSecondaryToolsOpen] = useState(true);
   const [selectedRebarId, setSelectedRebarId] = useState<string>('iso-16');
+  const [copiedHeroResult, setCopiedHeroResult] = useState(false);
   const [pinnedCategories, setPinnedCategories] = useState<UnitCategoryKey[]>(() => {
     try {
       const stored = localStorage.getItem('bdcivillab_pinned_categories');
@@ -539,6 +562,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   const [copiedUnitId, setCopiedUnitId] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const isSourceFocusedRef = useRef(false);
 
   const converter = activeWorkspace.converter;
   const currentCategory = converter.category;
@@ -557,13 +581,12 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     });
   }, [currentCategory]);
 
-  // Dimension sub-groups for multi-dimension categories (prevents mixing L^4 vs L^3, Pa.s vs m/s, s vs Hz, B vs Mbps)
+  // Dimension sub-groups for multi-dimension categories
   const dimensionGroups = useMemo(() => {
     const stdUnits: UnitInfo[] = STANDARD_UNITS[currentCategory] || [];
-    const groups = Array.from(
+    return Array.from(
       new Set(stdUnits.map((u) => u.dimensionGroup).filter((g): g is string => Boolean(g)))
     );
-    return groups;
   }, [currentCategory]);
 
   const activeDimensionGroup = useMemo(() => {
@@ -581,6 +604,21 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     );
     return availableCategoryUnits.filter((u) => allowedIds.has(u.id) || !stdUnits.some((s) => s.id === u.id));
   }, [activeDimensionGroup, availableCategoryUnits, currentCategory]);
+
+  // Top 5–6 quick pills for Source & Target cards
+  const quickUnitPills = useMemo(() => {
+    const preferredIds = QUICK_UNIT_PILLS_BY_CATEGORY[currentCategory] || [];
+    const picked: typeof scopedCategoryUnits = [];
+    for (const id of preferredIds) {
+      const found = scopedCategoryUnits.find((u) => u.id === id);
+      if (found) picked.push(found);
+    }
+    for (const u of scopedCategoryUnits) {
+      if (picked.length >= 6) break;
+      if (!picked.some((p) => p.id === u.id)) picked.push(u);
+    }
+    return picked.slice(0, 6);
+  }, [currentCategory, scopedCategoryUnits]);
 
   // Toggle Pinned status
   const togglePinCategory = (cat: UnitCategoryKey, e: React.MouseEvent) => {
@@ -614,24 +652,28 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     return parseNaturalConversionExpression(omniSearchQuery, customUnits);
   }, [omniSearchQuery, customUnits]);
 
-  // Local state for freeform text typing with clean comma auto-formatting
+  // Helper to format source input string consistently
+  const formatSourceDisplay = (val: number, unitId: string): string => {
+    if (isNaN(val) || !isFinite(val)) return '';
+    if (unitId === 'ft-in') return formatFeetInches(val);
+    return formatNumberWhileTyping(String(val)).formatted;
+  };
+
+  // Controlled local draft string for Hero Source Input (prevents cursor jumping)
   const [displayInputString, setDisplayInputString] = useState<string>(() =>
     converter.inputValue !== undefined && converter.inputValue !== null
-      ? formatNumberWhileTyping(String(converter.inputValue)).formatted
+      ? formatSourceDisplay(converter.inputValue, converter.fromUnit)
       : ''
   );
 
-  // Sync internal display when external workspace inputValue changes
+  // Sync display string when workspace inputValue or fromUnit changes externally
   useEffect(() => {
-    const numericFromDisplay = parseFloat(displayInputString.replace(/,/g, ''));
-    if (!isNaN(converter.inputValue) && numericFromDisplay !== converter.inputValue) {
-      setDisplayInputString(formatNumberWhileTyping(String(converter.inputValue)).formatted);
-    }
-  }, [converter.inputValue]);
+    if (isSourceFocusedRef.current) return;
+    setDisplayInputString(formatSourceDisplay(converter.inputValue, converter.fromUnit));
+  }, [converter.inputValue, converter.fromUnit]);
 
-  // Calculate live conversion result if not passed
+  // Calculate live conversion result directly with exact regional preset
   const currentConvertedValue = useMemo(() => {
-    if (conversionResult && currentCategory !== 'area') return conversionResult.result;
     try {
       const res = convertDirect(
         converter.inputValue,
@@ -645,7 +687,32 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     } catch {
       return null;
     }
-  }, [conversionResult, converter.inputValue, converter.fromUnit, converter.toUnit, converter.category, currentCategory, customUnits, regionalLandPreset]);
+  }, [converter.inputValue, converter.fromUnit, converter.toUnit, converter.category, customUnits, regionalLandPreset]);
+
+  // Length multi-format footer readout (Meters, Feet-Inch 0'-0", Decimal Feet 0.00')
+  const lengthFooterSummary = useMemo(() => {
+    if (currentCategory !== 'length') return null;
+    try {
+      const meters = convertDirect(
+        converter.inputValue,
+        converter.fromUnit,
+        'm',
+        'length',
+        customUnits,
+        regionalLandPreset
+      );
+      if (isNaN(meters) || !isFinite(meters)) return null;
+      const decFeet = meters / EXACT_CONVERSION.FT_TO_M;
+      return {
+        ftInStr: formatFeetInches(meters, { isMeters: true }),
+        decFtStr: `${decFeet.toFixed(2)}'`,
+        metricStr: `${formatSmartNumber(meters, 4)} m`,
+        mmStr: `${formatSmartNumber(meters * 1000, 1)} mm`,
+      };
+    } catch {
+      return null;
+    }
+  }, [currentCategory, converter.inputValue, converter.fromUnit, customUnits, regionalLandPreset]);
 
   // Exhaustive regional land breakdown matrix when discipline is 'area'
   const landBreakdown = useMemo(() => {
@@ -658,10 +725,9 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     );
   }, [currentCategory, converter.inputValue, converter.fromUnit, customUnits, regionalLandPreset]);
 
-  // Multi-unit live comparison grid: Compute values for ALL units in the active dimension group
+  // Multi-unit live comparison grid
   const comparisonRows = useMemo(() => {
-    const units = scopedCategoryUnits;
-    return units.map((u) => {
+    return scopedCategoryUnits.map((u) => {
       let val = 0;
       let formatted = '—';
       try {
@@ -683,6 +749,8 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
             : comparisonPrecision;
         if (isNaN(val) || !isFinite(val)) {
           formatted = 'N/A';
+        } else if (u.id === 'ft-in') {
+          formatted = formatFeetInches(val);
         } else if (isScientific) {
           formatted = val.toExponential(effDecimals);
         } else {
@@ -711,7 +779,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     comparisonPrecision,
   ]);
 
-  // Filtered comparison rows for search bar inside the comparison grid
+  // Filtered comparison rows
   const filteredComparisonRows = useMemo(() => {
     if (!comparisonSearch.trim()) return comparisonRows;
     const q = comparisonSearch.toLowerCase().trim();
@@ -755,14 +823,77 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     });
   }, [activeMacroDomain, pinnedCategories, recentCategories, omniSearchQuery]);
 
-  // Copy handler
+  const fromUnitObj = availableCategoryUnits.find((u) => u.id === converter.fromUnit);
+  const toUnitObj = availableCategoryUnits.find((u) => u.id === converter.toUnit);
+  const fromSym = fromUnitObj?.symbol || converter.fromUnit;
+  const toSym = toUnitObj?.symbol || converter.toUnit;
+
+  // Formatted Target Output String
+  const heroTargetFormatted = useMemo(() => {
+    if (currentConvertedValue === null) return '—';
+    if (converter.toUnit === 'ft-in') {
+      return formatFeetInches(currentConvertedValue);
+    }
+    return formatSmartNumber(currentConvertedValue, 6);
+  }, [currentConvertedValue, converter.toUnit]);
+
+  // Inline 1 From = X To Equivalence Formula
+  const unitEquivalenceFormula = useMemo(() => {
+    try {
+      if (currentCategory === 'temperature') {
+        if (converter.fromUnit === 'c' && converter.toUnit === 'f') return '°F = (°C × 9/5) + 32';
+        if (converter.fromUnit === 'f' && converter.toUnit === 'c') return '°C = (°F − 32) × 5/9';
+        if (converter.fromUnit === 'c' && converter.toUnit === 'k') return 'K = °C + 273.15';
+        if (converter.fromUnit === 'k' && converter.toUnit === 'c') return '°C = K − 273.15';
+        return conversionResult?.formula || `${fromSym} → ${toSym}`;
+      }
+      if (currentCategory === 'fuel_economy' && (converter.fromUnit === 'l_100km' || converter.toUnit === 'l_100km')) {
+        return conversionResult?.formula || `Reciprocal: ${fromSym} ↔ ${toSym}`;
+      }
+      const oneUnit = convertDirect(
+        1,
+        converter.fromUnit,
+        converter.toUnit,
+        currentCategory,
+        customUnits,
+        regionalLandPreset
+      );
+      if (isNaN(oneUnit) || !isFinite(oneUnit)) return conversionResult?.formula || '';
+      const formattedRatio =
+        converter.toUnit === 'ft-in'
+          ? formatFeetInches(oneUnit)
+          : formatSmartNumber(oneUnit, 6);
+      return `1 ${fromSym} = ${formattedRatio} ${toSym}`;
+    } catch {
+      return conversionResult?.formula || '';
+    }
+  }, [
+    currentCategory,
+    converter.fromUnit,
+    converter.toUnit,
+    customUnits,
+    regionalLandPreset,
+    fromSym,
+    toSym,
+    conversionResult?.formula,
+  ]);
+
+  // Copy handlers
+  const handleCopyHeroResult = () => {
+    if (heroTargetFormatted === '—') return;
+    const payload = converter.toUnit === 'ft-in' ? heroTargetFormatted : `${heroTargetFormatted} ${toSym}`;
+    navigator.clipboard.writeText(payload);
+    setCopiedHeroResult(true);
+    setTimeout(() => setCopiedHeroResult(false), 1800);
+  };
+
   const handleCopyComparisonValue = (text: string, unitId: string) => {
     navigator.clipboard.writeText(text);
     setCopiedUnitId(unitId);
     setTimeout(() => setCopiedUnitId(null), 1800);
   };
 
-  // Instant Swap handler with rotation animation
+  // Swap handler
   const handleSwapUnits = (withValueCarry: boolean = false) => {
     setIsSwapping(true);
     setTimeout(() => setIsSwapping(false), 380);
@@ -773,11 +904,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     let nextValue = converter.inputValue;
     if (withValueCarry && currentConvertedValue !== null) {
       nextValue = parseFloat(currentConvertedValue.toFixed(6));
-      setDisplayInputString(
-        oldTo === 'ft-in'
-          ? formatFeetInches(nextValue)
-          : formatNumberWhileTyping(String(nextValue)).formatted
-      );
+      setDisplayInputString(formatSourceDisplay(nextValue, oldTo));
     }
 
     updateActiveWorkspace((ws) => ({
@@ -791,8 +918,8 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     }));
 
     const noticeText = withValueCarry
-      ? `Swapped ${oldTo} ⇄ ${oldFrom} & carried value (${nextValue})`
-      : `Swapped ${oldTo} ⇄ ${oldFrom}`;
+      ? `Swapped ${oldTo} ⇄ ${oldFrom} (${formatSmartNumber(nextValue, 4)})`
+      : `Swapped ${toSym} ⇄ ${fromSym}`;
 
     setLastSwapNotice(noticeText);
     setTimeout(() => setLastSwapNotice(null), 2500);
@@ -822,34 +949,58 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   };
 
   const handleNumericInputChange = (raw: string) => {
-    const typingResult = formatNumberWhileTyping(raw);
-    const formatted = typingResult.formatted;
-    setDisplayInputString(formatted);
+    setDisplayInputString(raw);
+    if (raw.trim() === '') return;
 
-    // Support mathematical expressions and smart parsing (e.g. "250 / 2", "12500", "12'-6\"")
-    const parsed = parseSmartUnitInput(formatted, converter.fromUnit, converter.category);
+    const parsed = parseSmartUnitInput(raw, converter.fromUnit, converter.category, customUnits);
     if (parsed.isValid && !isNaN(parsed.parsedValue)) {
       updateActiveWorkspace((ws) => ({
         ...ws,
         converter: { ...ws.converter, inputValue: parsed.parsedValue },
       }));
-    } else if (typingResult.cleanNumeric !== undefined && !isNaN(typingResult.cleanNumeric)) {
+      return;
+    }
+
+    const fallbackNum = parseFloat(raw.replace(/,/g, ''));
+    if (!isNaN(fallbackNum) && isFinite(fallbackNum)) {
       updateActiveWorkspace((ws) => ({
         ...ws,
-        converter: { ...ws.converter, inputValue: typingResult.cleanNumeric! },
+        converter: { ...ws.converter, inputValue: fallbackNum },
       }));
-    } else {
-      const fallbackNum = parseFloat(formatted.replace(/,/g, ''));
-      if (!isNaN(fallbackNum)) {
-        updateActiveWorkspace((ws) => ({
-          ...ws,
-          converter: { ...ws.converter, inputValue: fallbackNum },
-        }));
-      }
     }
   };
 
-  // Apply natural expression result to converter
+  const handleNumericInputBlur = () => {
+    isSourceFocusedRef.current = false;
+    if (displayInputString.trim() === '') {
+      updateActiveWorkspace((ws) => ({
+        ...ws,
+        converter: { ...ws.converter, inputValue: 0 },
+      }));
+      setDisplayInputString(formatSourceDisplay(0, converter.fromUnit));
+      return;
+    }
+    setDisplayInputString(formatSourceDisplay(converter.inputValue, converter.fromUnit));
+  };
+
+  const handleCategorySwitch = (catKey: UnitCategoryKey) => {
+    if (currentCategory === catKey) return;
+    const units = STANDARD_UNITS[catKey] || [];
+    const defaultFrom =
+      catKey === 'area' ? 'katha' : catKey === 'length' ? 'm' : units[0]?.id || 'base';
+    const defaultTo =
+      catKey === 'area' ? 'ft2' : catKey === 'length' ? 'ft' : units[1]?.id || units[0]?.id || 'base';
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      converter: {
+        ...ws.converter,
+        category: catKey,
+        fromUnit: units.some((u) => u.id === defaultFrom) ? defaultFrom : units[0]?.id || 'base',
+        toUnit: units.some((u) => u.id === defaultTo) ? defaultTo : units[1]?.id || units[0]?.id || 'base',
+      },
+    }));
+  };
+
   const handleApplyNaturalExpression = () => {
     if (
       !naturalParseResult.parsed ||
@@ -862,7 +1013,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     }
     const { inputValue, fromUnit, toUnit, category } = naturalParseResult;
 
-    setDisplayInputString(formatNumberWhileTyping(String(inputValue)).formatted);
+    setDisplayInputString(formatSourceDisplay(inputValue, fromUnit));
     updateActiveWorkspace((ws) => ({
       ...ws,
       converter: {
@@ -875,60 +1026,79 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
     }));
 
     setOmniSearchQuery('');
-    setLastSwapNotice(`Applied expression: ${inputValue} ${fromUnit} → ${toUnit}`);
+    setLastSwapNotice(`Applied: ${inputValue} ${fromUnit} → ${toUnit}`);
     setTimeout(() => setLastSwapNotice(null), 3000);
   };
 
-  const fromUnitObj = availableCategoryUnits.find((u) => u.id === converter.fromUnit);
-  const toUnitObj = availableCategoryUnits.find((u) => u.id === converter.toUnit);
   const quickPairs = COMMON_CATEGORY_PAIRS[currentCategory] || [];
   const activeMeta = CATEGORY_METAS[currentCategory] || CATEGORY_METAS.length;
   const ActiveIcon = activeMeta.icon;
 
   return (
-    <div className="space-y-4">
-      {/* ------------------------------------------------------------------- */}
-      {/* 1. Omni-Search & Natural Language Expression Bar */}
-      {/* ------------------------------------------------------------------- */}
-      <div className="relative rounded-2xl border border-[var(--md-sys-color-primary)]/40 bg-gradient-to-r from-[var(--md-sys-color-surface-container-low)] to-[var(--md-sys-color-surface-container)] p-3 shadow-xs">
-        <div className="flex items-center gap-2">
+    <div className="space-y-5">
+      {/* =================================================================== */}
+      {/* 1. COMPACT CATEGORY PICKER & OMNI-EXPRESSION BAR                    */}
+      {/* =================================================================== */}
+      <div className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5 space-y-3">
+        {/* Top Row: Omni-Search + Active Category + Expand/Custom Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--md-sys-color-primary)] opacity-80" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--md-sys-color-primary)] opacity-80" />
             <input
               ref={searchInputRef}
               type="text"
               value={omniSearchQuery}
               onChange={(e) => setOmniSearchQuery(e.target.value)}
-              placeholder={`Omni-Search or Expression (e.g. '5 katha to sft', '25 mpa to psi', '100 c to f', '12'-6" in mm') — Press '/'`}
-              className="w-full pl-9 pr-14 py-2.5 text-xs sm:text-sm font-mono rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
+              placeholder={`Search 21 disciplines or type expression (e.g. '5 katha to sft', '25 mpa to psi', '12'-6" in mm') — Press '/'`}
+              className="w-full pl-10 pr-16 py-2 text-xs sm:text-sm font-mono border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
             />
-            <kbd className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
-              /
-            </kbd>
+            {omniSearchQuery ? (
+              <button
+                type="button"
+                onClick={() => setOmniSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
+              >
+                Clear
+              </button>
+            ) : (
+              <kbd className="hidden sm:inline-flex absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]">
+                /
+              </kbd>
+            )}
           </div>
-          {omniSearchQuery && (
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-xs">
+              <ActiveIcon className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+              <span className="font-bold text-[var(--md-sys-color-on-surface)]">{activeMeta.nameEn}</span>
+              <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-bangla hidden sm:inline">
+                ({activeMeta.nameBn})
+              </span>
+            </div>
+
             <button
               type="button"
-              onClick={() => setOmniSearchQuery('')}
-              className="text-xs font-mono px-2 py-1 rounded bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] cursor-pointer"
+              onClick={() => setIsBentoExpanded((prev) => !prev)}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-all cursor-pointer flex items-center gap-1 btn-tactile"
             >
-              Clear
+              <span>{isBentoExpanded ? 'Compact Strip' : 'All 21 Disciplines'}</span>
+              {isBentoExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
-          )}
+          </div>
         </div>
 
-        {/* Live Natural Expression Preview Card */}
+        {/* Live Natural Expression Preview Banner */}
         {naturalParseResult.parsed &&
           naturalParseResult.category &&
           naturalParseResult.fromUnit &&
           naturalParseResult.toUnit &&
           naturalParseResult.inputValue !== undefined && (
-            <div className="mt-2.5 p-3 rounded-xl bg-[var(--md-sys-color-primary-container)]/70 border border-[var(--md-sys-color-primary)] flex flex-wrap items-center justify-between gap-2 animate-fadeIn">
+            <div className="p-3 rounded-xl bg-[var(--md-sys-color-primary-container)]/70 border border-[var(--md-sys-color-primary)] flex flex-wrap items-center justify-between gap-2 animate-fadeIn">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
                 <div className="text-xs">
                   <span className="font-bold text-[var(--md-sys-color-on-primary-container)]">
-                    Detected Query:
+                    Instant Expression:
                   </span>{' '}
                   <span className="font-mono font-semibold">
                     {naturalParseResult.inputValue} {naturalParseResult.fromUnit} ={' '}
@@ -951,46 +1121,9 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
               </button>
             </div>
           )}
-      </div>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* 2. Macro-Domain Filter Tabs & Bento Category Grid */}
-      {/* ------------------------------------------------------------------- */}
-      <div className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <ActiveIcon className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
-              Category: {activeMeta.nameEn}{' '}
-              <span className="font-normal text-[var(--md-sys-color-on-surface-variant)]">
-                ({activeMeta.nameBn})
-              </span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsBentoExpanded(!isBentoExpanded)}
-              className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-all cursor-pointer flex items-center gap-1 btn-tactile"
-            >
-              <span>{isBentoExpanded ? 'Collapse Grid' : 'Browse All 21 Categories'}</span>
-              {isBentoExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              type="button"
-              onClick={onOpenCustomUnitsModal}
-              className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] transition-all cursor-pointer flex items-center gap-1"
-              title="Add user-defined conversion factors"
-            >
-              <Settings className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-              <span>Custom Units ({customUnits.length})</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 2-tier Macro-Domain Filter Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+        {/* Macro-Domain Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
           {MACRO_DOMAINS.map((dom) => {
             const isActive = activeMacroDomain === dom.id;
             const count =
@@ -1004,11 +1137,8 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
               <button
                 key={dom.id}
                 type="button"
-                onClick={() => {
-                  setActiveMacroDomain(dom.id);
-                  if (!isBentoExpanded) setIsBentoExpanded(true);
-                }}
-                className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
+                onClick={() => setActiveMacroDomain(dom.id)}
+                className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
                   isActive
                     ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
                     : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container)]'
@@ -1017,7 +1147,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 <span>{dom.icon}</span>
                 <span>{dom.labelEn}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  className={`text-[10px] px-1.5 rounded-full font-mono ${
                     isActive
                       ? 'bg-white/20 text-white'
                       : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]'
@@ -1030,8 +1160,33 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
           })}
         </div>
 
-        {/* Compact Bento Category Grid (Expanded or Compact View) */}
-        {isBentoExpanded && (
+        {/* Category Picker: Compact Horizontal Strip (Default) OR Expanded 21-Card Grid */}
+        {!isBentoExpanded && !omniSearchQuery.trim() ? (
+          <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 no-scrollbar">
+            {displayedCategories.map((catKey) => {
+              const meta = CATEGORY_METAS[catKey];
+              if (!meta) return null;
+              const IconComp = meta.icon;
+              const isSelected = currentCategory === catKey;
+              return (
+                <button
+                  key={catKey}
+                  type="button"
+                  onClick={() => handleCategorySwitch(catKey)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border shrink-0 btn-tactile ${
+                    isSelected
+                      ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-2xs'
+                      : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)]'
+                  }`}
+                  title={`${meta.nameEn} (${meta.nameBn}) — ${meta.description}`}
+                >
+                  <IconComp className={`w-3.5 h-3.5 ${isSelected ? 'text-[var(--md-sys-color-primary)]' : 'opacity-75'}`} />
+                  <span>{meta.nameEn}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 animate-fadeIn">
             {displayedCategories.map((catKey) => {
               const meta = CATEGORY_METAS[catKey];
@@ -1044,19 +1199,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
               return (
                 <div
                   key={catKey}
-                  onClick={() => {
-                    if (currentCategory !== catKey) {
-                      updateActiveWorkspace((ws) => ({
-                        ...ws,
-                        converter: {
-                          ...ws.converter,
-                          category: catKey,
-                          fromUnit: units[0]?.id || 'base',
-                          toUnit: units[1]?.id || units[0]?.id || 'base',
-                        },
-                      }));
-                    }
-                  }}
+                  onClick={() => handleCategorySwitch(catKey)}
                   className={`group relative p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                     isSelected
                       ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/30 ring-2 ring-[var(--md-sys-color-primary)] shadow-xs'
@@ -1064,11 +1207,11 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <div
-                        className={`p-1.5 rounded-lg ${
+                        className={`p-1.5 rounded-lg shrink-0 ${
                           isSelected
-                            ? 'bg-[var(--md-sys-color-primary)] text-white'
+                            ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
                             : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)]'
                         }`}
                       >
@@ -1078,7 +1221,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                         <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)] truncate">
                           {meta.nameEn}
                         </div>
-                        <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] truncate">
+                        <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] truncate font-bangla">
                           {meta.nameBn}
                         </div>
                       </div>
@@ -1097,17 +1240,16 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                     </button>
                   </div>
 
-                  {/* Top Preview Badges */}
                   <div className="mt-2 flex flex-wrap gap-1">
                     {meta.topPreviews.slice(0, 3).map((prev) => (
                       <span
                         key={prev}
-                        className="text-[9px] font-mono px-1 py-0.2 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]"
+                        className="text-[9px] font-mono px-1 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]"
                       >
                         {prev}
                       </span>
                     ))}
-                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)] font-bold ml-auto">
+                    <span className="text-[9px] font-mono px-1 rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)] font-bold ml-auto">
                       {units.length} units
                     </span>
                   </div>
@@ -1116,282 +1258,435 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
             })}
           </div>
         )}
+
+        {/* Dimension Sub-Group Switcher (when category has multiple physical quantities like Inertia L⁴ vs Section Modulus L³) */}
+        {dimensionGroups.length > 1 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[var(--md-sys-color-outline-variant)]/50">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mr-1">
+              Quantity:
+            </span>
+            {dimensionGroups.map((grp) => {
+              const info = DIMENSION_GROUP_LABELS[grp] || { label: grp, badge: grp };
+              const isSelected = activeDimensionGroup === grp;
+              const grpUnits = (STANDARD_UNITS[currentCategory] || []).filter((u) => u.dimensionGroup === grp);
+              return (
+                <button
+                  key={grp}
+                  type="button"
+                  onClick={() => {
+                    if (grpUnits.length > 0 && !isSelected) {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        converter: {
+                          ...ws.converter,
+                          fromUnit: grpUnits[0].id,
+                          toUnit: grpUnits[1]?.id || grpUnits[0].id,
+                        },
+                      }));
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 border ${
+                    isSelected
+                      ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
+                      : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container)]'
+                  }`}
+                >
+                  <span>{info.label}</span>
+                  <span className="text-[10px] font-mono opacity-80">({info.badge})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* 3. Quick Conversion Pairs Bar */}
-      {/* ------------------------------------------------------------------- */}
-      {quickPairs.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1">
-            Standard Pairs:
-          </span>
-          {quickPairs.map((pair) => {
-            const isPairSelected =
-              (converter.fromUnit === pair.from && converter.toUnit === pair.to) ||
-              (converter.fromUnit === pair.to && converter.toUnit === pair.from);
+      {/* =================================================================== */}
+      {/* 2. TOP HERO CONVERSION STAGE: SOURCE (FROM) ⇄ TARGET (TO)           */}
+      {/* =================================================================== */}
+      <section aria-label="Primary Source to Target Conversion Stage" className="space-y-3">
+        {/* Quick Common Pairs Strip */}
+        {quickPairs.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] shrink-0 mr-1">
+              Quick Pairs:
+            </span>
+            {quickPairs.map((pair) => {
+              const isPairSelected =
+                (converter.fromUnit === pair.from && converter.toUnit === pair.to) ||
+                (converter.fromUnit === pair.to && converter.toUnit === pair.from);
 
-            return (
-              <button
-                key={pair.label}
-                type="button"
-                onClick={() => handleApplyQuickPair(pair)}
-                className={`min-h-[32px] px-3 py-1 text-[11px] font-mono rounded-full border whitespace-nowrap transition-all cursor-pointer btn-tactile ${
-                  isPairSelected
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
-                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
-                }`}
-                title={pair.title || `Switch units to ${pair.label}`}
-              >
-                {pair.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+              return (
+                <button
+                  key={pair.label}
+                  type="button"
+                  onClick={() => handleApplyQuickPair(pair)}
+                  className={`min-h-[30px] px-2.5 py-0.5 text-[11px] font-mono rounded-full border whitespace-nowrap transition-all cursor-pointer btn-tactile ${
+                    isPairSelected
+                      ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
+                      : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
+                  }`}
+                  title={pair.title || `Switch units to ${pair.label}`}
+                >
+                  {pair.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-      {/* Dimension Sub-Group Switcher for multi-dimension categories (e.g. Inertia L⁴ vs Section Modulus L³) */}
-      {dimensionGroups.length > 1 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mr-1">
-            Physical Quantity:
-          </span>
-          {dimensionGroups.map((grp) => {
-            const info = DIMENSION_GROUP_LABELS[grp] || { label: grp, badge: grp };
-            const isSelected = activeDimensionGroup === grp;
-            const grpUnits = (STANDARD_UNITS[currentCategory] || []).filter((u) => u.dimensionGroup === grp);
-            return (
-              <button
-                key={grp}
-                type="button"
-                onClick={() => {
-                  if (grpUnits.length > 0 && !isSelected) {
+        {/* 3-Part Side-by-Side Hero Conversion Stage */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-stretch gap-4">
+          {/* --------------------------------------------------------------- */}
+          {/* LEFT CARD: SOURCE UNIT (FROM • যে একক থেকে)                     */}
+          {/* --------------------------------------------------------------- */}
+          <div className="rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-xs">
+            {/* Card Header + Active Source Unit Identity */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                  <span>FROM / উৎস একক</span>
+                </span>
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                  SI Base: <strong>{BASE_UNITS[currentCategory]}</strong>
+                </span>
+              </div>
+
+              {/* Prominent Source Unit Header + Full Dropdown Selector */}
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between gap-2 px-1">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-xl sm:text-2xl font-mono font-black text-[var(--md-sys-color-on-surface)] shrink-0">
+                      {fromSym}
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)] truncate">
+                      — {fromUnitObj?.name || converter.fromUnit}
+                    </span>
+                  </div>
+                </div>
+
+                <select
+                  aria-label="Source Unit (From)"
+                  value={converter.fromUnit}
+                  onChange={(e) => {
+                    const val = e.target.value;
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      converter: {
-                        ...ws.converter,
-                        fromUnit: grpUnits[0].id,
-                        toUnit: grpUnits[1]?.id || grpUnits[0].id,
-                      },
+                      converter: { ...ws.converter, fromUnit: val },
                     }));
-                  }
-                }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 border ${
-                  isSelected
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold shadow-xs'
-                    : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container-low)]'
-                }`}
-              >
-                <span>{info.label}</span>
-                <span className="text-[10px] font-mono opacity-80">({info.badge})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  }}
+                  className="w-full min-h-[44px] px-4 font-mono text-xs sm:text-sm font-semibold border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+                >
+                  {scopedCategoryUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.symbol} — {u.name} {u.isRegional ? '★ Regional' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* 4. Main Conversion Direction: Source Unit (From) ⇄ Swap ⇄ Target Unit (To) */}
-      {/* ------------------------------------------------------------------- */}
-      <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5">
-          {/* Source Unit (From) */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate">
-                Source Unit (From)
-              </label>
-              {fromUnitObj && (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] font-bold">
-                  {fromUnitObj.symbol}
-                </span>
-              )}
+              {/* 1-Click Quick Unit Pills inside Source Card */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {quickUnitPills.map((u) => {
+                  const isActive = u.id === converter.fromUnit;
+                  return (
+                    <button
+                      key={`from-pill-${u.id}`}
+                      type="button"
+                      onClick={() => {
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          converter: { ...ws.converter, fromUnit: u.id },
+                        }));
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition-all cursor-pointer btn-tactile ${
+                        isActive
+                          ? 'bg-[var(--md-sys-color-on-surface)] text-[var(--md-sys-color-surface)] border-transparent shadow-2xs'
+                          : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)]'
+                      }`}
+                      title={`Set Source unit to ${u.name} (${u.symbol})`}
+                    >
+                      {u.symbol}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <select
-              value={converter.fromUnit}
-              onChange={(e) => {
-                const val = e.target.value;
-                updateActiveWorkspace((ws) => ({
-                  ...ws,
-                  converter: { ...ws.converter, fromUnit: val },
-                }));
-              }}
-              className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-            >
-              {scopedCategoryUnits.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.symbol}) {u.isRegional ? '★ Regional' : ''}
-                </option>
-              ))}
-            </select>
+
+            {/* Large Focused Numeric / Expression Input Field */}
+            <div className="space-y-2.5 pt-1">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  inputMode={currentCategory === 'length' ? 'text' : 'decimal'}
+                  aria-label={`Source value in ${fromSym}`}
+                  value={displayInputString}
+                  onFocus={() => {
+                    isSourceFocusedRef.current = true;
+                  }}
+                  onBlur={handleNumericInputBlur}
+                  onChange={(e) => handleNumericInputChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleNumericInputBlur();
+                    }
+                  }}
+                  placeholder={converter.fromUnit === 'ft-in' ? `12'-6"` : '0'}
+                  className="w-full min-h-[68px] pl-5 pr-24 py-3 text-3xl md:text-4xl font-mono font-bold tabular-nums border-2 border-[var(--md-sys-color-outline)] focus:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] shadow-2xs"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  {displayInputString && displayInputString !== '0' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDisplayInputString('0');
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          converter: { ...ws.converter, inputValue: 0 },
+                        }));
+                      }}
+                      className="p-1 rounded-full text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
+                      aria-label="Reset input value to zero"
+                      title="Clear to 0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                    {fromSym}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Input Presets + Parsing Hint */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mr-0.5">
+                    Quick:
+                  </span>
+                  {[1, 10, 50, 100, 1000].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => {
+                        setDisplayInputString(formatSourceDisplay(num, converter.fromUnit));
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          converter: { ...ws.converter, inputValue: num },
+                        }));
+                      }}
+                      className={`px-2 py-0.5 text-[10px] font-mono rounded-full border transition-colors cursor-pointer ${
+                        converter.inputValue === num
+                          ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
+                          : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
+                      }`}
+                    >
+                      {num.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                  {currentCategory === 'length' ? `Supports 12'-3", 12 3, + - * /` : `Supports arithmetic (+, -, *, /)`}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Dedicated Central Swap Button */}
-          <div className="flex items-center justify-center shrink-0 self-center sm:self-end sm:pb-0.5">
+          {/* --------------------------------------------------------------- */}
+          {/* CENTER BRIDGE: DIRECTIONAL FLOW & SWAP CONTROLS (⇄)             */}
+          {/* --------------------------------------------------------------- */}
+          <div className="flex flex-row lg:flex-col items-center justify-center gap-2.5 py-1 lg:px-1">
+            {/* Directional Conversion Pill */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface)] whitespace-nowrap shadow-2xs">
+              <span>{fromSym}</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+              <span className="text-[var(--md-sys-color-primary)]">{toSym}</span>
+            </div>
+
+            {/* Primary Circular Swap Units Button (⇄) */}
             <button
               type="button"
               onClick={() => handleSwapUnits(false)}
-              className={`min-h-[48px] min-w-[48px] px-3.5 sm:px-3 rounded-xl border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] hover:bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary-container)] hover:text-white transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5 font-bold text-xs btn-tactile group ${
-                isSwapping ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
+              className={`w-12 h-12 rounded-full border-2 border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] hover:bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary-container)] hover:text-[var(--md-sys-color-on-primary)] transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center group ${
+                isSwapping ? 'ring-4 ring-[var(--md-sys-color-primary)]/30' : ''
               }`}
-              title={`Swap 'From' (${fromUnitObj?.symbol || converter.fromUnit}) and 'To' (${toUnitObj?.symbol || converter.toUnit})`}
-              aria-label="Swap from and to units"
+              title={`Swap Source (${fromSym}) and Target (${toSym})`}
+              aria-label={`Swap ${fromSym} and ${toSym} units`}
             >
               <ArrowRightLeft
-                className={`w-4 h-4 shrink-0 transition-transform duration-300 ${
-                  isSwapping ? 'rotate-180 scale-125' : 'group-hover:rotate-180'
+                className={`w-5 h-5 transition-transform duration-300 ${
+                  isSwapping ? 'rotate-180 scale-110' : 'group-hover:rotate-180'
                 }`}
               />
-              <span className="sm:hidden font-mono">Swap (⇄)</span>
-            </button>
-          </div>
-
-          {/* Target Unit (To) */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate">
-                Target Unit (To)
-              </label>
-              {toUnitObj && (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] font-bold">
-                  {toUnitObj.symbol}
-                </span>
-              )}
-            </div>
-            <select
-              value={converter.toUnit}
-              onChange={(e) => {
-                const val = e.target.value;
-                updateActiveWorkspace((ws) => ({
-                  ...ws,
-                  converter: { ...ws.converter, toUnit: val },
-                }));
-              }}
-              className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-            >
-              {scopedCategoryUnits.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.symbol}) {u.isRegional ? '★ Regional' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Swap Feedback Badge & Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 text-xs font-mono">
-          <div className="flex items-center gap-1.5 text-[var(--md-sys-color-on-surface-variant)] text-[11px]">
-            {lastSwapNotice ? (
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" />
-                <span>{lastSwapNotice}</span>
-              </span>
-            ) : (
-              <span>
-                Active Conversion: <strong>{fromUnitObj?.symbol || converter.fromUnit}</strong> →{' '}
-                <strong>{toUnitObj?.symbol || converter.toUnit}</strong>
-              </span>
-            )}
-          </div>
-
-          {/* Action Buttons: Explain Conversion & Smart Swap */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsExplainModalOpen(true)}
-              className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono font-bold rounded-md border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/50 hover:bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer inline-flex items-center gap-1.5 btn-tactile shadow-xs"
-              title="Open step-by-step mathematical conversion logic and custom unit factors"
-            >
-              <HelpCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>Explain Conversion</span>
             </button>
 
+            {/* Secondary Swap with Value Button */}
             {currentConvertedValue !== null && (
               <button
                 type="button"
                 onClick={() => handleSwapUnits(true)}
-                className="min-h-[32px] px-2.5 py-1 text-[11px] font-mono font-bold rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer inline-flex items-center gap-1 btn-tactile"
-                title="Swap units AND set the converted result as the new input value"
+                className="px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[10px] font-mono font-bold text-[var(--md-sys-color-primary)] transition-all cursor-pointer inline-flex items-center gap-1 btn-tactile whitespace-nowrap"
+                title="Swap units AND carry converted result into Source input"
               >
                 <RefreshCw className="w-3 h-3 shrink-0" />
-                <span>
-                  Swap with Result ({formatSmartNumber(currentConvertedValue, 4)}{' '}
-                  {toUnitObj?.symbol || converter.toUnit})
-                </span>
+                <span>Swap w/ Value</span>
               </button>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* 5. Input Numeric Value with Quick Value Chips */}
-      {/* ------------------------------------------------------------------- */}
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
-          <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
-            Input Numeric Value ({fromUnitObj?.symbol || converter.fromUnit})
-          </label>
-          {/* Quick value presets */}
-          <div className="flex items-center gap-1 overflow-x-auto">
-            <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-              Quick:
-            </span>
-            {[1, 10, 50, 100, 1000].map((num) => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => {
-                  setDisplayInputString(formatNumberWhileTyping(String(num)).formatted);
-                  updateActiveWorkspace((ws) => ({
-                    ...ws,
-                    converter: { ...ws.converter, inputValue: num },
-                  }));
-                }}
-                className={`px-2 py-0.5 text-[10px] font-mono rounded-full border transition-colors cursor-pointer ${
-                  converter.inputValue === num
-                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
-                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)]'
-                }`}
+            {lastSwapNotice && (
+              <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 text-center max-w-[130px] leading-tight animate-fadeIn">
+                {lastSwapNotice}
+              </span>
+            )}
+          </div>
+
+          {/* --------------------------------------------------------------- */}
+          {/* RIGHT CARD: TARGET UNIT (TO • যে এককে রূপান্তর)                  */}
+          {/* --------------------------------------------------------------- */}
+          <div className="rounded-2xl border-2 border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/20 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-sm">
+            {/* Card Header + Target Unit Identity */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]">
+                  <span>TO / রূপান্তরিত একক</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyHeroResult}
+                  disabled={heroTargetFormatted === '—'}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--md-sys-color-primary)]/40 bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] text-[var(--md-sys-color-primary)] text-[11px] font-mono font-bold transition-colors cursor-pointer disabled:opacity-40"
+                  title="Copy converted result to clipboard"
+                >
+                  {copiedHeroResult ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedHeroResult ? 'Copied' : 'Copy Result'}</span>
+                </button>
+              </div>
+
+              {/* Prominent Target Unit Header + Full Dropdown Selector */}
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between gap-2 px-1">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-xl sm:text-2xl font-mono font-black text-[var(--md-sys-color-primary)] shrink-0">
+                      {toSym}
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-[var(--md-sys-color-on-surface)] truncate">
+                      — {toUnitObj?.name || converter.toUnit}
+                    </span>
+                  </div>
+                </div>
+
+                <select
+                  aria-label="Target Unit (To)"
+                  value={converter.toUnit}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    updateActiveWorkspace((ws) => ({
+                      ...ws,
+                      converter: { ...ws.converter, toUnit: val },
+                    }));
+                  }}
+                  className="w-full min-h-[44px] px-4 font-mono text-xs sm:text-sm font-semibold border border-[var(--md-sys-color-primary)]/60 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+                >
+                  {scopedCategoryUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.symbol} — {u.name} {u.isRegional ? '★ Regional' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 1-Click Quick Unit Pills inside Target Card */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {quickUnitPills.map((u) => {
+                  const isActive = u.id === converter.toUnit;
+                  return (
+                    <button
+                      key={`to-pill-${u.id}`}
+                      type="button"
+                      onClick={() => {
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          converter: { ...ws.converter, toUnit: u.id },
+                        }));
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition-all cursor-pointer btn-tactile ${
+                        isActive
+                          ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent shadow-2xs'
+                          : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)]'
+                      }`}
+                      title={`Set Target unit to ${u.name} (${u.symbol})`}
+                    >
+                      {u.symbol}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Giant Live Converted Readout + Formula Bar + Length Footer */}
+            <div className="space-y-2.5 pt-1">
+              <div
+                aria-live="polite"
+                className="min-h-[68px] px-5 py-3 rounded-2xl border border-[var(--md-sys-color-primary)]/40 bg-[var(--md-sys-color-surface)] flex flex-wrap items-baseline justify-between gap-2 shadow-2xs"
               >
-                {num.toLocaleString()}
-              </button>
-            ))}
+                <span className="text-3xl md:text-4xl font-mono font-black tabular-nums text-[var(--md-sys-color-primary)] break-all">
+                  {heroTargetFormatted}
+                </span>
+                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-primary)]/30 shrink-0">
+                  {toSym}
+                </span>
+              </div>
+
+              {/* Inline Unit-Equivalence Formula Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-surface)]/85 border border-[var(--md-sys-color-outline-variant)] text-[11px] font-mono">
+                <span className="font-semibold text-[var(--md-sys-color-on-surface)] truncate">
+                  {unitEquivalenceFormula}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsExplainModalOpen(true)}
+                  className="inline-flex items-center gap-1 text-[var(--md-sys-color-primary)] font-bold hover:underline cursor-pointer shrink-0"
+                  title="Open step-by-step mathematical derivation and unit factor proof"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Explain</span>
+                </button>
+              </div>
+
+              {/* Length Category Footer: Dual Feet-Inch (0'-0"), Decimal Feet (0.00') & Metric Equivalence */}
+              {currentCategory === 'length' && lengthFooterSummary && (
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[11px] font-mono tabular-nums">
+                  <div className="flex items-center gap-1.5 text-[var(--md-sys-color-on-surface)]">
+                    <Compass className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+                    <span className="font-bold text-[var(--md-sys-color-primary)]">{lengthFooterSummary.ftInStr}</span>
+                    <span className="opacity-60">•</span>
+                    <span className="font-semibold">{lengthFooterSummary.decFtStr}</span>
+                  </div>
+                  <span className="text-[var(--md-sys-color-on-surface-variant)]">
+                    {lengthFooterSummary.metricStr} ({lengthFooterSummary.mmStr})
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      </section>
 
-        <input
-          type="text"
-          inputMode="decimal"
-          value={displayInputString}
-          onChange={(e) => handleNumericInputChange(e.target.value)}
-          placeholder="Enter numeric value or arithmetic expression (e.g. 2,500.50 or 250 / 2)"
-          className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-base bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-        />
-        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 flex items-center justify-between">
-          <span>Real-time thousand separators active. Arithmetic supported (+, -, *, /).</span>
-          <span>
-            SI Base: <strong>{BASE_UNITS[currentCategory]}</strong>
-          </span>
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------------------- */}
-      {/* 6. Regional Land Preset Switcher & Matrix (Area Discipline) */}
-      {/* ------------------------------------------------------------------- */}
+      {/* =================================================================== */}
+      {/* 3. BANGLADESH REGIONAL LAND MEASURE MATRIX (AREA DISCIPLINE)        */}
+      {/* =================================================================== */}
       {currentCategory === 'area' && (
-        <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 space-y-3">
+        <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-base">📐</span>
-              <label className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
                 Bangladesh Regional Land Measure Matrix
-              </label>
+              </h3>
             </div>
 
-            {/* Regional Land Preset Selector */}
-            <div className="flex items-center gap-1 bg-emerald-500/10 p-1 rounded-lg border border-emerald-500/20 text-xs font-medium">
-              <span className="text-[10px] font-mono uppercase text-emerald-800 dark:text-emerald-300 mr-1">
+            <div className="flex flex-wrap items-center gap-1 bg-emerald-500/10 p-1 rounded-lg border border-emerald-500/20 text-xs font-medium">
+              <span className="text-[10px] font-mono uppercase text-emerald-800 dark:text-emerald-300 mr-1 px-1">
                 Preset:
               </span>
               {[
@@ -1427,7 +1722,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 { label: 'Katha / কাঠা', val: landBreakdown.katha, unit: 'katha', sub: regionalLandPreset === 'rajshahi' ? '1,440 sft' : '720 sft' },
                 { label: 'Bigha / বিঘা', val: landBreakdown.bigha, unit: 'bigha', sub: '20 Katha' },
                 { label: 'Chhatak / ছটাক', val: landBreakdown.chataks, unit: 'chhatak', sub: '45 sft' },
-                { label: 'Kani / কানি', val: landBreakdown.kanis, unit: regionalLandPreset === 'chattogram' ? 'kani_shahi' : 'kani', sub: regionalLandPreset === 'chattogram' ? '120 Dec (52,272 sft)' : '20 Gonda (40 Dec)' },
+                { label: 'Kani / কানি', val: landBreakdown.kanis, unit: regionalLandPreset === 'chattogram' ? 'kani_shahi' : 'kani', sub: regionalLandPreset === 'chattogram' ? '120 Dec' : '20 Gonda' },
                 { label: 'Gonda / গণ্ডা', val: landBreakdown.gondas, unit: 'gonda', sub: '864 sft' },
                 { label: 'Kara / কড়া', val: landBreakdown.karas, unit: 'kara', sub: '216 sft' },
                 { label: 'Acre / একর', val: landBreakdown.acres, unit: 'acre', sub: '43,560 sft' },
@@ -1436,453 +1731,538 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 { label: 'Square Meters', val: landBreakdown.squareMeters, unit: 'm2', sub: 'SI m²' },
                 { label: 'Guntha', val: landBreakdown.gunthas, unit: 'guntha', sub: '1,089 sft' },
               ].map((item) => (
-                <div
+                <button
                   key={item.label}
+                  type="button"
                   onClick={() => {
                     updateActiveWorkspace((ws) => ({
                       ...ws,
                       converter: { ...ws.converter, toUnit: item.unit },
                     }));
                   }}
-                  className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                  className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
                     converter.toUnit === item.unit
                       ? 'border-emerald-500 bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 font-bold ring-1 ring-emerald-500'
                       : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:border-emerald-400'
                   }`}
-                  title={`Click to set ${item.label} as target unit`}
+                  title={`Click to set ${item.label} as Target unit`}
                 >
                   <div className="flex items-center justify-between text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                    <span className="truncate">{item.label}</span>
+                    <span className="truncate font-bangla">{item.label}</span>
                     <span className="text-[9px] uppercase opacity-75">{item.sub}</span>
                   </div>
-                  <div className="text-sm font-bold mt-0.5 text-emerald-700 dark:text-emerald-300 truncate">
+                  <div className="text-sm font-mono font-bold mt-0.5 text-emerald-700 dark:text-emerald-300 truncate tabular-nums">
                     {formatSmartNumber(item.val, 4)}{' '}
                     <span className="text-[10px] font-normal">{item.unit}</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
       )}
 
-      {/* ------------------------------------------------------------------- */}
-      {/* 7. Multi-Unit Live Comparison Grid (All Units in Category) */}
-      {/* ------------------------------------------------------------------- */}
-      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5 space-y-2.5">
+      {/* =================================================================== */}
+      {/* 4. SECONDARY SECTION BELOW HERO STAGE: ALL EQUIVALENT CONVERSIONS   */}
+      {/* =================================================================== */}
+      <section
+        aria-label="All Equivalent Conversions"
+        className="pt-4 border-t border-[var(--md-sys-color-outline-variant)] space-y-4"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm">📊</span>
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-              Multi-Unit Live Comparison Grid ({scopedCategoryUnits.length} Units)
-            </label>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            {/* Table Search */}
-            <div className="relative">
-              <input
-                type="text"
-                value={comparisonSearch}
-                onChange={(e) => setComparisonSearch(e.target.value)}
-                placeholder="Filter table units..."
-                className="pl-2 pr-6 py-1 text-xs font-mono rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-              />
-              {comparisonSearch && (
-                <button
-                  type="button"
-                  onClick={() => setComparisonSearch('')}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--md-sys-color-on-surface-variant)]"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-
-            {/* Scientific Notation Toggle */}
-            <button
-              type="button"
-              onClick={() => setIsScientific(!isScientific)}
-              className={`px-2 py-1 rounded-md text-[11px] font-mono border transition-all cursor-pointer ${
-                isScientific
-                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
-                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)]'
-              }`}
-              title="Toggle scientific exponent notation (1.23e+4)"
-            >
-              Sci ({isScientific ? 'ON' : 'OFF'})
-            </button>
-
-            {/* Precision Selector */}
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                Dec:
-              </span>
-              {(['auto', 2, 4, 6, 8] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setComparisonPrecision(p)}
-                  className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
-                    comparisonPrecision === p
-                      ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
-                      : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
-                  }`}
-                >
-                  {p === 'auto' ? 'Auto' : p}
-                </button>
-              ))}
-            </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-[var(--md-sys-color-on-surface)] tracking-tight flex items-center gap-2">
+              <span>All Equivalent Conversions</span>
+              <span className="text-[var(--md-sys-color-on-surface-variant)] font-normal">•</span>
+              <span className="font-bangla text-[var(--md-sys-color-primary)]">অন্যান্য এককে মান</span>
+            </h2>
+            <p className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+              Live comparison across all {scopedCategoryUnits.length} {activeMeta.nameEn.toLowerCase()} units for{' '}
+              <strong>
+                {converter.fromUnit === 'ft-in'
+                  ? formatFeetInches(converter.inputValue)
+                  : formatSmartNumber(converter.inputValue)}{' '}
+                {fromSym}
+              </strong>
+            </p>
           </div>
         </div>
 
-        {/* Scrollable Comparison Table */}
-        <div className="max-h-64 overflow-y-auto rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="sticky top-0 bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border-b border-[var(--md-sys-color-outline-variant)]">
-              <tr>
-                <th className="py-2 px-3 font-semibold">Unit Name & Symbol</th>
-                <th className="py-2 px-3 font-semibold text-right">Converted Equivalent</th>
-                <th className="py-2 px-3 font-semibold text-center w-28">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]/40">
-              {filteredComparisonRows.map((row) => (
-                <tr
-                  key={row.unit.id}
-                  onClick={() => {
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      converter: { ...ws.converter, toUnit: row.unit.id },
-                    }));
-                  }}
-                  className={`transition-colors cursor-pointer ${
-                    row.isTarget
-                      ? 'bg-[var(--md-sys-color-primary-container)]/30 font-bold'
-                      : row.isSource
-                      ? 'bg-[var(--md-sys-color-surface-container)]'
-                      : 'hover:bg-[var(--md-sys-color-surface-container-low)]'
-                  }`}
-                >
-                  <td className="py-2 px-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-[var(--md-sys-color-on-surface)]">
-                        {row.unit.name}
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold">
+        {/* 4A. Multi-Unit Comparison Grid */}
+        <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+              Multi-Unit Comparison Grid ({scopedCategoryUnits.length} Units)
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={comparisonSearch}
+                  onChange={(e) => setComparisonSearch(e.target.value)}
+                  placeholder="Filter units..."
+                  className="pl-3 pr-7 py-1 text-xs font-mono border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+                />
+                {comparisonSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setComparisonSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--md-sys-color-on-surface-variant)] cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsScientific(!isScientific)}
+                className={`px-2 py-1 rounded-md text-[11px] font-mono border transition-all cursor-pointer ${
+                  isScientific
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
+                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)]'
+                }`}
+                title="Toggle scientific exponent notation (1.23e+4)"
+              >
+                Sci ({isScientific ? 'ON' : 'OFF'})
+              </button>
+
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Dec:</span>
+                {(['auto', 2, 4, 6, 8] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setComparisonPrecision(p)}
+                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer ${
+                      comparisonPrecision === p
+                        ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
+                        : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
+                    }`}
+                  >
+                    {p === 'auto' ? 'Auto' : p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="sticky top-0 bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border-b border-[var(--md-sys-color-outline-variant)]">
+                <tr>
+                  <th className="py-2 px-3 font-semibold">Unit Name &amp; Symbol</th>
+                  <th className="py-2 px-3 font-semibold text-right">Converted Equivalent</th>
+                  <th className="py-2 px-3 font-semibold text-center w-36">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]/40">
+                {filteredComparisonRows.map((row) => (
+                  <tr
+                    key={row.unit.id}
+                    onClick={() => {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        converter: { ...ws.converter, toUnit: row.unit.id },
+                      }));
+                    }}
+                    className={`transition-colors cursor-pointer ${
+                      row.isTarget
+                        ? 'bg-[var(--md-sys-color-primary-container)]/30 font-bold'
+                        : row.isSource
+                        ? 'bg-[var(--md-sys-color-surface-container)]'
+                        : 'hover:bg-[var(--md-sys-color-surface-container-low)]'
+                    }`}
+                  >
+                    <td className="py-2 px-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-bold text-[var(--md-sys-color-on-surface)]">{row.unit.name}</span>
+                        <span className="text-[10px] px-1.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold">
+                          {row.unit.symbol}
+                        </span>
+                        {row.unit.isRegional && (
+                          <span className="text-[9px] px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
+                            Regional
+                          </span>
+                        )}
+                        {row.isSource && (
+                          <span className="text-[9px] px-1 rounded bg-sky-500/20 text-sky-700 dark:text-sky-300 font-bold">
+                            From
+                          </span>
+                        )}
+                        {row.isTarget && (
+                          <span className="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
+                            To
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 px-3 text-right tabular-nums">
+                      <span
+                        className={`text-sm ${
+                          row.isTarget
+                            ? 'text-[var(--md-sys-color-primary)] font-extrabold'
+                            : 'text-[var(--md-sys-color-on-surface)] font-medium'
+                        }`}
+                      >
+                        {row.formatted}
+                      </span>{' '}
+                      <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
                         {row.unit.symbol}
                       </span>
-                      {row.unit.isRegional && (
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
-                          Regional
-                        </span>
-                      )}
-                      {row.isSource && (
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-700 dark:text-blue-300 font-bold">
-                          Source
-                        </span>
-                      )}
-                      {row.isTarget && (
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
-                          Target
-                        </span>
-                      )}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyComparisonValue(row.formatted, row.unit.id)}
+                          className="p-1.5 rounded hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] transition-colors cursor-pointer"
+                          title={`Copy ${row.formatted} ${row.unit.symbol}`}
+                          aria-label={`Copy ${row.unit.name} value`}
+                        >
+                          {copiedUnitId === row.unit.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateActiveWorkspace((ws) => ({
+                              ...ws,
+                              converter: { ...ws.converter, toUnit: row.unit.id },
+                            }));
+                          }}
+                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                            row.isTarget
+                              ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                              : 'bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] text-[var(--md-sys-color-primary)]'
+                          }`}
+                        >
+                          {row.isTarget ? 'Active To' : 'Set as To'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 4B. Collapsible Secondary Tools Row (Visual Diagram, Feet-Inch Parser & Custom Jobsite Units) */}
+        <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsSecondaryToolsOpen((prev) => !prev)}
+            className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
+            aria-expanded={isSecondaryToolsOpen}
+          >
+            <div className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
+                Secondary Engineering Tools: Visual Scale Diagram, Feet-Inch (0&apos;-0&quot;) Parser &amp; Custom Units
+              </span>
+            </div>
+            <span className="text-xs font-mono font-semibold text-[var(--md-sys-color-primary)] flex items-center gap-1 shrink-0">
+              <span>{isSecondaryToolsOpen ? 'Collapse' : 'Expand'}</span>
+              {isSecondaryToolsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </span>
+          </button>
+
+          {isSecondaryToolsOpen && (
+            <div className="p-4 pt-2 border-t border-[var(--md-sys-color-outline-variant)] space-y-4 animate-fadeIn">
+              {/* Row 1: Visual Scale Diagram + Custom Jobsite Unit Manager */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+                {/* Visual Conversion Scale Diagram */}
+                <div className="lg:col-span-2 p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] flex flex-col justify-between">
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] mb-2">
+                    Visual Scale Vector ({fromSym} → {toSym})
+                  </div>
+                  <UnitConverterDiagramSvg
+                    inputVal={converter.inputValue}
+                    outputVal={currentConvertedValue ?? 0}
+                    fromUnit={converter.fromUnit}
+                    toUnit={converter.toUnit}
+                    category={converter.category}
+                  />
+                </div>
+
+                {/* Custom Jobsite Unit Manager */}
+                <div className="p-4 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] flex flex-col justify-between gap-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                        Custom Jobsite Units
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]">
+                        {customUnits.length} Defined
+                      </span>
                     </div>
-                  </td>
-                  <td className="py-2 px-3 text-right">
-                    <span
-                      className={`text-sm ${
-                        row.isTarget
-                          ? 'text-[var(--md-sys-color-primary)] font-extrabold'
-                          : 'text-[var(--md-sys-color-on-surface)] font-medium'
-                      }`}
-                    >
-                      {row.formatted}
-                    </span>{' '}
-                    <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                      {row.unit.symbol}
+                    <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
+                      Define project-specific factors (e.g., local truck/trolley capacities, tile pack areas, custom batch weights) relative to canonical SI base units.
+                    </p>
+                    {customUnits.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {customUnits.slice(0, 6).map((cu) => (
+                          <span
+                            key={cu.id}
+                            className="text-[10px] font-mono px-2 py-0.5 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]"
+                          >
+                            {cu.symbol} ({cu.category})
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onOpenCustomUnitsModal}
+                    className="w-full min-h-[40px] px-3 py-2 text-xs font-bold rounded-xl border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-all cursor-pointer flex items-center justify-center gap-1.5 btn-tactile"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>Manage Custom Jobsite Units</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Dedicated Feet-Inch (0'-0") Expression Parser */}
+              <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Ruler className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                    <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                      Feet-Inch (0&apos;-0&quot;) &amp; Fraction Expression Parser
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mr-1">
+                      Presets:
                     </span>
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {[
+                      { label: "12'-6 1/2\"", val: "12'-6 1/2\"" },
+                      { label: "25'-0\"", val: "25'-0\"" },
+                      { label: "9'-4 3/4\"", val: "9'-4 3/4\"" },
+                      { label: '3500mm', val: '3500mm' },
+                      { label: '2.45m', val: '2.45m' },
+                    ].map((p) => (
                       <button
-                        type="button"
-                        onClick={() => handleCopyComparisonValue(row.formatted, row.unit.id)}
-                        className="p-1 rounded hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] transition-colors cursor-pointer"
-                        title={`Copy ${row.formatted} ${row.unit.symbol}`}
-                      >
-                        {copiedUnitId === row.unit.id ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                      <button
+                        key={p.label}
                         type="button"
                         onClick={() => {
                           updateActiveWorkspace((ws) => ({
                             ...ws,
-                            converter: { ...ws.converter, toUnit: row.unit.id },
+                            converter: { ...ws.converter, feetInchRawString: p.val },
                           }));
                         }}
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                          row.isTarget
-                            ? 'bg-[var(--md-sys-color-primary)] text-white'
-                            : 'bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-white text-[var(--md-sys-color-primary)]'
-                        }`}
+                        className="px-2 py-0.5 text-[10px] font-mono rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer"
                       >
-                        {row.isTarget ? 'Active' : 'Set To'}
+                        {p.label}
                       </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={`e.g. 14'-6 3/4", 12 ft 4 in, 3/4", 3810mm, or 3.81m`}
+                    value={converter.feetInchRawString}
+                    onChange={(e) => {
+                      const str = e.target.value;
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        converter: { ...ws.converter, feetInchRawString: str },
+                      }));
+                    }}
+                    className="w-full min-h-[44px] px-4 pr-16 font-mono text-sm border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]"
+                  />
+                  {converter.feetInchRawString && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateActiveWorkspace((ws) => ({
+                          ...ws,
+                          converter: { ...ws.converter, feetInchRawString: '' },
+                        }));
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {activeFeetInchResult.isValid ? (
+                  <div className="space-y-2 pt-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                          Architectural Standard
+                        </span>
+                        <strong className="text-sm text-[var(--md-sys-color-primary)] truncate block">
+                          {activeFeetInchResult.fractionString || activeFeetInchResult.normalizedString}
+                        </strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                          Decimal Feet
+                        </span>
+                        <strong className="text-sm truncate block">
+                          {formatSmartNumber(activeFeetInchResult.totalFeet, 4)} ft
+                        </strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                          Metric (Meters)
+                        </span>
+                        <strong className="text-sm text-emerald-600 dark:text-emerald-400 truncate block">
+                          {formatSmartNumber(activeFeetInchResult.totalMeters, 4)} m
+                        </strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
+                          Millimeters (mm)
+                        </span>
+                        <strong className="text-sm truncate block">
+                          {formatSmartNumber(activeFeetInchResult.totalMm, 1)} mm
+                        </strong>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* 8. Architectural Feet-Inch String Parser Card (Length & Area) */}
-      {/* ------------------------------------------------------------------- */}
-      {(currentCategory === 'length' || currentCategory === 'area') && (
-      <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm">📏</span>
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-              Architectural Feet-Inch & Fraction Parser
-            </label>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mr-1">
-              Presets:
-            </span>
-            {[
-              { label: "12'-6 1/2\"", val: "12'-6 1/2\"" },
-              { label: "25'-0\"", val: "25'-0\"" },
-              { label: "9'-4 3/4\"", val: "9'-4 3/4\"" },
-              { label: '3500mm', val: '3500mm' },
-              { label: '2.45m', val: '2.45m' },
-            ].map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => {
-                  updateActiveWorkspace((ws) => ({
-                    ...ws,
-                    converter: { ...ws.converter, feetInchRawString: p.val },
-                  }));
-                }}
-                className="px-1.5 py-0.5 text-[10px] font-mono rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] transition-colors cursor-pointer"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                        Fraction: {activeFeetInchResult.fractionString || `${activeFeetInchResult.totalInches.toFixed(2)}"`}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const feetVal = parseFloat(activeFeetInchResult.totalFeet.toFixed(4));
+                            setDisplayInputString(activeFeetInchResult.fractionString || formatFeetInches(feetVal));
+                            updateActiveWorkspace((ws) => ({
+                              ...ws,
+                              converter: {
+                                ...ws.converter,
+                                category: 'length',
+                                fromUnit: 'ft-in',
+                                inputValue: feetVal,
+                              },
+                            }));
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-mono rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-400 cursor-pointer font-bold"
+                        >
+                          Apply to From (ft&apos;-in&quot;)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const feetVal = parseFloat(activeFeetInchResult.totalFeet.toFixed(4));
+                            setDisplayInputString(formatSourceDisplay(feetVal, 'ft'));
+                            updateActiveWorkspace((ws) => ({
+                              ...ws,
+                              converter: {
+                                ...ws.converter,
+                                category: 'length',
+                                fromUnit: 'ft',
+                                inputValue: feetVal,
+                              },
+                            }));
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-mono rounded bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-primary)] cursor-pointer font-bold"
+                        >
+                          Apply {activeFeetInchResult.totalFeet.toFixed(3)} ft
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const metersVal = parseFloat(activeFeetInchResult.totalMeters.toFixed(4));
+                            setDisplayInputString(formatSourceDisplay(metersVal, 'm'));
+                            updateActiveWorkspace((ws) => ({
+                              ...ws,
+                              converter: {
+                                ...ws.converter,
+                                category: 'length',
+                                fromUnit: 'm',
+                                inputValue: metersVal,
+                              },
+                            }));
+                          }}
+                          className="px-3 py-1 text-[11px] font-mono rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-colors cursor-pointer font-bold"
+                        >
+                          Apply {activeFeetInchResult.totalMeters.toFixed(3)} m
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  converter.feetInchRawString && (
+                    <div className="text-xs font-mono text-amber-600 dark:text-amber-400 pt-0.5">
+                      {activeFeetInchResult.errorMessage || 'Try format: 12\'-6 1/2" or 3500mm'}
+                    </div>
+                  )
+                )}
+              </div>
 
-        <div className="relative">
-          <input
-            type="text"
-            placeholder={`e.g. 14'-6 3/4", 12 ft 4 in, 3/4", 3810mm, or 3.81m`}
-            value={converter.feetInchRawString}
-            onChange={(e) => {
-              const str = e.target.value;
-              updateActiveWorkspace((ws) => ({
-                ...ws,
-                converter: { ...ws.converter, feetInchRawString: str },
-              }));
-            }}
-            className="w-full min-h-[48px] touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-sm bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-          />
-          {converter.feetInchRawString && (
-            <button
-              type="button"
-              onClick={() => {
-                updateActiveWorkspace((ws) => ({
-                  ...ws,
-                  converter: { ...ws.converter, feetInchRawString: '' },
-                }));
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
-            >
-              Clear
-            </button>
+              {/* Row 3: Rebar Bar Designation Equivalence (Length / Area / Mass) */}
+              {(currentCategory === 'length' || currentCategory === 'area' || currentCategory === 'mass') && (() => {
+                const selectedBar = REBAR_BAR_DESIGNATIONS.find((b) => b.id === selectedRebarId) || REBAR_BAR_DESIGNATIONS[6];
+                return (
+                  <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">🔩</span>
+                        <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                          Rebar Bar Designation Equivalence (ASTM #3–#18 ⇄ ISO/BDS 8mm–50mm)
+                        </label>
+                      </div>
+                      <select
+                        value={selectedBar.id}
+                        onChange={(e) => setSelectedRebarId(e.target.value)}
+                        className="px-3 py-1 text-xs font-mono font-bold border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]"
+                      >
+                        {REBAR_BAR_DESIGNATIONS.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            [{b.standard}] {b.label} — {b.diameterMm} mm ({b.unitWeightKgPerM} kg/m)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono">
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Diameter (mm / in)</span>
+                        <strong className="text-sm text-[var(--md-sys-color-primary)]">
+                          {selectedBar.diameterMm} mm ({selectedBar.diameterIn}&quot;)
+                        </strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Bangla Suta (সূতা)</span>
+                        <strong className="text-sm">{selectedBar.suta.toFixed(2)} suta</strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Steel Area (As)</span>
+                        <strong className="text-sm">{selectedBar.areaMm2} mm² ({selectedBar.areaIn2} in²)</strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Unit Weight (d²/162.2)</span>
+                        <strong className="text-sm text-emerald-600 dark:text-emerald-400">
+                          {selectedBar.unitWeightKgPerM} kg/m ({selectedBar.unitWeightLbPerFt} lb/ft)
+                        </strong>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                        <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Closest Cross-Standard</span>
+                        <strong className="text-xs text-[var(--md-sys-color-on-surface)]">{selectedBar.nearestEquivalent}</strong>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           )}
         </div>
-
-        {activeFeetInchResult.isValid ? (
-          <div className="space-y-2 pt-1">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
-                  Architectural Standard
-                </span>
-                <strong className="text-sm text-[var(--md-sys-color-primary)] truncate block">
-                  {activeFeetInchResult.fractionString || activeFeetInchResult.normalizedString}
-                </strong>
-              </div>
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
-                  Decimal Feet
-                </span>
-                <strong className="text-sm truncate block">
-                  {formatSmartNumber(activeFeetInchResult.totalFeet, 4)} ft
-                </strong>
-              </div>
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
-                  Metric (Meters)
-                </span>
-                <strong className="text-sm text-emerald-600 dark:text-emerald-400 truncate block">
-                  {formatSmartNumber(activeFeetInchResult.totalMeters, 4)} m
-                </strong>
-              </div>
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[var(--md-sys-color-on-surface-variant)] block text-[10px]">
-                  Millimeters (mm)
-                </span>
-                <strong className="text-sm truncate block">
-                  {formatSmartNumber(activeFeetInchResult.totalMm, 1)} mm
-                </strong>
-              </div>
-            </div>
-
-            {/* Transfer to Main Converter Input Button */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                Fraction: {activeFeetInchResult.fractionString || `${activeFeetInchResult.totalInches.toFixed(2)}"`}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const feetVal = parseFloat(activeFeetInchResult.totalFeet.toFixed(4));
-                    setDisplayInputString(activeFeetInchResult.fractionString || formatFeetInches(feetVal));
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      converter: {
-                        ...ws.converter,
-                        category: 'length',
-                        fromUnit: 'ft-in',
-                        inputValue: feetVal,
-                      },
-                    }));
-                  }}
-                  className="px-2.5 py-1 text-[11px] font-mono rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-400 cursor-pointer font-bold"
-                  title="Load architectural feet'-in&quot; notation into main converter input"
-                >
-                  Apply {activeFeetInchResult.fractionString || `${activeFeetInchResult.totalFeet.toFixed(2)} ft`} (ft&apos;-in&quot;)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const feetVal = parseFloat(activeFeetInchResult.totalFeet.toFixed(4));
-                    setDisplayInputString(formatNumberWhileTyping(String(feetVal)).formatted);
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      converter: {
-                        ...ws.converter,
-                        category: 'length',
-                        fromUnit: 'ft',
-                        inputValue: feetVal,
-                      },
-                    }));
-                  }}
-                  className="px-2 py-1 text-[11px] font-mono rounded bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-primary)] cursor-pointer font-bold"
-                  title="Load parsed feet into main converter input"
-                >
-                  Apply {activeFeetInchResult.totalFeet.toFixed(3)} ft
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const metersVal = parseFloat(activeFeetInchResult.totalMeters.toFixed(4));
-                    setDisplayInputString(formatNumberWhileTyping(String(metersVal)).formatted);
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      converter: {
-                        ...ws.converter,
-                        category: 'length',
-                        fromUnit: 'm',
-                        inputValue: metersVal,
-                      },
-                    }));
-                  }}
-                  className="px-3 py-1 text-[11px] font-mono rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-colors cursor-pointer font-bold"
-                  title="Load parsed meters into main converter input"
-                >
-                  Apply {activeFeetInchResult.totalMeters.toFixed(3)} m
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          converter.feetInchRawString && (
-            <div className="text-xs font-mono text-amber-600 dark:text-amber-400 pt-0.5">
-              ⚠️ {activeFeetInchResult.errorMessage || 'Unable to parse architectural string. Try format: 12\'-6 1/2" or 3500mm'}
-            </div>
-          )
-        )}
-      </div>
-      )}
-
-      {/* ------------------------------------------------------------------- */}
-      {/* 9. Rebar Bar Designation Converter (ASTM #3–#18 ⇄ ISO/BS 8–50mm) */}
-      {/* ------------------------------------------------------------------- */}
-      {(currentCategory === 'length' || currentCategory === 'area' || currentCategory === 'mass') && (() => {
-        const selectedBar = REBAR_BAR_DESIGNATIONS.find((b) => b.id === selectedRebarId) || REBAR_BAR_DESIGNATIONS[6];
-        return (
-          <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm">🔩</span>
-                <label className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-                  Rebar Bar Designation Equivalence (ASTM #3–#18 ⇄ ISO/BDS 8mm–50mm)
-                </label>
-              </div>
-              <select
-                value={selectedBar.id}
-                onChange={(e) => setSelectedRebarId(e.target.value)}
-                className="px-2.5 py-1 text-xs font-mono font-bold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-              >
-                {REBAR_BAR_DESIGNATIONS.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    [{b.standard}] {b.label} — {b.diameterMm} mm ({b.unitWeightKgPerM} kg/m)
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono">
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Diameter (mm / in)</span>
-                <strong className="text-sm text-[var(--md-sys-color-primary)]">
-                  {selectedBar.diameterMm} mm ({selectedBar.diameterIn}&quot;)
-                </strong>
-              </div>
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Bangla Suta (সূতা)</span>
-                <strong className="text-sm">{selectedBar.suta.toFixed(2)} suta</strong>
-              </div>
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Steel Area (As)</span>
-                <strong className="text-sm">{selectedBar.areaMm2} mm² ({selectedBar.areaIn2} in²)</strong>
-              </div>
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Unit Weight (d²/162.2)</span>
-                <strong className="text-sm text-emerald-600 dark:text-emerald-400">
-                  {selectedBar.unitWeightKgPerM} kg/m ({selectedBar.unitWeightLbPerFt} lb/ft)
-                </strong>
-              </div>
-              <div className="p-2 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Closest Cross-Standard</span>
-                <strong className="text-xs text-[var(--md-sys-color-on-surface)]">{selectedBar.nearestEquivalent}</strong>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      </section>
 
       {/* Step-by-Step Conversion Logic & Custom Unit Factor Proof Modal */}
       <ExplainConversionModal
@@ -1902,7 +2282,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
 };
 
 // -----------------------------------------------------------------------------
-// UnitConverterMetrics Component
+// UnitConverterMetrics Component (Compact SI & Audit Telemetry Strip Below Stage)
 // -----------------------------------------------------------------------------
 export interface UnitConverterMetricsProps {
   inputValue: number;
@@ -1936,94 +2316,32 @@ export const UnitConverterMetrics: React.FC<UnitConverterMetricsProps> = ({
   const meta = CATEGORY_METAS[category] || CATEGORY_METAS.length;
 
   return (
-    <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="space-y-3 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
         <div>
-          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Source Value</div>
-          <div className="text-xl font-bold font-mono mt-0.5">
-            {fromUnit === 'ft-in'
-              ? formatFeetInches(inputValue)
-              : formatSmartNumber(inputValue)}{' '}
-            <span className="text-xs font-normal">{fromUnit === 'ft-in' ? `ft'-in"` : fromUnit}</span>
+          <div className="text-[11px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+            Discipline &amp; Canonical SI Base
           </div>
-        </div>
-        <div>
-          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Converted Value</div>
-          <div className="text-xl font-bold font-mono mt-0.5 text-[var(--md-sys-color-primary)]">
-            {toUnit === 'ft-in'
-              ? formatFeetInches(conversionResult.result)
-              : formatSmartNumber(conversionResult.result, 6)}{' '}
-            <span className="text-xs font-normal">{toUnit === 'ft-in' ? `ft'-in"` : toUnit}</span>
-          </div>
-        </div>
-        <div>
-          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-between">
-            <span>Conversion Formula</span>
-            <button
-              type="button"
-              onClick={() => setIsExplainModalOpen(true)}
-              className="text-[10px] font-bold text-[var(--md-sys-color-primary)] hover:underline inline-flex items-center gap-0.5 cursor-pointer"
-              title="Explain step-by-step conversion logic using stored custom unit factors"
-            >
-              <HelpCircle className="w-3 h-3" />
-              <span>Explain</span>
-            </button>
-          </div>
-          <div className="text-xs font-mono mt-1 opacity-90 break-words leading-relaxed" title={conversionResult.formula}>
-            {conversionResult.formula}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-            Discipline & Base SI
-          </div>
-          <div className="text-xs font-mono font-bold mt-1">
+          <div className="text-sm font-mono font-bold mt-1 text-[var(--md-sys-color-on-surface)]">
             {meta.nameEn} ({BASE_UNITS[category]})
           </div>
         </div>
-      </div>
-
-      {/* Quick Swap & Explain Conversion Action Bar in Analytical Stage */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]/50 no-print">
-        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          Audit & Reverse Calculations:
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsExplainModalOpen(true)}
-            className="px-3.5 py-1.5 text-xs font-semibold rounded-full border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-all cursor-pointer flex items-center gap-1.5 btn-tactile font-bold shadow-xs"
-            title="Explain step-by-step conversion logic using stored custom unit factors"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Explain Conversion</span>
-          </button>
-          {onSwapUnits && (
+        <div className="sm:col-span-2">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] flex items-center justify-between">
+            <span>Exact Conversion Derivation</span>
             <button
               type="button"
-              onClick={onSwapUnits}
-              className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] transition-all cursor-pointer flex items-center gap-1.5 btn-tactile"
-              title={`Swap ${fromUnit} ⇄ ${toUnit}`}
+              onClick={() => setIsExplainModalOpen(true)}
+              className="text-[11px] font-bold text-[var(--md-sys-color-primary)] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              title="Explain step-by-step conversion logic using stored custom unit factors"
             >
-              <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-              <span>
-                Swap ({toUnit} ⇄ {fromUnit})
-              </span>
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Explain Step-by-Step</span>
             </button>
-          )}
-          {onSwapWithResult && (
-            <button
-              type="button"
-              onClick={onSwapWithResult}
-              className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] transition-all cursor-pointer flex items-center gap-1.5 btn-tactile"
-              title="Swap units and set input to current converted result"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>
-                Swap & Invert ({formatSmartNumber(conversionResult.result, 4)} {toUnit})
-              </span>
-            </button>
-          )}
+          </div>
+          <div className="text-xs font-mono mt-1 opacity-90 break-words leading-relaxed text-[var(--md-sys-color-on-surface)]">
+            {conversionResult.formula}
+          </div>
         </div>
       </div>
 

@@ -1131,7 +1131,24 @@ export function parseFeetInchString(rawInput: string): FeetInchParseResult {
     clean = clean.substring(1).trim();
   }
 
-  clean = clean.replace(/[-–—]{2,}/g, '-');
+  // Strip thousands separators (e.g. "1,250.00'" -> "1250.00'")
+  clean = clean.replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1');
+
+  // Guard incomplete trailing fraction while user is mid-typing (e.g. "12'-3 1/")
+  if (/\/\s*(?:"|in|inch|inches)?$/i.test(clean)) {
+    return {
+      isValid: false,
+      totalInches: 0,
+      totalFeet: 0,
+      totalMeters: 0,
+      totalMm: 0,
+      normalizedString: '',
+      fractionString: '',
+      decimalFeetString: '',
+      metricString: '',
+      errorMessage: 'Incomplete fraction expression',
+    };
+  }
 
   // Check if pure metric format: e.g. "3810 mm", "3.81 m", "381 cm"
   const metricMmMatch = clean.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:mm|millimeter|millimeters)$/i);
@@ -1155,9 +1172,19 @@ export function parseFeetInchString(rawInput: string): FeetInchParseResult {
     return formatInchesResult(inches);
   }
 
-  // Pattern: 12'-6 1/2", 12' 6 1/2", 12-6 1/2, 12'6", 12' 6", 12-6, 12ft 6in
+  // Pure fraction inches: e.g. 1/2", 3/4 in, 1/2
+  const fracOnlyMatch = clean.match(/^(\d+)\/(\d+)\s*(?:"|in|inch|inches)?$/i);
+  if (fracOnlyMatch) {
+    const num = parseFloat(fracOnlyMatch[1]) || 0;
+    const den = parseFloat(fracOnlyMatch[2]) || 1;
+    if (den !== 0) {
+      return formatInchesResult((isNegative ? -1 : 1) * (num / den));
+    }
+  }
+
+  // Pattern: 12'-6 1/2", 12' 6 1/2", 12-6 1/2, 12 6 1/2, 12'6", 12ft 6in
   const archMatch = clean.match(
-    /^(\d+(?:\.\d+)?)\s*(?:'|ft|feet)?\s*[-–—\s]?\s*(\d+(?:\.\d+)?)?\s*(?:"|in|inch|inches)?\s*(\d+)\/(\d+)?\s*(?:"|in|inch|inches)?$/i
+    /^(\d+(?:\.\d+)?)\s*(?:(?:'|ft|feet)\s*[-–—\s]?\s*|\s*[-–—]\s*|\s+)?(?:(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?\s*(?:[-–—\s]+))?(\d+)\/(\d+)\s*(?:"|in|inch|inches)?$/i
   );
 
   if (archMatch) {
@@ -1169,9 +1196,9 @@ export function parseFeetInchString(rawInput: string): FeetInchParseResult {
     return formatInchesResult(totalInches);
   }
 
-  // Feet and decimal inches or simple feet-inch without fraction: e.g. 12'-6", 12' 6", 12-6, 12'
+  // Feet and decimal inches or simple feet-inch without fraction: e.g. 12'-6", 12' 6", 12-6, 12 6
   const simpleArchMatch = clean.match(
-    /^(\d+(?:\.\d+)?)\s*(?:'|ft|feet)?\s*[-–—\s]?\s*(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?$/i
+    /^(\d+(?:\.\d+)?)\s*(?:(?:'|ft|feet)\s*[-–—\s]?\s*|\s*[-–—]\s*|\s+)(\d+(?:\.\d+)?)\s*(?:"|in|inch|inches)?$/i
   );
   if (simpleArchMatch) {
     const ft = parseFloat(simpleArchMatch[1]) || 0;
@@ -1250,6 +1277,10 @@ export function formatFeetInches(value: number, options?: FormatFeetInchesOption
 
   if (options?.decimalInches) {
     const prec = options?.precision ?? 2;
+    if (Number(remInches.toFixed(prec)) >= 12) {
+      ft += 1;
+      remInches = 0;
+    }
     return `${sign}${ft}'-${remInches.toFixed(prec)}"`;
   }
 

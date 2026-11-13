@@ -1,29 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import {
-  ArrowRightLeft,
-  Copy,
-  Check,
-  RotateCcw,
-  Sparkles,
-  Layers,
-  Maximize2,
-  Compass,
-  Boxes,
-  Gauge,
-  Scale,
-  Hash,
-  Info,
-  ChevronRight,
-  TrendingUp,
-  Ruler,
-  BookOpen,
-} from 'lucide-react';
-import { useCivilLab } from '../../context/CivilLabContext';
 import { AddToHistoryButton } from '../ui/AddToHistoryButton';
 import { AboutThisTool, AboutThisToolButton } from '../ui';
 import {
   CivilWorkspace,
-  UnitCategoryKey,
   CustomUnitDefinition,
 } from '../../types/civil';
 import {
@@ -66,8 +45,6 @@ export const ConverterPage: React.FC<ConverterPageProps> = ({
   customUnits = [],
   onOpenCustomUnitsModal = () => {},
 }) => {
-  const { userProfile, addSavedHistoryItem } = useCivilLab();
-
   // Local fallback workspace state if not provided via props
   const [localWorkspace, setLocalWorkspace] = useState<CivilWorkspace>(DEFAULT_FALLBACK_WORKSPACE);
 
@@ -120,26 +97,24 @@ export const ConverterPage: React.FC<ConverterPageProps> = ({
   ]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Top Header Banner */}
-      <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)] font-bold text-lg">
-              📐
-            </span>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-[var(--md-sys-color-on-surface)] tracking-tight">
-                Universal Civil Engineering Unit Converter
-              </h1>
-              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-                All 21 Disciplines • BNBC-2020 & Regional Standards • Exact Fractional SI / Imperial / Bangladesh Land Matrices
-              </p>
-            </div>
+    <div className="max-w-7xl mx-auto space-y-5">
+      {/* Compact Header Strip */}
+      <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl px-4 py-3.5 sm:px-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="p-2 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-primary)] font-bold text-base shrink-0">
+            📐
+          </span>
+          <div>
+            <h1 className="text-lg sm:text-xl font-black text-[var(--md-sys-color-on-surface)] tracking-tight leading-tight">
+              Universal Civil Engineering Unit Converter
+            </h1>
+            <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              21 Disciplines • BNBC-2020 &amp; Regional Standards • Exact SI / Imperial / Bangladesh Land Matrices
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <AddToHistoryButton
             item={{
               type: 'conversion',
@@ -171,8 +146,8 @@ export const ConverterPage: React.FC<ConverterPageProps> = ({
         </div>
       </div>
 
-      {/* Main Core Converter Interface */}
-      <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 sm:p-6 shadow-xs space-y-6">
+      {/* Main Core Converter Interface (Hero Stage -> All Equivalent Conversions -> Secondary Tools) */}
+      <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
         <UnitConverterInputs
           activeWorkspace={activeWorkspace}
           updateActiveWorkspace={updateActiveWorkspace}

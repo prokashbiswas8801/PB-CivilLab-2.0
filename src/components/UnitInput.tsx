@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useId } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useId, useCallback } from 'react';
 import {
   UnitCategoryKey,
   CustomUnitDefinition,
@@ -13,14 +13,11 @@ import {
   getConversionFactorDetails,
   UnitDefinition,
   formatSmartNumber,
-  formatNumberWhileTyping,
   formatFeetInches,
-  formatFeetInchDual,
   computeRegionalLandBreakdown,
-  FeetInchParseResult,
   EXACT_CONVERSION,
 } from '../utils/unitEngine';
-import { ChevronDown, Check, ArrowRightLeft, HelpCircle, AlertCircle, X, Info, Compass, MapPin } from 'lucide-react';
+import { ChevronDown, Check, ArrowRightLeft, HelpCircle, AlertCircle, X, AlertTriangle, MapPin } from 'lucide-react';
 import { evaluateMathExpression } from './ui/TechnicalInput';
 
 export interface UnitInputPreset {
@@ -72,8 +69,57 @@ export interface UnitInputProps {
   showCounterpartToggle?: boolean;
 }
 
-function formatNumberWithSeparators(val: number): string {
-  return formatSmartNumber(val, { maxDecimals: 4, useGrouping: true });
+function clampSIValue(val: number, min?: number, max?: number): number {
+  let out = isNaN(val) || !isFinite(val) ? 0 : val;
+  if (min === undefined || min >= 0) {
+    const floor = min !== undefined ? Math.max(0, min) : 0;
+    if (out < floor) out = floor;
+  } else if (out < min) {
+    out = min;
+  }
+  if (max !== undefined && out > max) {
+    out = max;
+  }
+  return out;
+}
+
+function isArchitecturalLengthDraft(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  return (
+    /['"]/.test(trimmed) ||
+    /\b(?:ft|feet|in|inch|inches|suta|soot|sut|সুতা|সূতা)\b/i.test(trimmed) ||
+    /^\d+(?:\.\d+)?\s*[-–—]\s*\d+/.test(trimmed) ||
+    /^\d+(?:\.\d+)?\s+\d+(?:\.\d+)?(?:\s+\d+\/\d+)?$/.test(trimmed) ||
+    /^\d+\/\d+$/.test(trimmed)
+  );
+}
+
+function formatCanonicalUnitDisplay(
+  siVal: number,
+  unitId: string,
+  category: UnitCategoryKey,
+  customUnits: CustomUnitDefinition[]
+): string {
+  if (isNaN(siVal) || !isFinite(siVal)) return '';
+  const denormVal = denormalizeFromBase(siVal, unitId, category, customUnits);
+
+  if (category === 'length') {
+    if (unitId === 'ft-in') {
+      return formatFeetInches(denormVal);
+    }
+    if (unitId === 'ft') {
+      const decFt = formatSmartNumber(denormVal, {
+        maxDecimals: 2,
+        minDecimals: 2,
+        useGrouping: true,
+        trimTrailingZeros: false,
+      });
+      return `${decFt}'`;
+    }
+  }
+
+  return formatSmartNumber(denormVal, { maxDecimals: 4, useGrouping: true });
 }
 
 export const UnitInput: React.FC<UnitInputProps> = ({
@@ -84,7 +130,6 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   currentUnitId,
   onUnitChange,
   fieldKey,
-  step = 'any',
   min,
   max,
   disabled = false,
@@ -166,17 +211,13 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     return denormalizeFromBase(siValue, activeUnitInfo.id, category, customUnits);
   }, [siValue, activeUnitInfo.id, category, customUnits]);
 
-  // Formatted display representation (with thousand commas on idle, or feet'-in" notation)
+  // Canonical display representation when blurred / idle
   const formattedDisplayValue = useMemo(() => {
-    if (isNaN(siValue) || !isFinite(siValue)) return '';
-    if (activeUnitInfo.id === 'ft-in') {
-      return formatFeetInches(convertedNumericValue);
-    }
-    return formatNumberWithSeparators(convertedNumericValue);
-  }, [siValue, convertedNumericValue, activeUnitInfo.id]);
+    return formatCanonicalUnitDisplay(siValue, activeUnitInfo.id, category, customUnits);
+  }, [siValue, activeUnitInfo.id, category, customUnits]);
 
-  const [rawText, setRawText] = useState<string>(formattedDisplayValue);
-  const [architecturalPreview, setArchitecturalPreview] = useState<FeetInchParseResult | null>(null);
+  // Controlled local draft state so typing never causes cursor jumping or mid-typing reformatting
+  const [draftText, setDraftText] = useState<string>(formattedDisplayValue);
   const isFocusedRef = useRef(false);
 
   // Smooth fade transition tracking when unit changes
@@ -192,10 +233,10 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     }
   }, [activeUnitInfo.id]);
 
-  // Keep rawText synced when siValue or activeUnit changes outside of manual editing
+  // Sync draftText when siValue or activeUnit changes outside of active typing
   useEffect(() => {
     if (!isFocusedRef.current) {
-      setRawText(formattedDisplayValue);
+      setDraftText(formattedDisplayValue);
     }
   }, [formattedDisplayValue]);
 
@@ -215,69 +256,153 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownOpen, showTooltip]);
 
+  // Real-time live SI computation derived synchronously from draftText on every keystroke
+  const liveSI = useMemo(() => {
+    const trimmed = draftText.trim();
+    if (trimmed === '') return 0;
+
+    const isArch = category === 'length' && isArchitecturalLengthDraft(trimmed);
+    if (!isArch && /[+\-*/^]/.test(trimmed)) {
+      const mathVal = evaluateMathExpression(trimmed);
+      if (mathVal !== null && isFinite(mathVal)) {
+        return normalizeToBase(mathVal, activeUnitInfo.id, category, customUnits);
+      }
+    }
+
+    const parsed = parseSmartUnitInput(trimmed, activeUnitInfo.id, category, customUnits);
+    if (parsed.isValid) {
+      return normalizeToBase(parsed.parsedValue, parsed.detectedUnitId, category, customUnits);
+    }
+
+    return isNaN(siValue) || !isFinite(siValue) ? 0 : siValue;
+  }, [draftText, category, activeUnitInfo.id, customUnits, siValue]);
+
+  // Determine whether inline Feet/Inches steppers should render
+  const showDualLengthSteppers = useMemo(() => {
+    return (
+      category === 'length' &&
+      (activeUnitInfo.system === 'imperial' ||
+        activeUnitInfo.system === 'regional' ||
+        activeUnitInfo.id === 'ft-in')
+    );
+  }, [category, activeUnitInfo.system, activeUnitInfo.id]);
+
+  // Breakdown of liveSI into exact feet & inches with strict 12-inch rollover
+  const stepperBreakdown = useMemo(() => {
+    const safeSI = isNaN(liveSI) || !isFinite(liveSI) ? 0 : Math.max(0, liveSI);
+    const totalInches = Math.round(((safeSI / EXACT_CONVERSION.IN_TO_M) + Number.EPSILON) * 1000) / 1000;
+    let feet = Math.floor(totalInches / 12);
+    let inches = Math.round((totalInches - feet * 12) * 100) / 100;
+    if (inches >= 12) {
+      feet += Math.floor(inches / 12);
+      inches = Math.round((inches % 12) * 100) / 100;
+    }
+    const inchesLabel = Number.isInteger(inches) ? String(inches) : Number(inches.toFixed(2)).toString();
+    return { feet, inches, inchesLabel };
+  }, [liveSI]);
+
+  const applySteppedInchesDelta = useCallback(
+    (deltaInches: number) => {
+      if (disabled) return;
+      const baseSI = isNaN(liveSI) || !isFinite(liveSI) ? 0 : liveSI;
+      const currentTotalInches = Math.round(((baseSI / EXACT_CONVERSION.IN_TO_M) + Number.EPSILON) * 10000) / 10000;
+      const nextTotalInches = Math.round((currentTotalInches + deltaInches) * 10000) / 10000;
+      const rawNewSI = nextTotalInches * EXACT_CONVERSION.IN_TO_M;
+      const clampedSI = clampSIValue(rawNewSI, min, max);
+      onChangeSI(clampedSI);
+      setDraftText(formatCanonicalUnitDisplay(clampedSI, activeUnitInfo.id, category, customUnits));
+    },
+    [disabled, liveSI, min, max, onChangeSI, activeUnitInfo.id, category, customUnits]
+  );
+
+  const commitAndNormalizeDraft = useCallback(
+    (textToCommit: string) => {
+      const trimmed = textToCommit.trim();
+      if (trimmed === '') {
+        const clampedZero = clampSIValue(0, min, max);
+        onChangeSI(clampedZero);
+        setDraftText(formatCanonicalUnitDisplay(clampedZero, activeUnitInfo.id, category, customUnits));
+        return;
+      }
+
+      const isArch = category === 'length' && isArchitecturalLengthDraft(trimmed);
+      if (!isArch && /[+\-*/^]/.test(trimmed)) {
+        const mathVal = evaluateMathExpression(trimmed);
+        if (mathVal !== null && isFinite(mathVal)) {
+          const rawSI = normalizeToBase(mathVal, activeUnitInfo.id, category, customUnits);
+          const newSI = clampSIValue(rawSI, min, max);
+          onChangeSI(newSI);
+          setDraftText(formatCanonicalUnitDisplay(newSI, activeUnitInfo.id, category, customUnits));
+          return;
+        }
+      }
+
+      const parsed = parseSmartUnitInput(trimmed, activeUnitInfo.id, category, customUnits);
+      if (parsed.isValid) {
+        if (parsed.detectedUnitId !== activeUnitInfo.id) {
+          onUnitChange(parsed.detectedUnitId);
+        }
+        const rawSI = normalizeToBase(parsed.parsedValue, parsed.detectedUnitId, category, customUnits);
+        const newSI = clampSIValue(rawSI, min, max);
+        onChangeSI(newSI);
+        setDraftText(formatCanonicalUnitDisplay(newSI, parsed.detectedUnitId, category, customUnits));
+      } else {
+        setDraftText(formattedDisplayValue);
+      }
+    },
+    [min, max, onChangeSI, activeUnitInfo.id, category, customUnits, onUnitChange, formattedDisplayValue]
+  );
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const valStr = e.target.value;
+    setDraftText(valStr);
 
-    // Maintain exact raw typed string while typing without cursor jumps or premature formatting
-    setRawText(valStr);
+    const trimmed = valStr.trim();
+    if (trimmed === '') {
+      return;
+    }
 
-    if (valStr.trim() === '') {
-      setArchitecturalPreview(null);
+    const isArch = category === 'length' && isArchitecturalLengthDraft(trimmed);
+    if (!isArch && /[+\-*/^]/.test(trimmed)) {
+      const mathVal = evaluateMathExpression(trimmed);
+      if (mathVal !== null && isFinite(mathVal)) {
+        const newSI = normalizeToBase(mathVal, activeUnitInfo.id, category, customUnits);
+        onChangeSI(newSI);
+      }
       return;
     }
 
     const parsed = parseSmartUnitInput(valStr, activeUnitInfo.id, category, customUnits);
     if (parsed.isValid) {
-      if (parsed.architecturalResult) {
-        setArchitecturalPreview(parsed.architecturalResult);
-      } else {
-        setArchitecturalPreview(null);
-      }
-
       if (parsed.detectedUnitId !== activeUnitInfo.id) {
         onUnitChange(parsed.detectedUnitId);
       }
       const newSI = normalizeToBase(parsed.parsedValue, parsed.detectedUnitId, category, customUnits);
       onChangeSI(newSI);
-    } else {
-      setArchitecturalPreview(null);
     }
   };
 
   const handleBlur = () => {
     isFocusedRef.current = false;
-    const trimmed = rawText.trim();
-    if (trimmed === '') {
-      onChangeSI(0);
-      setRawText('0');
-      return;
-    }
-    const mathVal = evaluateMathExpression(rawText);
-    if (mathVal !== null && /[+\-*/^]/.test(rawText)) {
-      const newSI = normalizeToBase(mathVal, activeUnitInfo.id, category, customUnits);
-      onChangeSI(newSI);
-      setRawText(formatNumberWithSeparators(mathVal));
-      return;
-    }
-    const parsed = parseSmartUnitInput(rawText, activeUnitInfo.id, category, customUnits);
-    if (parsed.isValid) {
-      const newSI = normalizeToBase(parsed.parsedValue, parsed.detectedUnitId, category, customUnits);
-      onChangeSI(newSI);
-      // Immediately denormalize newSI to active unit to prevent stale blur-closure flickers
-      const immediateConverted = denormalizeFromBase(newSI, activeUnitInfo.id, category, customUnits);
-      if (activeUnitInfo.id === 'ft-in') {
-        setRawText(formatFeetInches(immediateConverted));
-      } else {
-        setRawText(formatNumberWithSeparators(immediateConverted));
-      }
-    } else {
-      setRawText(formattedDisplayValue);
-    }
+    commitAndNormalizeDraft(draftText);
   };
 
   const handleFocus = () => {
     isFocusedRef.current = true;
-    setRawText(formattedDisplayValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitAndNormalizeDraft(draftText);
+      return;
+    }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && showDualLengthSteppers) {
+      e.preventDefault();
+      const dir = e.key === 'ArrowUp' ? 1 : -1;
+      const stepInches = e.shiftKey ? 12 : e.ctrlKey || e.metaKey ? 6 : 1;
+      applySteppedInchesDelta(dir * stepInches);
+    }
   };
 
   const handleSelectUnit = (unit: UnitDefinition) => {
@@ -293,94 +418,191 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     }
   };
 
-  // Dual-mode Feet-Inch state & stepper controls
-  const [isStepperOpen, setIsStepperOpen] = useState(false);
+  // BD Site Error Guard (10.6' vs 10'-6"): detects .1 through .11 entered in feet
+  const bdSiteErrorGuard = useMemo(() => {
+    if (category !== 'length') return null;
+    const trimmed = draftText.trim();
+    const inFeetContext =
+      activeUnitInfo.id === 'ft' ||
+      activeUnitInfo.id === 'rft' ||
+      /^\d+\.(?:1[01]|[1-9])\s*(?:'|ft|feet)$/i.test(trimmed);
+    if (!inFeetContext) return null;
 
-  const lengthDual = useMemo(() => {
-    if (category !== 'length' || isNaN(siValue)) return null;
-    return formatFeetInchDual(siValue);
-  }, [category, siValue]);
+    const match = trimmed.match(/^(\d+)\.(1[01]|[1-9])(?:\s*(?:'|ft|feet))?$/i);
+    if (!match) return null;
 
-  const stepperFeet = useMemo(() => {
-    if (isNaN(siValue)) return 0;
-    const totalFeet = siValue / EXACT_CONVERSION.FT_TO_M;
-    return Math.floor(Math.abs(totalFeet));
-  }, [siValue]);
+    const feet = parseInt(match[1], 10);
+    const intendedInches = parseInt(match[2], 10);
+    const fixedDecimalFeet = feet + intendedInches / 12;
+    const fixedSI = clampSIValue(fixedDecimalFeet * EXACT_CONVERSION.FT_TO_M, min, max);
 
-  const stepperInches = useMemo(() => {
-    if (isNaN(siValue)) return 0;
-    const totalFeet = siValue / EXACT_CONVERSION.FT_TO_M;
-    const absFeet = Math.abs(totalFeet);
-    const wholeFt = Math.floor(absFeet);
-    return Number(((absFeet - wholeFt) * 12).toFixed(2));
-  }, [siValue]);
+    const literalDecimalFeet = parseFloat(`${match[1]}.${match[2]}`);
+    const literalSI = literalDecimalFeet * EXACT_CONVERSION.FT_TO_M;
+    const amberFtIn = formatFeetInches(literalSI, {
+      isMeters: true,
+      decimalInches: true,
+      precision: 1,
+    }).replace(/\.0"$/, '"');
 
-  const handleStepperFeetDelta = (delta: number) => {
-    const newFt = Math.max(0, stepperFeet + delta);
-    const newTotalFeet = newFt + stepperInches / 12;
-    const newSI = newTotalFeet * EXACT_CONVERSION.FT_TO_M;
-    onChangeSI(newSI);
-  };
+    return {
+      feet,
+      intendedInches,
+      fixedDecimalFeet,
+      fixedSI,
+      amberFtIn,
+      amberMetric: `${literalSI.toFixed(3)} m`,
+      chipLabel: `Apply ${feet}'-${intendedInches}" (${fixedDecimalFeet.toFixed(2)}')?`,
+    };
+  }, [category, draftText, activeUnitInfo.id, min, max]);
 
-  const handleStepperInchesDelta = (delta: number) => {
-    let newIn = stepperInches + delta;
-    let newFt = stepperFeet;
-    if (newIn >= 12) {
-      newFt += Math.floor(newIn / 12);
-      newIn = newIn % 12;
-    } else if (newIn < 0) {
-      const borrow = Math.ceil(Math.abs(newIn) / 12);
-      newFt = Math.max(0, newFt - borrow);
-      newIn = (newIn + borrow * 12) % 12;
+  // Dynamic Real-Time Equivalence Readout (Length & Non-Length Categories)
+  const liveEquivalenceLabel = useMemo(() => {
+    const safeSI = isNaN(liveSI) || !isFinite(liveSI) ? 0 : liveSI;
+
+    if (category === 'length') {
+      const decFt = safeSI / EXACT_CONVERSION.FT_TO_M;
+      const ftInStr = formatFeetInches(safeSI, { isMeters: true });
+      const decFtStr = `${decFt.toFixed(2)}'`;
+      const mmRounded = Math.round(safeSI * 1000).toLocaleString('en-US');
+      const mStr = `${safeSI.toFixed(3)} m`;
+
+      if (Math.abs(safeSI) < 1e-9) {
+        return `= 0'-0" • 0.00' • 0.000 m`;
+      }
+      if (activeUnitInfo.id === 'ft-in') {
+        return `= ${decFtStr} • ${mStr} (${mmRounded} mm)`;
+      }
+      return `= ${ftInStr} • ${decFtStr} • ${mStr}`;
     }
-    const newTotalFeet = newFt + Number(newIn.toFixed(2)) / 12;
-    const newSI = newTotalFeet * EXACT_CONVERSION.FT_TO_M;
-    onChangeSI(newSI);
-  };
 
-  const handleDirectStepperFt = (val: number) => {
-    const newFt = Math.max(0, isNaN(val) ? 0 : val);
-    const newTotalFeet = newFt + stepperInches / 12;
-    onChangeSI(newTotalFeet * EXACT_CONVERSION.FT_TO_M);
-  };
+    // Non-length physical categories: SI <-> Regional / Imperial equivalents
+    const fmt = (val: number, maxDec = 2) =>
+      formatSmartNumber(val, { maxDecimals: maxDec, useGrouping: true });
 
-  const handleDirectStepperIn = (val: number) => {
-    let newIn = isNaN(val) ? 0 : val;
-    let newFt = stepperFeet;
-    if (newIn >= 12) {
-      newFt += Math.floor(newIn / 12);
-      newIn = newIn % 12;
-    } else if (newIn < 0) {
-      newIn = 0;
+    switch (category) {
+      case 'area': {
+        if (activeUnitInfo.id === 'mm2' || activeUnitInfo.id === 'cm2' || activeUnitInfo.id === 'in2') {
+          const sqIn = denormalizeFromBase(safeSI, 'in2', 'area', customUnits);
+          const cm2 = denormalizeFromBase(safeSI, 'cm2', 'area', customUnits);
+          const mm2 = denormalizeFromBase(safeSI, 'mm2', 'area', customUnits);
+          return `= ${fmt(sqIn, 3)} sq.in • ${fmt(cm2, 2)} cm² • ${fmt(mm2, 1)} mm²`;
+        }
+        const sft = denormalizeFromBase(safeSI, 'ft2', 'area', customUnits);
+        const katha = denormalizeFromBase(safeSI, 'katha', 'area', customUnits);
+        return `= ${sft.toFixed(2)} sq.ft • ${safeSI.toFixed(3)} m² • ${katha.toFixed(2)} কাঠা`;
+      }
+      case 'volume': {
+        if (
+          activeUnitInfo.id === 'liter' ||
+          activeUnitInfo.id === 'ml' ||
+          activeUnitInfo.id === 'gal_us' ||
+          activeUnitInfo.id === 'gal_uk'
+        ) {
+          const liters = denormalizeFromBase(safeSI, 'liter', 'volume', customUnits);
+          const galUs = denormalizeFromBase(safeSI, 'gal_us', 'volume', customUnits);
+          return `= ${fmt(liters, 2)} L • ${fmt(galUs, 2)} US gal • ${safeSI.toFixed(4)} m³`;
+        }
+        const cft = denormalizeFromBase(safeSI, 'cft', 'volume', customUnits);
+        return `= ${cft.toFixed(2)} CFT • ${safeSI.toFixed(3)} m³`;
+      }
+      case 'pressure': {
+        const psi = denormalizeFromBase(safeSI, 'psi', 'pressure', customUnits);
+        const mpa = denormalizeFromBase(safeSI, 'MPa', 'pressure', customUnits);
+        const kpa = denormalizeFromBase(safeSI, 'kPa', 'pressure', customUnits);
+        const psf = denormalizeFromBase(safeSI, 'psf', 'pressure', customUnits);
+        if (activeUnitInfo.id === 'kPa' || activeUnitInfo.id === 'psf' || activeUnitInfo.id === 'tsf' || activeUnitInfo.id === 'Pa') {
+          return `= ${fmt(psf, 1)} psf • ${fmt(kpa, 2)} kPa (${fmt(psi, 2)} psi)`;
+        }
+        return `= ${fmt(psi, 1)} psi • ${mpa.toFixed(2)} MPa`;
+      }
+      case 'force': {
+        if (activeUnitInfo.id === 'N' || activeUnitInfo.id === 'lbf') {
+          const lbf = denormalizeFromBase(safeSI, 'lbf', 'force', customUnits);
+          return `= ${fmt(lbf, 2)} lbf • ${fmt(safeSI, 2)} N`;
+        }
+        const kn = denormalizeFromBase(safeSI, 'kN', 'force', customUnits);
+        const kip = denormalizeFromBase(safeSI, 'kip', 'force', customUnits);
+        return `= ${fmt(kip, 2)} kip • ${fmt(kn, 2)} kN`;
+      }
+      case 'mass': {
+        const lb = denormalizeFromBase(safeSI, 'lb', 'mass', customUnits);
+        const bags = denormalizeFromBase(safeSI, 'bag50', 'mass', customUnits);
+        if (activeUnitInfo.id === 'tonne' || activeUnitInfo.id === 'ton_us' || activeUnitInfo.id === 'ton_uk') {
+          const mt = denormalizeFromBase(safeSI, 'tonne', 'mass', customUnits);
+          return `= ${fmt(mt, 3)} MT • ${fmt(safeSI, 1)} kg • ${fmt(lb, 1)} lb`;
+        }
+        return `= ${fmt(safeSI, 2)} kg • ${fmt(bags, 2)} bag (50kg) • ${fmt(lb, 1)} lb`;
+      }
+      case 'moment': {
+        const knm = denormalizeFromBase(safeSI, 'kN.m', 'moment', customUnits);
+        const kipFt = denormalizeFromBase(safeSI, 'kip.ft', 'moment', customUnits);
+        return `= ${fmt(kipFt, 2)} kip·ft • ${fmt(knm, 2)} kN·m`;
+      }
+      case 'distributed_load': {
+        const knm = denormalizeFromBase(safeSI, 'kN/m', 'distributed_load', customUnits);
+        const kipFt = denormalizeFromBase(safeSI, 'kip/ft', 'distributed_load', customUnits);
+        return `= ${fmt(kipFt, 3)} kip/ft • ${fmt(knm, 2)} kN/m`;
+      }
+      case 'density': {
+        const pcf = denormalizeFromBase(safeSI, 'pcf', 'density', customUnits);
+        const kgm3 = denormalizeFromBase(safeSI, 'kg/m3', 'density', customUnits);
+        return `= ${fmt(pcf, 2)} pcf • ${fmt(safeSI, 2)} kN/m³ (${fmt(kgm3, 0)} kg/m³)`;
+      }
+      case 'velocity': {
+        const fts = denormalizeFromBase(safeSI, 'ft/s', 'velocity', customUnits);
+        if (activeUnitInfo.id === 'km/h' || activeUnitInfo.id === 'mph') {
+          const kmh = denormalizeFromBase(safeSI, 'km/h', 'velocity', customUnits);
+          const mph = denormalizeFromBase(safeSI, 'mph', 'velocity', customUnits);
+          return `= ${fmt(mph, 2)} mph • ${fmt(kmh, 2)} km/h • ${fmt(safeSI, 2)} m/s`;
+        }
+        return `= ${fmt(fts, 2)} ft/s • ${fmt(safeSI, 3)} m/s`;
+      }
+      case 'flow_rate': {
+        const cfs = denormalizeFromBase(safeSI, 'cfs', 'flow_rate', customUnits);
+        const ls = denormalizeFromBase(safeSI, 'L/s', 'flow_rate', customUnits);
+        return `= ${fmt(cfs, 3)} cfs • ${fmt(ls, 2)} L/s • ${fmt(safeSI, 4)} m³/s`;
+      }
+      case 'section_properties': {
+        const in4 = denormalizeFromBase(safeSI, 'in4', 'section_properties', customUnits);
+        const cm4 = denormalizeFromBase(safeSI, 'cm4', 'section_properties', customUnits);
+        return `= ${fmt(in4, 2)} in⁴ • ${fmt(cm4, 1)} cm⁴`;
+      }
+      case 'slope': {
+        const pct = denormalizeFromBase(safeSI, 'percent', 'slope', customUnits);
+        const deg = denormalizeFromBase(safeSI, 'degree', 'slope', customUnits);
+        return `= ${fmt(pct, 2)}% • ${fmt(safeSI, 4)} m/m • ${fmt(deg, 2)}°`;
+      }
+      case 'temperature': {
+        const c = denormalizeFromBase(safeSI, 'c', 'temperature', customUnits);
+        const f = denormalizeFromBase(safeSI, 'f', 'temperature', customUnits);
+        return `= ${fmt(f, 1)} °F • ${fmt(c, 1)} °C • ${fmt(safeSI, 2)} K`;
+      }
+      default: {
+        if (counterpartUnit && counterpartUnit.id !== activeUnitInfo.id) {
+          const cVal = denormalizeFromBase(safeSI, counterpartUnit.id, category, customUnits);
+          const baseUnit = availableUnits.find((u) => u.toBaseFactor === 1.0) || availableUnits[0];
+          const baseStr =
+            baseUnit && baseUnit.id !== activeUnitInfo.id && baseUnit.id !== counterpartUnit.id
+              ? ` • ${fmt(safeSI, 3)} ${baseUnit.symbol}`
+              : '';
+          return `= ${fmt(cVal, 3)} ${counterpartUnit.symbol}${baseStr}`;
+        }
+        return `= ${fmt(safeSI, 4)}`;
+      }
     }
-    const newTotalFeet = newFt + Number(newIn.toFixed(2)) / 12;
-    onChangeSI(newTotalFeet * EXACT_CONVERSION.FT_TO_M);
-  };
-
-  const handleSwapLengthDisplay = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!lengthDual) return;
-    if (activeUnitInfo.id === 'ft') {
-      onUnitChange('ft-in');
-      setRawText(lengthDual.compoundFtInStr);
-    } else if (activeUnitInfo.id === 'ft-in') {
-      onUnitChange('ft');
-      setRawText(lengthDual.decimalFtStr.replace("'", ''));
-    } else {
-      onUnitChange('ft-in');
-      setRawText(lengthDual.compoundFtInStr);
-    }
-  };
+  }, [liveSI, category, activeUnitInfo.id, customUnits, counterpartUnit, availableUnits]);
 
   // Explicit Zero (0) detection
   const isZeroActive =
     !disabled &&
     (siValue === 0 ||
       convertedNumericValue === 0 ||
-      rawText.trim() === '0' ||
-      rawText.trim() === '0.0' ||
-      rawText.trim() === '0.00' ||
-      rawText.trim() === '');
+      draftText.trim() === '0' ||
+      draftText.trim() === '0.0' ||
+      draftText.trim() === '0.00' ||
+      draftText.trim() === "0.00'" ||
+      draftText.trim() === `0'-0"` ||
+      draftText.trim() === '');
 
   // Real-Time Validation Assessment
   const validationResult = useMemo(() => {
@@ -390,7 +612,6 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     }
 
     if (validationRule) {
-      // Clean zero baseline is flagged by isZeroActive rather than triggering minSI violation
       if (siValue > 0 && validationRule.minSI !== undefined && siValue < validationRule.minSI) {
         return {
           status: 'error' as const,
@@ -501,21 +722,6 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
         {/* 1-Click Real-time Metric <-> Imperial Counterpart Toggle & Quick ft'-in" Option */}
         <div className="flex items-center gap-1 shrink-0">
-          {category === 'length' && (activeUnitInfo.id === 'ft' || activeUnitInfo.id === 'ft-in') && (
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => setIsStepperOpen(!isStepperOpen)}
-              className={`px-1.5 py-0.5 text-[10px] font-mono font-bold rounded border transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 btn-tactile ${
-                isStepperOpen
-                  ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent'
-                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
-              }`}
-              title="Toggle Feet & Inches dual stepper input boxes"
-            >
-              <span>⇄ Ft+In Box</span>
-            </button>
-          )}
           {category === 'length' && activeUnitInfo.id !== 'ft-in' && (
             <button
               type="button"
@@ -542,74 +748,13 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         </div>
       </div>
 
-      {/* Optional Linked Feet + Inches Dual Stepper Boxes */}
-      {category === 'length' && isStepperOpen && (
-        <div className="flex items-center gap-2 p-2 rounded-2xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] animate-fadeIn">
-          <div className="flex-1 flex items-center justify-between bg-[var(--md-sys-color-surface)] px-2 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
-            <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] mr-1">Feet (&apos;)</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => handleStepperFeetDelta(-1)}
-                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                disabled={disabled}
-                value={stepperFeet}
-                onChange={(e) => handleDirectStepperFt(parseInt(e.target.value, 10))}
-                className="w-12 text-center text-sm font-bold font-mono bg-transparent text-[var(--md-sys-color-on-surface)] focus:outline-none"
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => handleStepperFeetDelta(1)}
-                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
-              >
-                +
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 flex items-center justify-between bg-[var(--md-sys-color-surface)] px-2 py-1.5 rounded-xl border border-[var(--md-sys-color-outline-variant)]">
-            <span className="text-[10px] font-bold text-[var(--md-sys-color-on-surface-variant)] mr-1">Inches (&quot;)</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => handleStepperInchesDelta(-1)}
-                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                step="0.5"
-                disabled={disabled}
-                value={stepperInches}
-                onChange={(e) => handleDirectStepperIn(parseFloat(e.target.value))}
-                className="w-12 text-center text-sm font-bold font-mono bg-transparent text-[var(--md-sys-color-on-surface)] focus:outline-none"
-              />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => handleStepperInchesDelta(1)}
-                className="w-6 h-6 rounded-md bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] text-xs font-bold font-mono cursor-pointer flex items-center justify-center"
-              >
-                +
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Input Field with Unit Selector Dropdown Trigger */}
       <div
         className={`relative flex items-center rounded-full overflow-hidden border bg-[var(--md-sys-color-surface)] shadow-xs transition-all duration-300 focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)] ${
           validationResult?.status === 'error'
             ? 'border-[var(--md-sys-color-error)] ring-2 ring-[var(--md-sys-color-error)]/40'
+            : bdSiteErrorGuard
+            ? 'border-amber-500 ring-1 ring-amber-500/40'
             : isZeroActive
             ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
             : validationResult?.status === 'warning'
@@ -622,14 +767,24 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         <input
           id={inputId}
           type="text"
-          inputMode="decimal"
+          inputMode={category === 'length' ? 'text' : 'decimal'}
           disabled={disabled}
-          value={rawText}
-          placeholder={placeholder || (activeUnitInfo.id === 'ft-in' ? `e.g. 12'-6" or 12'-6 1/2"` : category === 'length' ? `e.g. 12'-6 1/2" or 3.8m` : category === 'area' ? 'e.g. 5 katha or 2.5 dec' : '0')}
+          value={draftText}
+          placeholder={
+            placeholder ||
+            (activeUnitInfo.id === 'ft-in'
+              ? `e.g. 12'-3" or 12'-3 1/2"`
+              : category === 'length'
+              ? `e.g. 12'-3", 12.25' or 3.734 m`
+              : category === 'area'
+              ? 'e.g. 5 katha or 2.5 dec'
+              : '0')
+          }
           onChange={handleInputChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          className={`w-full min-w-0 min-h-[48px] touch-target-48 bg-transparent pl-5 pr-3 py-2 text-base md:text-sm font-mono text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
+          onKeyDown={handleKeyDown}
+          className={`w-full min-w-0 min-h-[48px] touch-target-48 bg-transparent pl-5 pr-3 py-2 text-base md:text-sm font-mono tabular-nums text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
             isUnitFading
               ? 'opacity-25 scale-[0.985] text-[var(--md-sys-color-primary)]'
               : 'opacity-100 scale-100'
@@ -751,41 +906,123 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         </div>
       </div>
 
-      {/* Live Dual-Equivalent Badge on Every Length Input with 1-Click Swap */}
-      {category === 'length' && lengthDual && siValue > 0 && (
+      {/* Inline Dual Feet (') & Inches (") Stepper Bar (Length in Imperial/Regional/ft-in Mode) */}
+      {showDualLengthSteppers && (
         <div
-          onClick={handleSwapLengthDisplay}
-          className="flex items-center justify-between px-2.5 py-1 rounded-md bg-[var(--md-sys-color-primary-container)]/30 hover:bg-[var(--md-sys-color-primary-container)]/60 text-[var(--md-sys-color-on-surface)] text-[11px] font-mono border border-[var(--md-sys-color-primary)]/30 transition-all cursor-pointer group select-none animate-fadeIn"
-          title="Click to swap between Decimal Feet (12.25') and Compound Feet-Inches (12'-3&quot;)"
+          className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5"
+          role="group"
+          aria-label={`Feet and inches precision steppers for ${label}`}
         >
-          <div className="flex items-center gap-1.5 truncate">
-            <Compass className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
-            {activeUnitInfo.id === 'ft-in' ? (
-              <span>
-                = <strong className="text-[var(--md-sys-color-primary)]">{lengthDual.decimalFtStr}</strong> • {lengthDual.metricStr}
-              </span>
-            ) : activeUnitInfo.id === 'ft' ? (
-              <span>
-                = <strong className="text-[var(--md-sys-color-primary)]">{lengthDual.compoundFtInStr}</strong> • {lengthDual.metricStr}
-              </span>
-            ) : (
-              <span>
-                = <strong className="text-[var(--md-sys-color-primary)]">{lengthDual.compoundFtInStr}</strong> ({lengthDual.decimalFtStr})
-              </span>
-            )}
+          {/* Feet Stepper Group (-1' / +1') */}
+          <div className="inline-flex items-center rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] overflow-hidden">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => applySteppedInchesDelta(-12)}
+              title="Decrement by 1 foot (-1')"
+              aria-label={`Decrease ${label} by 1 foot`}
+              className="min-h-[34px] min-w-[36px] px-2 text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] active:scale-95 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              -1&apos;
+            </button>
+            <span className="px-2 text-[11px] font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)] border-x border-[var(--md-sys-color-outline-variant)] select-none min-w-[34px] text-center">
+              {stepperBreakdown.feet}&apos;
+            </span>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => applySteppedInchesDelta(12)}
+              title="Increment by 1 foot (+1')"
+              aria-label={`Increase ${label} by 1 foot`}
+              className="min-h-[34px] min-w-[36px] px-2 text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] active:scale-95 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              +1&apos;
+            </button>
           </div>
-          <span className="text-[9.5px] font-bold text-[var(--md-sys-color-primary)] shrink-0 flex items-center gap-1 opacity-80 group-hover:opacity-100">
-            <ArrowRightLeft className="w-2.5 h-2.5" />
-            <span>Swap Display</span>
-          </span>
+
+          {/* Inches Stepper Group (-1" / +1" with Shift: ±1/2", Ctrl/Cmd: ±6") */}
+          <div className="inline-flex items-center rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] overflow-hidden">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={(e) => {
+                const stepIn = e.ctrlKey || e.metaKey ? 6 : e.shiftKey ? 0.5 : 1;
+                applySteppedInchesDelta(-stepIn);
+              }}
+              title={'Decrement inches (-1" · Shift: -½" · Ctrl/Cmd: -6")'}
+              aria-label={`Decrease ${label} by 1 inch (Shift for half inch, Ctrl or Cmd for 6 inches)`}
+              className="min-h-[34px] min-w-[36px] px-2 text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] active:scale-95 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              -1&quot;
+            </button>
+            <span className="px-2 text-[11px] font-mono font-bold tabular-nums text-[var(--md-sys-color-on-surface)] border-x border-[var(--md-sys-color-outline-variant)] select-none min-w-[34px] text-center">
+              {stepperBreakdown.inchesLabel}&quot;
+            </span>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={(e) => {
+                const stepIn = e.ctrlKey || e.metaKey ? 6 : e.shiftKey ? 0.5 : 1;
+                applySteppedInchesDelta(stepIn);
+              }}
+              title={'Increment inches (+1" · Shift: +½" · Ctrl/Cmd: +6")'}
+              aria-label={`Increase ${label} by 1 inch (Shift for half inch, Ctrl or Cmd for 6 inches)`}
+              className="min-h-[34px] min-w-[36px] px-2 text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] active:scale-95 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              +1&quot;
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Real-time Regional Land Equivalence Chip */}
-      {category === 'area' && activeUnitInfo.isRegional && siValue > 0 && (
+      {/* Dynamic Real-Time Monospace Equivalence Readout (Updates on Every Keystroke) */}
+      <div
+        aria-live="polite"
+        className={`flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-mono tabular-nums transition-colors ${
+          bdSiteErrorGuard
+            ? 'bg-amber-500/12 border-amber-500/45 text-amber-800 dark:text-amber-300'
+            : 'bg-[var(--md-sys-color-surface-container-low)] border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)]'
+        }`}
+      >
+        {bdSiteErrorGuard ? (
+          <>
+            <span className="inline-flex items-center gap-1 font-semibold">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                = {bdSiteErrorGuard.amberFtIn} • {bdSiteErrorGuard.amberMetric}
+              </span>
+            </span>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                onChangeSI(bdSiteErrorGuard.fixedSI);
+                setDraftText(
+                  formatCanonicalUnitDisplay(bdSiteErrorGuard.fixedSI, activeUnitInfo.id, category, customUnits)
+                );
+              }}
+              title={`Convert decimal entry to ${bdSiteErrorGuard.feet}'-${bdSiteErrorGuard.intendedInches}" (${bdSiteErrorGuard.fixedDecimalFeet.toFixed(2)}')`}
+              className="px-2 py-0.5 text-[10px] font-mono font-bold rounded border border-amber-600/50 bg-amber-500/20 hover:bg-amber-500/35 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer shrink-0"
+            >
+              {bdSiteErrorGuard.chipLabel}
+            </button>
+          </>
+        ) : (
+          <span className="truncate">{liveEquivalenceLabel}</span>
+        )}
+      </div>
+
+      {/* Real-time Regional Land Equivalence Breakdown (BD Katha/Decimal/Bigha/Kani) */}
+      {category === 'area' && activeUnitInfo.isRegional && liveSI > 0 && (
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-[11px] font-mono border border-emerald-500/30 animate-fadeIn">
           <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span className="font-semibold">{computeRegionalLandBreakdown(convertedNumericValue, activeUnitInfo.id, customUnits).formattedSummary}</span>
+          <span className="font-semibold">
+            {computeRegionalLandBreakdown(
+              denormalizeFromBase(liveSI, activeUnitInfo.id, category, customUnits),
+              activeUnitInfo.id,
+              customUnits
+            ).formattedSummary}
+          </span>
         </div>
       )}
 
@@ -800,7 +1037,11 @@ export const UnitInput: React.FC<UnitInputProps> = ({
               key={idx}
               type="button"
               disabled={disabled}
-              onClick={() => onChangeSI(p.valueSI)}
+              onClick={() => {
+                const clamped = clampSIValue(p.valueSI, min, max);
+                onChangeSI(clamped);
+                setDraftText(formatCanonicalUnitDisplay(clamped, activeUnitInfo.id, category, customUnits));
+              }}
               title={p.title || `Set to ${p.label}`}
               className="px-2 py-0.5 text-[10.5px] font-mono rounded bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] transition-all cursor-pointer btn-tactile shrink-0"
             >
