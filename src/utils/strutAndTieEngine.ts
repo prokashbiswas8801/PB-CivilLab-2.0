@@ -204,8 +204,13 @@ function solveLinearSystem(A: number[][], b: number[]): number[] | null {
 export function computeStrutAndTie(
   params: StrutAndTieParams
 ): CalculationEnvelope<StrutAndTieResult> {
+  if (!params) {
+    return createEnvelope<StrutAndTieResult>(null, [
+      { field: 'params', message: 'Strut-and-Tie parameters are missing.', severity: 'error' },
+    ]);
+  }
   const issues: ValidationIssue[] = [];
-  const { nodes, members, nodalLoads, concreteFcMpa, rebarFyMpa } = params;
+  const { nodes = [], members = [], nodalLoads = [], concreteFcMpa, rebarFyMpa } = params;
 
   if (nodes.length < 3 || members.length < 2) {
     issues.push({

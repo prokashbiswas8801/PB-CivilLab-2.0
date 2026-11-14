@@ -15,11 +15,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowUpDown,
-  SlidersHorizontal,
   FileText,
-  DollarSign,
   Building,
-  Check,
   ChevronDown,
   ChevronUp,
   MapPin,
@@ -28,6 +25,7 @@ import {
   X,
   FileDown,
   Loader2,
+  PackageCheck,
 } from 'lucide-react';
 import {
   CivilWorkspace,
@@ -39,24 +37,24 @@ import {
   CustomUnitDefinition,
   UnitCategoryKey,
   UserProfile,
-  WBSSection,
   BidTabulationData,
 } from '../../types/civil';
 import {
   getCurrencySymbol,
   BOQResult,
+  BOQResourceAbstract,
   RateAnalysisResult,
   ComputedTakeoffItem,
   computeBOQEstimator,
 } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
-import { formatFeetInches, formatFeetInchDual } from '../../utils/unitConverter';
+import { MasterMarketRatesPanel } from './MasterMarketRatesPanel';
+import { formatFeetInches } from '../../utils/unitConverter';
 import {
   STANDARD_WBS_SECTIONS,
   REGIONAL_DISTRICT_ADJUSTMENTS,
   ALL_RATE_LIBRARIES,
   createDefaultBidTabulation,
-  RateLibraryItem,
 } from '../../utils/costLibraries';
 import {
   computeCashFlowForecast,
@@ -69,6 +67,7 @@ import {
 import {
   exportTenderBoqCsv,
   exportTenderBoqPdf,
+  exportBoqResourceAbstractCsv,
 } from '../../utils/tenderExport';
 
 export interface BoqSummaryWidgetProps {
@@ -139,8 +138,7 @@ export const BoqSummaryWidget: React.FC<BoqSummaryWidgetProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
                 BOQ Executive Cost Summary
               </span>
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
                 LIVE REACTIVE
               </span>
             </div>
@@ -588,6 +586,13 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
         boq={activeWorkspace.boq}
         onLoadSampleBOQItems={onLoadSampleBOQItems}
         onSyncFromModules={onSyncFromModules}
+      />
+
+      {/* Synchronized Master Market Material & Labor Rates Drawer */}
+      <MasterMarketRatesPanel
+        activeWorkspace={activeWorkspace}
+        updateActiveWorkspace={updateActiveWorkspace}
+        currency={activeWorkspace.boq.currency}
       />
 
       {/* Project Currency & Markup Modifiers */}
@@ -1204,6 +1209,7 @@ export interface BoqEstimatorTableProps {
   onDeleteTakeoffItem: (id: string) => void;
   onLoadSampleBOQItems: () => void;
   onSyncFromModules?: () => void;
+  onPushResourceCeilingsToInventory?: (resourceAbstract: BOQResourceAbstract) => void;
   activeWorkspace?: CivilWorkspace;
   updateActiveWorkspace?: (updater: (ws: CivilWorkspace) => CivilWorkspace) => void;
   userProfile?: UserProfile;
@@ -1221,6 +1227,7 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
   onDeleteTakeoffItem,
   onLoadSampleBOQItems,
   onSyncFromModules,
+  onPushResourceCeilingsToInventory,
   activeWorkspace,
   updateActiveWorkspace,
   userProfile,
@@ -1805,7 +1812,6 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
               {/* Left Column: Filter Scope & Matched Count */}
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--md-sys-color-primary)] animate-pulse" />
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
                     Active Filtered Summary
                   </span>
@@ -1946,6 +1952,205 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
               </div>
             )}
           </div>
+
+          {/* BOQ Resource Abstract: Project Material & Manpower Demand Schedule */}
+          {boqResult.resourceAbstract && (
+            <div
+              className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] overflow-hidden"
+              data-testid="boq-resource-abstract-panel"
+            >
+              <div className="p-4 bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                    Automated Resource Abstract &amp; Store Demand Schedule
+                  </div>
+                  <h3 className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
+                    Total Project Material &amp; Manpower Ceilings
+                  </h3>
+                  <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                    Derived from {boqResult.resourceAbstract.lineItemBreakdown.length} resource-bearing BOQ line items across Concrete, Rebar, Masonry, Plaster &amp; Earthwork
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeWorkspace && (
+                    <button
+                      type="button"
+                      onClick={() => exportBoqResourceAbstractCsv(activeWorkspace, boqResult)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-xs font-semibold text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
+                      title="Download Project Material & Manpower Resource Abstract CSV"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Export Resource CSV</span>
+                    </button>
+                  )}
+                  {onPushResourceCeilingsToInventory && (
+                    <button
+                      type="button"
+                      onClick={() => onPushResourceCeilingsToInventory(boqResult.resourceAbstract!)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-bold shadow-xs transition-opacity cursor-pointer"
+                      title="Push calculated BOQ Cement, Sand, Aggregate, Bricks & Rebar quantities as budget ceilings into Site Store Inventory (SM-01)"
+                    >
+                      <PackageCheck className="w-3.5 h-3.5" />
+                      <span>Push Resource Ceilings to Store Inventory (SM-01)</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* 6 KPI Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 font-mono tabular-nums">
+                  <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                      Cement (50kg)
+                    </div>
+                    <div className="text-base font-bold text-[var(--md-sys-color-primary)] mt-0.5">
+                      {boqResult.resourceAbstract.cementBags50Kg.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    </div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Bags</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                      Sand Demand
+                    </div>
+                    <div className="text-base font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+                      {boqResult.resourceAbstract.sandCft.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">CFT (Sylhet + Local)</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                      Coarse Agg.
+                    </div>
+                    <div className="text-base font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+                      {boqResult.resourceAbstract.coarseAggregateCft.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">CFT (Stone / Khoa)</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                      500W Rebar
+                    </div>
+                    <div className="text-base font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                      {boqResult.resourceAbstract.rebarTonnes.toFixed(2)} MT
+                    </div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                      {boqResult.resourceAbstract.rebarKg.toLocaleString(undefined, { maximumFractionDigits: 0 })} kg
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                      1st-Class Bricks
+                    </div>
+                    <div className="text-base font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+                      {boqResult.resourceAbstract.bricksNos.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Nos</div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+                      Crew Effort
+                    </div>
+                    <div className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      {boqResult.resourceAbstract.totalManDays.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    </div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                      Man-Days ({boqResult.resourceAbstract.masonManDays.toFixed(0)}M / {boqResult.resourceAbstract.helperManDays.toFixed(0)}H / {boqResult.resourceAbstract.barBenderManDays.toFixed(0)}B)
+                    </div>
+                  </div>
+                </div>
+
+                {/* Line-by-line Resource Breakdown Table */}
+                {boqResult.resourceAbstract.lineItemBreakdown.length > 0 && (
+                  <div className="overflow-x-auto rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                    <table className="w-full text-left border-collapse text-xs font-mono tabular-nums min-w-[780px]">
+                      <thead>
+                        <tr className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold">
+                          <th className="py-2.5 px-3">Item #</th>
+                          <th className="py-2.5 px-2">Trade</th>
+                          <th className="py-2.5 px-2">BOQ Item Description</th>
+                          <th className="py-2.5 px-2 text-right">Qty</th>
+                          <th className="py-2.5 px-2 text-right">Cement (Bags)</th>
+                          <th className="py-2.5 px-2 text-right">Sand (CFT)</th>
+                          <th className="py-2.5 px-2 text-right">Agg. (CFT)</th>
+                          <th className="py-2.5 px-2 text-right">Rebar (kg)</th>
+                          <th className="py-2.5 px-2 text-right">Bricks (Nos)</th>
+                          <th className="py-2.5 px-3 text-right">Mason / Helper / Bender</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
+                        {boqResult.resourceAbstract.lineItemBreakdown.map((row, rIdx) => (
+                          <tr key={`${row.itemNo}-${rIdx}`} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                            <td className="py-2 px-3 font-bold text-[var(--md-sys-color-primary)] whitespace-nowrap">
+                              {row.itemNo}
+                            </td>
+                            <td className="py-2 px-2 text-[11px] font-semibold whitespace-nowrap">
+                              {row.tradeTag}
+                            </td>
+                            <td className="py-2 px-2 max-w-[240px] truncate text-[var(--md-sys-color-on-surface)]" title={row.description}>
+                              {row.description}
+                            </td>
+                            <td className="py-2 px-2 text-right whitespace-nowrap">
+                              {row.billableQty.toLocaleString(undefined, { maximumFractionDigits: 2 })} {row.unit}
+                            </td>
+                            <td className="py-2 px-2 text-right font-semibold">
+                              {row.cementBags > 0 ? row.cementBags.toFixed(1) : '—'}
+                            </td>
+                            <td className="py-2 px-2 text-right">
+                              {row.sandCft > 0 ? row.sandCft.toFixed(1) : '—'}
+                            </td>
+                            <td className="py-2 px-2 text-right">
+                              {row.coarseAggregateCft > 0 ? row.coarseAggregateCft.toFixed(1) : '—'}
+                            </td>
+                            <td className="py-2 px-2 text-right">
+                              {row.rebarKg > 0 ? row.rebarKg.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                            </td>
+                            <td className="py-2 px-2 text-right">
+                              {row.bricksNos > 0 ? row.bricksNos.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                            </td>
+                            <td className="py-2 px-3 text-right whitespace-nowrap text-[11px]">
+                              {row.masonManDays.toFixed(1)} / {row.helperManDays.toFixed(1)} / {row.barBenderManDays.toFixed(1)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="border-t-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] font-bold">
+                        <tr>
+                          <td colSpan={4} className="py-2.5 px-3 text-left uppercase tracking-wider text-[11px] text-[var(--md-sys-color-on-surface)]">
+                            Total Project Resource Demand
+                          </td>
+                          <td className="py-2.5 px-2 text-right text-[var(--md-sys-color-primary)]">
+                            {boqResult.resourceAbstract.cementBags50Kg.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          </td>
+                          <td className="py-2.5 px-2 text-right">
+                            {boqResult.resourceAbstract.sandCft.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          </td>
+                          <td className="py-2.5 px-2 text-right">
+                            {boqResult.resourceAbstract.coarseAggregateCft.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          </td>
+                          <td className="py-2.5 px-2 text-right text-amber-600 dark:text-amber-400">
+                            {boqResult.resourceAbstract.rebarKg.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </td>
+                          <td className="py-2.5 px-2 text-right">
+                            {boqResult.resourceAbstract.bricksNos.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                            {boqResult.resourceAbstract.masonManDays.toFixed(1)} / {boqResult.resourceAbstract.helperManDays.toFixed(1)} / {boqResult.resourceAbstract.barBenderManDays.toFixed(1)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -50,7 +50,7 @@ interface CommandPaletteProps {
   onQuickPrint?: () => void;
   onExportPdf?: () => void;
   onOpenVerification?: () => void;
-  onOpenArchitectureModal?: (tab?: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab?: 'far' | 'staircase' | 'watertank' | 'septictank' | 'services') => void;
   onOpenCadModal?: (tab?: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
   onUndo?: () => void;
@@ -370,6 +370,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         keywords: ['sm-09', 'erp-09', 'dpr', 'daily progress report', 'site report', 'weather', 'manpower', 'progress', 'ডিপিআর', 'রিপোর্ট'],
         moduleId: 'daily-progress-report',
       },
+      {
+        id: 'mod-office-docs',
+        title: 'SM-10: Official Letters & Office Docs (অফিসিয়াল চিঠি ও সনদ)',
+        category: 'Calculators',
+        description: 'Bilingual A4 Gate Pass, Work Order, RA Bill Forwarding Letter, NCR Notice, and Handover Certificate generator',
+        keywords: ['sm-10', 'erp-10', 'office docs', 'letter', 'gate pass', 'work order', 'ncr', 'handover', 'অফিসিয়াল চিঠি', 'গেট পাস'],
+        moduleId: 'office-docs',
+      },
 
       // Units & Quick Conversions
       {
@@ -673,6 +681,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         description: 'Sewage retention volume, sludge accumulation, soak pit diameter and depth per IS 2470 / BNBC standards',
         keywords: ['septic', 'tank', 'soak', 'pit', 'sewage', 'retention', 'sludge', 'sanitary'],
         action: () => onOpenArchitectureModal?.('septictank'),
+      },
+      {
+        id: 'arch-services-env',
+        title: 'Rainwater Harvesting, Daylight & Natural Ventilation Planner',
+        category: 'Calculators',
+        description: 'Roof catchment RWH cistern sizer plus BNBC Part 3 habitable room area, window-to-floor daylight (≥10–15%) & ventilation check',
+        keywords: ['rainwater', 'rwh', 'cistern', 'daylight', 'ventilation', 'window', 'habitable', 'bnbc', 'monsoon'],
+        action: () => onOpenArchitectureModal?.('services'),
       },
 
       // Site QA/QC

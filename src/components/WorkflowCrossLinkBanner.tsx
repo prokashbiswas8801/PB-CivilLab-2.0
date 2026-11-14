@@ -33,6 +33,7 @@ interface WorkflowCrossLinkBannerProps {
   onTransferPipeToBoq?: () => void;
   onSyncBoqToInventory?: () => void;
   onSyncMixToCubeTests?: () => void;
+  onGenerateRequisitionSlip?: (sourceModule: 'concrete-materials' | 'rebar-bbs' | 'masonry-finishes') => void;
   bearingFailed?: boolean;
   bbsSteelWeightKg?: number;
   bearingFootingWidthM?: number;
@@ -80,6 +81,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   onTransferPipeToBoq,
   onSyncBoqToInventory,
   onSyncMixToCubeTests,
+  onGenerateRequisitionSlip,
   bearingFailed,
   bbsSteelWeightKg,
   bearingFootingWidthM,
@@ -127,15 +129,28 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onTransferBbsToBoq}
-          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
-        >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          <span>Send Rebar to BOQ</span>
-          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onGenerateRequisitionSlip && (
+            <button
+              type="button"
+              onClick={() => onGenerateRequisitionSlip('rebar-bbs')}
+              className="touch-target-48 px-3.5 py-1.5 rounded-lg border border-blue-500/50 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:bg-blue-500/10 font-semibold cursor-pointer flex items-center gap-1.5 transition-transform active:scale-95"
+              title="Package rebar tonnage by bar diameter into a pending Site Requisition Indent (SM-02)"
+            >
+              <Boxes className="w-3.5 h-3.5 text-blue-500" />
+              <span>Generate Material Requisition Slip (SM-02)</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onTransferBbsToBoq}
+            className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Send Rebar to BOQ</span>
+            <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+          </button>
+        </div>
       </div>
     );
   }
@@ -302,15 +317,28 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onTransferMaterialsToBoq}
-          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
-        >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          <span>Transfer to BOQ</span>
-          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onGenerateRequisitionSlip && (
+            <button
+              type="button"
+              onClick={() => onGenerateRequisitionSlip('concrete-materials')}
+              className="touch-target-48 px-3.5 py-1.5 rounded-lg border border-purple-500/50 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:bg-purple-500/10 font-semibold cursor-pointer flex items-center gap-1.5 transition-transform active:scale-95"
+              title="Package Cement Bags, Sand CFT & Coarse Aggregate CFT into a pending Site Requisition Indent (SM-02)"
+            >
+              <Boxes className="w-3.5 h-3.5 text-purple-500" />
+              <span>Generate Material Requisition Slip (SM-02)</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onTransferMaterialsToBoq}
+            className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Transfer to BOQ</span>
+            <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+          </button>
+        </div>
       </div>
     );
   }
@@ -506,15 +534,28 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onTransferMasonryToBoq}
-          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-orange-600 text-white font-semibold hover:bg-orange-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
-        >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          <span>Send Masonry to BOQ</span>
-          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onGenerateRequisitionSlip && (
+            <button
+              type="button"
+              onClick={() => onGenerateRequisitionSlip('masonry-finishes')}
+              className="touch-target-48 px-3.5 py-1.5 rounded-lg border border-orange-500/50 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:bg-orange-500/10 font-semibold cursor-pointer flex items-center gap-1.5 transition-transform active:scale-95"
+              title="Package Bricks, Mortar/Plaster Cement Bags & Sand CFT into a pending Site Requisition Indent (SM-02)"
+            >
+              <Boxes className="w-3.5 h-3.5 text-orange-500" />
+              <span>Generate Material Requisition Slip (SM-02)</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onTransferMasonryToBoq}
+            className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-orange-600 text-white font-semibold hover:bg-orange-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Send Masonry to BOQ</span>
+            <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+          </button>
+        </div>
       </div>
     );
   }

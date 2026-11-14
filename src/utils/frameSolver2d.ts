@@ -457,6 +457,11 @@ function buildElementMatrices(
 export function computeFrameTruss2D(
   params: FrameTruss2DParams
 ): CalculationEnvelope<FrameTruss2DResult> {
+  if (!params) {
+    return createEnvelope<FrameTruss2DResult>(null, [
+      { field: 'params', message: '2D Frame & Truss parameters are missing.', severity: 'error' },
+    ]);
+  }
   const issues: ValidationIssue[] = [];
   const nodes = params.nodes || [];
   const members = params.members || [];

@@ -99,12 +99,6 @@ export const OfficeDocVerificationModal: React.FC<OfficeDocVerificationModalProp
     }
   };
 
-  const handleOpenInNewTab = () => {
-    if (publicUrl && typeof window !== 'undefined') {
-      window.open(publicUrl, '_blank');
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl my-6 rounded-3xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-2xl overflow-hidden font-serif">
@@ -217,30 +211,39 @@ export const OfficeDocVerificationModal: React.FC<OfficeDocVerificationModalProp
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onOpenPublicPreview && selectedRecord) {
+                    {onOpenPublicPreview && selectedRecord ? (
+                      <button
+                        type="button"
+                        onClick={() => {
                           onOpenPublicPreview(selectedRecord);
                           onClose();
-                        } else {
-                          handleOpenInNewTab();
-                        }
-                      }}
-                      className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Open Read-Only Public View</span>
-                    </button>
+                        }}
+                        className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Open Read-Only Public View</span>
+                      </button>
+                    ) : (
+                      <a
+                        href={publicUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Open Read-Only Public View</span>
+                      </a>
+                    )}
 
-                    <button
-                      type="button"
-                      onClick={handleOpenInNewTab}
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="px-3.5 py-1.5 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-all"
                     >
                       <Globe className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Test in New Tab</span>
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>

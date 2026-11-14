@@ -239,12 +239,28 @@ export type RateAnalysisWorkType =
   | 'rcc-1-2-4'
   | 'pcc-1-3-6'
   | 'brickwork-1-6'
+  | 'brickwork-125mm-1-4'
   | 'plaster-1-4'
+  | 'patent-stone-1-2-4'
   | 'rebar-fabrication';
+
+export interface MasterMarketRates {
+  cementBag50Kg: number;          // OPC/PCC Cement per 50kg bag
+  sylhetSandPerCft: number;       // Sylhet Coarse Sand (FM 2.5+) per CFT
+  localSandPerCft: number;        // Local Fine Sand (FM 1.5) per CFT
+  stoneChips20mmPerCft: number;   // 20mm Crushed Stone Chips per CFT
+  brickKhoaPerCft: number;        // Picked Jhama Brick Khoa per CFT
+  firstClassBrickPer1000: number; // First-Class Bricks per 1000 nos
+  rebar500WPerTon: number;        // Grade 60/500W Rebar per Metric Tonne
+  headMasonDailyWage: number;     // Head Mason / Rajmistri daily wage
+  helperDailyWage: number;        // Helper / Jogali daily wage
+  barBenderDailyWage?: number;    // Steel Fitter / Bar Bender daily wage
+  lastSyncedAt?: string;
+}
 
 export interface RateAnalysisParameters {
   workType: RateAnalysisWorkType;
-  basisVolumeM3: number; // standard 1.0 m3
+  basisVolumeM3: number; // standard 1.0 m3 (or 1.0 m2 for 125mm partition / 12mm plaster / patent stone equivalent)
   currency: CurrencyCode;
   // Materials:
   cementPricePerBag: number;
@@ -255,6 +271,9 @@ export interface RateAnalysisParameters {
   admixturePricePerKg: number;
   admixtureDoseKgPerM3: number;
   brickPricePer1000: number;
+  localSandPricePerM3?: number;
+  brickKhoaPricePerM3?: number;
+  wastagePercent?: number; // Material wastage & site handling % (default 2.5%)
   // Labor (Daily Wages):
   masonDailyWage: number;
   masonDaysRequired: number;
@@ -269,6 +288,7 @@ export interface RateAnalysisParameters {
   // Charges & Margins:
   waterElectricityPercent: number;
   contractorProfitPercent: number;
+  vatAitPercent?: number; // Statutory VAT + AIT % for commercial tender quoting (default 7.5%)
   // Local Material Cost Index & Regional Multipliers:
   localCostIndex?: number; // Base 1.00, adjustable local market price escalation index
   materialCostIndex?: number; // Material component escalation factor (default 1.00)
@@ -576,11 +596,28 @@ export type StructuralElementType =
   | 'lintel-chajja'
   | 'pile-cage';
 
+export interface RebarBatchBarEntry {
+  id: string;
+  barMark: string;
+  description: string;
+  shape: 'straight' | 'l-hook' | 'u-bar' | 'cranked' | 'stirrup-135';
+  barDiaMm: number;
+  count: number;
+  spanLengthM: number;
+  legWidthMm?: number;
+  legDepthMm?: number;
+  hookAngle?: '90' | '135' | '180';
+}
+
 export interface RebarBBSParameters {
   elementType: StructuralElementType;
   clearCoverMm: number;
   rebarDensityKgPerM3: number;
   hookAngle: '90' | '135' | '180';
+  /** Optional multiplier for batching identical elements (defaults to 1) */
+  elementCount?: number;
+  /** Optional custom multi-element / additional bar entries batched into schedule */
+  batchEntries?: RebarBatchBarEntry[];
   slabLengthM: number;
   slabWidthM: number;
   slabThicknessMm: number;
@@ -666,7 +703,7 @@ export interface MasonryOpening {
   widthM: number;
   heightM: number;
   count: number;
-  type?: 'window' | 'door' | 'veranda-grill' | 'ventilator';
+  type?: 'window' | 'door' | 'veranda-grill' | 'ventilator' | 'lintel';
   includeGrill?: boolean;
   includeThaiAluminum?: boolean;
 }
@@ -712,14 +749,24 @@ export interface MasonryParameters {
   includeGrillSchedule?: boolean;
   includeThaiSchedule?: boolean;
   // Bangladeshi Standard Brick, BFS & HBB Sub-base:
-  brickStandardType?: 'bd-pwd-metric' | 'traditional-field' | 'custom';
+  brickStandardType?: 'bd-pwd-metric' | 'modular-metric' | 'traditional-field' | 'custom';
   wallType?: '125mm-5inch-partition' | '250mm-10inch-loadbearing' | '375mm-15inch' | 'custom';
   subbaseType?: 'none' | 'bfs-flat-soling' | 'hbb-herringbone-bond';
   bfsLayerAreaM2?: number; // Floor / road sub-base Brick Flat Soling area
   bfsSandCushionThicknessMm?: number; // e.g. 25mm to 50mm local sand cushion bed
+  /** Optional brick aggregate concrete volume (m³) for Picked Jhama Brick Khoa estimate (~320 bricks/m³) */
+  khoaConcreteVolumeM3?: number;
 }
 
 /* Module 8: Earthwork & Road Alignment */
+export interface EarthworkChainageStation {
+  id: string;
+  chainageM: number;
+  cutDepthM: number;
+  fillHeightM: number;
+  groundCrossSlopePct?: number;
+}
+
 export interface EarthworkParameters {
   calculationType: 'pit-excavation' | 'trapezoidal-trench' | 'prismoidal-road';
   soilType: 'sand-gravel' | 'common-earth' | 'dense-clay' | 'blasted-rock';
@@ -737,6 +784,7 @@ export interface EarthworkParameters {
   depthStation1M: number;
   depthStation2M: number;
   depthStation3M: number;
+  chainageStations?: EarthworkChainageStation[];
   customSwellPercent?: number;
   customShrinkagePercent?: number;
   haulTruckCapacityM3?: number;
@@ -806,15 +854,47 @@ export interface CalculationRecord {
 /* -------------------------------------------------------------
    ARCHITECTURE, SPACE PLANNING & BY-LAWS PARAMETERS (BNBC 2020)
 ------------------------------------------------------------- */
+export type ArchitectureOccupancyType =
+  | 'residential-a1'
+  | 'residential-a2'
+  | 'commercial'
+  | 'mixed-use'
+  | 'institutional';
+
+export type PlotAreaCategory =
+  | 'below-2-katha'
+  | '2-to-5-katha'
+  | '5-to-10-katha'
+  | 'above-10-katha';
+
 export interface FarMgcParameters {
   landUnit: 'katha' | 'decimal' | 'sqft' | 'sqm';
   landAreaValue: number;
   customKathaSqFt: number;
   occupancy: 'residential' | 'commercial' | 'mixed' | 'educational' | 'industrial';
+  occupancyType?: ArchitectureOccupancyType;
+  plotAreaCategory?: PlotAreaCategory;
   roadWidthM: number;
+  frontRoadWidthM?: number;
   frontageM: number;
   plotDepthM: number;
   isAutoDimension: boolean;
+  isCornerPlot?: boolean;
+  roadSurrenderWidthM?: number;
+  proposedFloors?: number;
+  storyHeightM?: number;
+  proposedGroundCoverageM2?: number;
+  proposedTotalFloorAreaM2?: number;
+  basementCount?: number;
+  unitsCount?: number;
+  avgUnitAreaSqm?: number;
+  providedCarParkingBays?: number;
+  providedSetbacks?: {
+    front: number;
+    rear: number;
+    side1: number;
+    side2: number;
+  };
   enableOverride: boolean;
   overrideFar: number;
   overrideMgc: number;
@@ -826,23 +906,45 @@ export interface FarMgcParameters {
   };
 }
 
+export type StairTopologyType = 'dog-legged' | 'open-well' | 'straight-flight' | 'u-shaped';
+export type StairBuildingOccupancy = 'residential' | 'public-commercial' | 'educational-hospital';
+
 export interface StaircaseParameters {
   stairType: 'dog-legged' | 'straight' | 'open-well';
+  stairTopology?: StairTopologyType;
+  buildingOccupancy?: StairBuildingOccupancy;
   floorHeightMm: number;
+  floorToFloorHeightM?: number;
   stairwellLengthMm: number;
   stairwellWidthMm: number;
   preferredRiserMm: number;
+  riserHeightMm?: number;
   preferredTreadMm: number;
+  treadWidthMm?: number;
+  flightWidthMm?: number;
   waistSlabMm: number;
+  waistSlabThicknessMm?: number;
   slabThicknessMm: number;
   landingWidthMm: number;
+  wellGapMm?: number;
+  handrailHeightMm?: number;
   nosingMm: number;
   liveLoadKpa: number;
   finishesLoadKpa: number;
 }
 
+export type ArchitectureTab = 'far' | 'staircase' | 'watertank' | 'septictank' | 'services';
+
+export type WaterOccupancyPreset =
+  | 'residential-135'
+  | 'residential-150'
+  | 'commercial-45'
+  | 'hospital-340'
+  | 'custom';
+
 export interface WaterTankParameters {
   calcMode: 'occupants' | 'building';
+  occupancyPreset?: WaterOccupancyPreset;
   numFloors: number;
   unitsPerFloor: number;
   personsPerUnit: number;
@@ -851,6 +953,9 @@ export interface WaterTankParameters {
   lpcd: number;
   storageDays: number;
   fireReserveL: number;
+  fireReserveMinutes?: number;
+  firePumpFlowLpm?: number;
+  fireReserveAutoMode?: boolean;
   ugwrSharePercent: number;
   ugwrWaterDepthM: number;
   ugwrLwRatio: number;
@@ -868,7 +973,31 @@ export interface SepticTankParameters {
   septicDepthM: number;
   septicLwRatio: number;
   soilPercolationRate: number;
+  soilPercolationMinPer25mm?: number;
   soakPitDiaM: number;
+}
+
+export interface RainwaterDaylightParameters {
+  // Rainwater Harvesting (RWH) Cistern Sizer
+  roofCatchmentAreaM2: number;
+  runoffCoefficient: number;
+  annualRainfallMm: number;
+  monsoonCaptureSharePct: number;
+  drySpellDays: number;
+  dailyRwhDemandLpd: number;
+  cisternDepthM: number;
+  cisternLwRatio: number;
+  // Habitable Room Daylight, Ventilation & Ergonomics Check (BNBC 2020 Part 3)
+  roomName: string;
+  roomOccupancyType: 'habitable' | 'kitchen' | 'utility';
+  roomLengthM: number;
+  roomWidthM: number;
+  ceilingHeightM: number;
+  windowCount: number;
+  windowWidthM: number;
+  windowHeightM: number;
+  openableWindowPct: number;
+  ventilatorAreaM2: number;
 }
 
 export interface ArchitectureParameters {
@@ -876,6 +1005,27 @@ export interface ArchitectureParameters {
   staircase: StaircaseParameters;
   waterTank: WaterTankParameters;
   septicTank: SepticTankParameters;
+  rainwaterDaylight?: RainwaterDaylightParameters;
+  // Optional synced top-level architectural by-law summary fields for backward-compatible workspace inspection
+  occupancyType?: ArchitectureOccupancyType;
+  plotAreaCategory?: PlotAreaCategory;
+  frontRoadWidthM?: number;
+  proposedFloors?: number;
+  proposedGroundCoverageM2?: number;
+  proposedTotalFloorAreaM2?: number;
+  basementCount?: number;
+  unitsCount?: number;
+  avgUnitAreaSqm?: number;
+  // Optional synced staircase summary fields
+  stairTopology?: StairTopologyType;
+  buildingOccupancy?: StairBuildingOccupancy;
+  floorToFloorHeightM?: number;
+  riserHeightMm?: number;
+  treadWidthMm?: number;
+  flightWidthMm?: number;
+  landingWidthMm?: number;
+  waistSlabThicknessMm?: number;
+  wellGapMm?: number;
 }
 
 export interface CivilWorkspace {
@@ -891,6 +1041,7 @@ export interface CivilWorkspace {
   governingCode: BuildingCode;
   boq: BOQParameters;
   rateAnalysis: RateAnalysisParameters;
+  marketRates?: MasterMarketRates;
   converter: UnitConverterParameters;
   beam: BeamParameters;
   bearing: BearingParameters;

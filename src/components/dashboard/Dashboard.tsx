@@ -26,7 +26,7 @@ export interface DashboardProps {
   onRestoreCalculation?: (record: CalculationRecord) => void;
   onDeleteCalculation?: (id: string) => void;
   userProfile?: UserProfile;
-  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank' | 'services') => void;
   onOpenCadModal?: (tab: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
 }

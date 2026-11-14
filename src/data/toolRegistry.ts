@@ -323,6 +323,19 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     modalType: 'architecture',
     modalTab: 'septictank',
   },
+  {
+    id: 'architecture-services',
+    title: 'Rainwater Harvesting, Daylight & Natural Ventilation Planner',
+    shortLabel: 'RWH & Daylight Planner',
+    shortCode: 'ARC-05',
+    category: 'Architecture & By-Laws',
+    subCategory: 'Environmental & Building Services',
+    keywords: ['rainwater', 'rwh', 'harvesting', 'cistern', 'daylight', 'ventilation', 'window ratio', 'habitable room', 'arc-05'],
+    standardUsed: 'BNBC 2020 Part 3 & Part 8 §5.6',
+    description: 'Sizes roof catchment rainwater harvesting cisterns for monsoon dry-spell storage and audits habitable room floor area, daylight (≥10–15%) & ventilation ratios.',
+    modalType: 'architecture',
+    modalTab: 'services',
+  },
 
   // 9. CAD SHORTCUTS & UTILITIES (CAD)
   {
@@ -487,6 +500,18 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     keywords: ['dpr', 'daily progress report', 'site report', 'weather', 'manpower', 'materials log', 'progress', 'site diary', 'রিপোর্ট', 'ডিপিআর', 'sm-09', 'erp-09'],
     standardUsed: 'Standard Construction Project DPR Protocol',
     description: '1-Click automated synthesis of attendance headcount, store inward/outward transactions, active milestones, and petty cash into an official A4 DPR.',
+  },
+  {
+    id: 'office-docs',
+    moduleId: 'office-docs',
+    title: 'Official Letters, Contracts & Handover Certificates (অফিসিয়াল চিঠি ও সনদ)',
+    shortLabel: 'Office Docs',
+    shortCode: 'SM-10',
+    category: 'Site Management & ERP',
+    subCategory: 'Contract Administration',
+    keywords: ['office docs', 'letter', 'gate pass', 'challan', 'work order', 'ra bill forwarding', 'ncr', 'non-conformance', 'handover certificate', 'চিঠি', 'গেট পাস', 'ওয়ার্ক অর্ডার', 'sm-10', 'erp-10'],
+    standardUsed: 'BNBC-2020 / FIDIC Civil Contract & PWD Administration',
+    description: 'Bilingual (English & Bengali) formal A4 letter generator for Material Gate Passes, Work Orders, RA Bill Forwarding Letters, Non-Conformance Notices (NCR), and Handover Certificates.',
   },
 ];
 

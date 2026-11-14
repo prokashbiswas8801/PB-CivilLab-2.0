@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   CivilWorkspace,
+  RebarBatchBarEntry,
   StructuralElementType,
   CustomUnitDefinition,
   UnitCategoryKey,
@@ -8,7 +9,7 @@ import {
 import { RebarBBSResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
-import { FileSpreadsheet, FileDown, Layers, TableProperties } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, FileDown, Layers, Plus, TableProperties, Trash2 } from 'lucide-react';
 import { BBSGenerator } from '../calculators/civil/BBSGenerator';
 
 export { BBSGenerator };
@@ -28,7 +29,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
   getFieldUnit,
   updateFieldUnit,
 }) => {
-  const [bbsMode, setBbsMode] = useState<'element' | 'workbench'>('workbench');
+  const [bbsMode, setBbsMode] = useState<'element' | 'workbench'>('element');
   const bbs = activeWorkspace.rebarBbs;
 
   const updateBBS = (patch: Partial<typeof bbs>) => {
@@ -47,20 +48,8 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Workbench vs Single Element Mode Switcher */}
+      {/* Workspace Element Sizer vs Standalone Multi-Row BBS Workbench */}
       <div className="flex items-center justify-between p-1.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]">
-        <button
-          type="button"
-          onClick={() => setBbsMode('workbench')}
-          className={`flex-1 min-h-[44px] touch-target-48 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
-            bbsMode === 'workbench'
-              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
-              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
-          }`}
-        >
-          <TableProperties className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-          <span>Multi-Row Bar Bending Schedule (BBS Workbench)</span>
-        </button>
         <button
           type="button"
           onClick={() => setBbsMode('element')}
@@ -71,7 +60,19 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
           }`}
         >
           <Layers className="w-4 h-4 text-[var(--md-sys-color-secondary)]" />
-          <span>Single RCC Element Sizer (Slab, Beam, Col, Footing)</span>
+          <span>RCC Element BBS &amp; 12m Stock Procurement</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setBbsMode('workbench')}
+          className={`flex-1 min-h-[44px] touch-target-48 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+            bbsMode === 'workbench'
+              ? 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-primary)] shadow-xs'
+              : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+          }`}
+        >
+          <TableProperties className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+          <span>Multi-Row BBS Workbench</span>
         </button>
       </div>
 
@@ -194,6 +195,43 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
               12m stock mill length waste minimization
             </span>
+          </div>
+        </div>
+
+        {/* Multi-Element Batch Count Multiplier */}
+        <div className="pt-2.5 mt-2.5 border-t border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface)]">
+              Identical Element Batch Multiplier (Qty)
+            </span>
+            <span className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+              Scales all bar counts and 12m stock orders across identical beams, columns, footings, or piles
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {[1, 2, 4, 8, 12].map((qty) => (
+              <button
+                key={qty}
+                type="button"
+                onClick={() => updateBBS({ elementCount: qty })}
+                className={`px-2.5 py-1.5 text-[11px] font-mono rounded-lg border whitespace-nowrap shrink-0 cursor-pointer ${
+                  (bbs.elementCount || 1) === qty
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
+                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
+                }`}
+              >
+                ×{qty}
+              </button>
+            ))}
+            <input
+              type="number"
+              min="1"
+              max="500"
+              value={bbs.elementCount || 1}
+              onChange={(e) => updateBBS({ elementCount: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
+              className="w-16 min-h-[36px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)] text-center"
+              aria-label="Identical element batch quantity"
+            />
           </div>
         </div>
       </div>
@@ -1203,6 +1241,153 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Additional Multi-Element / Custom Bar Schedule Entries */}
+      <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+              Additional Multi-Element / Extra Bar Marks
+            </div>
+            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+              Batch extra top curtailment, dowel, or stirrup marks into the same 12m stock schedule
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const entries = Array.isArray(bbs.batchEntries) ? bbs.batchEntries : [];
+              const nextEntry: RebarBatchBarEntry = {
+                id: `rb-${Date.now()}`,
+                barMark: `MK-EX${entries.length + 1}`,
+                description: `Extra Curtailment / Dowel Bar #${entries.length + 1}`,
+                shape: 'l-hook',
+                barDiaMm: 16,
+                count: 4,
+                spanLengthM: 4.2,
+                legWidthMm: 300,
+                legDepthMm: 350,
+              };
+              updateBBS({ batchEntries: [...entries, nextEntry] });
+            }}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 cursor-pointer flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Extra Bar Mark</span>
+          </button>
+        </div>
+
+        {Array.isArray(bbs.batchEntries) && bbs.batchEntries.length > 0 && (
+          <div className="space-y-2">
+            {bbs.batchEntries.map((entry, idx) => (
+              <div
+                key={entry.id || idx}
+                className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] grid grid-cols-2 sm:grid-cols-12 gap-2 items-end text-xs"
+              >
+                <div className="sm:col-span-2">
+                  <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Mark</span>
+                  <input
+                    type="text"
+                    value={entry.barMark}
+                    onChange={(e) => {
+                      const next = [...(bbs.batchEntries || [])];
+                      next[idx] = { ...next[idx], barMark: e.target.value };
+                      updateBBS({ batchEntries: next });
+                    }}
+                    className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono font-bold bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-3">
+                  <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Description</span>
+                  <input
+                    type="text"
+                    value={entry.description}
+                    onChange={(e) => {
+                      const next = [...(bbs.batchEntries || [])];
+                      next[idx] = { ...next[idx], description: e.target.value };
+                      updateBBS({ batchEntries: next });
+                    }}
+                    className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Bending Shape</span>
+                  <select
+                    value={entry.shape}
+                    onChange={(e) => {
+                      const next = [...(bbs.batchEntries || [])];
+                      next[idx] = { ...next[idx], shape: e.target.value as RebarBatchBarEntry['shape'] };
+                      updateBBS({ batchEntries: next });
+                    }}
+                    className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-[11px] bg-[var(--md-sys-color-surface)]"
+                  >
+                    <option value="straight">Straight</option>
+                    <option value="l-hook">90° L-Hook</option>
+                    <option value="u-bar">2×90° U-Bar</option>
+                    <option value="cranked">45° Cranked</option>
+                    <option value="stirrup-135">135° Stirrup</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Dia (mm)</span>
+                  <select
+                    value={entry.barDiaMm}
+                    onChange={(e) => {
+                      const next = [...(bbs.batchEntries || [])];
+                      next[idx] = { ...next[idx], barDiaMm: Number(e.target.value) };
+                      updateBBS({ batchEntries: next });
+                    }}
+                    className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
+                  >
+                    {[8, 10, 12, 16, 20, 25, 32].map((d) => (
+                      <option key={d} value={d}>Ø{d} mm</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-1">
+                  <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Qty</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={entry.count}
+                    onChange={(e) => {
+                      const next = [...(bbs.batchEntries || [])];
+                      next[idx] = { ...next[idx], count: Math.max(1, Number(e.target.value) || 1) };
+                      updateBBS({ batchEntries: next });
+                    }}
+                    className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
+                <div className="sm:col-span-1">
+                  <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Span (m)</span>
+                  <input
+                    type="number"
+                    step="0.2"
+                    min="0.2"
+                    value={entry.spanLengthM}
+                    onChange={(e) => {
+                      const next = [...(bbs.batchEntries || [])];
+                      next[idx] = { ...next[idx], spanLengthM: Math.max(0.1, Number(e.target.value) || 0.5) };
+                      updateBBS({ batchEntries: next });
+                    }}
+                    className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
+                <div className="sm:col-span-1 flex justify-end pb-1">
+                  <button
+                    type="button"
+                    onClick={() => updateBBS({ batchEntries: (bbs.batchEntries || []).filter((_, i) => i !== idx) })}
+                    className="p-1.5 text-[var(--md-sys-color-error)] hover:opacity-80 cursor-pointer"
+                    title="Remove bar mark"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
         </>
       )}
     </div>
@@ -1228,8 +1413,66 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
   onExportCsv,
   onExportPdf,
 }) => {
+  const [showAllStandardDiameters, setShowAllStandardDiameters] = useState(false);
+
+  const standardDias = [8, 10, 12, 16, 20, 25];
+  const activeStockRows = result.commercialBarStock?.itemsByDiameter || [];
+  const displayedStockRows = React.useMemo(() => {
+    if (!showAllStandardDiameters) return activeStockRows;
+    const byDia = new Map(activeStockRows.map((r) => [r.barDiaMm, r]));
+    const allDias = Array.from(new Set([...standardDias, ...activeStockRows.map((r) => r.barDiaMm)])).sort((a, b) => a - b);
+    return allDias.map(
+      (d) =>
+        byDia.get(d) || {
+          barDiaMm: d,
+          totalCuttingLengthM: 0,
+          totalWeightKg: 0,
+          bars12mRequired: 0,
+          purchasedLengthM: 0,
+          purchasedWeightKg: 0,
+          purchasedTonnes: 0,
+          offcutScrapLengthM: 0,
+          offcutScrapWeightKg: 0,
+          scrapPercent: 0,
+          commercialBundlesEstimate: 0,
+        }
+    );
+  }, [activeStockRows, showAllStandardDiameters]);
+
   return (
     <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      {/* >12m Mill-Length Lap Splice Advisory Alert */}
+      {result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0 && (
+        <div className="p-3 rounded-xl border border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/35 space-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--md-sys-color-error)]">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>
+                Mill-Length Exceeded (&gt;12.0 m): Automatic {activeWorkspace.rebarBbs.lappingFactorD || 50}d Lap Splice Added
+              </span>
+            </div>
+            <span className="text-[11px] font-mono font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              {result.lapSpliceAlerts.length} affected mark(s)
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] font-mono tabular-nums">
+            {result.lapSpliceAlerts.map((alert, idx) => (
+              <div
+                key={`${alert.barMark}-${idx}`}
+                className="px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-between gap-2"
+              >
+                <span className="truncate font-semibold text-[var(--md-sys-color-on-surface)]">
+                  {alert.barMark} (Ø{alert.barDiaMm}mm): {alert.unlappedLengthM.toFixed(2)}m → {alert.finalCuttingLengthM.toFixed(2)}m
+                </span>
+                <span className="shrink-0 text-[var(--md-sys-color-error)] font-bold">
+                  +{alert.lapsCount} lap (+{alert.totalLappingM.toFixed(2)}m)
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <UnitValueDisplay
           label="Total Steel Weight"
@@ -1250,11 +1493,13 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
         />
         <div className="p-3 rounded-xl border bg-[var(--md-sys-color-surface-container)] border-[var(--md-sys-color-outline-variant)]">
           <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-semibold">Total Steel Tonnes</div>
-          <div className="text-xl font-bold font-mono text-[var(--md-sys-color-on-surface)] mt-0.5">
+          <div className="text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)] mt-0.5">
             {result.totalSteelTonnes.toFixed(3)} <span className="text-xs font-normal">MT</span>
           </div>
           <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-            Density: {result.steelDensityKgPerM3} kg/m³
+            {result.elementQuantity && result.elementQuantity > 1
+              ? `Batched across ×${result.elementQuantity} units`
+              : `Density: ${result.steelDensityKgPerM3} kg/m³`}
           </div>
         </div>
         <UnitValueDisplay
@@ -1272,72 +1517,96 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
       {result.commercialBarStock && result.commercialBarStock.itemsByDiameter.length > 0 && (
         <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[var(--md-sys-color-primary)]">
-                12m (39.37 ft) Commercial Full Bar Procurement &amp; Offcut Scrap Schedule
+            <div>
+              <span className="text-xs font-bold text-[var(--md-sys-color-primary)] block">
+                Diameter-Wise Procurement &amp; 12m (39.37 ft) Stock Bar Summary
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                {result.commercialBarStock.lappingStandardUsed}
+              <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                Lapping: {result.commercialBarStock.lappingStandardUsed} · Total Laps: {result.commercialBarStock.totalLappingAllowanceM.toFixed(2)} m
               </span>
             </div>
-            <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-              Total 12m Bars: <strong className="text-[var(--md-sys-color-on-surface)]">{result.commercialBarStock.total12mBarsCount} Nos</strong> | Scrap: <strong className={result.commercialBarStock.overallScrapPercent > 8 ? 'text-amber-600' : 'text-emerald-600'}>{result.commercialBarStock.overallScrapPercent.toFixed(1)}%</strong> ({result.commercialBarStock.totalScrapWeightKg.toFixed(1)} kg)
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAllStandardDiameters((v) => !v)}
+                className="px-2.5 py-1 text-[11px] font-mono rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer whitespace-nowrap shrink-0"
+              >
+                {showAllStandardDiameters ? 'Show Active Ø Only' : 'Show Full Ø8–Ø25 Matrix'}
+              </button>
+              <div className="text-[11px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)]">
+                <strong className="text-[var(--md-sys-color-on-surface)]">{result.commercialBarStock.total12mBarsCount} Bars</strong> · Scrap{' '}
+                <strong className={result.commercialBarStock.overallScrapPercent > 8 ? 'text-amber-600' : 'text-emerald-600'}>
+                  {result.commercialBarStock.overallScrapPercent.toFixed(1)}%
+                </strong>
+              </div>
             </div>
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-[var(--md-sys-color-outline-variant)]">
-            <table className="w-full text-left text-xs font-mono">
+            <table className="w-full text-left text-xs font-mono tabular-nums">
               <thead className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] text-[11px] uppercase tracking-wider">
                 <tr>
                   <th className="py-2 px-2.5">Bar Dia</th>
                   <th className="py-2 px-2.5 text-right">Net BBS Length</th>
-                  <th className="py-2 px-2.5 text-right">Net Weight</th>
-                  <th className="py-2 px-2.5 text-right bg-primary/5 font-bold">12m Bars Reqd</th>
+                  <th className="py-2 px-2.5 text-right">Net Mass (kg / MT)</th>
+                  <th className="py-2 px-2.5 text-right bg-primary/5 font-bold">12m Stock Bars</th>
                   <th className="py-2 px-2.5 text-right">Purchased Wt</th>
                   <th className="py-2 px-2.5 text-right">Offcut Scrap</th>
-                  <th className="py-2 px-2.5 text-right">Scrap %</th>
-                  <th className="py-2 px-2.5 text-right">Est. Bundles</th>
+                  <th className="py-2 px-2.5 text-right">Wastage %</th>
+                  <th className="py-2 px-2.5 text-right">Bundles</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
-                {result.commercialBarStock.itemsByDiameter.map((row) => (
-                  <tr key={row.barDiaMm} className="hover:bg-[var(--md-sys-color-surface-container-highest)]/40 transition-colors">
-                    <td className="py-2 px-2.5 font-bold text-[var(--md-sys-color-on-surface)]">
-                      Ø{row.barDiaMm} mm
-                    </td>
-                    <td className="py-2 px-2.5 text-right">{row.totalCuttingLengthM.toFixed(2)} m</td>
-                    <td className="py-2 px-2.5 text-right">{row.totalWeightKg.toFixed(1)} kg</td>
-                    <td className="py-2 px-2.5 text-right bg-primary/5 font-bold text-[var(--md-sys-color-primary)]">
-                      {row.bars12mRequired} Nos ({row.purchasedLengthM.toFixed(0)} m)
-                    </td>
-                    <td className="py-2 px-2.5 text-right font-semibold">
-                      {row.purchasedWeightKg.toFixed(1)} kg <span className="text-[10px] text-muted-foreground">({row.purchasedTonnes.toFixed(3)} MT)</span>
-                    </td>
-                    <td className="py-2 px-2.5 text-right text-amber-700 dark:text-amber-400">
-                      {row.offcutScrapWeightKg.toFixed(1)} kg ({row.offcutScrapLengthM.toFixed(1)} m)
-                    </td>
-                    <td className="py-2 px-2.5 text-right">
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        row.scrapPercent > 10
-                          ? 'bg-red-500/15 text-red-700 dark:text-red-300'
-                          : row.scrapPercent > 5
-                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                          : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                      }`}>
-                        {row.scrapPercent.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="py-2 px-2.5 text-right text-[var(--md-sys-color-on-surface-variant)]">
-                      ~{row.commercialBundlesEstimate} Bdl
-                    </td>
-                  </tr>
-                ))}
+                {displayedStockRows.map((row) => {
+                  const isZero = row.totalCuttingLengthM <= 0;
+                  return (
+                    <tr
+                      key={row.barDiaMm}
+                      className={`hover:bg-[var(--md-sys-color-surface-container-highest)]/40 transition-colors ${isZero ? 'opacity-45' : ''}`}
+                    >
+                      <td className="py-2 px-2.5 font-bold text-[var(--md-sys-color-on-surface)]">
+                        Ø{row.barDiaMm} mm
+                      </td>
+                      <td className="py-2 px-2.5 text-right">{row.totalCuttingLengthM.toFixed(2)} m</td>
+                      <td className="py-2 px-2.5 text-right">
+                        {row.totalWeightKg.toFixed(1)} kg ({(row.totalWeightKg / 1000).toFixed(3)} MT)
+                      </td>
+                      <td className="py-2 px-2.5 text-right bg-primary/5 font-bold text-[var(--md-sys-color-primary)]">
+                        {row.bars12mRequired} Nos ({row.purchasedLengthM.toFixed(0)} m)
+                      </td>
+                      <td className="py-2 px-2.5 text-right font-semibold">
+                        {row.purchasedWeightKg.toFixed(1)} kg <span className="text-[10px] text-muted-foreground">({row.purchasedTonnes.toFixed(3)} MT)</span>
+                      </td>
+                      <td className="py-2 px-2.5 text-right text-amber-700 dark:text-amber-400">
+                        {row.offcutScrapWeightKg.toFixed(1)} kg ({row.offcutScrapLengthM.toFixed(1)} m)
+                      </td>
+                      <td className="py-2 px-2.5 text-right">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          isZero
+                            ? 'text-[var(--md-sys-color-on-surface-variant)]'
+                            : row.scrapPercent > 10
+                            ? 'bg-red-500/15 text-red-700 dark:text-red-300'
+                            : row.scrapPercent > 5
+                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                            : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                        }`}>
+                          {row.scrapPercent.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-2 px-2.5 text-right text-[var(--md-sys-color-on-surface-variant)]">
+                        ~{row.commercialBundlesEstimate} Bdl
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className="bg-[var(--md-sys-color-surface-container)] font-bold text-[11px]">
                 <tr>
                   <td className="py-2 px-2.5">Total Commercial Stock</td>
                   <td className="py-2 px-2.5 text-right">{result.commercialBarStock.totalCuttingLengthM.toFixed(2)} m</td>
-                  <td className="py-2 px-2.5 text-right">{result.totalSteelWeightKg.toFixed(1)} kg</td>
+                  <td className="py-2 px-2.5 text-right">
+                    {result.totalSteelWeightKg.toFixed(1)} kg ({result.totalSteelTonnes.toFixed(3)} MT)
+                  </td>
                   <td className="py-2 px-2.5 text-right text-[var(--md-sys-color-primary)]">
                     {result.commercialBarStock.total12mBarsCount} Bars ({result.commercialBarStock.totalPurchasedLengthM.toFixed(0)} m)
                   </td>

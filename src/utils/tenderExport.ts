@@ -116,6 +116,56 @@ export function exportTenderBoqCsv(
 }
 
 /**
+ * Generates UTF-8 BOM CSV for the Project Material & Manpower Resource Abstract Schedule
+ */
+export function exportBoqResourceAbstractCsv(
+  workspace: CivilWorkspace,
+  boqResult: BOQResult
+): void {
+  const abs = boqResult.resourceAbstract;
+  if (!abs) return;
+
+  const lines: string[] = [];
+  lines.push(`"BD. CIVILLAB - BOQ RESOURCE ABSTRACT (PROJECT MATERIAL & MANPOWER DEMAND SCHEDULE)"`);
+  lines.push(`"Project Name:","${workspace.name.replace(/"/g, '""')}"`);
+  lines.push(`"Project Code:","${workspace.projectCode}"`);
+  lines.push(`"Site Location:","${workspace.siteLocation.replace(/"/g, '""')}"`);
+  lines.push(`"Generated Date:","${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}"`);
+  lines.push(``);
+  lines.push(`"PART A: PROJECT AGGREGATE RESOURCE DEMAND CEILINGS"`);
+  lines.push(`"Resource Item","Total Quantity","Unit","Engineering Basis / Scope"`);
+  lines.push(`"Portland Cement (50kg Bags)","${abs.cementBags50Kg.toFixed(1)}","Bags","RCC, PCC, Brickwork Mortar, Plaster & Screed"`);
+  lines.push(`"Fine & Coarse Sand","${abs.sandCft.toFixed(1)}","CFT","Concrete Fine Agg + Masonry/Plaster Mortar"`);
+  lines.push(`"Coarse Aggregate (Stone / Khoa)","${abs.coarseAggregateCft.toFixed(1)}","CFT","20mm Stone Chips + Brick Khoa Sub-base"`);
+  lines.push(`"Deformed Steel Rebar (500W)","${abs.rebarTonnes.toFixed(3)}","Metric Ton","${abs.rebarKg.toFixed(0)} kg Direct Rebar + Embedded RCC Steel"`);
+  lines.push(`"First-Class Clay Bricks","${abs.bricksNos.toFixed(0)}","Nos","250mm (500/m³) & 125mm (52/m²) Walls"`);
+  lines.push(`"Skilled Head Mason (Rajmistri)","${abs.masonManDays.toFixed(1)}","Man-Days","Concreting, Masonry, Plastering & Screed"`);
+  lines.push(`"General Helper (Jogali)","${abs.helperManDays.toFixed(1)}","Man-Days","Excavation, Batching, Curing & Material Handling"`);
+  lines.push(`"Steel Fitter / Bar Bender","${abs.barBenderManDays.toFixed(1)}","Man-Days","Cutting, Bending, Binding & Placing Rebar"`);
+  lines.push(`"Total Manpower Demand","${abs.totalManDays.toFixed(1)}","Man-Days","Combined Crew Effort Across Active BOQ"`);
+  lines.push(``);
+  lines.push(`"PART B: LINE-ITEM RESOURCE CONTRIBUTION MATRIX"`);
+  lines.push(`"Item No","Trade Tag","Description","Billable Qty","Unit","Cement (Bags)","Sand (CFT)","Coarse Agg (CFT)","Rebar (kg)","Bricks (Nos)","Mason (Days)","Helper (Days)","Bar Bender (Days)"`);
+
+  abs.lineItemBreakdown.forEach((row) => {
+    lines.push(
+      `"${row.itemNo}","${row.tradeTag}","${row.description.replace(/"/g, '""')}","${row.billableQty.toFixed(2)}","${row.unit}","${row.cementBags.toFixed(1)}","${row.sandCft.toFixed(1)}","${row.coarseAggregateCft.toFixed(1)}","${row.rebarKg.toFixed(1)}","${row.bricksNos.toFixed(0)}","${row.masonManDays.toFixed(1)}","${row.helperManDays.toFixed(1)}","${row.barBenderManDays.toFixed(1)}"`
+    );
+  });
+
+  const csvContent = '\uFEFF' + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `BOQ_Resource_Abstract_${workspace.projectCode}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Generates Official Multi-Page Tender BOQ Submittal PDF (Form A Grand Summary & Form B Priced Schedule)
  */
 export async function exportTenderBoqPdf({

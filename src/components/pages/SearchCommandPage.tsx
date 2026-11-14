@@ -30,7 +30,7 @@ import { evaluateInlineMath, MathEvaluationResult } from '../../utils/inlineMath
 
 export interface SearchCommandPageProps {
   onSelectModule: (moduleId: EngineeringModuleId, subAction?: string) => void;
-  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank' | 'services') => void;
   onOpenCadModal?: (tab: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
   onOpenProfileModal?: (tab?: 'profile' | 'preferences' | 'presets') => void;

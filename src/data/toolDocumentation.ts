@@ -1776,6 +1776,71 @@ export const TOOL_DOCUMENTATION: Record<string, ToolDocumentation> = {
   },
 
   // =========================================================================
+  // 19B. RAINWATER HARVESTING, DAYLIGHT & NATURAL VENTILATION PLANNER (ARC-05)
+  // =========================================================================
+  'architecture-services': {
+    id: 'architecture-services',
+    title: 'Rainwater Harvesting, Daylight & Natural Ventilation Planner',
+    shortLabel: 'RWH & Daylight Planner',
+    discipline: 'Environmental & Building Services',
+    standardUsed: 'BNBC 2020 Part 3 (Ch. 1 & 3) & Part 8 (§5.6)',
+    overview:
+      'Integrates sustainable building water conservation and passive thermal/lighting compliance in a single workspace. The Rainwater Harvesting (RWH) Cistern Sizer evaluates annual and monsoon roof catchment yields with first-flush diversion and dry-spell buffer sizing, while the Daylight & Ventilation Checker audits habitable room floor areas, minimum widths, ceiling clearances, window-to-floor glazing ratios, and openable ventilation apertures.',
+    capabilities: [
+      'Computes roof catchment rainwater yield using regional rainfall presets (Dhaka, Chattogram, Sylhet, Rajshahi) and surface runoff coefficients',
+      'Sizes first-flush roof wash diverter volume and dry-spell cistern geometry (L × W × D + 300mm freeboard)',
+      'Audits BNBC Part 3 habitable room minimums (area ≥ 9.5 m², least width ≥ 2.4 m, clear ceiling ≥ 2.75 m)',
+      'Verifies daylight window-to-floor ratio (≥ 10% mandatory / 15% recommended) and net openable ventilation area (including sliding-track penalty)',
+      'Pushes RWH cistern excavation and waterproofed RCC shell quantities directly to the BOQ Estimator',
+    ],
+    howItWorks: {
+      methodology:
+        'Rainwater yield multiplies effective roof area by annual rainfall and surface runoff coefficient (0.85–0.95 for RCC slabs) minus 0.5 mm first-flush wash across major rain events. Cistern size balances monsoon capture against dry-spell non-potable demand. Room daylight and ventilation audit both gross glazed window area and effective openable sash area plus ventilator louvers against floor area.',
+      governingEquations: [
+        {
+          name: 'Annual Harvestable Rainwater Yield',
+          formula: 'V_yr = A_roof × R_yr × C_r - V_firstflush',
+          description: 'Computes net annual collectible rainwater after initial roof wash diversion.',
+        },
+        {
+          name: 'Daylight & Openable Ventilation Ratios',
+          formula: 'R_day = A_glazed / A_floor ≥ 10%;  R_vent = (A_glazed × %_open + A_louver) / A_floor ≥ 10%',
+          description: 'Evaluates glazed illumination and effective free-air cross-ventilation against BNBC Part 3 thresholds.',
+        },
+      ],
+      codeStandards: ['BNBC 2020 Part 3 Chapter 1 & Chapter 3', 'BNBC 2020 Part 8 §5.6 (Rainwater Harvesting)', 'PWD Green Building Guidelines'],
+      assumptions: [
+        '50% openable factor applies to standard 2-track sliding aluminum windows unless casement shutters (95–100%) are used',
+        'RWH cistern includes a 300 mm clear freeboard above overflow invert and dedicated first-flush bypass',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Choose RWH Cistern or Daylight & Ventilation Sub-Mode',
+        instruction: 'Switch between Roof Rainwater Cistern sizing and Room Daylight/Ventilation audit using the top toggle.',
+      },
+      {
+        step: 2,
+        title: 'Select City Rainfall or Room Occupancy Preset',
+        instruction: 'Pick Dhaka/Chattogram/Sylhet/Rajshahi rainfall or Habitable Bedroom/Kitchen/Utility thresholds.',
+      },
+      {
+        step: 3,
+        title: 'Push Cistern Quantities or Export Certified Submittal',
+        instruction: 'Send RWH cistern excavation & RCC quantities directly to BOQ or download the certified A4 submittal PDF.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Casement vs Sliding Windows: Sliding windows only open 50% of their structural opening; in compact bedrooms, either enlarge the window width or add top fixed louvers/ventilators to pass BNBC natural ventilation rules.',
+      'First-Flush Diverter: Always divert the initial 0.5 mm of each storm event away from the cistern to keep roof dust, leaves, and bird droppings out of non-potable storage.',
+    ],
+    limitationsAndNotes: [
+      'Rainwater harvesting assumes non-potable reuse (flushing, cooling tower make-up, gardening) unless paired with UV/RO potable filtration.',
+    ],
+  },
+
+  // =========================================================================
   // 20. AUTOCAD VIEWPORT SCALES (CAD-01)
   // =========================================================================
   'cad-viewport': {

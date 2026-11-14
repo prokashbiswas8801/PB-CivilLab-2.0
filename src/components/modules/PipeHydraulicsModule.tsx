@@ -324,6 +324,7 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
           onUnitChange={(u) => updateFieldUnit('pipe.z1', u)}
           customUnits={customUnits}
           step={1}
+          min={-1000}
         />
 
         <UnitInput
@@ -335,6 +336,7 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
           onUnitChange={(u) => updateFieldUnit('pipe.z2', u)}
           customUnits={customUnits}
           step={1}
+          min={-1000}
         />
 
         {pipe.serviceType === 'gravity-storm' ? (

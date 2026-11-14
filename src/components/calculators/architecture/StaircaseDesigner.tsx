@@ -1,1004 +1,1465 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Compass,
-  FileSpreadsheet,
-  FileDown,
-  CheckCircle2,
   AlertTriangle,
-  Info,
-  Maximize2,
+  BookOpenCheck,
+  CheckCircle2,
+  Compass,
+  FileDown,
+  FileSpreadsheet,
   Layers,
-  ArrowRight,
-  TrendingUp,
+  Send,
   ShieldCheck,
-  RotateCcw,
+  TrendingUp,
 } from 'lucide-react';
+import {
+  RebarBBSParameters,
+  StairBuildingOccupancy,
+  StaircaseParameters,
+  StairTopologyType,
+  TakeoffLineItem,
+} from '../../../types/civil';
+import {
+  buildBoqItemsFromStaircase,
+  computeStaircaseDesign,
+  mapLegacyStairTopology,
+  mapTopologyToLegacyType,
+  STAIRCASE_PRESETS,
+} from '../../../utils/architectureEngine';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 import { formatFeetInches } from '../../../utils/unitConverter';
-
-export type StaircaseType = 'dog-legged' | 'straight' | 'open-well';
-
-export interface StaircaseOutputs {
-  totalRisers: number;
-  risersPerFlight: number[];
-  actualRiserMm: number;
-  treadsPerFlight: number[];
-  actualTreadMm: number;
-  goingLengthMm: number;
-  stairPitchDeg: number;
-  pitchStatus: 'OPTIMUM' | 'ACCEPTABLE' | 'STEEP' | 'SHALLOW';
-  blondelValue: number; // 2R + T (600 - 630 mm)
-  blondelStatus: 'OPTIMUM' | 'ACCEPTABLE' | 'WARNING';
-  safetyIndex: number; // R + T (430 - 460 mm)
-  comfortProduct: number; // R * T (40,000 - 45,000 mm^2)
-  estimatedHeadroomMm: number;
-  headroomStatus: 'PASS' | 'WARNING' | 'FAIL';
-  waistInclinedLengthMm: number;
-  totalGoingRequiredMm: number;
-  stairwellFitStatus: 'PASS' | 'WARNING';
-  landingDepthMm: number;
-  flightWidthMm: number;
-  deadLoadKpa: number;
-  factoredLoadKpa: number;
-}
-
-import { StaircaseParameters, RebarBBSParameters } from '../../../types/civil';
+import { DcrGaugeSuite } from '../../DcrCapacityGauge';
+import { StepByStepPanel } from '../../StepByStepPanel';
 
 export interface StaircaseDesignerProps {
   initialValues?: Partial<StaircaseParameters>;
   onChange?: (values: StaircaseParameters) => void;
   onSendToRebarBbs?: (stairParams: Partial<RebarBBSParameters>) => void;
+  onSendStaircaseToBoq?: (items: TakeoffLineItem[]) => void;
 }
 
 export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
   initialValues,
   onChange,
   onSendToRebarBbs,
+  onSendStaircaseToBoq,
 }) => {
-  // --- Input States ---
-  const [stairType, setStairType] = useState<StaircaseType>(initialValues?.stairType || 'dog-legged');
-  const [floorHeightMm, setFloorHeightMm] = useState<number>(initialValues?.floorHeightMm ?? 3000); // 3.0 m (10 ft) standard floor height
-  const [stairwellLengthMm, setStairwellLengthMm] = useState<number>(initialValues?.stairwellLengthMm ?? 4500); // 4.5 m
-  const [stairwellWidthMm, setStairwellWidthMm] = useState<number>(initialValues?.stairwellWidthMm ?? 2400); // 2.4 m
-  const [preferredRiserMm, setPreferredRiserMm] = useState<number>(initialValues?.preferredRiserMm ?? 150); // 150 mm standard
-  const [preferredTreadMm, setPreferredTreadMm] = useState<number>(initialValues?.preferredTreadMm ?? 275); // 275 mm standard
-  const [waistSlabMm, setWaistSlabMm] = useState<number>(initialValues?.waistSlabMm ?? 150); // 150 mm (6")
-  const [slabThicknessMm, setSlabThicknessMm] = useState<number>(initialValues?.slabThicknessMm ?? 150); // 150 mm
-  const [landingWidthMm, setLandingWidthMm] = useState<number>(initialValues?.landingWidthMm ?? 1200); // 1.2 m
-  const [nosingMm, setNosingMm] = useState<number>(initialValues?.nosingMm ?? 25); // 25 mm nosing
-  const [liveLoadKpa, setLiveLoadKpa] = useState<number>(initialValues?.liveLoadKpa ?? 3.0); // 3.0 kN/m² residential / 4.0 commercial
-  const [finishesLoadKpa, setFinishesLoadKpa] = useState<number>(initialValues?.finishesLoadKpa ?? 1.0); // 1.0 kN/m² finishes
+  const initialTopology = mapLegacyStairTopology(
+    initialValues?.stairType,
+    initialValues?.stairTopology
+  );
 
-  React.useEffect(() => {
-    onChange?.({
-      stairType,
+  // Configuration States
+  const [stairTopology, setStairTopology] = useState<StairTopologyType>(initialTopology);
+  const [buildingOccupancy, setBuildingOccupancy] = useState<StairBuildingOccupancy>(
+    initialValues?.buildingOccupancy || 'residential'
+  );
+  const [floorHeightMm, setFloorHeightMm] = useState<number>(
+    initialValues?.floorHeightMm ??
+      (initialValues?.floorToFloorHeightM
+        ? Math.round(initialValues.floorToFloorHeightM * 1000)
+        : 3000)
+  );
+  const [preferredRiserMm, setPreferredRiserMm] = useState<number>(
+    initialValues?.riserHeightMm ?? initialValues?.preferredRiserMm ?? 150
+  );
+  const [preferredTreadMm, setPreferredTreadMm] = useState<number>(
+    initialValues?.treadWidthMm ?? initialValues?.preferredTreadMm ?? 275
+  );
+  const [flightWidthMm, setFlightWidthMm] = useState<number>(
+    initialValues?.flightWidthMm ?? 1150
+  );
+  const [landingWidthMm, setLandingWidthMm] = useState<number>(
+    initialValues?.landingWidthMm ?? 1200
+  );
+  const [waistSlabMm, setWaistSlabMm] = useState<number>(
+    initialValues?.waistSlabThicknessMm ?? initialValues?.waistSlabMm ?? 150
+  );
+  const [slabThicknessMm, setSlabThicknessMm] = useState<number>(
+    initialValues?.slabThicknessMm ?? 150
+  );
+  const [wellGapMm, setWellGapMm] = useState<number>(initialValues?.wellGapMm ?? 150);
+  const [handrailHeightMm, setHandrailHeightMm] = useState<number>(
+    initialValues?.handrailHeightMm ?? 950
+  );
+  const [stairwellLengthMm, setStairwellLengthMm] = useState<number>(
+    initialValues?.stairwellLengthMm ?? 4650
+  );
+  const [stairwellWidthMm, setStairwellWidthMm] = useState<number>(
+    initialValues?.stairwellWidthMm ?? 2450
+  );
+  const [nosingMm, setNosingMm] = useState<number>(initialValues?.nosingMm ?? 25);
+  const [liveLoadKpa, setLiveLoadKpa] = useState<number>(initialValues?.liveLoadKpa ?? 3.0);
+  const [finishesLoadKpa, setFinishesLoadKpa] = useState<number>(
+    initialValues?.finishesLoadKpa ?? 1.0
+  );
+
+  const [activePresetId, setActivePresetId] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'schematics' | 'steps'>('schematics');
+  const [boqSentNotice, setBoqSentNotice] = useState<boolean>(false);
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const currentParams: StaircaseParameters = useMemo(
+    () => ({
+      stairType: mapTopologyToLegacyType(stairTopology),
+      stairTopology,
+      buildingOccupancy,
+      floorHeightMm,
+      floorToFloorHeightM: Number((floorHeightMm / 1000).toFixed(3)),
+      stairwellLengthMm,
+      stairwellWidthMm,
+      preferredRiserMm,
+      riserHeightMm: preferredRiserMm,
+      preferredTreadMm,
+      treadWidthMm: preferredTreadMm,
+      flightWidthMm,
+      waistSlabMm,
+      waistSlabThicknessMm: waistSlabMm,
+      slabThicknessMm,
+      landingWidthMm,
+      wellGapMm,
+      handrailHeightMm,
+      nosingMm,
+      liveLoadKpa,
+      finishesLoadKpa,
+    }),
+    [
+      stairTopology,
+      buildingOccupancy,
       floorHeightMm,
       stairwellLengthMm,
       stairwellWidthMm,
       preferredRiserMm,
       preferredTreadMm,
+      flightWidthMm,
       waistSlabMm,
       slabThicknessMm,
       landingWidthMm,
+      wellGapMm,
+      handrailHeightMm,
       nosingMm,
       liveLoadKpa,
       finishesLoadKpa,
-    });
-  }, [
-    stairType,
-    floorHeightMm,
-    stairwellLengthMm,
-    stairwellWidthMm,
-    preferredRiserMm,
-    preferredTreadMm,
-    waistSlabMm,
-    slabThicknessMm,
-    landingWidthMm,
-    nosingMm,
-    liveLoadKpa,
-    finishesLoadKpa,
-    onChange,
-  ]);
+    ]
+  );
 
-  // --- Calculations ---
-  const calc = useMemo<StaircaseOutputs>(() => {
-    // 1. Risers count
-    const targetRisers = Math.round(floorHeightMm / preferredRiserMm);
-    const totalRisers = Math.max(3, targetRisers);
-    const actualRiserMm = floorHeightMm / totalRisers;
+  useEffect(() => {
+    onChangeRef.current?.(currentParams);
+  }, [currentParams]);
 
-    // Flight distribution
-    let risersPerFlight: number[] = [];
-    let treadsPerFlight: number[] = [];
+  const envelope = useMemo(() => computeStaircaseDesign(currentParams), [currentParams]);
+  const res = envelope.result!;
 
-    if (stairType === 'dog-legged') {
-      const flight1 = Math.ceil(totalRisers / 2);
-      const flight2 = Math.floor(totalRisers / 2);
-      risersPerFlight = [flight1, flight2];
-      treadsPerFlight = [Math.max(1, flight1 - 1), Math.max(1, flight2 - 1)];
-    } else if (stairType === 'straight') {
-      risersPerFlight = [totalRisers];
-      treadsPerFlight = [Math.max(1, totalRisers - 1)];
-    } else {
-      // open-well (3 flights)
-      const f1 = Math.ceil(totalRisers / 3);
-      const f2 = Math.round((totalRisers - f1) / 2);
-      const f3 = totalRisers - f1 - f2;
-      risersPerFlight = [f1, f2, f3];
-      treadsPerFlight = [Math.max(1, f1 - 1), Math.max(1, f2 - 1), Math.max(1, f3 - 1)];
+  const handleTopologyChange = (nextTopology: StairTopologyType) => {
+    setActivePresetId('');
+    setStairTopology(nextTopology);
+    if (nextTopology === 'straight-flight') {
+      setWellGapMm(0);
+    } else if (nextTopology === 'open-well' && wellGapMm < 600) {
+      setWellGapMm(900);
+    } else if (nextTopology === 'u-shaped' && wellGapMm < 300) {
+      setWellGapMm(450);
+    } else if (nextTopology === 'dog-legged' && (wellGapMm === 0 || wellGapMm > 300)) {
+      setWellGapMm(150);
     }
+  };
 
-    const maxTreadsInRun = Math.max(...treadsPerFlight);
-    const goingLengthMm = maxTreadsInRun * preferredTreadMm;
-
-    // Pitch Angle: theta = atan(R / T)
-    const pitchRad = Math.atan(actualRiserMm / preferredTreadMm);
-    const stairPitchDeg = (pitchRad * 180) / Math.PI;
-
-    let pitchStatus: 'OPTIMUM' | 'ACCEPTABLE' | 'STEEP' | 'SHALLOW' = 'OPTIMUM';
-    if (stairPitchDeg >= 28 && stairPitchDeg <= 36) {
-      pitchStatus = 'OPTIMUM';
-    } else if (stairPitchDeg >= 24 && stairPitchDeg <= 40) {
-      pitchStatus = 'ACCEPTABLE';
-    } else if (stairPitchDeg > 40) {
-      pitchStatus = 'STEEP';
-    } else {
-      pitchStatus = 'SHALLOW';
-    }
-
-    // Blondel's Comfort Rule: 2R + T in mm
-    const blondelValue = 2 * actualRiserMm + preferredTreadMm;
-    let blondelStatus: 'OPTIMUM' | 'ACCEPTABLE' | 'WARNING' = 'OPTIMUM';
-    if (blondelValue >= 600 && blondelValue <= 630) {
-      blondelStatus = 'OPTIMUM';
-    } else if (blondelValue >= 580 && blondelValue <= 650) {
-      blondelStatus = 'ACCEPTABLE';
-    } else {
-      blondelStatus = 'WARNING';
-    }
-
-    // Safety Index: R + T (approx 430 - 460 mm)
-    const safetyIndex = actualRiserMm + preferredTreadMm;
-
-    // Comfort Product: R * T (approx 40,000 - 45,000 mm²)
-    const comfortProduct = actualRiserMm * preferredTreadMm;
-
-    // Stairwell Fit
-    let totalGoingRequiredMm = 0;
-    let flightWidthMm = 0;
-    if (stairType === 'dog-legged') {
-      totalGoingRequiredMm = goingLengthMm + landingWidthMm + landingWidthMm; // landing at bottom and top/mid
-      flightWidthMm = (stairwellWidthMm - 100) / 2; // with 100mm well gap
-    } else if (stairType === 'straight') {
-      totalGoingRequiredMm = goingLengthMm + landingWidthMm * 2;
-      flightWidthMm = stairwellWidthMm;
-    } else {
-      totalGoingRequiredMm = goingLengthMm + landingWidthMm * 2;
-      flightWidthMm = (stairwellWidthMm - 200) / 2;
-    }
-
-    const stairwellFitStatus: 'PASS' | 'WARNING' =
-      totalGoingRequiredMm <= stairwellLengthMm ? 'PASS' : 'WARNING';
-
-    // Clear Headroom: Clearance between soffit of flight above and tread below
-    // In dog-legged stairs, headroom under intermediate landing or second flight
-    // Minimum standard = 2150 mm (BNBC / IBC 2050 mm)
-    const heightPerFlight = actualRiserMm * risersPerFlight[0];
-    const estimatedHeadroomMm = heightPerFlight - waistSlabMm - slabThicknessMm;
-    let headroomStatus: 'PASS' | 'WARNING' | 'FAIL' = 'PASS';
-    if (estimatedHeadroomMm >= 2150) {
-      headroomStatus = 'PASS';
-    } else if (estimatedHeadroomMm >= 2000) {
-      headroomStatus = 'WARNING';
-    } else {
-      headroomStatus = 'FAIL';
-    }
-
-    // Incline length of waist slab for primary flight
-    const flightHeightMm = actualRiserMm * risersPerFlight[0];
-    const waistInclinedLengthMm = Math.sqrt(goingLengthMm ** 2 + flightHeightMm ** 2);
-
-    // Dead loads estimation:
-    // Density of RCC = 25 kN/m³
-    const secTheta = Math.sqrt(1 + (actualRiserMm / preferredTreadMm) ** 2);
-    const waistSlabDeadLoad = (waistSlabMm / 1000) * 25 * secTheta;
-    const stepsDeadLoad = (actualRiserMm / 2000) * 25;
-    const deadLoadKpa = waistSlabDeadLoad + stepsDeadLoad + finishesLoadKpa;
-    const factoredLoadKpa = 1.2 * deadLoadKpa + 1.6 * liveLoadKpa;
-
-    return {
-      totalRisers,
-      risersPerFlight,
-      actualRiserMm,
-      treadsPerFlight,
-      actualTreadMm: preferredTreadMm,
-      goingLengthMm,
-      stairPitchDeg,
-      pitchStatus,
-      blondelValue,
-      blondelStatus,
-      safetyIndex,
-      comfortProduct,
-      estimatedHeadroomMm,
-      headroomStatus,
-      waistInclinedLengthMm,
-      totalGoingRequiredMm,
-      stairwellFitStatus,
-      landingDepthMm: landingWidthMm,
-      flightWidthMm,
-      deadLoadKpa,
-      factoredLoadKpa,
-    };
-  }, [
-    stairType,
-    floorHeightMm,
-    stairwellLengthMm,
-    stairwellWidthMm,
-    preferredRiserMm,
-    preferredTreadMm,
-    waistSlabMm,
-    slabThicknessMm,
-    landingWidthMm,
-    liveLoadKpa,
-    finishesLoadKpa,
-  ]);
-
-  // Preset Configurations
-  const applyPreset = (type: 'residential' | 'commercial' | 'fire-escape' | 'compact') => {
-    if (type === 'residential') {
-      setPreferredRiserMm(150);
-      setPreferredTreadMm(275);
-      setLandingWidthMm(1100);
-      setWaistSlabMm(150);
+  const handleOccupancyChange = (nextOcc: StairBuildingOccupancy) => {
+    setActivePresetId('');
+    setBuildingOccupancy(nextOcc);
+    if (nextOcc === 'residential') {
       setLiveLoadKpa(3.0);
-    } else if (type === 'commercial') {
-      setPreferredRiserMm(150);
-      setPreferredTreadMm(300);
-      setLandingWidthMm(1500);
-      setWaistSlabMm(175);
-      setLiveLoadKpa(4.0);
-    } else if (type === 'fire-escape') {
-      setPreferredRiserMm(160);
-      setPreferredTreadMm(280);
-      setLandingWidthMm(1250);
-      setWaistSlabMm(150);
-      setLiveLoadKpa(5.0);
+    } else if (nextOcc === 'public-commercial') {
+      setLiveLoadKpa(4.5);
+      if (flightWidthMm < 1500) setFlightWidthMm(1550);
+      if (landingWidthMm < 1500) setLandingWidthMm(1600);
     } else {
-      // compact
-      setPreferredRiserMm(175);
-      setPreferredTreadMm(250);
-      setLandingWidthMm(1000);
-      setWaistSlabMm(125);
-      setLiveLoadKpa(2.5);
+      setLiveLoadKpa(5.0);
+      if (flightWidthMm < 1500) setFlightWidthMm(1650);
+      if (landingWidthMm < 1500) setLandingWidthMm(1700);
     }
+  };
+
+  const applyPreset = (presetId: string) => {
+    const preset = STAIRCASE_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    const p = preset.params;
+    setActivePresetId(preset.id);
+    setStairTopology(p.stairTopology || 'dog-legged');
+    setBuildingOccupancy(p.buildingOccupancy || 'residential');
+    setFloorHeightMm(p.floorHeightMm);
+    setPreferredRiserMm(p.preferredRiserMm);
+    setPreferredTreadMm(p.preferredTreadMm);
+    setFlightWidthMm(p.flightWidthMm ?? 1150);
+    setLandingWidthMm(p.landingWidthMm);
+    setWaistSlabMm(p.waistSlabMm);
+    setSlabThicknessMm(p.slabThicknessMm);
+    setWellGapMm(p.wellGapMm ?? 150);
+    setHandrailHeightMm(p.handrailHeightMm ?? 950);
+    setStairwellLengthMm(p.stairwellLengthMm);
+    setStairwellWidthMm(p.stairwellWidthMm);
+    setNosingMm(p.nosingMm);
+    setLiveLoadKpa(p.liveLoadKpa);
+    setFinishesLoadKpa(p.finishesLoadKpa);
+  };
+
+  const handleFitMinStairwell = () => {
+    setStairwellLengthMm(res.requiredStairwellLengthMm);
+    setStairwellWidthMm(res.requiredStairwellWidthMm);
+  };
+
+  const handleSendToBoq = () => {
+    if (!onSendStaircaseToBoq) return;
+    const items = buildBoqItemsFromStaircase(res);
+    onSendStaircaseToBoq(items);
+    setBoqSentNotice(true);
+    setTimeout(() => setBoqSentNotice(false), 4500);
   };
 
   // CSV Export
   const handleExportCSV = () => {
-    const headers = ['Parameter', 'Value', 'Unit', 'Evaluation'];
+    const headers = ['Parameter', 'Value', 'Unit', 'BNBC 2020 Evaluation'];
     const rows: (string | number)[][] = [
-      ['Staircase Type', stairType.toUpperCase(), '-', 'Structural Classification'],
-      ['Floor-to-Floor Height', floorHeightMm.toFixed(1), 'mm', `${(floorHeightMm / 304.8).toFixed(2)} ft`],
-      ['Stairwell Dimensions (L x W)', `${stairwellLengthMm} x ${stairwellWidthMm}`, 'mm', 'Plan Opening'],
-      ['Total Number of Risers', calc.totalRisers, 'nos', `${calc.risersPerFlight.join(' + ')} per flight`],
-      ['Exact Riser Height (R)', Number(calc.actualRiserMm.toFixed(2)), 'mm', 'BNBC Max: 175mm'],
-      ['Tread Width (T)', calc.actualTreadMm, 'mm', 'BNBC Min: 250mm'],
-      ['Going Length per Flight', Number(calc.goingLengthMm.toFixed(1)), 'mm', 'Primary Flight Run'],
-      ['Pitch Slope Angle', Number(calc.stairPitchDeg.toFixed(2)), 'degrees', `Status: ${calc.pitchStatus} (25°-38°)`],
-      ['Blondel Comfort Formula (2R + T)', Number(calc.blondelValue.toFixed(1)), 'mm', `Verdict: ${calc.blondelStatus} (600-630mm)`],
-      ['Safety Formula (R + T)', Number(calc.safetyIndex.toFixed(1)), 'mm', 'Target: 430-460mm'],
-      ['Comfort Product (R x T)', Math.round(calc.comfortProduct), 'mm²', 'Target: 40000-45000'],
-      ['Clear Headroom Clearance', Math.round(calc.estimatedHeadroomMm), 'mm', `Status: ${calc.headroomStatus} (Min: 2150mm)`],
-      ['Waist Slab Thickness', waistSlabMm, 'mm', 'Structural Slab'],
-      ['Inclined Waist Length', Number(calc.waistInclinedLengthMm.toFixed(1)), 'mm', 'Hypotenuse Span'],
-      ['Landing Width/Depth', Number(calc.landingDepthMm.toFixed(1)), 'mm', 'Clear Landing Space'],
-      ['Estimated Design Dead Load', Number(calc.deadLoadKpa.toFixed(2)), 'kN/m²', 'Self-wt + finishes'],
-      ['Factored Design Load (1.2D + 1.6L)', Number(calc.factoredLoadKpa.toFixed(2)), 'kN/m²', 'Ultimate Design ULS'],
+      ['Stair Topology', res.topologyLabel, '-', res.occupancyLabel],
+      ['Floor-to-Floor Height (H)', res.floorHeightMm, 'mm', `${res.floorHeightM} m`],
+      ['Total Risers (Nr)', res.totalRisers, 'nos', `Flights: ${res.risersPerFlight.join(' + ')}`],
+      ['Actual Riser (R)', res.actualRiserMm, 'mm', `Tread (T): ${res.actualTreadMm} mm`],
+      ['Going Length (Primary Flight)', res.goingLengthMm, 'mm', `Req Well: ${res.requiredStairwellLengthMm} × ${res.requiredStairwellWidthMm} mm`],
+      ['Pitch Angle (θ)', res.stairPitchDeg, 'deg', `${res.pitchStatus} (Max ${res.maxAllowedPitchDeg}°)`],
+      ['Blondel Comfort (2R + T)', res.blondelValue, 'mm', `${res.blondelStatus} (600–640 mm)`],
+      ['Safety Index (R + T)', res.safetyIndex, 'mm', res.safetyIndexPass ? 'PASS (410–465)' : 'CHECK'],
+      ['Comfort Product (R × T)', res.comfortProduct, 'mm2', res.comfortProductPass ? 'PASS' : 'CHECK'],
+      ['Vertical Headroom Clearance', res.estimatedHeadroomMm, 'mm', `${res.headroomStatus} (Min 2150 mm)`],
+      ['Clear Flight Width (Wf)', res.flightWidthMm, 'mm', `Min ${res.minClearFlightWidthMm} mm (${res.flightWidthPass ? 'PASS' : 'FAIL'})`],
+      ['Landing Depth / Handrail', `${res.landingWidthMm} / ${res.handrailHeightMm}`, 'mm', res.egressPass ? 'EGRESS PASS' : 'EGRESS CHECK'],
+      ['Design Factored Load (wu)', res.factoredLoadKpa, 'kN/m2', `Dead ${res.deadLoadKpa} + Live ${res.liveLoadKpa}`],
+      ['Staircase Concrete Volume / Story', res.totalConcreteM3, 'm3', `Waist ${res.waistConcreteM3} + Steps ${res.stepsConcreteM3} + Land ${res.landingConcreteM3}`],
+      ['Staircase Formwork Area / Story', res.totalFormworkM2, 'm2', `Soffit ${res.soffitFormworkM2} + Risers ${res.riserFormworkM2} + Edges ${res.edgeFormworkM2}`],
     ];
-    exportToCSV(`BD_CivilLab_Staircase_Design_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    exportToCSV(`BD_CivilLab_Staircase_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
   // PDF Export
   const handleExportPDF = async () => {
     const pdfData = {
       projectMeta: {
-        projectName: 'Architectural Staircase & Ergonomic Engineering Design',
-        projectCode: 'STAIR-2026',
-        client: 'BNBC Space Planning Compliance',
-        location: 'Building Staircase Core Submittal',
+        projectName: 'Staircase Ergonomics, BNBC Part 4 Egress & Structural Takeoff',
+        projectCode: 'STAIR-BNBC-2026',
+        client: 'Architectural & Structural Engineering',
+        location: res.occupancyLabel,
         date: new Date().toISOString().slice(0, 10),
         unitSystem: 'SI' as const,
-        engineerName: 'Prokash Biswas, PE',
+        engineerName: 'BD. CivilLab Architecture Engine',
       },
       moduleMeta: {
         moduleId: 'staircase-designer',
-        moduleTitle: 'STAIRCASE ERGONOMICS & GEOMETRY DESIGN REPORT',
-        standard: 'BNBC 2020 Part 3 Sec 1.12.5 / ACI 318-19 / Blondel Formula',
-        status: calc.blondelStatus === 'WARNING' || calc.headroomStatus === 'FAIL' ? ('WARNING' as const) : ('VERIFIED' as const),
+        moduleTitle: 'STAIRCASE GEOMETRY, EGRESS & QUANTITY REPORT',
+        standard: 'BNBC 2020 Part 3 (§1.12.5) & Part 4 / ACI 318-19 / Blondel Rules',
+        status: res.overallCompliant ? ('VERIFIED' as const) : ('WARNING' as const),
       },
       inputs: [
-        { name: 'Floor-to-Floor Height', symbol: 'H', value: floorHeightMm, unit: 'mm' },
-        { name: 'Preferred Riser Height', symbol: 'R_pref', value: preferredRiserMm, unit: 'mm' },
-        { name: 'Preferred Tread Width', symbol: 'T_pref', value: preferredTreadMm, unit: 'mm' },
-        { name: 'Stairwell Dimensions', symbol: 'L_well x W_well', value: `${stairwellLengthMm} x ${stairwellWidthMm}`, unit: 'mm' },
-        { name: 'Waist Slab Thickness', symbol: 't_w', value: waistSlabMm, unit: 'mm' },
-        { name: 'Landing Width/Depth', symbol: 'L_land', value: landingWidthMm, unit: 'mm' },
-        { name: 'Specified Live Load', symbol: 'q_L', value: liveLoadKpa, unit: 'kN/m²' },
+        { name: 'Staircase Topology', symbol: 'Type', value: res.topologyLabel, unit: '-' },
+        { name: 'Floor-to-Floor Height', symbol: 'H', value: res.floorHeightMm, unit: 'mm' },
+        { name: 'Riser × Tread (Actual)', symbol: 'R × T', value: `${res.actualRiserMm} × ${res.actualTreadMm}`, unit: 'mm' },
+        { name: 'Flight Width & Landing', symbol: 'Wf / L', value: `${res.flightWidthMm} / ${res.landingWidthMm}`, unit: 'mm' },
+        { name: 'Waist Slab Thickness', symbol: 'tw', value: res.waistSlabMm, unit: 'mm' },
       ],
       outputs: [
-        { name: 'Total Risers Count', symbol: 'N_r', value: calc.totalRisers, unit: 'nos', status: 'PASS' as const },
-        { name: 'Exact Riser Height', symbol: 'R_act', value: calc.actualRiserMm.toFixed(2), unit: 'mm', status: 'PASS' as const },
-        { name: 'Going Length (Primary Flight)', symbol: 'G', value: calc.goingLengthMm.toFixed(0), unit: 'mm', status: 'PASS' as const },
-        { name: 'Stair Pitch Angle', symbol: 'theta', value: `${calc.stairPitchDeg.toFixed(1)}°`, unit: 'deg', status: calc.pitchStatus === 'OPTIMUM' ? ('PASS' as const) : ('INFO' as const) },
-        { name: "Blondel's Comfort Formula (2R + T)", symbol: '2R + T', value: `${calc.blondelValue.toFixed(1)} mm (600-630)`, unit: 'mm', status: calc.blondelStatus === 'OPTIMUM' ? ('PASS' as const) : ('WARNING' as const) },
-        { name: 'Clear Headroom Clearance', symbol: 'H_clear', value: `${calc.estimatedHeadroomMm.toFixed(0)} mm (min 2150)`, unit: 'mm', status: calc.headroomStatus === 'PASS' ? ('PASS' as const) : ('WARNING' as const) },
-        { name: 'Total Length Requirement Check', symbol: 'L_req', value: `${calc.totalGoingRequiredMm} mm vs ${stairwellLengthMm} mm`, unit: 'mm', status: calc.stairwellFitStatus === 'PASS' ? ('PASS' as const) : ('WARNING' as const) },
-        { name: 'Estimated Factored Load', symbol: 'w_u', value: `${calc.factoredLoadKpa.toFixed(2)} kN/m²`, unit: 'kN/m²', status: 'INFO' as const },
+        { name: 'Riser Count & Distribution', symbol: 'Nr', value: `${res.totalRisers} (${res.risersPerFlight.join('+')})`, unit: 'nos', status: 'PASS' as const },
+        { name: 'Blondel Comfort (2R + T)', symbol: '2R+T', value: res.blondelValue, unit: 'mm', status: res.blondelPass ? ('PASS' as const) : ('WARNING' as const) },
+        { name: 'Pitch Angle', symbol: 'theta', value: `${res.stairPitchDeg}°`, unit: 'deg', status: res.pitchPass ? ('PASS' as const) : ('FAIL' as const) },
+        { name: 'Vertical Headroom', symbol: 'H_clr', value: res.estimatedHeadroomMm, unit: 'mm', status: res.headroomPass ? ('PASS' as const) : ('FAIL' as const) },
+        { name: 'BNBC Part 4 Egress Check', symbol: 'Egress', value: res.egressPass ? 'COMPLIANT' : 'CHECK', unit: '-', status: res.egressPass ? ('PASS' as const) : ('FAIL' as const) },
+        { name: 'Concrete Volume / Story', symbol: 'V_rcc', value: res.totalConcreteM3, unit: 'm³', status: 'INFO' as const },
+        { name: 'Shuttering Area / Story', symbol: 'A_fw', value: res.totalFormworkM2, unit: 'm²', status: 'INFO' as const },
       ],
       governingAssumptions: [
-        "Blondel's Rule for comfortable walking: 600 mm <= 2R + T <= 630 mm (standard human stride length).",
-        'Minimum clear headroom must not be less than 2150 mm measured vertically from the nosing line to any overhead obstruction (BNBC 2020 Part 3).',
-        'Staircase slope angle should ideally be maintained between 25° and 38° for comfort and public safety.',
-        'Waist slab dead load considers incline effect sec(theta) = sqrt(1 + (R/T)^2).',
+        "Blondel's ergonomic comfort envelope: 2R + T = 600–640 mm, R + T = 420–450 mm, R × T = 40,000–45,000 mm².",
+        'BNBC 2020 Part 4 clear flight width ≥ 1000 mm (Residential) or ≥ 1500 mm (Public/Commercial/Hospital); landing ≥ flight width.',
+        'Minimum vertical headroom clearance ≥ 2150 mm (7\'-0") below upper flight or landing soffit.',
       ],
     };
 
     await generateEngineeringPDF(pdfData, {
-      filename: `BD_CivilLab_Staircase_Design_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `BD_CivilLab_Staircase_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 
-  // Helper to draw 2D SVG Cross-Section
-  const renderCrossSection = () => {
-    // Generate step points for primary flight
-    const stepsCount = calc.treadsPerFlight[0] || 9;
-    const riserH = calc.actualRiserMm;
-    const treadW = calc.actualTreadMm;
-    const scale = 0.08; // scale factor to fit in 600 x 360 SVG
+  // --- SVG 1: Live Sectional Elevation View ---
+  const renderSectionalElevation = () => {
+    const svgW = 560;
+    const svgH = 310;
+    const stepsCount = res.treadsPerFlight[0] || 9;
+    const flightGoingMm = stepsCount * res.actualTreadMm;
+    const flightRiseMm = (res.risersPerFlight[0] || 10) * res.actualRiserMm;
+    const totalDrawWidthMm = res.landingWidthMm * 2 + flightGoingMm;
 
-    const startX = 60;
-    const startY = 280;
-    const landingLengthPx = landingWidthMm * scale;
-    const treadPx = treadW * scale;
-    const riserPx = riserH * scale;
+    const padX = 56;
+    const padY = 44;
+    const scale = Math.min(
+      (svgW - padX * 2) / Math.max(1500, totalDrawWidthMm),
+      (svgH - padY * 2 - 20) / Math.max(1200, flightRiseMm + 600)
+    );
 
-    // Lower landing path
-    const p0x = startX;
-    const p0y = startY;
+    const p0x = padX;
+    const p0y = svgH - 52;
+    const landPx = res.landingWidthMm * scale;
+    const treadPx = res.actualTreadMm * scale;
+    const riserPx = res.actualRiserMm * scale;
+    const waistPx = res.waistSlabMm * scale;
+    const railPx = Math.max(24, Math.min(58, res.handrailHeightMm * scale));
 
-    // Steps path string
-    let stepsD = `M ${p0x} ${p0y} L ${p0x + landingLengthPx} ${p0y}`;
-    let currX = p0x + landingLengthPx;
-    let currY = p0y;
-
+    let stepsD = `M ${p0x} ${p0y} L ${p0x + landPx} ${p0y}`;
+    let cx = p0x + landPx;
+    let cy = p0y;
     for (let i = 0; i < stepsCount; i++) {
-      currY -= riserPx;
-      stepsD += ` L ${currX} ${currY}`;
-      currX += treadPx;
-      stepsD += ` L ${currX} ${currY}`;
+      cy -= riserPx;
+      stepsD += ` L ${cx} ${cy}`;
+      cx += treadPx;
+      stepsD += ` L ${cx} ${cy}`;
     }
+    // Final riser up to mid/upper landing level
+    cy -= riserPx;
+    stepsD += ` L ${cx} ${cy}`;
+    const upperEndX = cx + landPx;
+    stepsD += ` L ${upperEndX} ${cy}`;
 
-    // Mid landing
-    const upperLandingX = currX + landingLengthPx;
-    stepsD += ` L ${upperLandingX} ${currY}`;
-
-    // Waist slab thickness perpendicular offset
-    const waistPx = waistSlabMm * scale;
+    // Waist soffit perpendicular vertical thickness approximation
+    const soffitDrop = waistPx / Math.max(0.5, Math.cos((res.stairPitchDeg * Math.PI) / 180));
+    const headMarkerX = p0x + landPx + Math.min(stepsCount - 1, 2) * treadPx;
+    const headBaseY = p0y - Math.min(stepsCount - 1, 2) * riserPx;
+    const headTopY = Math.max(18, headBaseY - Math.min(130, res.estimatedHeadroomMm * scale * 0.65));
 
     return (
       <svg
-        viewBox="0 0 640 360"
-        className="w-full h-auto bg-[var(--md-sys-color-surface-container-lowest,#0f172a)] rounded-xl border border-[var(--md-sys-color-outline-variant)] shadow-inner"
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        className="w-full h-auto bg-slate-950 rounded-xl border border-[var(--md-sys-color-outline-variant)]"
       >
         <defs>
-          <pattern id="gridPattern" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-800/40" />
+          <pattern id="stairSecGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" strokeWidth="0.6" />
           </pattern>
-          <linearGradient id="waistGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.1" />
-          </linearGradient>
         </defs>
+        <rect width={svgW} height={svgH} fill="url(#stairSecGrid)" />
 
-        {/* Grid Background */}
-        <rect width="640" height="360" fill="url(#gridPattern)" />
-
-        {/* Datum Level Lines */}
-        <line x1="20" y1={p0y} x2="620" y2={p0y} stroke="#64748b" strokeWidth="1" strokeDasharray="6 3" />
-        <text x="30" y={p0y + 16} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
-          LVL 0.00 (Lower Landing / Floor)
+        {/* Datum Lines */}
+        <line x1="16" y1={p0y} x2={svgW - 16} y2={p0y} stroke="#475569" strokeWidth="1" strokeDasharray="5 3" />
+        <text x="20" y={p0y + 14} fill="#94a3b8" fontSize="9.5" className="font-mono">
+          LVL +0.00 m (Lower Floor)
         </text>
 
-        <line x1="20" y1={currY} x2="620" y2={currY} stroke="#64748b" strokeWidth="1" strokeDasharray="6 3" />
-        <text x="30" y={currY - 8} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
-          LVL +{(calc.actualRiserMm * (stepsCount + 1)).toFixed(0)} mm (Mid Landing)
+        <line x1="16" y1={cy} x2={svgW - 16} y2={cy} stroke="#475569" strokeWidth="1" strokeDasharray="5 3" />
+        <text x="20" y={cy - 7} fill="#94a3b8" fontSize="9.5" className="font-mono">
+          LVL +{(flightRiseMm / 1000).toFixed(2)} m ({res.topology === 'straight-flight' ? 'Upper Floor' : 'Mid Landing'})
         </text>
 
-        {/* Steps and landings top boundary */}
-        <path d={stepsD} fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinejoin="miter" />
-
-        {/* Waist slab profile polygon */}
+        {/* Waist Concrete Body Polygon */}
         <polygon
           points={`
             ${p0x},${p0y}
-            ${p0x + landingLengthPx},${p0y}
-            ${currX},${currY}
-            ${upperLandingX},${currY}
-            ${upperLandingX},${currY + waistPx + 15}
-            ${currX - 10},${currY + waistPx + 20}
-            ${p0x + landingLengthPx + 10},${p0y + waistPx + 20}
-            ${p0x},${p0y + waistPx + 15}
+            ${p0x + landPx},${p0y}
+            ${cx},${cy}
+            ${upperEndX},${cy}
+            ${upperEndX},${cy + waistPx}
+            ${cx + 4},${cy + soffitDrop}
+            ${p0x + landPx + 4},${p0y + soffitDrop}
+            ${p0x},${p0y + waistPx}
           `}
-          fill="url(#waistGrad)"
+          fill="#1d4ed8"
+          fillOpacity="0.28"
           stroke="#60a5fa"
-          strokeWidth="1.5"
-          strokeDasharray="4 2"
+          strokeWidth="1.2"
         />
 
-        {/* Handrail & Balusters */}
-        <path
-          d={`M ${p0x + 20} ${p0y - 60} L ${p0x + landingLengthPx} ${p0y - 60} L ${currX} ${currY - 60} L ${upperLandingX - 20} ${currY - 60}`}
-          fill="none"
-          stroke="#fbbf24"
-          strokeWidth="2.5"
-        />
-        {/* Baluster posts */}
-        <line x1={p0x + 20} y1={p0y} x2={p0x + 20} y2={p0y - 60} stroke="#fbbf24" strokeWidth="2" />
-        <line x1={p0x + landingLengthPx} y1={p0y} x2={p0x + landingLengthPx} y2={p0y - 60} stroke="#fbbf24" strokeWidth="1.5" />
-        <line x1={p0x + landingLengthPx + treadPx * 3} y1={p0y - riserPx * 3} x2={p0x + landingLengthPx + treadPx * 3} y2={p0y - riserPx * 3 - 60} stroke="#fbbf24" strokeWidth="1.5" />
-        <line x1={p0x + landingLengthPx + treadPx * 6} y1={p0y - riserPx * 6} x2={p0x + landingLengthPx + treadPx * 6} y2={p0y - riserPx * 6 - 60} stroke="#fbbf24" strokeWidth="1.5" />
-        <line x1={currX} y1={currY} x2={currX} y2={currY - 60} stroke="#fbbf24" strokeWidth="1.5" />
-        <line x1={upperLandingX - 20} y1={currY} x2={upperLandingX - 20} y2={currY - 60} stroke="#fbbf24" strokeWidth="2" />
+        {/* Step Tread & Riser Profile */}
+        <path d={stepsD} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinejoin="miter" />
 
-        {/* Pitch Angle Indicator */}
+        {/* Handrail & Posts */}
         <path
-          d={`M ${p0x + landingLengthPx + 50} ${p0y} A 50 50 0 0 0 ${p0x + landingLengthPx + 42} ${p0y - 25}`}
+          d={`M ${p0x + 8} ${p0y - railPx} L ${p0x + landPx} ${p0y - railPx} L ${cx} ${cy - railPx} L ${upperEndX - 8} ${cy - railPx}`}
           fill="none"
-          stroke="#ec4899"
+          stroke="#f59e0b"
           strokeWidth="2"
         />
+        <line x1={p0x + 8} y1={p0y} x2={p0x + 8} y2={p0y - railPx} stroke="#f59e0b" strokeWidth="1.5" />
+        <line x1={p0x + landPx} y1={p0y} x2={p0x + landPx} y2={p0y - railPx} stroke="#f59e0b" strokeWidth="1.3" />
+        <line x1={cx} y1={cy} x2={cx} y2={cy - railPx} stroke="#f59e0b" strokeWidth="1.3" />
+        <line x1={upperEndX - 8} y1={cy} x2={upperEndX - 8} y2={cy - railPx} stroke="#f59e0b" strokeWidth="1.5" />
+        <text x={p0x + 14} y={p0y - railPx - 5} fill="#fbbf24" fontSize="9" className="font-mono">
+          Rail {res.handrailHeightMm}mm
+        </text>
+
+        {/* Pitch Angle Arc */}
+        <path
+          d={`M ${p0x + landPx + 36} ${p0y} A 36 36 0 0 0 ${p0x + landPx + 36 * Math.cos((res.stairPitchDeg * Math.PI) / 180)} ${p0y - 36 * Math.sin((res.stairPitchDeg * Math.PI) / 180)}`}
+          fill="none"
+          stroke="#f472b6"
+          strokeWidth="1.8"
+        />
         <text
-          x={p0x + landingLengthPx + 60}
-          y={p0y - 15}
+          x={p0x + landPx + 42}
+          y={p0y - 10}
           fill="#f472b6"
-          fontSize="11"
+          fontSize="10.5"
           fontWeight="bold"
-          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
-          className="font-nikosh"
+          className="font-mono"
         >
-          θ = {calc.stairPitchDeg.toFixed(1)}°
+          θ = {res.stairPitchDeg.toFixed(1)}°
         </text>
 
-        {/* Step Dimension Callouts */}
-        {/* Riser arrow */}
+        {/* Headroom Clearance Vertical Line */}
         <line
-          x1={p0x + landingLengthPx + treadPx * 2 - 8}
-          y1={p0y - riserPx * 2}
-          x2={p0x + landingLengthPx + treadPx * 2 - 8}
-          y2={p0y - riserPx * 1}
-          stroke="#10b981"
-          strokeWidth="1.5"
+          x1={headMarkerX}
+          y1={headBaseY}
+          x2={headMarkerX}
+          y2={headTopY}
+          stroke={res.headroomPass ? '#10b981' : '#ef4444'}
+          strokeWidth="1.8"
+          strokeDasharray="4 2"
+        />
+        <line
+          x1={headMarkerX - 18}
+          y1={headTopY}
+          x2={headMarkerX + 46}
+          y2={headTopY}
+          stroke={res.headroomPass ? '#10b981' : '#ef4444'}
+          strokeWidth="1.4"
         />
         <text
-          x={p0x + landingLengthPx + treadPx * 2 - 14}
-          y={p0y - riserPx * 1.4}
-          fill="#34d399"
-          fontSize="10"
+          x={headMarkerX + 6}
+          y={headTopY + 13}
+          fill={res.headroomPass ? '#34d399' : '#f87171'}
+          fontSize="9.5"
           fontWeight="bold"
-          textAnchor="end"
-          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
-          className="font-nikosh"
+          className="font-mono"
         >
-          R = {calc.actualRiserMm.toFixed(0)} mm
+          Headroom: {res.estimatedHeadroomMm}mm (≥2150)
         </text>
 
-        {/* Tread arrow */}
-        <line
-          x1={p0x + landingLengthPx + treadPx * 2}
-          y1={p0y - riserPx * 2 - 8}
-          x2={p0x + landingLengthPx + treadPx * 3}
-          y2={p0y - riserPx * 2 - 8}
-          stroke="#10b981"
-          strokeWidth="1.5"
+        {/* Bottom Dimension Bar */}
+        <text x={p0x + landPx / 2} y={p0y + 32} textAnchor="middle" fill="#cbd5e1" fontSize="9" className="font-mono">
+          Land {res.landingWidthMm}
+        </text>
+        <text x={p0x + landPx + (cx - (p0x + landPx)) / 2} y={p0y + 32} textAnchor="middle" fill="#38bdf8" fontSize="9.5" fontWeight="bold" className="font-mono">
+          Going = {(stepsCount * res.actualTreadMm).toFixed(0)} mm ({stepsCount}T × {res.actualTreadMm} | tw={res.waistSlabMm}mm)
+        </text>
+      </svg>
+    );
+  };
+
+  // --- SVG 2: Live Plan Footprint View (Multi-Topology) ---
+  const renderPlanFootprint = () => {
+    const svgW = 560;
+    const svgH = 310;
+    const padX = 58;
+    const padY = 40;
+
+    const availW = svgW - padX * 2;
+    const availH = svgH - padY * 2 - 20;
+
+    const planLen = Math.max(res.stairwellLengthMm, res.requiredStairwellLengthMm);
+    const planWid = Math.max(res.stairwellWidthMm, res.requiredStairwellWidthMm);
+    const scale = Math.min(availW / planLen, availH / planWid);
+
+    const boxW = planLen * scale;
+    const boxH = planWid * scale;
+    const x0 = (svgW - boxW) / 2;
+    const y0 = padY + (availH - boxH) / 2;
+
+    const landPx = res.landingWidthMm * scale;
+    const fwPx = res.flightWidthMm * scale;
+    const gapPx = res.wellGapMm * scale;
+    const treadPx = res.actualTreadMm * scale;
+
+    const f1Treads = res.treadsPerFlight[0] || 8;
+    const f2Treads = res.treadsPerFlight[1] || 8;
+    const f3Treads = res.treadsPerFlight[2] || 6;
+
+    return (
+      <svg
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        className="w-full h-auto bg-slate-950 rounded-xl border border-[var(--md-sys-color-outline-variant)]"
+      >
+        <defs>
+          <marker id="planArrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,1 L6,3.5 L0,6 Z" fill="#fbbf24" />
+          </marker>
+        </defs>
+
+        {/* Outer Provided Stairwell Boundary */}
+        <rect
+          x={x0}
+          y={y0}
+          width={res.stairwellLengthMm * scale}
+          height={res.stairwellWidthMm * scale}
+          fill="#0f172a"
+          stroke={res.stairwellFitPass ? '#475569' : '#ef4444'}
+          strokeWidth="2"
+          strokeDasharray={res.stairwellFitPass ? undefined : '5 3'}
         />
-        <text
-          x={p0x + landingLengthPx + treadPx * 2.5}
-          y={p0y - riserPx * 2 - 12}
-          fill="#34d399"
-          fontSize="10"
-          fontWeight="bold"
-          textAnchor="middle"
-          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
-          className="font-nikosh"
-        >
-          T = {calc.actualTreadMm} mm
-        </text>
 
-        {/* Waist slab thickness indicator */}
-        <line
-          x1={p0x + landingLengthPx + treadPx * 5}
-          y1={p0y - riserPx * 5 + 10}
-          x2={p0x + landingLengthPx + treadPx * 5 - 15}
-          y2={p0y - riserPx * 5 + 35}
-          stroke="#38bdf8"
-          strokeWidth="1.5"
-        />
-        <text
-          x={p0x + landingLengthPx + treadPx * 5 + 12}
-          y={p0y - riserPx * 5 + 35}
-          fill="#38bdf8"
-          fontSize="10"
-          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
-          className="font-nikosh"
-        >
-          tw = {waistSlabMm} mm
-        </text>
+        {res.topology === 'straight-flight' ? (
+          <g>
+            {/* Lower Landing */}
+            <rect x={x0} y={y0} width={landPx} height={fwPx} fill="#1e293b" stroke="#38bdf8" strokeWidth="1.2" />
+            <text x={x0 + landPx / 2} y={y0 + fwPx / 2 + 3} textAnchor="middle" fill="#cbd5e1" fontSize="9" className="font-mono">
+              START
+            </text>
 
-        {/* Headroom clearance line */}
-        <line
-          x1={p0x + landingLengthPx + treadPx * 4}
-          y1={p0y - riserPx * 4}
-          x2={p0x + landingLengthPx + treadPx * 4}
-          y2={p0y - riserPx * 4 - 2150 * scale}
-          stroke="#ef4444"
-          strokeWidth="1.5"
-          strokeDasharray="3 3"
-        />
-        <circle cx={p0x + landingLengthPx + treadPx * 4} cy={p0y - riserPx * 4 - 2150 * scale} r="3" fill="#ef4444" />
-        <text
-          x={p0x + landingLengthPx + treadPx * 4 + 6}
-          y={p0y - riserPx * 4 - 1000 * scale}
-          fill="#f87171"
-          fontSize="10"
-          fontFamily="'Nikosh', 'NikoshBAN', sans-serif"
-          fontWeight="bold"
-          className="font-nikosh"
-        >
-          Min Headroom ≥ 2150 mm
-        </text>
+            {/* Single Straight Flight */}
+            <rect
+              x={x0 + landPx}
+              y={y0}
+              width={f1Treads * treadPx}
+              height={fwPx}
+              fill="#0c4a6e"
+              fillOpacity="0.4"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+            />
+            {Array.from({ length: f1Treads }).map((_, idx) => (
+              <line
+                key={idx}
+                x1={x0 + landPx + idx * treadPx}
+                y1={y0}
+                x2={x0 + landPx + idx * treadPx}
+                y2={y0 + fwPx}
+                stroke="#38bdf8"
+                strokeWidth="0.9"
+                strokeOpacity="0.7"
+              />
+            ))}
+            <line
+              x1={x0 + landPx + 10}
+              y1={y0 + fwPx / 2}
+              x2={x0 + landPx + f1Treads * treadPx - 10}
+              y2={y0 + fwPx / 2}
+              stroke="#fbbf24"
+              strokeWidth="2"
+              markerEnd="url(#planArrow)"
+            />
+            <text
+              x={x0 + landPx + (f1Treads * treadPx) / 2}
+              y={y0 + fwPx / 2 - 7}
+              textAnchor="middle"
+              fill="#fbbf24"
+              fontSize="9.5"
+              fontWeight="bold"
+              className="font-mono"
+            >
+              UP ({res.risersPerFlight[0]}R)
+            </text>
 
-        {/* Flight annotations */}
-        <text x={startX + 20} y={startY + 35} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
-          Landing: {landingWidthMm} mm
-        </text>
-        <text x={upperLandingX - 80} y={currY + 45} fill="#94a3b8" fontSize="10" fontFamily="'Nikosh', 'NikoshBAN', sans-serif" className="font-nikosh">
-          Mid Landing: {landingWidthMm} mm
+            {/* Upper Landing */}
+            <rect
+              x={x0 + landPx + f1Treads * treadPx}
+              y={y0}
+              width={landPx}
+              height={fwPx}
+              fill="#1e293b"
+              stroke="#38bdf8"
+              strokeWidth="1.2"
+            />
+            <text
+              x={x0 + landPx + f1Treads * treadPx + landPx / 2}
+              y={y0 + fwPx / 2 + 3}
+              textAnchor="middle"
+              fill="#cbd5e1"
+              fontSize="9"
+              className="font-mono"
+            >
+              UPPER
+            </text>
+          </g>
+        ) : res.topology === 'open-well' ? (
+          <g>
+            {/* Left Entry/Exit Landing Strip */}
+            <rect
+              x={x0}
+              y={y0}
+              width={landPx}
+              height={fwPx * 2 + Math.max(gapPx, f2Treads * treadPx)}
+              fill="#1e293b"
+              stroke="#38bdf8"
+              strokeWidth="1.2"
+            />
+            {/* Right Turn Landing Strip */}
+            <rect
+              x={x0 + landPx + Math.max(f1Treads, f3Treads) * treadPx}
+              y={y0}
+              width={landPx}
+              height={fwPx * 2 + Math.max(gapPx, f2Treads * treadPx)}
+              fill="#1e293b"
+              stroke="#38bdf8"
+              strokeWidth="1.2"
+            />
+
+            {/* Flight 1 (Bottom: Left to Right) */}
+            <rect
+              x={x0 + landPx}
+              y={y0 + fwPx + Math.max(gapPx, f2Treads * treadPx)}
+              width={f1Treads * treadPx}
+              height={fwPx}
+              fill="#0c4a6e"
+              fillOpacity="0.45"
+              stroke="#38bdf8"
+              strokeWidth="1.4"
+            />
+            {Array.from({ length: f1Treads }).map((_, i) => (
+              <line
+                key={`f1-${i}`}
+                x1={x0 + landPx + i * treadPx}
+                y1={y0 + fwPx + Math.max(gapPx, f2Treads * treadPx)}
+                x2={x0 + landPx + i * treadPx}
+                y2={y0 + fwPx * 2 + Math.max(gapPx, f2Treads * treadPx)}
+                stroke="#38bdf8"
+                strokeWidth="0.8"
+              />
+            ))}
+            <line
+              x1={x0 + landPx + 8}
+              y1={y0 + fwPx * 1.5 + Math.max(gapPx, f2Treads * treadPx)}
+              x2={x0 + landPx + f1Treads * treadPx - 8}
+              y2={y0 + fwPx * 1.5 + Math.max(gapPx, f2Treads * treadPx)}
+              stroke="#fbbf24"
+              strokeWidth="1.8"
+              markerEnd="url(#planArrow)"
+            />
+
+            {/* Flight 2 (Right Mid-Run: Bottom to Top) */}
+            <rect
+              x={x0 + landPx + Math.max(f1Treads, f3Treads) * treadPx - fwPx}
+              y={y0 + fwPx}
+              width={fwPx}
+              height={Math.max(gapPx, f2Treads * treadPx)}
+              fill="#0c4a6e"
+              fillOpacity="0.45"
+              stroke="#38bdf8"
+              strokeWidth="1.4"
+            />
+            {Array.from({ length: f2Treads }).map((_, i) => (
+              <line
+                key={`f2-${i}`}
+                x1={x0 + landPx + Math.max(f1Treads, f3Treads) * treadPx - fwPx}
+                y1={y0 + fwPx + i * treadPx}
+                x2={x0 + landPx + Math.max(f1Treads, f3Treads) * treadPx}
+                y2={y0 + fwPx + i * treadPx}
+                stroke="#38bdf8"
+                strokeWidth="0.8"
+              />
+            ))}
+
+            {/* Flight 3 (Top: Right to Left) */}
+            <rect
+              x={x0 + landPx}
+              y={y0}
+              width={f3Treads * treadPx}
+              height={fwPx}
+              fill="#0c4a6e"
+              fillOpacity="0.45"
+              stroke="#38bdf8"
+              strokeWidth="1.4"
+            />
+            {Array.from({ length: f3Treads }).map((_, i) => (
+              <line
+                key={`f3-${i}`}
+                x1={x0 + landPx + i * treadPx}
+                y1={y0}
+                x2={x0 + landPx + i * treadPx}
+                y2={y0 + fwPx}
+                stroke="#38bdf8"
+                strokeWidth="0.8"
+              />
+            ))}
+            <line
+              x1={x0 + landPx + f3Treads * treadPx - 8}
+              y1={y0 + fwPx / 2}
+              x2={x0 + landPx + 8}
+              y2={y0 + fwPx / 2}
+              stroke="#fbbf24"
+              strokeWidth="1.8"
+              markerEnd="url(#planArrow)"
+            />
+
+            {/* Central Open Well Void */}
+            <rect
+              x={x0 + landPx + 4}
+              y={y0 + fwPx + 4}
+              width={Math.max(16, Math.max(f1Treads, f3Treads) * treadPx - fwPx - 8)}
+              height={Math.max(16, Math.max(gapPx, f2Treads * treadPx) - 8)}
+              fill="#020617"
+              stroke="#64748b"
+              strokeDasharray="3 2"
+            />
+            <text
+              x={x0 + landPx + (Math.max(f1Treads, f3Treads) * treadPx - fwPx) / 2}
+              y={y0 + fwPx + Math.max(gapPx, f2Treads * treadPx) / 2 + 3}
+              textAnchor="middle"
+              fill="#94a3b8"
+              fontSize="8.5"
+              className="font-mono"
+            >
+              OPEN WELL ({res.wellGapMm}mm)
+            </text>
+          </g>
+        ) : (
+          /* Dog-Legged & U-Shaped 2-Flight Layout */
+          <g>
+            {/* Bottom/Top Entry Landing Strip */}
+            <rect
+              x={x0}
+              y={y0}
+              width={landPx}
+              height={fwPx * 2 + gapPx}
+              fill="#1e293b"
+              stroke="#38bdf8"
+              strokeWidth="1.2"
+            />
+            <text x={x0 + landPx / 2} y={y0 + fwPx * 1.5 + gapPx + 3} textAnchor="middle" fill="#cbd5e1" fontSize="8.5" className="font-mono">
+              ENTRY
+            </text>
+            <text x={x0 + landPx / 2} y={y0 + fwPx * 0.5 + 3} textAnchor="middle" fill="#34d399" fontSize="8.5" className="font-mono">
+              EXIT
+            </text>
+
+            {/* Intermediate Half-Turn Landing */}
+            <rect
+              x={x0 + landPx + Math.max(f1Treads, f2Treads) * treadPx}
+              y={y0}
+              width={landPx}
+              height={fwPx * 2 + gapPx}
+              fill="#1e293b"
+              stroke="#38bdf8"
+              strokeWidth="1.2"
+            />
+            <text
+              x={x0 + landPx + Math.max(f1Treads, f2Treads) * treadPx + landPx / 2}
+              y={y0 + (fwPx * 2 + gapPx) / 2 + 3}
+              textAnchor="middle"
+              fill="#cbd5e1"
+              fontSize="8.5"
+              className="font-mono"
+            >
+              MID LAND
+            </text>
+
+            {/* Flight 1 (Bottom: Left -> Right) */}
+            <rect
+              x={x0 + landPx}
+              y={y0 + fwPx + gapPx}
+              width={f1Treads * treadPx}
+              height={fwPx}
+              fill="#0c4a6e"
+              fillOpacity="0.45"
+              stroke="#38bdf8"
+              strokeWidth="1.4"
+            />
+            {Array.from({ length: f1Treads }).map((_, i) => (
+              <line
+                key={`dl1-${i}`}
+                x1={x0 + landPx + i * treadPx}
+                y1={y0 + fwPx + gapPx}
+                x2={x0 + landPx + i * treadPx}
+                y2={y0 + fwPx * 2 + gapPx}
+                stroke="#38bdf8"
+                strokeWidth="0.9"
+              />
+            ))}
+            <line
+              x1={x0 + landPx + 8}
+              y1={y0 + fwPx * 1.5 + gapPx}
+              x2={x0 + landPx + f1Treads * treadPx - 8}
+              y2={y0 + fwPx * 1.5 + gapPx}
+              stroke="#fbbf24"
+              strokeWidth="2"
+              markerEnd="url(#planArrow)"
+            />
+            <text
+              x={x0 + landPx + (f1Treads * treadPx) / 2}
+              y={y0 + fwPx * 1.5 + gapPx - 6}
+              textAnchor="middle"
+              fill="#fbbf24"
+              fontSize="9"
+              fontWeight="bold"
+              className="font-mono"
+            >
+              F1 UP ({res.risersPerFlight[0]}R)
+            </text>
+
+            {/* Well Gap Zone */}
+            <rect
+              x={x0 + landPx}
+              y={y0 + fwPx}
+              width={Math.max(f1Treads, f2Treads) * treadPx}
+              height={gapPx}
+              fill="#020617"
+              stroke="#475569"
+              strokeWidth="0.8"
+              strokeDasharray="3 2"
+            />
+
+            {/* Flight 2 (Top: Right -> Left) */}
+            <rect
+              x={x0 + landPx}
+              y={y0}
+              width={f2Treads * treadPx}
+              height={fwPx}
+              fill="#0c4a6e"
+              fillOpacity="0.45"
+              stroke="#38bdf8"
+              strokeWidth="1.4"
+            />
+            {Array.from({ length: f2Treads }).map((_, i) => (
+              <line
+                key={`dl2-${i}`}
+                x1={x0 + landPx + i * treadPx}
+                y1={y0}
+                x2={x0 + landPx + i * treadPx}
+                y2={y0 + fwPx}
+                stroke="#38bdf8"
+                strokeWidth="0.9"
+              />
+            ))}
+            <line
+              x1={x0 + landPx + f2Treads * treadPx - 8}
+              y1={y0 + fwPx / 2}
+              x2={x0 + landPx + 8}
+              y2={y0 + fwPx / 2}
+              stroke="#fbbf24"
+              strokeWidth="2"
+              markerEnd="url(#planArrow)"
+            />
+            <text
+              x={x0 + landPx + (f2Treads * treadPx) / 2}
+              y={y0 + fwPx / 2 - 6}
+              textAnchor="middle"
+              fill="#fbbf24"
+              fontSize="9"
+              fontWeight="bold"
+              className="font-mono"
+            >
+              F2 UP ({res.risersPerFlight[1]}R)
+            </text>
+          </g>
+        )}
+
+        {/* Plan Footprint Dimension Footer */}
+        <text x={svgW / 2} y={svgH - 14} textAnchor="middle" fill="#cbd5e1" fontSize="9.5" className="font-mono">
+          Flight Wf = {res.flightWidthMm}mm · Well Gap = {res.wellGapMm}mm · Req Envelope: {res.requiredStairwellLengthMm} × {res.requiredStairwellWidthMm} mm (Well: {res.stairwellLengthMm} × {res.stairwellWidthMm} mm)
         </text>
       </svg>
     );
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Header */}
-      <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 uppercase">
-                Architecture &amp; Ergonomics
-              </span>
-              <h2 className="text-lg md:text-xl font-bold text-[var(--md-sys-color-on-surface)]">
-                Staircase Geometry &amp; Ergonomics Designer
+    <div className="space-y-5">
+      {/* Header & Dual Cross-Links */}
+      <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-[var(--md-sys-color-outline-variant)]">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+              <h2 className="text-base sm:text-lg font-bold text-[var(--md-sys-color-on-surface)]">
+                Staircase Ergonomics, BNBC Part 4 Egress &amp; Takeoff Designer
               </h2>
+              <span
+                className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${
+                  res.overallCompliant
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                }`}
+              >
+                {res.overallCompliant ? 'BNBC EGRESS & ERGONOMICS PASS' : 'CHECK EGRESS / WELL FIT'}
+              </span>
             </div>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 font-mono">
-              Blondel Comfort Formula (2R + T) · Pitch Angle (θ) · Headroom Clearance · Waist Slab Sizing · Live 2D Section
+            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] font-mono">
+              Multi-Topology (Dog-Legged · Open-Well · Straight · U-Shaped) · Blondel Laws · Headroom · Dual Rebar &amp; BOQ Sync
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-              <span>Export CSV</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPDF}
-              className="px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 flex items-center gap-1.5 transition-opacity cursor-pointer shadow-xs"
-            >
-              <FileDown className="w-4 h-4" />
-              <span>Certified PDF</span>
-            </button>
             {onSendToRebarBbs && (
               <button
                 type="button"
                 onClick={() =>
                   onSendToRebarBbs({
-                    stairGoingM: Number((calc.goingLengthMm / 1000).toFixed(2)),
-                    stairTotalRiseM: Number((floorHeightMm / 1000).toFixed(2)),
-                    waistSlabThicknessMm: waistSlabMm,
-                    riserMm: Math.round(calc.actualRiserMm),
-                    treadMm: calc.actualTreadMm,
-                    landingLengthM: Number((landingWidthMm / 1000).toFixed(2)),
+                    stairGoingM: Number((res.goingLengthMm / 1000).toFixed(2)),
+                    stairTotalRiseM: Number((res.floorHeightMm / 1000).toFixed(2)),
+                    waistSlabThicknessMm: res.waistSlabMm,
+                    riserMm: Math.round(res.actualRiserMm),
+                    treadMm: res.actualTreadMm,
+                    landingLengthM: Number((res.landingWidthMm / 1000).toFixed(2)),
                   })
                 }
-                className="px-3 py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                title="Send staircase waist slab geometry directly to Rebar BBS module"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                title="Transfer waist slab, riser/tread & going geometry into Rebar BBS"
               >
-                <TrendingUp className="w-4 h-4" />
-                <span>Send to Rebar BBS</span>
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Send Staircase to Rebar BBS</span>
               </button>
             )}
+
+            {onSendStaircaseToBoq && (
+              <button
+                type="button"
+                onClick={handleSendToBoq}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                title="Compute exact waist + step concrete (m³) and soffit/riser formwork (m²) and push to BOQ"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Send Staircase Concrete &amp; Formwork to BOQ</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90 flex items-center gap-1.5 transition-opacity cursor-pointer"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>PDF</span>
+            </button>
           </div>
         </div>
 
-        {/* Quick Presets Bar */}
-        <div className="flex flex-wrap items-center gap-2 pt-3">
-          <span className="text-xs font-mono font-medium text-[var(--md-sys-color-on-surface-variant)] mr-1">
-            Standard Presets:
+        {boqSentNotice && (
+          <div className="mt-3 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-mono flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>
+              Pushed {res.totalConcreteM3} m³ RCC concrete and {res.totalFormworkM2} m² soffit/riser formwork for 1 story ({res.topologyLabel}) to BOQ Estimator.
+            </span>
+          </div>
+        )}
+
+        {/* Worked Presets Bar */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-3">
+          <span className="text-[11px] font-mono uppercase tracking-wider font-bold text-[var(--md-sys-color-on-surface-variant)] mr-1">
+            Worked Presets:
           </span>
-          <button
-            type="button"
-            onClick={() => applyPreset('residential')}
-            className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--md-sys-color-surface-container)] hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
-          >
-            Residential (R150, T275)
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('commercial')}
-            className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--md-sys-color-surface-container)] hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
-          >
-            Commercial (R150, T300)
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('fire-escape')}
-            className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--md-sys-color-surface-container)] hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
-          >
-            Fire / Emergency Exit
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('compact')}
-            className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--md-sys-color-surface-container)] hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
-          >
-            Compact Spiral / Duplex
-          </button>
+          {STAIRCASE_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => applyPreset(preset.id)}
+              title={preset.description}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold border transition-colors cursor-pointer ${
+                activePresetId === preset.id
+                  ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)]/10 text-[var(--md-sys-color-primary)]'
+                  : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Main Grid: Inputs (Left) and Results + 2D Diagram (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Form Inputs */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-4 shadow-xs space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
+      {/* DCR Gauges Suite */}
+      <DcrGaugeSuite
+        gauges={res.dcrGauges}
+        moduleKey={`stair-${res.topology}-${res.occupancy}-${res.totalRisers}`}
+        showAllInitially={true}
+      />
+
+      {/* Main Layout: Left Interactive Sliders & Parameters | Right Live Dual Schematics + Verification */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column: Controls */}
+        <div className="lg:col-span-5 bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--md-sys-color-outline-variant)] pb-2">
+            <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
               <Compass className="w-4 h-4" />
-              <span>Staircase Geometric Configuration</span>
+              <span>Topology, Egress &amp; Live Sliders</span>
             </h3>
+            <button
+              type="button"
+              onClick={handleFitMinStairwell}
+              className="text-[10px] font-mono font-semibold text-[var(--md-sys-color-primary)] hover:underline cursor-pointer"
+            >
+              Fit Min Stairwell
+            </button>
+          </div>
 
-            {/* Type selector */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                Stair Flight Typology
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'dog-legged', label: 'Dog-Legged (2 Flights)' },
-                  { id: 'straight', label: 'Straight Run' },
-                  { id: 'open-well', label: 'Open-Well (3 Flights)' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setStairType(item.id as StaircaseType)}
-                    className={`py-2 px-2 rounded-xl text-xs font-semibold text-center transition-all ${
-                      stairType === item.id
-                        ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-xs'
-                        : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+          {/* 4-Topology Selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] block">
+              Staircase Topology
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(
+                [
+                  { id: 'dog-legged', label: 'Dog-Legged (2F)' },
+                  { id: 'open-well', label: 'Open-Well (3F)' },
+                  { id: 'straight-flight', label: 'Straight Flight' },
+                  { id: 'u-shaped', label: 'U-Shaped (Wide)' },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleTopologyChange(item.id)}
+                  className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                    stairTopology === item.id
+                      ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                      : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Floor-to-Floor Height */}
+          {/* Building Occupancy (BNBC Part 4) */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] block">
+              Building Occupancy (BNBC Part 4 Egress)
+            </label>
+            <select
+              value={buildingOccupancy}
+              onChange={(e) => handleOccupancyChange(e.target.value as StairBuildingOccupancy)}
+              className="w-full px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
+            >
+              <option value="residential">Residential (Group A · Min Width 1.00 m · ≤38°)</option>
+              <option value="public-commercial">Public / Commercial (Group B/E · Min 1.50 m · ≤33°)</option>
+              <option value="educational-hospital">Educational / Hospital (Group C/D · Min 1.50 m · ≤33°)</option>
+            </select>
+          </div>
+
+          {/* Live Synchronized Range Sliders */}
+          <div className="space-y-3 pt-1">
+            {/* Floor Height (H) Slider + Number */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-xs">
-                <label className="font-medium text-[var(--md-sys-color-on-surface)]">
+                <label className="font-semibold text-[var(--md-sys-color-on-surface)]">
                   Floor-to-Floor Height (H)
                 </label>
-                <span className="font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                <span className="font-mono tabular-nums text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
                   {(floorHeightMm / 1000).toFixed(2)} m ({formatFeetInches(floorHeightMm / 1000, { isMeters: true })})
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="range"
+                  min={2400}
+                  max={5000}
+                  step={25}
+                  value={floorHeightMm}
+                  onChange={(e) => {
+                    setActivePresetId('');
+                    setFloorHeightMm(Number(e.target.value));
+                  }}
+                  aria-label="Floor height slider"
+                  className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                />
                 <input
                   type="number"
-                  inputMode="decimal"
+                  min={1800}
+                  max={6000}
+                  step={25}
                   value={floorHeightMm}
-                  onChange={(e) => setFloorHeightMm(Math.max(1000, Number(e.target.value)))}
-                  className="w-full text-sm font-mono px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
+                  onChange={(e) => setFloorHeightMm(Math.max(1800, Number(e.target.value) || 2400))}
+                  className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
-                <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">mm</span>
               </div>
             </div>
 
-            {/* Preferred Riser and Tread */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                  Preferred Riser (R)
+            {/* Riser (R) Slider + Number */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <label className="font-semibold text-[var(--md-sys-color-on-surface)]">
+                  Preferred Riser Height (R)
                 </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="5"
-                    inputMode="decimal"
-                    value={preferredRiserMm}
-                    onChange={(e) => setPreferredRiserMm(Math.max(120, Number(e.target.value)))}
-                    className="w-full text-sm font-mono px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                  <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">mm</span>
-                </div>
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Ideal: 150 mm</span>
+                <span className="font-mono tabular-nums text-[11px] text-[var(--md-sys-color-primary)]">
+                  Actual R = {res.actualRiserMm.toFixed(1)} mm ({res.totalRisers} risers)
+                </span>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                  Preferred Tread (T)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="5"
-                    inputMode="decimal"
-                    value={preferredTreadMm}
-                    onChange={(e) => setPreferredTreadMm(Math.max(220, Number(e.target.value)))}
-                    className="w-full text-sm font-mono px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                  <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">mm</span>
-                </div>
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Ideal: 275-300 mm</span>
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="range"
+                  min={125}
+                  max={200}
+                  step={1}
+                  value={preferredRiserMm}
+                  onChange={(e) => {
+                    setActivePresetId('');
+                    setPreferredRiserMm(Number(e.target.value));
+                  }}
+                  aria-label="Riser height slider"
+                  className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                />
+                <input
+                  type="number"
+                  min={110}
+                  max={220}
+                  step={1}
+                  value={preferredRiserMm}
+                  onChange={(e) => setPreferredRiserMm(Math.max(110, Number(e.target.value) || 150))}
+                  className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
+                />
               </div>
             </div>
 
-            {/* Stairwell Length & Width */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                  Stairwell Length
+            {/* Tread (T) Slider + Number */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <label className="font-semibold text-[var(--md-sys-color-on-surface)]">
+                  Tread Width (T)
                 </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="100"
-                    inputMode="decimal"
-                    value={stairwellLengthMm}
-                    onChange={(e) => setStairwellLengthMm(Math.max(2000, Number(e.target.value)))}
-                    className="w-full text-sm font-mono px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                  <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">mm</span>
-                </div>
+                <span className="font-mono tabular-nums text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                  2R + T = {res.blondelValue.toFixed(0)} mm
+                </span>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                  Stairwell Width
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="100"
-                    inputMode="decimal"
-                    value={stairwellWidthMm}
-                    onChange={(e) => setStairwellWidthMm(Math.max(1200, Number(e.target.value)))}
-                    className="w-full text-sm font-mono px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                  <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">mm</span>
-                </div>
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="range"
+                  min={220}
+                  max={340}
+                  step={5}
+                  value={preferredTreadMm}
+                  onChange={(e) => {
+                    setActivePresetId('');
+                    setPreferredTreadMm(Number(e.target.value));
+                  }}
+                  aria-label="Tread width slider"
+                  className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                />
+                <input
+                  type="number"
+                  min={200}
+                  max={380}
+                  step={5}
+                  value={preferredTreadMm}
+                  onChange={(e) => setPreferredTreadMm(Math.max(200, Number(e.target.value) || 275))}
+                  className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
+                />
               </div>
             </div>
 
-            {/* Waist Slab Thickness & Landing Width */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                  Waist Slab Thickness (tw)
+            {/* Flight Width (Wf) Slider + Number */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <label className="font-semibold text-[var(--md-sys-color-on-surface)]">
+                  Clear Flight Width (W_f)
                 </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="10"
-                    inputMode="decimal"
-                    value={waistSlabMm}
-                    onChange={(e) => setWaistSlabMm(Math.max(100, Number(e.target.value)))}
-                    className="w-full text-sm font-mono px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                  <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">mm</span>
-                </div>
+                <span className="font-mono tabular-nums text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                  BNBC Min: {res.minClearFlightWidthMm} mm
+                </span>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                  Landing Width / Depth
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="50"
-                    inputMode="decimal"
-                    value={landingWidthMm}
-                    onChange={(e) => setLandingWidthMm(Math.max(900, Number(e.target.value)))}
-                    className="w-full text-sm font-mono px-3 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                  <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">mm</span>
-                </div>
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="range"
+                  min={850}
+                  max={2400}
+                  step={25}
+                  value={flightWidthMm}
+                  onChange={(e) => {
+                    setActivePresetId('');
+                    setFlightWidthMm(Number(e.target.value));
+                  }}
+                  aria-label="Flight width slider"
+                  className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
+                />
+                <input
+                  type="number"
+                  min={750}
+                  max={3000}
+                  step={25}
+                  value={flightWidthMm}
+                  onChange={(e) => setFlightWidthMm(Math.max(750, Number(e.target.value) || 1150))}
+                  className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
+                />
               </div>
             </div>
+          </div>
 
-            {/* Structural Loads */}
-            <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-              <span className="text-[11px] font-bold uppercase text-[var(--md-sys-color-on-surface-variant)] block mb-2">
-                Design Live &amp; Finishes Loading
-              </span>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    Live Load (kN/m²)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    inputMode="decimal"
-                    value={liveLoadKpa}
-                    onChange={(e) => setLiveLoadKpa(Math.max(1.5, Number(e.target.value)))}
-                    className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    Finishes (kN/m²)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    inputMode="decimal"
-                    value={finishesLoadKpa}
-                    onChange={(e) => setFinishesLoadKpa(Math.max(0.5, Number(e.target.value)))}
-                    className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
-                  />
-                </div>
-              </div>
+          {/* Secondary Dimensions Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-[var(--md-sys-color-outline-variant)] text-xs font-mono">
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Landing Depth (mm)
+              </label>
+              <input
+                type="number"
+                step={50}
+                value={landingWidthMm}
+                onChange={(e) => setLandingWidthMm(Math.max(800, Number(e.target.value) || 1000))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Waist Slab tw (mm)
+              </label>
+              <input
+                type="number"
+                step={10}
+                value={waistSlabMm}
+                onChange={(e) => setWaistSlabMm(Math.max(100, Number(e.target.value) || 150))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Well Gap (mm)
+              </label>
+              <input
+                type="number"
+                step={50}
+                disabled={stairTopology === 'straight-flight'}
+                value={wellGapMm}
+                onChange={(e) => setWellGapMm(Math.max(50, Number(e.target.value) || 150))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Handrail H (mm)
+              </label>
+              <input
+                type="number"
+                step={25}
+                value={handrailHeightMm}
+                onChange={(e) => setHandrailHeightMm(Math.max(700, Number(e.target.value) || 950))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Stairwell L (mm)
+              </label>
+              <input
+                type="number"
+                step={100}
+                value={stairwellLengthMm}
+                onChange={(e) => setStairwellLengthMm(Math.max(2000, Number(e.target.value) || 4000))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Stairwell W (mm)
+              </label>
+              <input
+                type="number"
+                step={100}
+                value={stairwellWidthMm}
+                onChange={(e) => setStairwellWidthMm(Math.max(1000, Number(e.target.value) || 2400))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
+              />
+            </div>
+          </div>
+
+          {/* Loads Row */}
+          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[var(--md-sys-color-outline-variant)] text-xs font-mono">
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Live Load q_L (kN/m²)
+              </label>
+              <input
+                type="number"
+                step={0.5}
+                value={liveLoadKpa}
+                onChange={(e) => setLiveLoadKpa(Math.max(1.5, Number(e.target.value) || 3.0))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                Finishes Load (kN/m²)
+              </label>
+              <input
+                type="number"
+                step={0.25}
+                value={finishesLoadKpa}
+                onChange={(e) => setFinishesLoadKpa(Math.max(0.25, Number(e.target.value) || 1.0))}
+                className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
+              />
             </div>
           </div>
         </div>
 
-        {/* Right Column: Key Ergonomic Metrics, Live 2D Diagram & Compliance Checks */}
+        {/* Right Column: KPIs, Live Dual Schematics (Elevation + Plan), and Step-by-Step Panel */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Top Metric Cards */}
+          {/* Tabular KPI Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/20">
-              <span className="text-[11px] font-mono text-sky-700 dark:text-sky-300 block">Total Risers</span>
-              <div className="text-xl md:text-2xl font-bold font-mono text-sky-900 dark:text-sky-100 mt-0.5">
-                {calc.totalRisers} <span className="text-xs font-normal">nos</span>
+            <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)]">
+                Risers &amp; Steps
               </div>
-              <span className="text-[10px] text-slate-500 block mt-0.5">
-                Exact R = {calc.actualRiserMm.toFixed(1)} mm
-              </span>
+              <div className="text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-primary)] mt-0.5">
+                {res.totalRisers} <span className="text-xs font-normal">({res.risersPerFlight.join('+')})</span>
+              </div>
+              <div className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                R={res.actualRiserMm.toFixed(1)} · T={res.actualTreadMm} mm
+              </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-              <span className="text-[11px] font-mono text-amber-700 dark:text-amber-300 block">Pitch Angle (θ)</span>
-              <div className="text-xl md:text-2xl font-bold font-mono text-amber-900 dark:text-amber-100 mt-0.5">
-                {calc.stairPitchDeg.toFixed(1)}°
+            <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)]">
+                Blondel Laws
               </div>
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-0.5 font-medium">
-                {calc.pitchStatus} (25°-38°)
-              </span>
+              <div className="text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)] mt-0.5">
+                {res.blondelValue.toFixed(0)} <span className="text-xs font-normal">mm</span>
+              </div>
+              <div className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                R+T={res.safetyIndex.toFixed(0)} · R×T={res.comfortProduct.toLocaleString()}
+              </div>
             </div>
 
-            <div
-              className={`p-3.5 rounded-2xl border ${
-                calc.blondelStatus === 'OPTIMUM'
-                  ? 'bg-emerald-500/10 border-emerald-500/20'
-                  : 'bg-amber-500/10 border-amber-500/20'
-              }`}
-            >
-              <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300 block">Blondel (2R + T)</span>
-              <div className="text-xl md:text-2xl font-bold font-mono text-emerald-900 dark:text-emerald-100 mt-0.5">
-                {calc.blondelValue.toFixed(0)} <span className="text-xs font-normal">mm</span>
+            <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)]">
+                Slope &amp; Headroom
               </div>
-              <span className="text-[10px] font-medium block mt-0.5 text-emerald-600 dark:text-emerald-400">
-                {calc.blondelStatus} (600-630)
-              </span>
+              <div className="text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)] mt-0.5">
+                {res.stairPitchDeg.toFixed(1)}°
+              </div>
+              <div className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                Clear {res.estimatedHeadroomMm} mm ({res.headroomStatus})
+              </div>
             </div>
 
-            <div
-              className={`p-3.5 rounded-2xl border ${
-                calc.headroomStatus === 'PASS'
-                  ? 'bg-teal-500/10 border-teal-500/20'
-                  : 'bg-rose-500/10 border-rose-500/20'
-              }`}
-            >
-              <span className="text-[11px] font-mono text-teal-700 dark:text-teal-300 block">Headroom Clearance</span>
-              <div className="text-xl md:text-2xl font-bold font-mono text-teal-900 dark:text-teal-100 mt-0.5">
-                {calc.estimatedHeadroomMm.toFixed(0)} <span className="text-xs font-normal">mm</span>
+            <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface-variant)]">
+                Story Takeoff (1 Flr)
               </div>
-              <span className="text-[10px] font-medium block mt-0.5 text-teal-600 dark:text-teal-400">
-                {calc.headroomStatus} (≥ 2150 mm)
-              </span>
-            </div>
-          </div>
-
-          {/* Live 2D Cross-Section SVG Diagram */}
-          <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-4 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-sky-500" />
-                <span>Live 2D Cross-Section &amp; Dimension Envelope</span>
-              </span>
-              <span className="text-[11px] font-mono text-sky-600 dark:text-sky-400">
-                Scale ~ 1:12 · Flight 1 Elevation
-              </span>
-            </div>
-
-            {renderCrossSection()}
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-[var(--md-sys-color-outline-variant)]">
-              <span>Going: {calc.goingLengthMm} mm ({formatFeetInches(calc.goingLengthMm / 1000, { isMeters: true })})</span>
-              <span>•</span>
-              <span>Waist: {calc.waistInclinedLengthMm.toFixed(0)} mm ({formatFeetInches(calc.waistInclinedLengthMm / 1000, { isMeters: true })})</span>
-              <span>•</span>
-              <span>
-                Required: {calc.totalGoingRequiredMm} mm ({formatFeetInches(calc.totalGoingRequiredMm / 1000, { isMeters: true })}) | Well: {formatFeetInches(stairwellLengthMm / 1000, { isMeters: true })}
-              </span>
-            </div>
-          </div>
-
-          {/* Architectural Ergonomic Assessment Breakdown */}
-          <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-4 shadow-xs space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Ergonomic &amp; Code Compliance Verifications</span>
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] space-y-1">
-                <span className="text-[10px] uppercase font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                  Comfort Formula (Blondel)
-                </span>
-                <div className="text-sm font-bold font-mono text-[var(--md-sys-color-on-surface)]">
-                  2R + T = {calc.blondelValue.toFixed(1)} mm
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  Target: 600 - 630 mm. Matches natural human gait walking cadence.
-                </p>
+              <div className="text-xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {res.totalConcreteM3} <span className="text-xs font-normal">m³</span>
               </div>
-
-              <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] space-y-1">
-                <span className="text-[10px] uppercase font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                  Safety Formula
-                </span>
-                <div className="text-sm font-bold font-mono text-[var(--md-sys-color-on-surface)]">
-                  R + T = {calc.safetyIndex.toFixed(1)} mm
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  Target: 430 - 460 mm. Prevents tripping and heel slip during descent.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-[var(--md-sys-color-surface-container)] space-y-1">
-                <span className="text-[10px] uppercase font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                  Structural Loading (w_u)
-                </span>
-                <div className="text-sm font-bold font-mono text-[var(--md-sys-color-on-surface)]">
-                  {calc.factoredLoadKpa.toFixed(2)} kN/m²
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  1.2 Dead ({calc.deadLoadKpa.toFixed(2)} kPa) + 1.6 Live ({liveLoadKpa} kPa).
-                </p>
+              <div className="text-[10px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                Formwork: {res.totalFormworkM2} m² · wu={res.factoredLoadKpa} kPa
               </div>
             </div>
           </div>
+
+          {/* View Mode Switcher: Live Schematics vs Step-by-Step Derivations */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setViewMode('schematics')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+                  viewMode === 'schematics'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                    : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Elevation &amp; Plan Footprint CAD</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMode('steps')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+                  viewMode === 'steps'
+                    ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                    : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+                }`}
+              >
+                <BookOpenCheck className="w-3.5 h-3.5" />
+                <span>Step-by-Step Derivation ({envelope.handCalculationSteps?.length || 0})</span>
+              </button>
+            </div>
+
+            <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+              {res.topologyLabel}
+            </span>
+          </div>
+
+          {viewMode === 'steps' ? (
+            <StepByStepPanel
+              moduleTitle="Staircase Ergonomics & BNBC Part 4 Egress"
+              steps={envelope.handCalculationSteps}
+              scopeAndLimits={envelope.scopeAndLimits}
+            />
+          ) : (
+            <div className="space-y-4">
+              {/* Dual Interactive SVG Schematics */}
+              <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
+                    1. Sectional Elevation View (Waist Slab, Slope &amp; Headroom)
+                  </span>
+                  <span className="text-[var(--md-sys-color-primary)]">
+                    Inclined Waist: {res.inclinedLengthsMm[0]} mm
+                  </span>
+                </div>
+                {renderSectionalElevation()}
+              </div>
+
+              <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
+                    2. Architectural Plan Footprint ({res.topologyLabel})
+                  </span>
+                  <span className={res.stairwellFitPass ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-600 font-bold'}>
+                    {res.stairwellFitPass ? 'FITS STAIRWELL' : 'EXCEEDS STAIRWELL'}
+                  </span>
+                </div>
+                {renderPlanFootprint()}
+              </div>
+
+              {/* Active Egress / Structural Summary Footer */}
+              <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-4 space-y-2.5">
+                <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <span>BNBC Part 4 Egress &amp; BOQ Volume Breakdown</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono tabular-nums">
+                  <div className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)]">Clear Width &amp; Landing</div>
+                    <div className="font-bold mt-0.5">Wf={res.flightWidthMm} · Land={res.landingWidthMm}mm</div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                      Min {res.minClearFlightWidthMm}mm · Max {res.maxRisersPerFlightLimit}R/flight
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)]">RCC Concrete (1 Story)</div>
+                    <div className="font-bold mt-0.5">{res.totalConcreteM3} m³</div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                      Waist {res.waistConcreteM3} + Steps {res.stepsConcreteM3} + Land {res.landingConcreteM3}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]">
+                    <div className="text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)]">Formwork Shuttering</div>
+                    <div className="font-bold mt-0.5">{res.totalFormworkM2} m²</div>
+                    <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                      Soffit {res.soffitFormworkM2} + Risers {res.riserFormworkM2} + Edge {res.edgeFormworkM2}
+                    </div>
+                  </div>
+                </div>
+
+                {envelope.issues.length > 0 && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] font-mono text-amber-800 dark:text-amber-200 space-y-1">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Active Design Advisories ({envelope.issues.length})</span>
+                    </div>
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      {envelope.issues.map((iss, idx) => (
+                        <li key={idx}>{iss.message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

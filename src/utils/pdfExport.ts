@@ -753,28 +753,28 @@ function extractModuleOutputs(
 
     case 'concrete-materials':
       return [
-        { label: 'Total Dry Mortar Volume V_dry', value: result.dryVolumeM3?.toFixed(2) || '0.00', unit: 'm³', status: 'pass' },
-        { label: 'Portland Cement Demand', value: result.cementBags?.toFixed(1) || '0.0', unit: 'bags (50kg)', status: 'pass' },
+        { label: 'Total Dry Volume V_dry', value: (result.totalDryVolumeWithWastageM3 ?? result.dryVolumeM3)?.toFixed(2) || '0.00', unit: 'm³', status: 'pass' },
+        { label: 'Portland Cement Demand', value: (result.cementBags50Kg ?? result.cementBags)?.toFixed(1) || '0.0', unit: 'bags (50kg)', status: 'pass' },
         { label: 'Fine Aggregate Sand Volume', value: result.sandCft?.toFixed(1) || '0.0', unit: 'cft', status: 'pass' },
-        { label: 'Coarse Aggregate Stone Volume', value: result.aggregateCft?.toFixed(1) || '0.0', unit: 'cft', status: 'pass' },
-        { label: 'Potable Water Requirement', value: result.waterLiters?.toFixed(0) || '0', unit: 'Liters', status: 'pass' },
+        { label: 'Coarse Aggregate Volume', value: result.aggregateCft?.toFixed(1) || '0.0', unit: 'cft', status: 'pass' },
+        { label: 'Potable Water Requirement', value: (result.waterDemandLiters ?? result.waterLiters)?.toFixed(0) || '0', unit: 'Liters', status: 'pass' },
       ];
 
     case 'rebar-bbs':
       return [
-        { label: 'Total Rebar Reinforcement Mass', value: result.totalWeightKg?.toFixed(2) || '0.00', unit: 'kg', status: 'pass' },
-        { label: 'Total Structural Metric Tonnes', value: ((result.totalWeightKg || 0) / 1000)?.toFixed(3), unit: 'Tonnes', status: 'pass' },
-        { label: 'Total Straight & Bent Cut Length', value: result.totalCuttingLengthM?.toFixed(2) || '0.00', unit: 'm', status: 'pass' },
-        { label: 'Identified Bar Mark Types', value: result.schedule?.length || 0, unit: 'marks', status: 'pass' },
+        { label: 'Total Rebar Reinforcement Mass', value: (result.totalSteelWeightKg ?? result.totalWeightKg)?.toFixed(2) || '0.00', unit: 'kg', status: 'pass' },
+        { label: 'Total Structural Metric Tonnes', value: (result.totalSteelTonnes ?? ((result.totalSteelWeightKg ?? result.totalWeightKg ?? 0) / 1000))?.toFixed(3), unit: 'Tonnes', status: 'pass' },
+        { label: 'Total Straight & Bent Cut Length', value: (result.totalBarsLengthM ?? result.totalCuttingLengthM)?.toFixed(2) || '0.00', unit: 'm', status: 'pass' },
+        { label: 'Identified Bar Mark Types', value: result.items?.length ?? result.schedule?.length ?? 0, unit: 'marks', status: 'pass' },
       ];
 
     case 'masonry-finishes':
       return [
-        { label: 'Modular Facing Bricks Count', value: result.totalBricksCount?.toLocaleString() || '0', unit: 'nos', status: 'pass' },
-        { label: 'Mortar Cement Consumption', value: result.mortarCementBags?.toFixed(1) || '0.0', unit: 'bags', status: 'pass' },
+        { label: 'Bricks Count (With Wastage)', value: (result.bricksWithWastageCount ?? result.totalBricksCount)?.toLocaleString() || '0', unit: 'nos', status: 'pass' },
+        { label: 'Mortar Cement Consumption', value: (result.mortarCementBags50Kg ?? result.mortarCementBags)?.toFixed(1) || '0.0', unit: 'bags', status: 'pass' },
         { label: 'Mortar Sand Consumption', value: result.mortarSandCft?.toFixed(1) || '0.0', unit: 'cft', status: 'pass' },
-        { label: 'Plaster Surface Area Net', value: result.netPlasterAreaM2?.toFixed(2) || '0.00', unit: 'm²', status: 'pass' },
-        { label: 'Floor Ceramic Tiles Required', value: result.totalFloorTiles?.toLocaleString() || '0', unit: 'nos', status: 'pass' },
+        { label: 'Plaster Surface Area Net', value: (result.plasterAreaM2 ?? result.netPlasterAreaM2)?.toFixed(2) || '0.00', unit: 'm²', status: 'pass' },
+        { label: 'Floor Ceramic Tiles Required', value: (result.tilesWithWastageCount ?? result.totalFloorTiles)?.toLocaleString() || '0', unit: 'nos', status: 'pass' },
       ];
 
     case 'earthwork-alignment':

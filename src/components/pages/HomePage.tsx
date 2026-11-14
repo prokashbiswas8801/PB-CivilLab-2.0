@@ -33,8 +33,9 @@ import {
   Wallet,
   ScrollText,
   AlertTriangle,
+  Sun,
 } from 'lucide-react';
-import { EngineeringModuleId, CivilWorkspace } from '../../types/civil';
+import { EngineeringModuleId, CivilWorkspace, ArchitectureTab } from '../../types/civil';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { useWorkbench } from '../../context/WorkbenchContext';
 import { TOOL_REGISTRY, ToolRegistryEntry } from '../../data/toolRegistry';
@@ -48,7 +49,7 @@ export interface HomePageProps {
   onOpenNewWorkspace: () => void;
   onOpenWorkspaceManager: () => void;
   onOpenProfileModal?: (tab?: 'profile' | 'preferences' | 'presets') => void;
-  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab: ArchitectureTab) => void;
   onOpenCadModal?: (tab: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
   onOpenPrintPreview?: () => void;
@@ -314,6 +315,16 @@ export const HomePage: React.FC<HomePageProps> = ({
           icon: DropletsIcon,
           modalType: 'architecture',
           modalTab: 'septictank',
+        },
+        {
+          id: 'architecture-services',
+          shortCode: 'ARC-05',
+          title: 'Rainwater Harvesting, Daylight & Ventilation Planner',
+          description: 'Monsoon rainwater cistern sizing & BNBC Part 3 habitable room area, window daylight (≥10–15%) & ventilation compliance.',
+          standardUsed: 'BNBC Part 3 & Part 8 §5.6',
+          icon: Sun,
+          modalType: 'architecture',
+          modalTab: 'services',
         },
       ],
     },

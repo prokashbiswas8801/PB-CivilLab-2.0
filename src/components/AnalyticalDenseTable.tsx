@@ -378,12 +378,18 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <td className={`${cellPadding} text-center`}>Sand ratio</td>
                 </tr>
                 <tr>
-                  <td className={`${cellPadding} font-semibold`}>Coarse Aggregate (Stone / Shingles)</td>
+                  <td className={`${cellPadding} font-semibold`}>
+                    Coarse Aggregate ({matRes.coarseAggregateType === 'brick-shingles' ? 'Picked Jhama Brick Khoa' : matRes.coarseAggregateType === 'gravel' ? 'Natural Gravel' : 'Crushed Stone'})
+                  </td>
                   <td className={`${cellPadding} text-right font-bold`}>{matRes.aggregateVolumeM3.toFixed(3)}</td>
                   <td className={`${cellPadding} text-right font-bold text-blue-600 dark:text-blue-400`}>{matRes.aggregateCft.toFixed(1)} cft</td>
                   <td className={`${cellPadding} text-right`}>{matRes.aggregateMassKg.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-center`}>Bulk Density: 1520 kg/m³</td>
-                  <td className={`${cellPadding} text-center`}>Stone ratio</td>
+                  <td className={`${cellPadding} text-center`}>
+                    {matRes.jhamaBricksForKhoa && matRes.jhamaBricksForKhoa > 0
+                      ? `~${matRes.jhamaBricksForKhoa.toLocaleString()} Jhama Bricks (320/m³)`
+                      : `Bulk Density: ${activeWorkspace.concreteMaterials.aggregateBulkDensityKgPerM3 || 1520} kg/m³`}
+                  </td>
+                  <td className={`${cellPadding} text-center`}>Coarse ratio</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Effective Mixing Water Demand</td>
@@ -396,7 +402,10 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <td className={`${cellPadding} text-center`}>w/c ratio</td>
                 </tr>
                 <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold">
-                  <td className={cellPadding}>Batch Total (Wet: {matRes.wetVolumeM3.toFixed(2)} m³ · Dry Factor: {matRes.dryVolumeFactor})</td>
+                  <td className={cellPadding}>
+                    Batch Total (Wet: {matRes.wetVolumeM3.toFixed(2)} m³ · Dry: {matRes.dryVolumeFactor}
+                    {matRes.batchedMembersCount ? ` · ${matRes.batchedMembersCount} elements` : ''})
+                  </td>
                   <td className={`${cellPadding} text-right font-black`}>{matRes.totalDryVolumeWithWastageM3.toFixed(3)} m³</td>
                   <td className={`${cellPadding} text-right font-black`}>{(matRes.totalDryVolumeWithWastageM3 * 35.314667).toFixed(1)} cft</td>
                   <td className={`${cellPadding} text-right font-black`}>{(matRes.cementMassKg + matRes.sandMassKg + matRes.aggregateMassKg).toFixed(0)} kg</td>
@@ -492,7 +501,19 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
               <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
                 {bbsRes.items.map((it, idx) => (
                   <tr key={idx} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
-                    <td className={`${cellPadding} font-semibold`}>{it.description}</td>
+                    <td className={`${cellPadding} font-semibold`}>
+                      {it.barMark && (
+                        <span className="inline-block mr-1.5 font-mono text-[10px] font-bold text-[var(--md-sys-color-primary)]">
+                          [{it.barMark}]
+                        </span>
+                      )}
+                      {it.description}
+                      {it.requiresLapSplice && (
+                        <span className="block text-[10px] font-mono text-[var(--md-sys-color-error)]">
+                          &gt;12m stock limit: {it.lapsCount} lap splice (+{(it.lappingAllowanceM || 0).toFixed(2)} m) included
+                        </span>
+                      )}
+                    </td>
                     <td className={`${cellPadding} text-center font-bold text-[var(--md-sys-color-primary)]`}>{it.barDiaMm} mm</td>
                     <td className={`${cellPadding} text-center`}>{it.count}</td>
                     <td className={`${cellPadding} text-right`}>{it.cuttingLengthM.toFixed(3)}</td>
@@ -503,7 +524,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 ))}
                 <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold">
                   <td className={cellPadding} colSpan={4}>
-                    BBS Cumulative Tonnage ({bbsRes.items.length} Mark Entries)
+                    BBS Cumulative Tonnage ({bbsRes.items.length} Mark Entries{bbsRes.elementQuantity && bbsRes.elementQuantity > 1 ? ` · ×${bbsRes.elementQuantity} units` : ''})
                   </td>
                   <td className={`${cellPadding} text-right font-black`}>{bbsRes.totalBarsLengthM.toFixed(1)} m</td>
                   <td className={`${cellPadding} text-right font-black`}>—</td>
@@ -566,6 +587,32 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <td className={`${cellPadding} text-center`}>{masRes.singleTileAreaM2.toFixed(4)} m²/tile</td>
                   <td className={`${cellPadding} text-center`}>Tile Adhesive</td>
                 </tr>
+                {masRes.paintPuttySchedule && masRes.paintPuttySchedule.finishingSurfaceAreaM2 > 0 && (
+                  <tr>
+                    <td className={`${cellPadding} font-semibold`}>Wall Putty, Primer &amp; Paint ({masRes.paintPuttySchedule.paintCoats} Coats)</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{masRes.paintPuttySchedule.finishingSurfaceAreaM2.toFixed(2)} m²</td>
+                    <td className={`${cellPadding} text-right`}>—</td>
+                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>
+                      {masRes.paintPuttySchedule.paintLitersRequired} L ({masRes.paintPuttySchedule.paintGallons} gal)
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      Putty: {masRes.paintPuttySchedule.puttyKgRequired} kg · Primer: {masRes.paintPuttySchedule.primerLitersRequired} L
+                    </td>
+                    <td className={`${cellPadding} text-center`}>{masRes.paintPuttySchedule.paintDrums} drums</td>
+                  </tr>
+                )}
+                {masRes.jhamaKhoaSchedule && masRes.jhamaKhoaSchedule.concreteVolumeM3 > 0 && (
+                  <tr>
+                    <td className={`${cellPadding} font-semibold`}>Picked Jhama Brick Khoa ({masRes.jhamaKhoaSchedule.concreteVolumeM3.toFixed(2)} m³ CC)</td>
+                    <td className={`${cellPadding} text-right`}>—</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{masRes.jhamaKhoaSchedule.concreteVolumeM3.toFixed(2)} m³</td>
+                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-tertiary)]`}>
+                      {masRes.jhamaKhoaSchedule.bricksWithWastageCount.toLocaleString()} Jhama bricks
+                    </td>
+                    <td className={`${cellPadding} text-center`}>{masRes.jhamaKhoaSchedule.khoaCft.toFixed(1)} cft khoa</td>
+                    <td className={`${cellPadding} text-center`}>320 bricks/m³</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -576,43 +623,94 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
       {activeModule === 'earthwork-alignment' && (() => {
         const earthRes = result as EarthworkResult;
         return (
-          <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
-                  <th className={cellPadding}>Earthwork State Phase</th>
-                  <th className={`${cellPadding} text-right`}>Volume (m³)</th>
-                  <th className={`${cellPadding} text-right`}>Volume (CFT)</th>
-                  <th className={`${cellPadding} text-center`}>Geotechnical Factor</th>
-                  <th className={`${cellPadding} text-center`}>Jobsite Haul Trips</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
-                <tr>
-                  <td className={`${cellPadding} font-semibold`}>In-Situ Natural Bank Volume (Cut/Fill)</td>
-                  <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{earthRes.bankVolumeM3.toFixed(2)} m³</td>
-                  <td className={`${cellPadding} text-right`}>{(earthRes.bankVolumeM3 * 35.314667).toFixed(1)} cft</td>
-                  <td className={`${cellPadding} text-center`}>In-Situ Invariable</td>
-                  <td className={`${cellPadding} text-center`}>Excavator Trench</td>
-                </tr>
-                <tr>
-                  <td className={`${cellPadding} font-semibold`}>Loose Bulked Haul Volume</td>
-                  <td className={`${cellPadding} text-right font-bold text-amber-600 dark:text-amber-400`}>{earthRes.looseVolumeM3.toFixed(2)} m³</td>
-                  <td className={`${cellPadding} text-right`}>{(earthRes.looseVolumeM3 * 35.314667).toFixed(1)} cft</td>
-                  <td className={`${cellPadding} text-center`}>Swell: +{((earthRes.swellFactor - 1) * 100).toFixed(0)}%</td>
-                  <td className={`${cellPadding} text-center font-bold text-amber-700 dark:text-amber-300`}>
-                    {earthRes.haulTruckTripsCount10M3} loads (10m³ truck)
-                  </td>
-                </tr>
-                <tr>
-                  <td className={`${cellPadding} font-semibold`}>Compacted Embankment Volume</td>
-                  <td className={`${cellPadding} text-right font-bold text-emerald-600 dark:text-emerald-400`}>{earthRes.compactedVolumeM3.toFixed(2)} m³</td>
-                  <td className={`${cellPadding} text-right`}>{(earthRes.compactedVolumeM3 * 35.314667).toFixed(1)} cft</td>
-                  <td className={`${cellPadding} text-center`}>Shrinkage: {earthRes.shrinkageFactor * 100}%</td>
-                  <td className={`${cellPadding} text-center`}>Roller Compactor</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="space-y-4">
+            <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                    <th className={cellPadding}>Earthwork State Phase</th>
+                    <th className={`${cellPadding} text-right`}>Volume (m³)</th>
+                    <th className={`${cellPadding} text-right`}>Volume (CFT)</th>
+                    <th className={`${cellPadding} text-center`}>Geotechnical Factor</th>
+                    <th className={`${cellPadding} text-center`}>Jobsite Haul Trips</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                  <tr>
+                    <td className={`${cellPadding} font-sans font-semibold`}>In-Situ Natural Bank Volume (Cut/Borrow)</td>
+                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{earthRes.bankVolumeM3.toFixed(2)} m³</td>
+                    <td className={`${cellPadding} text-right`}>{(earthRes.bankVolumeM3 * 35.314667).toFixed(1)} cft</td>
+                    <td className={`${cellPadding} text-center`}>In-Situ Invariable</td>
+                    <td className={`${cellPadding} text-center`}>Excavator / Borrow</td>
+                  </tr>
+                  <tr>
+                    <td className={`${cellPadding} font-sans font-semibold`}>Loose Bulked Haul Volume</td>
+                    <td className={`${cellPadding} text-right font-bold text-amber-600 dark:text-amber-400`}>{earthRes.looseVolumeM3.toFixed(2)} m³</td>
+                    <td className={`${cellPadding} text-right`}>{(earthRes.looseVolumeM3 * 35.314667).toFixed(1)} cft</td>
+                    <td className={`${cellPadding} text-center`}>Swell: +{((earthRes.swellFactor - 1) * 100).toFixed(0)}%</td>
+                    <td className={`${cellPadding} text-center font-bold text-amber-700 dark:text-amber-300`}>
+                      {earthRes.haulTruckTripsCount10M3} loads ({earthRes.haulTruckCapacityM3 || 10}m³ truck)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className={`${cellPadding} font-sans font-semibold`}>Compacted Embankment Volume</td>
+                    <td className={`${cellPadding} text-right font-bold text-emerald-600 dark:text-emerald-400`}>{earthRes.compactedVolumeM3.toFixed(2)} m³</td>
+                    <td className={`${cellPadding} text-right`}>{(earthRes.compactedVolumeM3 * 35.314667).toFixed(1)} cft</td>
+                    <td className={`${cellPadding} text-center`}>Shrinkage: {(earthRes.shrinkageFactor * 100).toFixed(0)}%</td>
+                    <td className={`${cellPadding} text-center`}>Roller Compactor</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {earthRes.stationSchedule && earthRes.stationSchedule.length >= 2 && (
+              <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
+                <div className="px-3 py-2 bg-[var(--md-sys-color-surface-container-low)] border-b border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-bold text-[var(--md-sys-color-on-surface)]">
+                    Multi-Station Chainage Cut/Fill &amp; Mass-Haul Schedule ({earthRes.stationSchedule.length} Stations)
+                  </span>
+                  <span className="font-mono text-[11px] text-[var(--md-sys-color-primary)]">
+                    Net Balance: {(earthRes.netMassHaulBalanceM3 ?? 0) >= 0 ? `+${(earthRes.surplusCutBankM3 || 0).toFixed(1)} m³ Surplus Cut` : `-${(earthRes.borrowFillBankM3 || 0).toFixed(1)} m³ Borrow Required`}
+                  </span>
+                </div>
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
+                      <th className={cellPadding}>Chainage</th>
+                      <th className={`${cellPadding} text-right`}>Cut (m)</th>
+                      <th className={`${cellPadding} text-right`}>Fill (m)</th>
+                      <th className={`${cellPadding} text-right`}>A_cut (m²)</th>
+                      <th className={`${cellPadding} text-right`}>A_fill (m²)</th>
+                      <th className={`${cellPadding} text-right`}>Seg L (m)</th>
+                      <th className={`${cellPadding} text-right`}>Seg Cut (P / EA)</th>
+                      <th className={`${cellPadding} text-right`}>Seg Fill (P / EA)</th>
+                      <th className={`${cellPadding} text-right`}>Cum. Cut (m³)</th>
+                      <th className={`${cellPadding} text-right`}>Cum. Fill (m³)</th>
+                      <th className={`${cellPadding} text-right`}>Mass-Haul (m³)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
+                    {earthRes.stationSchedule.map((st) => (
+                      <tr key={st.id}>
+                        <td className={`${cellPadding} font-bold`}>Ch {st.chainageM.toFixed(0)}m</td>
+                        <td className={`${cellPadding} text-right text-amber-600 dark:text-amber-400`}>{st.cutDepthM.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right text-emerald-600 dark:text-emerald-400`}>{st.fillHeightM.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right`}>{st.cutAreaM2.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right`}>{st.fillAreaM2.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right`}>{st.segmentLengthM.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right`}>{st.segmentCutPrismoidalM3.toFixed(1)} / {st.segmentCutEndAreaM3.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right`}>{st.segmentFillPrismoidalM3.toFixed(1)} / {st.segmentFillEndAreaM3.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right font-semibold`}>{st.cumCutBankM3.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right font-semibold`}>{st.cumFillCompactedM3.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right font-bold ${st.cumMassHaulBalanceM3 >= 0 ? 'text-sky-600 dark:text-sky-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {st.cumMassHaulBalanceM3 >= 0 ? `+${st.cumMassHaulBalanceM3.toFixed(1)}` : st.cumMassHaulBalanceM3.toFixed(1)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         );
       })()}
@@ -740,51 +838,54 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
       {/* 10. RATE ANALYSIS SUMMARY TABLE */}
       {activeModule === 'rate-analysis' && (() => {
         const rateRes = result as RateAnalysisResult;
+        const unitLabel = rateRes.basisUnitLabel || 'm³';
+        const subUnitLabel = unitLabel === 'm²' ? 'SFT' : unitLabel === 'Ton' ? 'kg' : 'CFT';
+        const subUnitVal = unitLabel === 'Ton' ? rateRes.unitRatePerM3 / 1000 : rateRes.unitRatePerCft;
         return (
           <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
-            <table className="w-full border-collapse text-left">
+            <table className="w-full border-collapse text-left font-mono tabular-nums">
               <thead>
                 <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
                   <th className={cellPadding}>Trade Cost Center</th>
                   <th className={`${cellPadding} text-right`}>Subtotal ({rateRes.currencySymbol})</th>
                   <th className={`${cellPadding} text-right`}>Cost Share (%)</th>
-                  <th className={`${cellPadding} text-center`}>Unit Rate per m³</th>
-                  <th className={`${cellPadding} text-center`}>Unit Rate per CFT</th>
+                  <th className={`${cellPadding} text-center`}>Rate per {unitLabel}</th>
+                  <th className={`${cellPadding} text-center`}>Rate per {subUnitLabel}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]">
                 <tr>
-                  <td className={`${cellPadding} font-semibold`}>1. Material Procurement Subtotal</td>
+                  <td className={`${cellPadding} font-semibold font-sans`}>1. Material Procurement Subtotal (incl. Wastage)</td>
                   <td className={`${cellPadding} text-right font-bold`}>{rateRes.materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   <td className={`${cellPadding} text-right text-[var(--md-sys-color-primary)]`}>{rateRes.costDistributionPercent.materials}%</td>
                   <td className={`${cellPadding} text-center`}>—</td>
                   <td className={`${cellPadding} text-center`}>—</td>
                 </tr>
                 <tr>
-                  <td className={`${cellPadding} font-semibold`}>2. Direct Labor &amp; Skilled Craftsmanship</td>
+                  <td className={`${cellPadding} font-semibold font-sans`}>2. Direct Labor &amp; Skilled Craftsmanship</td>
                   <td className={`${cellPadding} text-right font-bold`}>{rateRes.laborsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   <td className={`${cellPadding} text-right text-amber-600 dark:text-amber-400`}>{rateRes.costDistributionPercent.labor}%</td>
                   <td className={`${cellPadding} text-center`}>—</td>
                   <td className={`${cellPadding} text-center`}>—</td>
                 </tr>
                 <tr>
-                  <td className={`${cellPadding} font-semibold`}>3. Machinery, Mixer &amp; Scaffolding Formwork</td>
+                  <td className={`${cellPadding} font-semibold font-sans`}>3. Machinery, Mixer &amp; Scaffolding Formwork</td>
                   <td className={`${cellPadding} text-right font-bold`}>{rateRes.equipmentCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   <td className={`${cellPadding} text-right text-blue-600 dark:text-blue-400`}>{rateRes.costDistributionPercent.equipment}%</td>
                   <td className={`${cellPadding} text-center`}>—</td>
                   <td className={`${cellPadding} text-center`}>—</td>
                 </tr>
                 <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold border-t-2 border-[var(--md-sys-color-outline)]">
-                  <td className={cellPadding}>Composite Commercial Rate ({rateRes.workDescription})</td>
+                  <td className={`${cellPadding} font-sans`}>Analyzed Composite Rate ({rateRes.workDescription})</td>
                   <td className={`${cellPadding} text-right font-black text-sm text-[var(--md-sys-color-primary)]`}>
                     {rateRes.currencySymbol} {rateRes.grandTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className={`${cellPadding} text-right font-black`}>100.0%</td>
                   <td className={`${cellPadding} text-center font-black text-emerald-600 dark:text-emerald-400`}>
-                    {rateRes.currencySymbol} {rateRes.unitRatePerM3.toFixed(2)}/m³
+                    {rateRes.currencySymbol} {rateRes.unitRatePerM3.toFixed(2)}/{unitLabel}
                   </td>
                   <td className={`${cellPadding} text-center font-black text-cyan-600 dark:text-cyan-400`}>
-                    {rateRes.currencySymbol} {rateRes.unitRatePerCft.toFixed(2)}/cft
+                    {rateRes.currencySymbol} {subUnitVal.toFixed(2)}/{subUnitLabel.toLowerCase()}
                   </td>
                 </tr>
               </tbody>

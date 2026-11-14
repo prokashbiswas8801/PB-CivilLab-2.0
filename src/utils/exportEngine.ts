@@ -2108,6 +2108,20 @@ export function exportEarthworkCSV(
     rows.push(['Prismoidal Correction Factor', 'Volume Delta', result.prismoidalCorrectionM3?.toFixed(2) || '—', 'm^3', 'Correction between methods']);
   }
 
+  if (Array.isArray(result.stationSchedule) && result.stationSchedule.length >= 2) {
+    rows.push([]);
+    rows.push(['MULTI-STATION CHAINAGE CUT/FILL & MASS-HAUL SCHEDULE', '', '', '', '']);
+    for (const st of result.stationSchedule) {
+      rows.push([
+        `Chainage ${st.chainageM}m (Cut ${st.cutDepthM}m / Fill ${st.fillHeightM}m)`,
+        `Seg Cut ${st.segmentCutPrismoidalM3.toFixed(1)} / Seg Fill ${st.segmentFillPrismoidalM3.toFixed(1)}`,
+        st.cumMassHaulBalanceM3.toFixed(2),
+        'm^3 (Net)',
+        `Cum Cut=${st.cumCutBankM3.toFixed(1)} m³, Cum Fill=${st.cumFillCompactedM3.toFixed(1)} m³`,
+      ]);
+    }
+  }
+
   exportToCSV(`${workspace.projectCode || 'BDCL'}_Earthwork_Schedule.csv`, headers, rows, metadata);
 }
 
@@ -2174,4 +2188,600 @@ export function exportModuleCSV(
 
   exportToCSV(`${workspace.projectCode || 'BDCL'}_${moduleId.toUpperCase()}_Schedule.csv`, headers, rows, metadata);
 }
+
+// ============================================================================
+// 6. ARCHITECTURE SUITE CERTIFIED PDF & A4 PRINT SUBMITTAL EXPORTER
+// ============================================================================
+
+export interface ArchitectureSubmittalPayload {
+  tabId: string;
+  tabTitle: string;
+  codeStandard: string;
+  status: 'PASS' | 'WARNING' | 'FAIL';
+  projectName?: string;
+  projectCode?: string;
+  siteLocation?: string;
+  userProfile?: UserProfile;
+  brandLogoSrc?: string;
+  inputs: ReportParameterRow[];
+  dcrSummary: Array<{
+    label: string;
+    demand: string;
+    capacity: string;
+    ratio: number;
+    status: 'PASS' | 'WARNING' | 'FAIL';
+  }>;
+  steps: Array<{
+    stepNumber: number | string;
+    title: string;
+    formula: string;
+    substitution: string;
+    result: string;
+    reasoning?: string;
+  }>;
+  svgElements?: SVGSVGElement[];
+}
+
+export async function captureSvgToPngDataUrl(
+  svgEl: SVGSVGElement
+): Promise<{ dataUrl: string; width: number; height: number } | null> {
+  if (typeof window === 'undefined' || !svgEl) return null;
+  try {
+    const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    const vb = svgEl.viewBox?.baseVal;
+    const rect = svgEl.getBoundingClientRect();
+    const w = vb && vb.width > 0 ? vb.width : Math.max(600, rect.width || 600);
+    const h = vb && vb.height > 0 ? vb.height : Math.max(260, rect.height || 260);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('width', String(w));
+    clone.setAttribute('height', String(h));
+
+    // Ensure dark high-contrast CAD background for SVG captures if relying on CSS vars
+    if (!clone.style.backgroundColor) {
+      clone.style.backgroundColor = '#0f172a';
+    }
+
+    const svgText = new XMLSerializer().serializeToString(clone);
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = (e) => reject(e);
+      image.src = url;
+    });
+
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      URL.revokeObjectURL(url);
+      return null;
+    }
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+
+    return {
+      dataUrl: canvas.toDataURL('image/png'),
+      width: w,
+      height: h,
+    };
+  } catch (err) {
+    console.warn('[Architecture PDF] SVG capture fallback:', err);
+    return null;
+  }
+}
+
+async function loadImageAsPngDataUrl(src: string): Promise<string | null> {
+  if (typeof window === 'undefined' || !src) return null;
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => resolve(image);
+      image.onerror = (e) => reject(e);
+      image.src = src;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(64, img.naturalWidth || 128);
+    canvas.height = Math.max(64, img.naturalHeight || 128);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return null;
+  }
+}
+
+export async function exportArchitectureSubmittalPDF(
+  payload: ArchitectureSubmittalPayload
+): Promise<jsPDF> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 14;
+  const contentWidth = pageWidth - 2 * margin;
+  const docId = generateSubmittalDocRef(new Date().getFullYear());
+  const dateStr = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  // QR stamp
+  let qrDataUrl = '';
+  try {
+    const qrTarget =
+      typeof window !== 'undefined' && window.location?.href
+        ? `${window.location.origin}?arch_doc=${encodeURIComponent(docId)}`
+        : `https://bd-civillab.engine?doc=${encodeURIComponent(docId)}`;
+    qrDataUrl = await QRCode.toDataURL(qrTarget, {
+      margin: 1,
+      width: 140,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#0f172a', light: '#ffffff' },
+    });
+  } catch {
+    qrDataUrl = '';
+  }
+
+  const logoDataUrl = payload.brandLogoSrc
+    ? await loadImageAsPngDataUrl(payload.brandLogoSrc)
+    : null;
+
+  // Header Title Block
+  doc.setFillColor(15, 23, 42);
+  doc.rect(margin, margin, contentWidth, 25, 'F');
+  doc.setFillColor(245, 158, 11); // Amber gold architectural stripe
+  doc.rect(margin, margin + 25, contentWidth, 1.5, 'F');
+
+  let textStartX = margin + 4;
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, 'PNG', margin + 3, margin + 3, 18, 18);
+    textStartX = margin + 24;
+  }
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('BD. CIVILLAB — ARCHITECTURE & BY-LAW SUBMITTAL', textStartX, margin + 8.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text(sanitizeEngineeringSymbols(payload.tabTitle), textStartX, margin + 13.5);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    sanitizeEngineeringSymbols(
+      `REF: ${docId}  |  CODE: ${payload.codeStandard}  |  OVERALL STATUS: ${payload.status}`
+    ),
+    textStartX,
+    margin + 19
+  );
+
+  if (qrDataUrl) {
+    doc.addImage(qrDataUrl, 'PNG', margin + contentWidth - 22.5, margin + 2, 21, 21);
+  }
+
+  // Project & Engineer Credentials Box
+  let yPos = margin + 30;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'FD');
+
+  const engName = payload.userProfile?.fullName || 'Principal Architect / Engineer';
+  const engDesig = payload.userProfile?.designation || 'PE / Architect of Record';
+  const engOrg = payload.userProfile?.organization || 'BD. CivilLab Consultancy';
+  const engLic = payload.userProfile?.licenseNumber || 'RAJUK / IEB / IAB Verified';
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text(
+    sanitizeEngineeringSymbols(`Project: ${payload.projectName || 'Building Development Project'} (${payload.projectCode || 'ARC-01'})`),
+    margin + 4,
+    yPos + 6
+  );
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    sanitizeEngineeringSymbols(`Site Location: ${payload.siteLocation || 'Municipal Jurisdiction'}  |  Date: ${dateStr}`),
+    margin + 4,
+    yPos + 11.5
+  );
+  doc.text(
+    sanitizeEngineeringSymbols(`Prepared By: ${engName} (${engDesig})  |  ${engOrg}  |  Reg: ${engLic}`),
+    margin + 4,
+    yPos + 17
+  );
+
+  yPos += 27;
+
+  // 1. Capture & Embed 2D CAD SVG Diagram(s)
+  if (payload.svgElements && payload.svgElements.length > 0) {
+    for (let sIdx = 0; sIdx < payload.svgElements.length; sIdx++) {
+      const captured = await captureSvgToPngDataUrl(payload.svgElements[sIdx]);
+      if (captured) {
+        const maxImgW = contentWidth;
+        const aspect = captured.height / Math.max(1, captured.width);
+        const renderH = Math.min(72, maxImgW * aspect);
+        const renderW = renderH / aspect;
+        const imgX = margin + (contentWidth - renderW) / 2;
+
+        if (yPos + renderH + 10 > pageHeight - 20) {
+          doc.addPage();
+          yPos = 16;
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(30, 58, 138);
+        doc.text(
+          sIdx === 0
+            ? '1. 2D ARCHITECTURAL / ENGINEERING CAD SCHEMATIC'
+            : `1.${sIdx + 1} SUPPLEMENTARY CAD SCHEMATIC`,
+          margin,
+          yPos
+        );
+        yPos += 2.5;
+
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(margin, yPos, contentWidth, renderH + 3, 1.5, 1.5, 'D');
+        doc.addImage(captured.dataUrl, 'PNG', imgX, yPos + 1.5, renderW, renderH);
+        yPos += renderH + 7;
+      }
+    }
+  }
+
+  // 2. Design Inputs Schedule
+  if (payload.inputs.length > 0) {
+    if (yPos > pageHeight - 40) {
+      doc.addPage();
+      yPos = 16;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text('2. DESIGN INPUT PARAMETERS', margin, yPos);
+    yPos += 2.5;
+
+    autoTable(doc, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [['Parameter', 'Symbol', 'Value', 'Unit', 'Remarks']],
+      body: payload.inputs.map((inp) => [
+        sanitizeEngineeringSymbols(inp.name),
+        sanitizeEngineeringSymbols(inp.symbol),
+        sanitizeEngineeringSymbols(String(inp.value)),
+        sanitizeEngineeringSymbols(inp.unit),
+        sanitizeEngineeringSymbols(inp.notes || '—'),
+      ]),
+      theme: 'grid',
+      styles: { fontSize: 7.5, cellPadding: 1.6, textColor: [15, 23, 42] },
+      headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+  }
+
+  // 3. DCR Compliance Summary
+  if (payload.dcrSummary.length > 0) {
+    if (yPos > pageHeight - 40) {
+      doc.addPage();
+      yPos = 16;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text('3. CODE COMPLIANCE & LIMIT-STATE DCR SUMMARY', margin, yPos);
+    yPos += 2.5;
+
+    autoTable(doc, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [['Compliance Check', 'Demand / Actual', 'Allowable / Limit', 'DCR Ratio', 'Status']],
+      body: payload.dcrSummary.map((d) => [
+        sanitizeEngineeringSymbols(d.label),
+        sanitizeEngineeringSymbols(d.demand),
+        sanitizeEngineeringSymbols(d.capacity),
+        d.ratio.toFixed(2),
+        d.status,
+      ]),
+      theme: 'grid',
+      styles: { fontSize: 7.5, cellPadding: 1.6, textColor: [15, 23, 42] },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+    yPos = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // 4. Step-by-Step Hand Calculation Derivations
+  if (payload.steps.length > 0) {
+    if (yPos > pageHeight - 35) {
+      doc.addPage();
+      yPos = 16;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text('4. STEP-BY-STEP CODE DERIVATIONS & HAND VERIFICATION', margin, yPos);
+    yPos += 4;
+
+    for (const step of payload.steps) {
+      if (yPos + 22 > pageHeight - 22) {
+        doc.addPage();
+        yPos = 16;
+      }
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(margin, yPos, contentWidth, 19, 1.5, 1.5, 'FD');
+      doc.setFillColor(245, 158, 11);
+      doc.rect(margin, yPos, 1.5, 19, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(
+        sanitizeEngineeringSymbols(`[Step ${step.stepNumber}] ${step.title}`),
+        margin + 3.5,
+        yPos + 4.3
+      );
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(30, 58, 138);
+      doc.text(
+        sanitizeEngineeringSymbols(`Formula: ${step.formula}`).slice(0, 108),
+        margin + 3.5,
+        yPos + 8.6
+      );
+
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(6.8);
+      doc.setTextColor(15, 23, 42);
+      doc.text(
+        sanitizeEngineeringSymbols(`Calc: ${step.substitution} -> ${step.result}`).slice(0, 112),
+        margin + 3.5,
+        yPos + 12.6
+      );
+
+      if (step.reasoning) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(6.3);
+        doc.setTextColor(71, 85, 105);
+        doc.text(sanitizeEngineeringSymbols(`Note: ${step.reasoning}`).slice(0, 118), margin + 3.5, yPos + 16.5);
+      }
+
+      yPos += 21;
+    }
+  }
+
+  // Signature Block
+  if (yPos + 28 > pageHeight - 18) {
+    doc.addPage();
+    yPos = 16;
+  }
+  yPos += 2;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(margin, yPos, contentWidth, 24, 1.5, 1.5, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(15, 23, 42);
+  doc.text('CERTIFIED BY (ARCHITECT / ENGINEER OF RECORD)', margin + 4, yPos + 5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(sanitizeEngineeringSymbols(`${engName} · ${engDesig}`), margin + 4, yPos + 10);
+  doc.text(sanitizeEngineeringSymbols(`${engOrg} · Reg: ${engLic}`), margin + 4, yPos + 14.5);
+  doc.text('Signature & Seal: ____________________________   Date: ______________', margin + 4, yPos + 20.5);
+
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(148, 163, 184);
+    doc.line(margin, pageHeight - 9, margin + contentWidth, pageHeight - 9);
+    doc.text(`BD. CivilLab Architecture Submittal  •  Ref: ${docId}`, margin, pageHeight - 6);
+    doc.text(`Page ${i} of ${totalPages}`, margin + contentWidth, pageHeight - 6, { align: 'right' });
+  }
+
+  doc.save(`${payload.projectCode || 'BDCL'}_ARCH_${payload.tabId.toUpperCase()}_${docId}.pdf`);
+  return doc;
+}
+
+export async function printArchitectureSubmittalA4(
+  payload: ArchitectureSubmittalPayload
+): Promise<boolean> {
+  if (typeof document === 'undefined') return false;
+  const printEl = document.getElementById('pb-printable-report');
+  if (!printEl) return false;
+
+  const docId = generateSubmittalDocRef(new Date().getFullYear());
+  const nowStr = new Date().toLocaleString();
+  const engName = payload.userProfile?.fullName || 'Principal Architect / Engineer';
+  const engDesig = payload.userProfile?.designation || 'PE / Architect of Record';
+  const engOrg = payload.userProfile?.organization || 'BD. CivilLab Consultancy';
+  const engLic = payload.userProfile?.licenseNumber || 'RAJUK / IEB Verified';
+
+  let qrDataUrl = '';
+  try {
+    qrDataUrl = await QRCode.toDataURL(`https://civillab.bd/verify?doc=${docId}`, {
+      margin: 1,
+      width: 120,
+      color: { dark: '#0f172a', light: '#ffffff' },
+    });
+  } catch {
+    qrDataUrl = '';
+  }
+
+  const svgHtmlBlocks = (payload.svgElements || [])
+    .map((svg) => {
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute('class', 'w-full max-h-[280px] rounded-lg border border-slate-300 bg-slate-900');
+      return `<div class="my-2 flex justify-center">${clone.outerHTML}</div>`;
+    })
+    .join('');
+
+  const inputRowsHtml = payload.inputs
+    .map(
+      (inp) => `
+      <tr class="border-b border-slate-200">
+        <td class="py-1.5 px-2 font-medium text-slate-800">${inp.name}</td>
+        <td class="py-1.5 px-2 font-mono text-center text-slate-600">${inp.symbol}</td>
+        <td class="py-1.5 px-2 font-mono text-right font-bold text-slate-900">${inp.value}</td>
+        <td class="py-1.5 px-2 font-mono text-center text-slate-600">${inp.unit}</td>
+        <td class="py-1.5 px-2 text-slate-500">${inp.notes || '—'}</td>
+      </tr>`
+    )
+    .join('');
+
+  const dcrRowsHtml = payload.dcrSummary
+    .map(
+      (d) => `
+      <tr class="border-b border-slate-200">
+        <td class="py-1.5 px-2 font-medium text-slate-800">${d.label}</td>
+        <td class="py-1.5 px-2 font-mono text-right">${d.demand}</td>
+        <td class="py-1.5 px-2 font-mono text-right">${d.capacity}</td>
+        <td class="py-1.5 px-2 font-mono text-center font-bold">${d.ratio.toFixed(2)}</td>
+        <td class="py-1.5 px-2 font-mono text-center font-bold ${
+          d.status === 'PASS' ? 'text-emerald-700' : d.status === 'WARNING' ? 'text-amber-700' : 'text-rose-700'
+        }">${d.status}</td>
+      </tr>`
+    )
+    .join('');
+
+  const stepsHtml = payload.steps
+    .map(
+      (s) => `
+      <div class="p-2.5 rounded border border-slate-300 bg-slate-50 text-xs space-y-1 print-avoid-break">
+        <div class="font-bold text-slate-900">[Step ${s.stepNumber}] ${s.title}</div>
+        <div class="font-mono text-blue-900">Formula: ${s.formula}</div>
+        <div class="font-mono text-slate-800">Calc: ${s.substitution} → <strong>${s.result}</strong></div>
+        ${s.reasoning ? `<div class="text-[10px] text-slate-600 italic">${s.reasoning}</div>` : ''}
+      </div>`
+    )
+    .join('');
+
+  printEl.innerHTML = `
+    <div class="space-y-5 font-sans text-slate-900 bg-white p-6 max-w-5xl mx-auto leading-relaxed">
+      <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
+        <div class="flex items-center gap-3.5">
+          ${
+            payload.brandLogoSrc
+              ? `<img src="${payload.brandLogoSrc}" alt="BD. CivilLab" class="w-14 h-14 rounded-xl object-contain border border-slate-300 bg-slate-900 p-1 shrink-0" />`
+              : ''
+          }
+          <div>
+            <div class="text-xl font-black tracking-tight text-slate-900">BD. CivilLab · Architecture Submittal</div>
+            <div class="text-sm font-bold text-amber-700">${payload.tabTitle}</div>
+            <div class="text-[10px] font-mono text-slate-500 mt-0.5">Standard: ${payload.codeStandard} · Status: <strong>${payload.status}</strong></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <div class="text-right text-[11px] font-mono">
+            <div>Doc Ref: <strong>${docId}</strong></div>
+            <div>Printed: ${nowStr}</div>
+          </div>
+          ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Verify QR" class="w-16 h-16 border border-slate-800 rounded p-0.5" />` : ''}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 p-3 bg-slate-50 border border-slate-300 rounded text-xs font-mono print-avoid-break">
+        <div>
+          <div class="text-[9px] uppercase font-bold text-slate-500">Project Identification</div>
+          <div class="font-bold text-slate-900">${payload.projectName || 'Building Development'} [${payload.projectCode || 'ARC'}]</div>
+          <div class="text-slate-600">${payload.siteLocation || 'Municipal Jurisdiction'}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[9px] uppercase font-bold text-slate-500">Prepared & Certified By</div>
+          <div class="font-bold text-slate-900">${engName} (${engDesig})</div>
+          <div class="text-slate-600">${engOrg} · Reg: ${engLic}</div>
+        </div>
+      </div>
+
+      ${
+        svgHtmlBlocks
+          ? `<div class="p-3 border border-slate-300 rounded bg-white print-avoid-break">
+              <div class="text-[11px] font-bold font-mono uppercase text-slate-600 mb-2">1. 2D CAD Architectural / Services Schematic</div>
+              ${svgHtmlBlocks}
+            </div>`
+          : ''
+      }
+
+      <div class="border border-slate-300 rounded p-3 bg-white print-avoid-break">
+        <div class="text-[11px] font-bold font-mono uppercase text-slate-600 mb-2">2. Input Design Parameters</div>
+        <table class="w-full text-[11px] border-collapse">
+          <thead>
+            <tr class="bg-slate-900 text-white text-left">
+              <th class="py-1.5 px-2">Parameter</th>
+              <th class="py-1.5 px-2 text-center">Symbol</th>
+              <th class="py-1.5 px-2 text-right">Value</th>
+              <th class="py-1.5 px-2 text-center">Unit</th>
+              <th class="py-1.5 px-2">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>${inputRowsHtml}</tbody>
+        </table>
+      </div>
+
+      <div class="border border-slate-300 rounded p-3 bg-white print-avoid-break">
+        <div class="text-[11px] font-bold font-mono uppercase text-slate-600 mb-2">3. Code Compliance &amp; DCR Summary</div>
+        <table class="w-full text-[11px] border-collapse">
+          <thead>
+            <tr class="bg-slate-800 text-white text-left">
+              <th class="py-1.5 px-2">Compliance Check</th>
+              <th class="py-1.5 px-2 text-right">Demand / Actual</th>
+              <th class="py-1.5 px-2 text-right">Allowable Limit</th>
+              <th class="py-1.5 px-2 text-center">DCR</th>
+              <th class="py-1.5 px-2 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody>${dcrRowsHtml}</tbody>
+        </table>
+      </div>
+
+      <div class="space-y-2">
+        <div class="text-[11px] font-bold font-mono uppercase text-slate-600">4. Step-by-Step Hand Calculation Derivations</div>
+        ${stepsHtml}
+      </div>
+
+      <div class="pt-6 border-t border-slate-300 flex items-center justify-between text-xs font-mono print-avoid-break">
+        <div class="text-slate-500">BD. CivilLab Architecture &amp; Building Services Engine · Ref ${docId}</div>
+        <div class="w-60 border-t-2 border-slate-800 pt-1 text-center">
+          <div class="font-bold">${engName}</div>
+          <div class="text-[10px] text-slate-600">${engDesig} · ${engLic}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
+  document.body.classList.add('is-printing-report');
+
+  const cleanUp = () => {
+    printEl.innerHTML = '';
+    printEl.className = 'hidden print:block bg-white text-slate-900';
+    document.body.classList.remove('is-printing-report');
+    window.removeEventListener('afterprint', cleanUp);
+  };
+  window.addEventListener('afterprint', cleanUp);
+  setTimeout(() => window.print(), 80);
+  return true;
+}
+
 

@@ -1023,6 +1023,11 @@ function classifyCrossSection(
 export function computeSectionMechanics(
   params: SectionAnalyzerParams
 ): CalculationEnvelope<SectionAnalyzerResult> {
+  if (!params) {
+    return createEnvelope<SectionAnalyzerResult>(null, [
+      { field: 'params', message: 'Section Analyzer parameters are missing.', severity: 'error' },
+    ]);
+  }
   const issues: ValidationIssue[] = [];
 
   const scopeAndLimits: ScopeAndLimitsMetadata = {

@@ -84,6 +84,7 @@ import {
   CivilLabSchemaV2,
   CivilWorkspace,
   EngineeringModuleId,
+  ArchitectureTab,
   ThemePreference,
   CalculationRecord,
   BuildingCode,
@@ -130,6 +131,7 @@ import {
   createDefaultSectionAnalyzer,
   createDefaultRcColumnDesign,
   createDefaultStrutAndTie,
+  createDefaultMasterMarketRates,
 } from './utils/storage';
 import { getIndexedDBStats, isIndexedDBSupported, persistToIndexedDB } from './utils/indexedStorage';
 import { computeFrameTruss2D, FrameTruss2DResult } from './utils/frameSolver2d';
@@ -162,6 +164,8 @@ import {
   ConcreteMixResult,
   MasonryResult,
   RateAnalysisResult,
+  ConcreteMaterialResult,
+  BOQResourceAbstract,
 } from './utils/calculations';
 import {
   convertUnitValue,
@@ -211,7 +215,7 @@ import {
 import { resolveDynamicRate } from './utils/rateResolver';
 import { computeBeamFlexureAndShearDesign } from './components/calculators/civil/rebarSuggestionEngine';
 import { useSiteManagement } from './context/SiteManagementContext';
-import { ConcreteGrade } from './types/siteManagement';
+import { ConcreteGrade, MaterialUnit, RequisitionItem } from './types/siteManagement';
 import { generateReportQrCode, GeneratedReportQrResult } from './utils/qrCode';
 import {
   WorkspaceManagerModal,
@@ -297,10 +301,17 @@ import { StepByStepPanel } from './components/StepByStepPanel';
 import {
   BEAM_WORKED_EXAMPLES,
   CONTINUOUS_BEAM_WORKED_EXAMPLES,
+  RATE_ANALYSIS_WORKED_EXAMPLES,
+  BOQ_ESTIMATOR_WORKED_EXAMPLES,
+  CONCRETE_MATERIALS_WORKED_EXAMPLES,
+  REBAR_BBS_WORKED_EXAMPLES,
+  MASONRY_WORKED_EXAMPLES,
+  EARTHWORK_WORKED_EXAMPLES,
   ALL_WORKED_EXAMPLES,
   parseStructuralDeepLink,
   buildWorkedExampleUrl,
   WorkedExampleEntry,
+  DeepLinkModuleId,
 } from './data/workedExamples';
 
 // Dynamic Lazy Imports for Heavy Module Views & Modals
@@ -336,7 +347,7 @@ export default function App() {
   const civilLab = useCivilLab();
   const workbench = useWorkbench();
   const { theme: activeEngineeringTheme, setTheme: setEngTheme } = useTheme();
-  const { siteData, financialSummary, updateInventoryItem, addInventoryItem, addCubeTestRecord } = useSiteManagement();
+  const { siteData, financialSummary, updateInventoryItem, addInventoryItem, addCubeTestRecord, createRequisition } = useSiteManagement();
   const [appState, setAppState] = useState<CivilLabSchemaV2>(() => loadPersistedState());
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -437,7 +448,7 @@ export default function App() {
   const [verifiedOfficeDocRecord, setVerifiedOfficeDocRecord] = useState<VerifiedOfficeDocRecord | null>(null);
   const [verifySubmittalModalOpen, setVerifySubmittalModalOpen] = useState(false);
   const [architectureModalOpen, setArchitectureModalOpen] = useState(false);
-  const [architectureInitialTab, setArchitectureInitialTab] = useState<'far' | 'staircase' | 'watertank' | 'septictank'>('far');
+  const [architectureInitialTab, setArchitectureInitialTab] = useState<ArchitectureTab>('far');
   const [cadModalOpen, setCadModalOpen] = useState(false);
   const [cadInitialTab, setCadInitialTab] = useState<'viewport' | 'shortcuts' | 'excel'>('viewport');
   const [siteQcModalOpen, setSiteQcModalOpen] = useState(false);
@@ -534,7 +545,7 @@ export default function App() {
         const matchedExample = deepLink.exampleId
           ? ALL_WORKED_EXAMPLES.find((ex) => ex.id === deepLink.exampleId)
           : undefined;
-        const targetMod: 'beam-analysis' | 'continuous-beam' =
+        const targetMod: DeepLinkModuleId =
           deepLink.module || matchedExample?.module || 'beam-analysis';
 
         const applyDeepLinkPayload = () => {
@@ -555,6 +566,63 @@ export default function App() {
                   ...(deepLink.overrides.P !== undefined ? { pointLoadKn: deepLink.overrides.P } : {}),
                   ...(deepLink.overrides.a !== undefined ? { pointLoadPositionM: deepLink.overrides.a } : {}),
                 },
+              };
+            }
+            if (targetMod === 'rate-analysis') {
+              return {
+                ...ws,
+                activeModule: 'rate-analysis',
+                rateAnalysis: matchedExample?.module === 'rate-analysis'
+                  ? { ...ws.rateAnalysis, ...matchedExample.params }
+                  : ws.rateAnalysis,
+                ...(matchedExample?.module === 'rate-analysis' && matchedExample.marketRates
+                  ? { marketRates: { ...(ws.marketRates || createDefaultMasterMarketRates()), ...matchedExample.marketRates } }
+                  : {}),
+              };
+            }
+            if (targetMod === 'boq-estimator') {
+              return {
+                ...ws,
+                activeModule: 'boq-estimator',
+                boq: matchedExample?.module === 'boq-estimator'
+                  ? { ...ws.boq, ...matchedExample.params }
+                  : ws.boq,
+              };
+            }
+            if (targetMod === 'concrete-materials') {
+              return {
+                ...ws,
+                activeModule: 'concrete-materials',
+                concreteMaterials: matchedExample?.module === 'concrete-materials'
+                  ? { ...ws.concreteMaterials, ...matchedExample.params }
+                  : ws.concreteMaterials,
+              };
+            }
+            if (targetMod === 'rebar-bbs') {
+              return {
+                ...ws,
+                activeModule: 'rebar-bbs',
+                rebarBbs: matchedExample?.module === 'rebar-bbs'
+                  ? { ...ws.rebarBbs, ...matchedExample.params }
+                  : ws.rebarBbs,
+              };
+            }
+            if (targetMod === 'masonry-finishes') {
+              return {
+                ...ws,
+                activeModule: 'masonry-finishes',
+                masonry: matchedExample?.module === 'masonry-finishes'
+                  ? { ...ws.masonry, ...matchedExample.params }
+                  : ws.masonry,
+              };
+            }
+            if (targetMod === 'earthwork-alignment') {
+              return {
+                ...ws,
+                activeModule: 'earthwork-alignment',
+                earthwork: matchedExample?.module === 'earthwork-alignment'
+                  ? { ...ws.earthwork, ...matchedExample.params }
+                  : ws.earthwork,
               };
             }
             const baseCb = matchedExample?.module === 'continuous-beam'
@@ -596,10 +664,23 @@ export default function App() {
             ? activeWorkspace.beam.spanLengthM > 0 ||
               activeWorkspace.beam.uniformLoadKnPerM > 0 ||
               activeWorkspace.beam.pointLoadKn > 0
-            : Boolean(
-                activeWorkspace.continuousBeam &&
-                  activeWorkspace.continuousBeam.spans.some((s) => s.lengthM > 0 && s.udlKnPerM > 0)
-              );
+            : targetMod === 'concrete-materials'
+              ? (activeWorkspace.concreteMaterials.wetVolumeM3 || 0) > 0 ||
+                Boolean(activeWorkspace.concreteMaterials.members && activeWorkspace.concreteMaterials.members.length > 0)
+              : targetMod === 'rebar-bbs'
+                ? (activeWorkspace.rebarBbs.slabLengthM || 0) > 0 ||
+                  (activeWorkspace.rebarBbs.colHeightM || 0) > 0 ||
+                  (activeWorkspace.rebarBbs.footingLengthM || 0) > 0
+                : targetMod === 'masonry-finishes'
+                  ? (activeWorkspace.masonry.wallLengthM || 0) > 0
+                  : targetMod === 'earthwork-alignment'
+                    ? (activeWorkspace.earthwork.roadLengthM || 0) > 0 ||
+                      (activeWorkspace.earthwork.pitTopLengthM || 0) > 0 ||
+                      Boolean(activeWorkspace.earthwork.chainageStations && activeWorkspace.earthwork.chainageStations.length > 0)
+                    : Boolean(
+                        activeWorkspace.continuousBeam &&
+                          activeWorkspace.continuousBeam.spans.some((s) => s.lengthM > 0 && s.udlKnPerM > 0)
+                      );
 
         if (hasUserModifiedData) {
           setShowSplash(false);
@@ -1001,6 +1082,7 @@ export default function App() {
     const res: {
       bbsSteelWeightKg?: number;
       beamMaxMomentKnm?: number;
+      matConcreteVolumeM3?: number;
       masonryNetVolumeM3?: number;
       masonryBricksCount?: number;
       pileConcreteVolumeM3?: number;
@@ -1022,6 +1104,9 @@ export default function App() {
       res.bbsSteelWeightKg = computeRebarBBS(activeWorkspace.rebarBbs).result?.totalSteelWeightKg;
     }
 
+    if (activeModule === 'concrete-materials') {
+      res.matConcreteVolumeM3 = (currentEnvelope.result as ConcreteMaterialResult | null)?.wetVolumeM3;
+    }
     if (activeModule === 'beam-analysis') {
       res.beamMaxMomentKnm = (currentEnvelope.result as any)?.maxMomentKnm;
     }
@@ -1883,6 +1968,30 @@ export default function App() {
     );
   };
 
+  const handlePushResourceCeilingsToInventory = (resourceAbstract: BOQResourceAbstract) => {
+    const ceilings = {
+      cementBags: Math.round(resourceAbstract.cementBags50Kg * 10) / 10,
+      sandCft: Math.round(resourceAbstract.sandCft),
+      coarseAggregateCft: Math.round(resourceAbstract.coarseAggregateCft),
+      bricksNos: Math.round(resourceAbstract.bricksNos),
+      rebarTonnes: Math.round(resourceAbstract.rebarTonnes * 100) / 100,
+      rebarByDiaTonnes: {},
+      totalConcreteM3: Math.round(resourceAbstract.concreteVolumeM3 * 100) / 100,
+      earthworkBankM3: Math.round(resourceAbstract.earthworkVolumeM3 * 100) / 100,
+    };
+    const syncRes = syncDesignCeilingsToInventory(
+      siteData,
+      ceilings,
+      updateInventoryItem,
+      addInventoryItem
+    );
+    triggerCelebration(
+      'BOQ Resource Ceilings Pushed to Store Inventory (SM-01)',
+      `Updated ${syncRes.updatedCount} store items (Cement: ${ceilings.cementBags.toLocaleString()} bags, Sand: ${ceilings.sandCft.toLocaleString()} CFT, Agg: ${ceilings.coarseAggregateCft.toLocaleString()} CFT, Rebar: ${ceilings.rebarTonnes.toFixed(2)} MT, Bricks: ${ceilings.bricksNos.toLocaleString()} Nos).`,
+      'celebrate'
+    );
+  };
+
   const handleSyncMixToCubeTests = () => {
     const concrete = activeWorkspace.concrete;
     const targetFc = concrete.targetStrengthMpa || 25;
@@ -1908,6 +2017,202 @@ export default function App() {
     triggerCelebration(
       'Concrete Mix Synced to Cube Test Register',
       `Created specimen set #${newRecord.pourId} for ${pourVol} m³ pour (${grade}, f'c=${targetFc} MPa, ratio ${mixRatio}).`,
+      'celebrate'
+    );
+  };
+
+  const handleGenerateRequisitionFromModule = (
+    sourceModule: 'concrete-materials' | 'rebar-bbs' | 'masonry-finishes'
+  ) => {
+    const mRates = activeWorkspace.marketRates || createDefaultMasterMarketRates();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const reqDateObj = new Date();
+    reqDateObj.setDate(reqDateObj.getDate() + 3);
+    const requiredByDate = reqDateObj.toISOString().split('T')[0];
+
+    const matchStoreOrCreate = (
+      keywords: string[],
+      fallbackName: string,
+      unit: MaterialUnit,
+      qty: number,
+      fallbackRate: number,
+      notes?: string
+    ): RequisitionItem => {
+      const invMatch = siteData.inventory.find((inv) =>
+        keywords.some((kw) => inv.name.toLowerCase().includes(kw.toLowerCase()))
+      );
+      return {
+        itemId: invMatch ? invMatch.id : `req-${fallbackName.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24)}`,
+        itemName: invMatch ? invMatch.name : fallbackName,
+        unit: invMatch ? invMatch.unit : unit,
+        requestedQty: qty,
+        estimatedRate: invMatch && invMatch.unitRate > 0 ? invMatch.unitRate : fallbackRate,
+        currentStockAtReq: invMatch ? invMatch.currentStock : 0,
+        notes,
+      };
+    };
+
+    const items: RequisitionItem[] = [];
+    let sourceLabel = '';
+
+    if (sourceModule === 'concrete-materials') {
+      const matRes = computeConcreteMaterials(activeWorkspace.concreteMaterials).result;
+      if (!matRes || matRes.wetVolumeM3 <= 0) {
+        triggerCelebration('No Material Quantities', 'Enter valid concrete dimensions before generating a requisition.', 'info');
+        return;
+      }
+      sourceLabel = `Concrete Materials (${matRes.wetVolumeM3.toFixed(2)} m³ wet pour)`;
+      if (matRes.cementBags50Kg > 0) {
+        items.push(
+          matchStoreOrCreate(
+            ['cement'],
+            'OPC / PCC Cement (50 kg Bag)',
+            'Bags',
+            Math.ceil(matRes.cementBags50Kg),
+            mRates.cementBag50Kg,
+            `Computed ${matRes.cementBags50Kg.toFixed(1)} bags`
+          )
+        );
+      }
+      if (matRes.sandCft > 0) {
+        items.push(
+          matchStoreOrCreate(
+            ['sylhet sand', 'coarse sand', 'sand'],
+            'Sylhet Coarse Sand (FM 2.5+)',
+            'CFT',
+            Math.ceil(matRes.sandCft),
+            mRates.sylhetSandPerCft,
+            `Computed ${matRes.sandCft.toFixed(1)} CFT`
+          )
+        );
+      }
+      if (matRes.aggregateCft > 0) {
+        const isKhoa = matRes.coarseAggregateType === 'brick-shingles';
+        items.push(
+          matchStoreOrCreate(
+            isKhoa ? ['khoa', 'brick aggregate'] : ['stone', 'chips', 'aggregate'],
+            isKhoa ? 'Picked Jhama Brick Khoa (20mm)' : '20mm Crushed Stone Chips',
+            'CFT',
+            Math.ceil(matRes.aggregateCft),
+            isKhoa ? mRates.brickKhoaPerCft : mRates.stoneChips20mmPerCft,
+            `Computed ${matRes.aggregateCft.toFixed(1)} CFT`
+          )
+        );
+      }
+    } else if (sourceModule === 'rebar-bbs') {
+      const bbsRes = computeRebarBBS(activeWorkspace.rebarBbs).result;
+      if (!bbsRes || bbsRes.totalSteelWeightKg <= 0) {
+        triggerCelebration('No Rebar Quantities', 'Enter valid reinforcement details before generating a requisition.', 'info');
+        return;
+      }
+      sourceLabel = `Rebar BBS (${bbsRes.totalSteelTonnes.toFixed(3)} MT total steel)`;
+      const weightByDiaKg = new Map<number, number>();
+      for (const bar of bbsRes.items) {
+        if (bar.totalWeightKg > 0) {
+          weightByDiaKg.set(bar.barDiaMm, (weightByDiaKg.get(bar.barDiaMm) || 0) + bar.totalWeightKg);
+        }
+      }
+      Array.from(weightByDiaKg.entries())
+        .sort((a, b) => a[0] - b[0])
+        .forEach(([diaMm, kg]) => {
+          const tonnes = Math.max(0.01, Math.round((kg / 1000) * 1000) / 1000);
+          items.push(
+            matchStoreOrCreate(
+              [`${diaMm}mm`, `Ø${diaMm}`, `rebar ${diaMm}`, 'deformed'],
+              `Grade 500W Deformed Rebar Ø${diaMm}mm`,
+              'Ton',
+              tonnes,
+              mRates.rebar500WPerTon,
+              `${Math.round(kg).toLocaleString()} kg net cutting weight`
+            )
+          );
+        });
+    } else if (sourceModule === 'masonry-finishes') {
+      const masRes = computeMasonryFinishes(activeWorkspace.masonry).result;
+      if (!masRes || (masRes.bricksWithWastageCount <= 0 && masRes.netWallVolumeM3 <= 0)) {
+        triggerCelebration('No Masonry Quantities', 'Enter valid wall or finish dimensions before generating a requisition.', 'info');
+        return;
+      }
+      sourceLabel = `Masonry & Finishes (${masRes.netWallAreaM2.toFixed(1)} m² net wall)`;
+      const totalBricks = Math.ceil(
+        (masRes.bricksWithWastageCount || 0) +
+          (masRes.bfsHbbSchedule?.bricksWithWastageCount || 0) +
+          (masRes.jhamaKhoaSchedule?.bricksWithWastageCount || 0)
+      );
+      if (totalBricks > 0) {
+        items.push(
+          matchStoreOrCreate(
+            ['brick'],
+            'First-Class Clay Bricks (BD Standard)',
+            'Nos',
+            totalBricks,
+            Number((mRates.firstClassBrickPer1000 / 1000).toFixed(2)),
+            `Includes wastage & BFS/Khoa if active`
+          )
+        );
+      }
+      const totalBags = Math.ceil((masRes.mortarCementBags50Kg || 0) + (masRes.plasterCementBags || 0));
+      if (totalBags > 0) {
+        items.push(
+          matchStoreOrCreate(
+            ['cement'],
+            'Cement (50 kg Bag · Mortar + Plaster)',
+            'Bags',
+            totalBags,
+            mRates.cementBag50Kg,
+            `Mortar ${(masRes.mortarCementBags50Kg || 0).toFixed(1)} + Plaster ${(masRes.plasterCementBags || 0).toFixed(1)} bags`
+          )
+        );
+      }
+      const totalSandCft = Math.ceil(
+        (masRes.mortarSandCft || 0) +
+          (masRes.plasterSandCft || 0) +
+          (masRes.bfsHbbSchedule?.sandCushionCft || 0)
+      );
+      if (totalSandCft > 0) {
+        items.push(
+          matchStoreOrCreate(
+            ['local sand', 'fine sand', 'sand'],
+            'Local Screened Sand (Mortar + Plaster)',
+            'CFT',
+            totalSandCft,
+            mRates.localSandPerCft,
+            `Mortar + Plaster + Sub-base cushion`
+          )
+        );
+      }
+      if (masRes.paintPuttySchedule && masRes.paintPuttySchedule.paintLitersRequired > 0) {
+        items.push(
+          matchStoreOrCreate(
+            ['paint', 'emulsion'],
+            'Acrylic Emulsion / Weather Coat Paint',
+            'Liters',
+            Math.ceil(masRes.paintPuttySchedule.paintLitersRequired),
+            550,
+            `${masRes.paintPuttySchedule.paintGallons} Gal (${activeWorkspace.masonry.paintCoats || 2} coats)`
+          )
+        );
+      }
+    }
+
+    if (items.length === 0) return;
+
+    const seqNum = String(siteData.requisitions.length + 1).padStart(3, '0');
+    const createdReq = createRequisition({
+      reqNo: `IND-${activeWorkspace.projectCode || 'BDCL'}-${seqNum}`,
+      date: todayStr,
+      requiredByDate,
+      urgency: 'Urgent',
+      items,
+      status: 'Pending',
+      requestedBy: userProfile.fullName || activeWorkspace.engineerOfRecord || 'Design Engineer',
+      notes: `Auto-generated procurement indent from ${sourceLabel}.`,
+    });
+
+    navigateToModule('material-requisition');
+    triggerCelebration(
+      `Requisition Slip ${createdReq.reqNo} Created (SM-02)`,
+      `Packaged ${items.length} procurement line items from ${sourceLabel} into pending Site Requisitions.`,
       'celebrate'
     );
   };
@@ -2288,15 +2593,34 @@ export default function App() {
     const rateEnv = (activeModule === 'rate-analysis' ? currentEnvelope : computeRateAnalysis(activeWorkspace.rateAnalysis)) as CalculationEnvelope<RateAnalysisResult>;
     if (!rateEnv.result) return;
     const rateRes = rateEnv.result;
+    const basisUnit = rateRes.basisUnitLabel || 'm³';
 
-    const existingIndex = activeWorkspace.boq.items.findIndex((it) =>
-      it.description.toLowerCase().includes(rateRes.workType.toLowerCase()) ||
-      it.description.toLowerCase().includes('rcc')
-    );
+    const existingIndex = activeWorkspace.boq.items.findIndex((it) => {
+      const d = it.description.toLowerCase();
+      if (rateRes.workType === 'brickwork-125mm-1-4') return d.includes('125mm') || d.includes('partition');
+      if (rateRes.workType === 'brickwork-1-6') return d.includes('250mm') || (it.category === 'masonry' && !d.includes('125mm'));
+      if (rateRes.workType === 'rebar-fabrication') return it.category === 'rebar' || d.includes('rebar');
+      if (rateRes.workType === 'pcc-1-3-6') return d.includes('pcc') || d.includes('1:3:6') || d.includes('lean');
+      if (rateRes.workType === 'patent-stone-1-2-4') return d.includes('patent') || d.includes('screed');
+      if (rateRes.workType === 'plaster-1-4') return d.includes('plaster');
+      return d.includes(rateRes.workType.toLowerCase()) || d.includes('rcc');
+    });
 
     const existingItem = existingIndex >= 0 ? activeWorkspace.boq.items[existingIndex] : null;
-    const calculatedRate = existingItem?.unit === 'cft' ? rateRes.unitRatePerCft : rateRes.unitRatePerM3;
-    const unitLabel = existingItem?.unit === 'cft' ? 'cft' : 'm³';
+    let calculatedRate = rateRes.unitRatePerM3;
+    let unitLabel: string = basisUnit;
+    if (existingItem) {
+      if (basisUnit === 'm²') {
+        calculatedRate = existingItem.unit === 'sft' ? rateRes.unitRatePerCft : rateRes.unitRatePerM3;
+        unitLabel = existingItem.unit === 'sft' ? 'sft' : 'm²';
+      } else if (basisUnit === 'Ton') {
+        calculatedRate = existingItem.unit === 'kg' ? Number((rateRes.unitRatePerM3 / 1000).toFixed(2)) : rateRes.unitRatePerM3;
+        unitLabel = existingItem.unit === 'kg' ? 'kg' : 'Ton';
+      } else {
+        calculatedRate = existingItem.unit === 'cft' ? rateRes.unitRatePerCft : rateRes.unitRatePerM3;
+        unitLabel = existingItem.unit === 'cft' ? 'cft' : 'm³';
+      }
+    }
 
     if (existingIndex >= 0) {
       updateActiveWorkspace((ws) => ({
@@ -2310,19 +2634,26 @@ export default function App() {
           ),
         },
       }));
-      setToastBanner(`Updated existing item rate with ${rateRes.currencySymbol} ${calculatedRate.toFixed(2)}/${unitLabel}`);
+      setToastBanner(`Updated existing BOQ item rate with ${rateRes.currencySymbol} ${calculatedRate.toFixed(2)}/${unitLabel}`);
     } else {
+      const defaultUnit = basisUnit === 'm²' ? 'm2' : basisUnit === 'Ton' ? 'ton' : 'm3';
       const newItem: TakeoffLineItem = {
         id: `takeoff-${generateUUID().slice(0, 8)}`,
         itemNo: `${activeWorkspace.boq.items.length + 1}.01`,
         description: rateRes.workDescription,
-        category: rateRes.workType.includes('brick') ? 'masonry' : 'superstructure',
+        category: rateRes.workType.includes('brick')
+          ? 'masonry'
+          : rateRes.workType === 'rebar-fabrication'
+            ? 'rebar'
+            : rateRes.workType === 'plaster-1-4' || rateRes.workType === 'patent-stone-1-2-4'
+              ? 'finishing'
+              : 'superstructure',
         numberOfMembers: 1,
         lengthM: 10.0,
-        widthM: 0.5,
-        heightM: 0.5,
+        widthM: basisUnit === 'Ton' ? 0 : basisUnit === 'm²' ? 3.0 : 0.5,
+        heightM: basisUnit === 'm³' ? 0.5 : 0,
         deductionQty: 0,
-        unit: 'm3',
+        unit: defaultUnit,
         wastagePercent: 2.5,
         unitRate: calculatedRate,
       };
@@ -2333,7 +2664,7 @@ export default function App() {
           items: [...ws.boq.items, newItem],
         },
       }));
-      setToastBanner(`Added Rate Analysis item to BOQ sheet (${rateRes.currencySymbol} ${calculatedRate.toFixed(2)}/m³)`);
+      setToastBanner(`Added Rate Analysis item to BOQ sheet (${rateRes.currencySymbol} ${calculatedRate.toFixed(2)}/${basisUnit})`);
     }
   };
 
@@ -3630,102 +3961,163 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               <div className="flex flex-wrap items-center gap-2">
                 {renderStatusBadge()}
 
-                {(activeModule === 'beam-analysis' || activeModule === 'continuous-beam') && (
-                  <div className="relative" ref={workedExamplesRef}>
-                    <button
-                      type="button"
-                      onClick={() => setWorkedExamplesMenuOpen((prev) => !prev)}
-                      className="min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-colors cursor-pointer"
-                      aria-expanded={workedExamplesMenuOpen}
-                      aria-haspopup="true"
-                      title="Load verified textbook & BNBC worked engineering examples"
-                    >
-                      <BookOpenCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                      <span>Worked Examples</span>
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${workedExamplesMenuOpen ? 'rotate-180' : ''}`} />
-                    </button>
+                {(activeModule === 'beam-analysis' ||
+                  activeModule === 'continuous-beam' ||
+                  activeModule === 'rate-analysis' ||
+                  activeModule === 'boq-estimator' ||
+                  activeModule === 'concrete-materials' ||
+                  activeModule === 'rebar-bbs' ||
+                  activeModule === 'masonry-finishes' ||
+                  activeModule === 'earthwork-alignment') && (() => {
+                  const currentExList: WorkedExampleEntry[] =
+                    activeModule === 'beam-analysis'
+                      ? BEAM_WORKED_EXAMPLES
+                      : activeModule === 'continuous-beam'
+                        ? CONTINUOUS_BEAM_WORKED_EXAMPLES
+                        : activeModule === 'rate-analysis'
+                          ? RATE_ANALYSIS_WORKED_EXAMPLES
+                          : activeModule === 'boq-estimator'
+                            ? BOQ_ESTIMATOR_WORKED_EXAMPLES
+                            : activeModule === 'concrete-materials'
+                              ? CONCRETE_MATERIALS_WORKED_EXAMPLES
+                              : activeModule === 'rebar-bbs'
+                                ? REBAR_BBS_WORKED_EXAMPLES
+                                : activeModule === 'masonry-finishes'
+                                  ? MASONRY_WORKED_EXAMPLES
+                                  : EARTHWORK_WORKED_EXAMPLES;
 
-                    {workedExamplesMenuOpen && (
-                      <div
-                        role="menu"
-                        className="absolute right-0 mt-1.5 w-80 max-w-[90vw] rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 z-30 space-y-1 text-xs font-sans"
+                  return (
+                    <div className="relative" ref={workedExamplesRef}>
+                      <button
+                        type="button"
+                        onClick={() => setWorkedExamplesMenuOpen((prev) => !prev)}
+                        className="min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                        aria-expanded={workedExamplesMenuOpen}
+                        aria-haspopup="true"
+                        title="Load verified textbook, PWD & project worked examples"
                       >
-                        <div className="px-2.5 py-1.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
-                          <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-[var(--md-sys-color-primary)]">
-                            Verified Benchmarks &amp; Examples
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const currentExList =
-                                activeModule === 'beam-analysis'
-                                  ? BEAM_WORKED_EXAMPLES
-                                  : CONTINUOUS_BEAM_WORKED_EXAMPLES;
-                              const shareUrl = buildWorkedExampleUrl(
-                                activeModule,
-                                currentExList[0].id,
-                                activeModule === 'beam-analysis' ? activeWorkspace.beam : undefined
-                              );
-                              navigator.clipboard?.writeText(shareUrl);
-                              setWorkedExamplesMenuOpen(false);
-                              triggerCelebration('Shareable Link Copied', 'URL copied with active structural parameters', 'info');
-                            }}
-                            className="text-[10px] font-mono font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 cursor-pointer"
-                            title="Copy shareable URL for current state"
-                          >
-                            <Share2 className="w-3 h-3" />
-                            <span>Copy URL</span>
-                          </button>
-                        </div>
+                        <BookOpenCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                        <span>Worked Examples</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${workedExamplesMenuOpen ? 'rotate-180' : ''}`} />
+                      </button>
 
-                        {(activeModule === 'beam-analysis'
-                          ? BEAM_WORKED_EXAMPLES
-                          : CONTINUOUS_BEAM_WORKED_EXAMPLES
-                        ).map((ex: WorkedExampleEntry) => (
-                          <button
-                            key={ex.id}
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setWorkedExamplesMenuOpen(false);
-                              if (ex.module === 'beam-analysis') {
-                                updateActiveWorkspace((ws) => ({
-                                  ...ws,
-                                  beam: { ...ws.beam, ...ex.params },
-                                }));
-                                const nextUrl = buildWorkedExampleUrl('beam-analysis', ex.id, ex.params);
-                                window.history.replaceState({}, '', nextUrl);
-                              } else {
-                                updateActiveWorkspace((ws) => ({
-                                  ...ws,
-                                  continuousBeam: ex.params,
-                                }));
-                                const nextUrl = buildWorkedExampleUrl('continuous-beam', ex.id);
-                                window.history.replaceState({}, '', nextUrl);
-                              }
-                              triggerCelebration(
-                                `Loaded Example: ${ex.title}`,
-                                'Press Undo anytime to restore previous workspace parameters',
-                                'celebrate'
-                              );
-                            }}
-                            className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer space-y-0.5"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-semibold text-[var(--md-sys-color-on-surface)]">{ex.title}</span>
-                              <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] shrink-0">
-                                {ex.category}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug">
-                              {ex.subtitle}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                      {workedExamplesMenuOpen && (
+                        <div
+                          role="menu"
+                          className="absolute right-0 mt-1.5 w-80 max-w-[90vw] rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 z-30 space-y-1 text-xs font-sans"
+                        >
+                          <div className="px-2.5 py-1.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
+                            <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-[var(--md-sys-color-primary)]">
+                              Verified Benchmarks &amp; Examples
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const shareUrl = buildWorkedExampleUrl(
+                                  activeModule as DeepLinkModuleId,
+                                  currentExList[0].id,
+                                  activeModule === 'beam-analysis' ? activeWorkspace.beam : undefined
+                                );
+                                navigator.clipboard?.writeText(shareUrl);
+                                setWorkedExamplesMenuOpen(false);
+                                triggerCelebration('Shareable Link Copied', 'URL copied with active engineering example', 'info');
+                              }}
+                              className="text-[10px] font-mono font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 cursor-pointer"
+                              title="Copy shareable URL for current state"
+                            >
+                              <Share2 className="w-3 h-3" />
+                              <span>Copy URL</span>
+                            </button>
+                          </div>
+
+                          {currentExList.map((ex: WorkedExampleEntry) => (
+                            <button
+                              key={ex.id}
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setWorkedExamplesMenuOpen(false);
+                                if (ex.module === 'beam-analysis') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    beam: { ...ws.beam, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('beam-analysis', ex.id, ex.params));
+                                } else if (ex.module === 'continuous-beam') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    continuousBeam: ex.params,
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('continuous-beam', ex.id));
+                                } else if (ex.module === 'rate-analysis') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    rateAnalysis: { ...ws.rateAnalysis, ...ex.params },
+                                    ...(ex.marketRates
+                                      ? {
+                                          marketRates: {
+                                            ...(ws.marketRates || createDefaultMasterMarketRates()),
+                                            ...ex.marketRates,
+                                          },
+                                        }
+                                      : {}),
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('rate-analysis', ex.id));
+                                } else if (ex.module === 'boq-estimator') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    boq: { ...ws.boq, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('boq-estimator', ex.id));
+                                } else if (ex.module === 'concrete-materials') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    concreteMaterials: { ...ws.concreteMaterials, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('concrete-materials', ex.id));
+                                } else if (ex.module === 'rebar-bbs') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    rebarBbs: { ...ws.rebarBbs, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('rebar-bbs', ex.id));
+                                } else if (ex.module === 'masonry-finishes') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    masonry: { ...ws.masonry, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('masonry-finishes', ex.id));
+                                } else if (ex.module === 'earthwork-alignment') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    earthwork: { ...ws.earthwork, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('earthwork-alignment', ex.id));
+                                }
+                                triggerCelebration(
+                                  `Loaded Example: ${ex.title}`,
+                                  'Press Undo anytime to restore previous workspace parameters',
+                                  'celebrate'
+                                );
+                              }}
+                              className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer space-y-0.5"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-semibold text-[var(--md-sys-color-on-surface)]">{ex.title}</span>
+                                <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] shrink-0">
+                                  {ex.category}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug">
+                                {ex.subtitle}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="h-4 w-px bg-[var(--md-sys-color-outline-variant)] mx-1 hidden sm:block" />
 
@@ -3806,8 +4198,10 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 onApplyRateToBoq={handleApplyRateToBOQ}
                 onSyncBoqToInventory={handleSyncBoqToInventory}
                 onSyncMixToCubeTests={handleSyncMixToCubeTests}
+                onGenerateRequisitionSlip={handleGenerateRequisitionFromModule}
                 currencySymbol={getCurrencySymbol(activeWorkspace.currency)}
                 bbsSteelWeightKg={crossLinkMetrics.bbsSteelWeightKg}
+                matConcreteVolumeM3={crossLinkMetrics.matConcreteVolumeM3}
                 beamMaxMomentKnm={crossLinkMetrics.beamMaxMomentKnm}
                 rcColWidthMm={crossLinkMetrics.rcColWidthMm}
                 rcColDepthMm={crossLinkMetrics.rcColDepthMm}
@@ -4573,6 +4967,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     onDeleteTakeoffItem={handleDeleteTakeoffItem}
                     onLoadSampleBOQItems={handleLoadSampleBOQItems}
                     onSyncFromModules={handleSyncAllModulesToBoq}
+                    onPushResourceCeilingsToInventory={handlePushResourceCeilingsToInventory}
                     activeWorkspace={activeWorkspace}
                     updateActiveWorkspace={updateActiveWorkspace}
                     userProfile={userProfile}
@@ -4845,6 +5240,10 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               onClose={() => setArchitectureModalOpen(false)}
               initialTab={architectureInitialTab}
               architecture={activeWorkspace.architecture}
+              userProfile={userProfile}
+              projectName={activeWorkspace.name}
+              projectCode={activeWorkspace.projectCode}
+              siteLocation={activeWorkspace.siteLocation}
               onUpdateArchitecture={(updater) => {
                 updateActiveWorkspace((ws) => {
                   const prevArch = ws.architecture || createDefaultArchitectureParameters();
@@ -4866,6 +5265,22 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   'success'
                 );
               }}
+              onPushFootprintToBoq={(footprintItems) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: {
+                    ...ws.boq,
+                    items: [...ws.boq.items, ...footprintItems],
+                  },
+                }));
+                navigateToModule('boq-estimator');
+                setArchitectureModalOpen(false);
+                triggerCelebration(
+                  'Buildable Footprint & Excavation Pushed to BOQ',
+                  `Added ${footprintItems.length} line items (foundation excavation, blinding bed & typical slab allowance) to BOQ Estimator.`,
+                  'success'
+                );
+              }}
               onSendStaircaseToRebar={(stairParams) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
@@ -4881,6 +5296,39 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 triggerCelebration(
                   'Staircase Sent to Rebar BBS',
                   'Transferred staircase waist slab geometry & riser/tread parameters directly into Rebar Bar Bending Schedule.',
+                  'success'
+                );
+              }}
+              onSendStaircaseToBoq={(stairItems) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: {
+                    ...ws.boq,
+                    items: [...ws.boq.items, ...stairItems],
+                  },
+                }));
+                navigateToModule('boq-estimator');
+                setArchitectureModalOpen(false);
+                triggerCelebration(
+                  'Staircase Concrete & Formwork Sent to BOQ',
+                  `Added ${stairItems.length} line items (RCC waist slab/steps & soffit/riser shuttering) to BOQ Estimator.`,
+                  'success'
+                );
+              }}
+              onSendTankToRebar={(rebarParams) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  activeModule: 'rebar-bbs',
+                  rebarBbs: {
+                    ...ws.rebarBbs,
+                    ...rebarParams,
+                  },
+                }));
+                navigateToModule('rebar-bbs');
+                setArchitectureModalOpen(false);
+                triggerCelebration(
+                  'Tank Slab Sent to Rebar BBS',
+                  'Transferred tank slab span, clear cover & bar spacing parameters directly into Rebar Bar Bending Schedule.',
                   'success'
                 );
               }}

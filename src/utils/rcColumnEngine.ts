@@ -487,6 +487,11 @@ function analyzeAxis(
 export function computeRcColumnDesign(
   params: RcColumnParams
 ): CalculationEnvelope<RcColumnDesignResult> {
+  if (!params) {
+    return createEnvelope<RcColumnDesignResult>(null, [
+      { field: 'params', message: 'RC Column parameters are missing.', severity: 'error' },
+    ]);
+  }
   const issues: ValidationIssue[] = [];
 
   if (params.widthB_Mm < 150 || params.depthH_Mm < 150) {

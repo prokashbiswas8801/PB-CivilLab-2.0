@@ -1879,10 +1879,10 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
 }) => {
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
   const width = 680;
-  const height = 240;
+  const height = 250;
   const totalVol = Math.max(0, result.totalDryVolumeWithWastageM3);
 
-  if (totalVol <= 0 || params.wetVolumeM3 <= 0) {
+  if (totalVol <= 0 || result.wetVolumeM3 <= 0) {
     return (
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
         <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
@@ -1890,7 +1890,7 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
           ZERO CONCRETE VOLUME (0.00 m³)
         </text>
         <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter concrete member volume or dimensions to estimate cement bags, sand cft and stone aggregates
+          Enter concrete member volume or add batched RCC elements to compute bags, sand cft &amp; aggregate
         </text>
       </svg>
     );
@@ -1907,6 +1907,13 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
   const wS = (sPct / 100) * barW;
   const wA = (aPct / 100) * barW;
 
+  const aggLabel =
+    result.coarseAggregateType === 'brick-shingles'
+      ? 'BRICK KHOA (JHAMA)'
+      : result.coarseAggregateType === 'gravel'
+      ? 'ROUNDED GRAVEL'
+      : 'CRUSHED STONE';
+
   return (
     <div ref={containerRef} className="relative w-full">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
@@ -1918,13 +1925,13 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
           fill="var(--md-sys-color-on-surface)"
           {...bindHover({
             title: 'Concrete Dry Volume Expansion Multiplier',
-            formula: 'V_dry = 1.54 × V_wet (30% granular voids + 24% compaction/shrinkage)',
-            substitution: `Wet Volume = ${params.wetVolumeM3.toFixed(2)} m³ → Dry Batch = ${totalVol.toFixed(2)} m³ (Dry Factor: ${result.dryVolumeFactor})`,
-            codeRef: 'PWD Standard Specifications / BNBC 2020',
+            formula: `V_dry = ${result.dryVolumeFactor} × V_wet × ${result.wastageMultiplier.toFixed(2)}`,
+            substitution: `Wet Volume = ${result.wetVolumeM3.toFixed(2)} m³${result.batchedMembersCount ? ` (${result.batchedMembersCount} batched members)` : ''} → Dry Batch = ${totalVol.toFixed(2)} m³`,
+            codeRef: `${result.code} / PWD Standard Specifications`,
             description: 'Volumetric expansion factor converting in-situ solid wet concrete into loose dry batch volumes.',
           })}
         >
-          VOLUMETRIC DRY CONSTITUENT DISTRIBUTION ({result.code} · Dry Factor {result.dryVolumeFactor})
+          VOLUMETRIC DRY DISTRIBUTION ({result.code} · Dry {result.dryVolumeFactor} · Wet {result.wetVolumeM3.toFixed(2)} m³)
         </text>
 
         <g transform="translate(0, 42)">
@@ -1936,7 +1943,7 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
               codeRef: 'Volumetric Ratio Batching',
             })}
           >
-            <rect x={startX} y={0} width={Math.max(4, wC - 2)} height={42} rx={4} fill="var(--md-sys-color-primary)" />
+            <rect x={startX} y={0} width={Math.max(4, wC - 2)} height={40} rx={4} fill="var(--md-sys-color-primary)" />
           </g>
           <g
             {...bindHover({
@@ -1946,29 +1953,29 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
               codeRef: 'Volumetric Ratio Batching',
             })}
           >
-            <rect x={startX + wC} y={0} width={Math.max(4, wS - 2)} height={42} rx={4} fill="var(--md-sys-color-tertiary)" />
+            <rect x={startX + wC} y={0} width={Math.max(4, wS - 2)} height={40} rx={4} fill="var(--md-sys-color-tertiary)" />
           </g>
           <g
             {...bindHover({
               title: 'Coarse Aggregate Volumetric Share',
               formula: 'V_a = [ r_a / (r_c + r_s + r_a) ] × V_dry',
-              substitution: `Stone/Khoa = ${result.aggregateVolumeM3.toFixed(2)} m³ (${aPct.toFixed(1)}% of dry mix)`,
+              substitution: `${aggLabel} = ${result.aggregateVolumeM3.toFixed(2)} m³ (${aPct.toFixed(1)}% of dry mix)`,
               codeRef: 'Volumetric Ratio Batching',
             })}
           >
-            <rect x={startX + wC + wS} y={0} width={Math.max(4, wA - 2)} height={42} rx={4} fill="var(--md-sys-color-secondary)" />
+            <rect x={startX + wC + wS} y={0} width={Math.max(4, wA - 2)} height={40} rx={4} fill="var(--md-sys-color-secondary)" />
           </g>
         </g>
 
-        <g transform="translate(50, 105)">
+        <g transform="translate(50, 98)">
           {/* Cement Card */}
           <g
             {...bindHover({
               title: 'Cement Requirement in 50kg Bags',
-              formula: 'Bags = V_c / 0.03472 m³ (or CFT / 1.25 cft per bag)',
-              substitution: `${result.cementBags50Kg.toFixed(1)} Bags (Total Mass: ${result.cementMassKg.toFixed(0)} kg)`,
+              formula: 'Bags = V_c / 0.03472 m³ (1440 kg/m³ bulk density)',
+              substitution: `${result.cementBags50Kg.toFixed(1)} Bags (Mass: ${result.cementMassKg.toFixed(0)} kg · ${(result.cementVolumeCft ?? result.cementVolumeM3 * 35.3147).toFixed(1)} cft)`,
               codeRef: 'Standard 50kg Cement Bag Specification',
-              description: 'Standard Portland cement packaged in 50 kg bags (bulk density 1440 kg/m³).',
+              description: 'Standard Portland cement packaged in 50 kg bags (0.0347 m³ / 1.226 cft per bag).',
             })}
           >
             <rect x={0} y={0} width={180} height={95} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
@@ -1996,19 +2003,27 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
           {/* Aggregate Card */}
           <g
             {...bindHover({
-              title: 'Coarse Aggregate (Stone / Shingle) Takeoff',
+              title: `Coarse Aggregate (${aggLabel}) Takeoff`,
               formula: 'Aggregate CFT = V_a (m³) × 35.3147 cft/m³',
               substitution: `${result.aggregateCft.toFixed(1)} cft (${result.aggregateMassKg.toFixed(0)} kg)`,
               codeRef: 'PWD Coarse Aggregate Volume',
-              description: 'Crushed stone chips (3/4" down graded) or first-class brick khoa.',
+              description: 'Crushed stone chips (3/4" down graded) or first-class picked jhama brick khoa.',
             })}
           >
             <rect x={400} y={0} width={180} height={95} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
-            <text x={414} y={24} fontSize="10" fontWeight="600" fill="var(--md-sys-color-secondary)">COARSE AGGREGATE</text>
+            <text x={414} y={24} fontSize="9.5" fontWeight="600" fill="var(--md-sys-color-secondary)">{aggLabel}</text>
             <text x={414} y={50} fontSize="16" fontWeight="700" fill="var(--md-sys-color-on-surface)">{result.aggregateCft.toFixed(1)} cft</text>
             <text x={414} y={74} fontSize="11" fill="var(--md-sys-color-on-surface-variant)">Vol: {result.aggregateVolumeM3.toFixed(2)} m³ ({result.aggregateMassKg.toFixed(0)} kg)</text>
           </g>
         </g>
+
+        {/* Bottom Mix & Water / Khoa Strip */}
+        <text x={50} y={222} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
+          Mix {params.ratioCement}:{params.ratioSand}:{params.ratioAggregate} · Water: {result.waterDemandLiters.toFixed(0)} L (w/c {(params.waterCementRatio || 0.45).toFixed(2)})
+          {result.jhamaBricksForKhoa && result.jhamaBricksForKhoa > 0
+            ? ` · Jhama Bricks for Khoa: ~${result.jhamaBricksForKhoa.toLocaleString()} nos (320/m³)`
+            : ''}
+        </text>
       </svg>
       <FormulaTooltipOverlay tooltip={tooltip} />
       <DiagramFormulaHint />
@@ -2016,14 +2031,25 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
   );
 };
 
-/* 6. Rebar BBS Diagram with Bar Marks & Seismic Hook Detailing */
+/* 6. Rebar BBS Diagram with Bar Marks, Bending Shape Schematics & Seismic Hook Detailing */
 export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: RebarBBSResult }> = ({
   params,
   result,
 }) => {
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
   const width = 680;
-  const height = 240;
+  const height = 340;
+
+  const currentType =
+    params.elementType === 'column'
+      ? 'column-rect'
+      : params.elementType === 'circular-column'
+      ? 'column-circ'
+      : params.elementType === 'staircase'
+      ? 'staircase-waist'
+      : params.elementType;
+
+  const activeShapes = new Set(result.items.map((it) => it.shapeType || 'straight'));
 
   if (result.totalSteelWeightKg <= 0) {
     return (
@@ -2033,7 +2059,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
           ZERO REBAR SCHEDULE (0.00 kg)
         </text>
         <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Select element type ({params.elementType.toUpperCase()}) and configure bar diameters to generate cutting schedule
+          Select element type ({currentType.toUpperCase()}) and configure bar diameters to generate cutting schedule
         </text>
       </svg>
     );
@@ -2044,12 +2070,13 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
         {/* Title */}
         <text x={30} y={24} fontSize="10" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          STRUCTURAL REBAR BBS CUTTING ENVELOPE ({params.elementType.toUpperCase()} · COVER: {params.clearCoverMm}mm)
+          STRUCTURAL REBAR BBS CUTTING ENVELOPE ({currentType.toUpperCase()} · COVER: {params.clearCoverMm}mm
+          {result.elementQuantity && result.elementQuantity > 1 ? ` · ×${result.elementQuantity} UNITS` : ''})
         </text>
 
-        {params.elementType === 'beam' && (
+        {currentType === 'beam' && (
           <g
-            transform="translate(45, 45)"
+            transform="translate(45, 42)"
             {...bindHover({
               title: 'Continuous Beam Rebar Arrangement',
               formula: 'W = d² / 162.2 kg/m · L_cut = L_clear - 2·cover + 2·hooks - bends',
@@ -2059,29 +2086,25 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             })}
           >
             <title>Beam Rebar Detailing</title>
-            {/* Beam Elevation Outline */}
-            <rect x={0} y={15} width={340} height={110} rx={3} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
-            {/* Top Hanger Bars */}
-            <line x1={10} y1={30} x2={330} y2={30} stroke="var(--md-sys-color-secondary)" strokeWidth="2.5" />
-            <polyline points="10,30 10,48" fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.5" />
-            <polyline points="330,30 330,48" fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.5" />
-            {/* Bottom Tension Bars */}
-            <line x1={10} y1={110} x2={330} y2={110} stroke="var(--md-sys-color-primary)" strokeWidth="3.2" />
-            <polyline points="10,110 10,92" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="3.2" />
-            <polyline points="330,110 330,92" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="3.2" />
-            {/* Vertical 2-legged Stirrups */}
+            <rect x={0} y={12} width={340} height={110} rx={3} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
+            <line x1={10} y1={27} x2={330} y2={27} stroke="var(--md-sys-color-secondary)" strokeWidth="2.5" />
+            <polyline points="10,27 10,45" fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.5" />
+            <polyline points="330,27 330,45" fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.5" />
+            <line x1={10} y1={107} x2={330} y2={107} stroke="var(--md-sys-color-primary)" strokeWidth="3.2" />
+            <polyline points="10,107 10,89" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="3.2" />
+            <polyline points="330,107 330,89" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="3.2" />
             {[35, 75, 115, 155, 195, 235, 275, 310].map((x, i) => (
-              <line key={i} x1={x} y1={25} x2={x} y2={115} stroke="var(--md-sys-color-tertiary)" strokeWidth="1.8" strokeDasharray={i === 0 || i === 7 ? 'none' : '4 2'} />
+              <line key={i} x1={x} y1={22} x2={x} y2={112} stroke="var(--md-sys-color-tertiary)" strokeWidth="1.8" strokeDasharray={i === 0 || i === 7 ? 'none' : '4 2'} />
             ))}
-            <text x={10} y={145} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-01: {params.beamBotBarCount || 3}-Ø{params.beamMainBarDiaMm || 16} Bottom · {params.beamTopBarCount || 2}-Ø{params.beamMainBarDiaMm || 16} Top · Stirrup Ø{params.beamStirrupDiaMm || 8}@{params.beamStirrupSpacingMm || 150}mm c/c
+            <text x={10} y={142} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-B1: {params.beamBotBarCount || 3}-Ø{params.beamMainBarDiaMm || 16} Bot · MK-B2: {params.beamTopBarCount || 2}-Ø{params.beamMainBarDiaMm || 16} Top · MK-S1: Ø{params.beamStirrupDiaMm || 8}@{params.beamStirrupSpacingMm || 150}
             </text>
           </g>
         )}
 
-        {params.elementType === 'slab' && (
+        {currentType === 'slab' && (
           <g
-            transform="translate(35, 45)"
+            transform="translate(35, 42)"
             {...bindHover({
               title: 'One-Way / Two-Way Slab Reinforcement Mesh',
               formula: 'W = d² / 162.2 kg/m · Bar Spacing s ≤ 3·h or 450 mm',
@@ -2091,142 +2114,327 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             })}
           >
             <title>Slab Reinforcement Mesh</title>
-            <rect x={0} y={0} width={340} height={140} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
-            {/* Main Bottom Reinforcement */}
-            {[25, 55, 85, 115].map((y, i) => (
+            <rect x={0} y={0} width={340} height={135} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
+            {[24, 52, 80, 108].map((y, i) => (
               <g key={i}>
                 <line x1={15} y1={y} x2={325} y2={y} stroke="var(--md-sys-color-primary)" strokeWidth="2.8" />
                 <polyline points={`15,${y} 8,${y - 8} 8,${y - 14}`} fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
                 <polyline points={`325,${y} 332,${y - 8} 332,${y - 14}`} fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
               </g>
             ))}
-            {/* Distribution Bars */}
             {[35, 90, 145, 200, 255, 310].map((x, i) => (
-              <line key={i} x1={x} y1={12} x2={x} y2={128} stroke="var(--md-sys-color-secondary)" strokeWidth="1.8" strokeDasharray="3 2" />
+              <line key={i} x1={x} y1={12} x2={x} y2={124} stroke="var(--md-sys-color-secondary)" strokeWidth="1.8" strokeDasharray="3 2" />
             ))}
-            <text x={15} y={155} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-01: Main Ø{params.mainBarDiaMm} @ {params.mainBarSpacingMm}mm c/c
+            <text x={15} y={152} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-SL1: Main Ø{params.mainBarDiaMm} @ {params.mainBarSpacingMm}mm c/c · MK-SL2: Dist Ø{params.distBarDiaMm} @ {params.distBarSpacingMm}mm
             </text>
           </g>
         )}
 
-        {params.elementType === 'column-rect' && (
+        {currentType === 'column-rect' && (
           <g
-            transform="translate(120, 45)"
+            transform="translate(120, 40)"
             {...bindHover({
               title: 'Rectangular Column Rebar & Seismic Ties',
-              formula: 'Tie Length L_tie = 2(b - 2c) + 2(h - 2c) + 24·d_tie (135° hook)',
-              substitution: `8-Ø${params.colMainBarDiaMm || 16} Longitudinal + Ø8 Ties @ 150mm c/c`,
+              formula: 'Tie Length L_tie = 2(b - 2c) + 2(h - 2c) + 2·max(75,10d) - 12d',
+              substitution: `${params.colMainBarCount || 8}-Ø${params.colMainBarDiaMm || 16} Longitudinal + Ø${params.tieBarDiaMm || 10} Ties @ ${params.tieSpacingMm || 150}mm c/c`,
               codeRef: 'ACI 318-19 Seismic Detailing / BNBC Ch 6',
               description: 'Longitudinal bars resist axial + bi-axial bending; seismic 135° ties confine core.',
             })}
           >
             <title>Rectangular Column Cross-Section</title>
-            <rect x={0} y={0} width={150} height={150} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
-            <rect x={18} y={18} width={114} height={114} rx={3} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
-            <polyline points="22,22 14,30 20,38" fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
+            <rect x={0} y={0} width={140} height={140} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+            <rect x={16} y={16} width={108} height={108} rx={3} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
+            <polyline points="20,20 12,28 18,36" fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
             {[
-              [24, 24], [75, 24], [126, 24],
-              [24, 75], [126, 75],
-              [24, 126], [75, 126], [126, 126],
+              [22, 22], [70, 22], [118, 22],
+              [22, 70], [118, 70],
+              [22, 118], [70, 118], [118, 118],
             ].map(([x, y], i) => (
-              <circle key={i} cx={x} cy={y} r={7} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />
+              <circle key={i} cx={x} cy={y} r={6.5} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />
             ))}
-            <text x={75} y={166} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-01: 8-Ø{params.colMainBarDiaMm || 16} Long. + MK-02: Ø8 Tie @ 150 c/c (135° hook)
+            <text x={70} y={158} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-C1: {params.colMainBarCount || 8}-Ø{params.colMainBarDiaMm || 16} Long. + MK-C2: Ø{params.tieBarDiaMm || 10} Tie @ {params.tieSpacingMm || 150} (135°)
             </text>
           </g>
         )}
 
-        {params.elementType === 'column-circ' && (
+        {currentType === 'column-circ' && (
           <g
-            transform="translate(120, 45)"
+            transform="translate(120, 40)"
             {...bindHover({
               title: 'Circular Column Spiral Reinforcement',
-              formula: 'Spiral Ratio ρ_s = 4·A_sp / (D_core · pitch) ≥ 0.45 · (A_g/A_ch - 1) · (f\'_c / f_yt)',
-              substitution: `8-Ø${params.circMainBarDiaMm || 16} + Spiral Ø8 @ 100mm pitch`,
+              formula: 'L_turn = √[(π·D_core)² + pitch²] · Total = N_turns·L_turn + 2.5πD_core',
+              substitution: `${params.circMainBarCount || 8}-Ø${params.circMainBarDiaMm || 20} + Spiral Ø${params.spiralTieDiaMm || 10} @ ${params.spiralPitchMm || 75}mm pitch`,
               codeRef: 'ACI 318 §10.7.6.5 Spiral Confinement',
               description: 'Continuous helical spiral increases concrete ductility and column toughness.',
             })}
           >
             <title>Circular Spiral Column Section</title>
-            <circle cx={75} cy={75} r={70} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
-            <circle cx={75} cy={75} r={54} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" strokeDasharray="6 3" />
-            {Array.from({ length: 8 }).map((_, i) => {
-              const rad = (i * 2 * Math.PI) / 8;
-              return <circle key={i} cx={75 + 54 * Math.cos(rad)} cy={75 + 54 * Math.sin(rad)} r={6.5} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />;
+            <circle cx={70} cy={70} r={66} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+            <circle cx={70} cy={70} r={50} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" strokeDasharray="6 3" />
+            {Array.from({ length: Math.min(12, Math.max(6, params.circMainBarCount || 8)) }).map((_, i, arr) => {
+              const rad = (i * 2 * Math.PI) / arr.length;
+              return <circle key={i} cx={70 + 50 * Math.cos(rad)} cy={70 + 50 * Math.sin(rad)} r={6} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />;
             })}
-            <text x={75} y={166} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-01: 8-Ø{params.circMainBarDiaMm || 16} + MK-02: Spiral Ø8 @ 100mm pitch
+            <text x={70} y={158} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-CC1: {params.circMainBarCount || 8}-Ø{params.circMainBarDiaMm || 20} + MK-CC2: Spiral Ø{params.spiralTieDiaMm || 10} @ {params.spiralPitchMm || 75}mm
             </text>
           </g>
         )}
 
-        {params.elementType === 'footing' && (
+        {currentType === 'footing' && (
           <g
-            transform="translate(60, 45)"
+            transform="translate(60, 42)"
             {...bindHover({
               title: 'Isolated Footing Bottom Mat Mesh',
-              formula: 'W = d² / 162.2 kg/m · Net Length = B_footing - 2·cover + 2·9d_hook',
-              substitution: `Bi-directional mesh Ø${params.footingBarDiaMm || 12} @ ${params.footingBarSpacingMm || 150}mm c/c`,
+              formula: 'W = d² / 162.2 kg/m · L_cut = (B - 2c) + 2·(D - 2c) - 4d',
+              substitution: `Bi-directional mesh Ø${params.footingBarDiaMm || 16} @ ${params.footingBarSpacingMm || 150}mm c/c`,
               codeRef: 'BNBC 2020 Foundation Rebar',
-              description: 'Orthogonal mat resisting cantilever flexural tension under upward soil reaction.',
+              description: 'Orthogonal bottom mat with 90° L-upbends resisting cantilever flexural tension.',
             })}
           >
             <title>Footing Bottom Rebar Mat</title>
-            <rect x={0} y={0} width={290} height={140} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
-            {[22, 55, 88, 120].map((y, i) => (
-              <line key={i} x1={12} y1={y} x2={278} y2={y} stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
+            <rect x={0} y={0} width={290} height={135} rx={4} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" />
+            {[22, 52, 82, 112].map((y, i) => (
+              <line key={`h-${i}`} x1={12} y1={y} x2={278} y2={y} stroke="var(--md-sys-color-primary)" strokeWidth="2.5" />
             ))}
             {[30, 85, 140, 195, 250].map((x, i) => (
-              <line key={i} x1={x} y1={12} x2={128} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
+              <line key={`v-${i}`} x1={x} y1={12} x2={x} y2={123} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
             ))}
-            <text x={145} y={155} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-01: Bi-directional mesh Ø{params.footingBarDiaMm || 12} @ {params.footingBarSpacingMm || 150}mm c/c
+            <text x={145} y={152} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-F1/F2: Bi-directional mesh Ø{params.footingBarDiaMm || 16} @ {params.footingBarSpacingMm || 150}mm c/c
             </text>
           </g>
         )}
 
-        {params.elementType === 'staircase-waist' && (
+        {currentType === 'staircase-waist' && (
           <g
-            transform="translate(50, 45)"
+            transform="translate(50, 42)"
             {...bindHover({
               title: 'Staircase Waist Slab Main Reinforcement',
-              formula: 'L_inclined = √(T² + R²) / T · L_horizontal · W = d² / 162.2',
-              substitution: `Main Ø${params.stairMainBarDiaMm || 12} tension bottom with anchorage hooks`,
+              formula: 'L_inclined = √(Going² + Rise²) · W = d² / 162.2',
+              substitution: `Main Ø${params.stairMainBarDiaMm || 12} @ ${params.stairMainBarSpacingMm || 150}mm c/c`,
               codeRef: 'BNBC 2020 Part 6 Staircase Standard',
               description: 'Inclined longitudinal bars carrying flight gravity load into landing beams.',
             })}
           >
             <title>Staircase Waist Slab Rebar</title>
-            <polyline points="0,130 180,45 290,45 290,15 180,15 0,100" fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
-            <line x1={8} y1={115} x2={285} y2={30} stroke="var(--md-sys-color-primary)" strokeWidth="3" />
-            <text x={140} y={155} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              Waist Slab Reinforcement: Main Ø{params.stairMainBarDiaMm || 12} tension bottom
+            <polyline points="0,125 180,42 290,42 290,14 180,14 0,97" fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
+            <line x1={8} y1={112} x2={285} y2={28} stroke="var(--md-sys-color-primary)" strokeWidth="3" />
+            <text x={140} y={152} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-ST1: Waist Main Ø{params.stairMainBarDiaMm || 12} @ {params.stairMainBarSpacingMm || 150}mm c/c
+            </text>
+          </g>
+        )}
+
+        {currentType === 'lintel-chajja' && (
+          <g
+            transform="translate(45, 42)"
+            {...bindHover({
+              title: 'Lintel Beam & Cantilever Sunshade (Chajja)',
+              formula: 'Chajja Tension Top Bar L_cut = P_chajja + L_d(50d) + nose - bends',
+              substitution: `Lintel ${params.lintelLengthM ?? 2.1}m + Chajja ${(params.chajjaProjectionM ?? 0.6).toFixed(2)}m overhang`,
+              codeRef: 'BNBC 2020 Cantilever Overhang Detailing',
+              description: 'Top tension cantilever bars anchored into the lintel core to prevent overhang cracking.',
+            })}
+          >
+            <title>Lintel & Chajja Cross Section & Elevation</title>
+            {/* Lintel core */}
+            <rect x={20} y={20} width={110} height={110} rx={3} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" strokeWidth="1.8" />
+            {/* Cantilever Chajja Slab */}
+            <polygon points="130,68 320,82 320,110 130,130" fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="1.6" />
+            {/* Stirrup inside lintel */}
+            <rect x={32} y={32} width={86} height={86} rx={2} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2" />
+            {/* Top cantilever tension bar anchored into lintel */}
+            <polyline points="42,95 42,40 130,40 130,76 308,90 308,104" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="3" />
+            {/* Lintel longitudinal dots */}
+            {[40, 110].map((cx) =>
+              [40, 110].map((cy) => (
+                <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={5} fill="var(--md-sys-color-primary)" />
+              ))
+            )}
+            <text x={15} y={152} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-L1/L2: Lintel Ø{params.lintelMainBarDiaMm ?? 12} · MK-CH1: Chajja Cantilever Ø{params.chajjaMainBarDiaMm ?? 10}@{params.chajjaMainBarSpacingMm ?? 150}
+            </text>
+          </g>
+        )}
+
+        {currentType === 'pile-cage' && (
+          <g
+            transform="translate(45, 42)"
+            {...bindHover({
+              title: 'Bored Cast-in-Situ Pile Reinforcement Cage',
+              formula: 'Longitudinal L > 12m triggers 50d Tension Lap Splice + Helical Spiral',
+              substitution: `Ø${params.pileDiaMm ?? 500}mm Pile × ${params.pileLengthM ?? 18}m · ${params.pileMainBarCount ?? 7}-Ø${params.pileMainBarDiaMm ?? 16}`,
+              codeRef: 'BNBC 2020 Part 6 Sec 3.10 Foundation Piles',
+              description: 'Full-depth cylindrical cage with pile-cap dowel embedment, spiral hooping & stiffener rings.',
+            })}
+          >
+            <title>Bored Pile Reinforcement Cage</title>
+            {/* Pile concrete shaft horizontal elevation */}
+            <rect x={15} y={24} width={320} height={94} rx={4} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" strokeWidth="1.6" />
+            {/* Pile cap dowel extension left */}
+            <line x1={0} y1={38} x2={326} y2={38} stroke="var(--md-sys-color-primary)" strokeWidth="2.8" />
+            <line x1={0} y1={71} x2={326} y2={71} stroke="var(--md-sys-color-primary)" strokeWidth="2.4" />
+            <line x1={0} y1={104} x2={326} y2={104} stroke="var(--md-sys-color-primary)" strokeWidth="2.8" />
+            {/* Helical spiral zigzag */}
+            <polyline
+              points={Array.from({ length: 16 })
+                .map((_, i) => `${25 + i * 20},${i % 2 === 0 ? 35 : 107}`)
+                .join(' ')}
+              fill="none"
+              stroke="var(--md-sys-color-tertiary)"
+              strokeWidth="1.8"
+            />
+            {/* Master Stiffener Rings */}
+            {[85, 185, 285].map((rx, idx) => (
+              <ellipse key={idx} cx={rx} cy={71} rx={6} ry={34} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
+            ))}
+            <text x={15} y={142} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+              MK-P1: {params.pileMainBarCount ?? 7}-Ø{params.pileMainBarDiaMm ?? 16} (L={params.pileLengthM ?? 18}m) · MK-P2: Spiral Ø{params.pileSpiralDiaMm ?? 8}@{params.pileSpiralPitchMm ?? 150}
             </text>
           </g>
         )}
 
         {/* Bill of Quantities / Rebar Summary Card with Tooltip */}
         <g
-          transform="translate(420, 45)"
+          transform="translate(420, 42)"
           {...bindHover({
             title: 'Authoritative Rebar Unit Weight & Mass Formulation',
-            formula: 'Unit W = d² / 162.2 kg/m · Total Mass = Σ [ N_bars × L_cut × W ] × (1 + Scrap%)',
+            formula: 'Unit W = d² / 162.2 kg/m · Total Mass = Σ [ N_bars × L_cut × W ]',
             substitution: `${result.totalSteelWeightKg.toFixed(1)} kg (${result.totalSteelTonnes.toFixed(3)} Tonnes) · Cut = ${result.totalBarsLengthM.toFixed(1)} m`,
             codeRef: 'IS 1786 / BS 8666 Scheduling Code',
             description: 'Derived from density of steel (7850 kg/m³); provides exact fabrication order tonnage.',
           })}
         >
           <title>Total Rebar Quantity Schedule</title>
-          <rect x={0} y={0} width={230} height={150} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
-          <text x={16} y={24} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">TOTAL REBAR QUANTITY</text>
-          <text x={16} y={56} fontSize="24" fontWeight="800" fill="var(--md-sys-color-primary)">{result.totalSteelWeightKg.toFixed(1)} kg</text>
-          <text x={16} y={80} fontSize="12" fontWeight="600" fill="var(--md-sys-color-on-surface)">= {result.totalSteelTonnes.toFixed(3)} Tonnes</text>
-          <line x1={16} y1={92} x2={214} y2={92} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
-          <text x={16} y={108} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Total Cut Length: {result.totalBarsLengthM.toFixed(1)} m</text>
-          <text x={16} y={124} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Est. Scrap / Wastage: 5% incl.</text>
-          <text x={16} y={138} fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">Unit Wt: {result.unitWeightFormulaUsed}</text>
+          <rect x={0} y={0} width={230} height={154} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
+          <text x={16} y={22} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">TOTAL REBAR QUANTITY</text>
+          <text x={16} y={52} fontSize="22" fontWeight="800" fill="var(--md-sys-color-primary)">{result.totalSteelWeightKg.toFixed(1)} kg</text>
+          <text x={16} y={74} fontSize="11.5" fontWeight="600" fill="var(--md-sys-color-on-surface)">= {result.totalSteelTonnes.toFixed(3)} Tonnes</text>
+          <line x1={16} y1={85} x2={214} y2={85} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+          <text x={16} y={101} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Total Cut Length: {result.totalBarsLengthM.toFixed(1)} m</text>
+          <text x={16} y={116} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">
+            12m Stock Bars: {result.commercialBarStock?.total12mBarsCount ?? 0} nos
+          </text>
+          <text
+            x={16}
+            y={131}
+            fontSize="8.5"
+            fontWeight="700"
+            fill={result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0 ? 'var(--md-sys-color-error)' : 'var(--md-sys-color-primary)'}
+          >
+            {result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0
+              ? `⚠ ${result.lapSpliceAlerts.length} mark(s) >12m (${params.lappingFactorD || 50}d lap added)`
+              : `Formula: W = D² / 162.2 kg/m`}
+          </text>
+        </g>
+
+        {/* Dimensioned Bending Shape Schematics Strip */}
+        <g transform="translate(24, 212)">
+          <text x={0} y={12} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+            STANDARD BBS BENDING SHAPE SCHEMATICS &amp; DEDUCTION RULES (BS 8666 / IS 2502 / BNBC)
+          </text>
+
+          {[
+            {
+              key: 'straight',
+              x: 0,
+              title: 'STRAIGHT BAR',
+              formula: 'L = L_clear (0 bends)',
+              render: (
+                <g>
+                  <line x1={14} y1={42} x2={106} y2={42} stroke="var(--md-sys-color-primary)" strokeWidth="2.8" />
+                  <circle cx={14} cy={42} r={2.2} fill="var(--md-sys-color-primary)" />
+                  <circle cx={106} cy={42} r={2.2} fill="var(--md-sys-color-primary)" />
+                  <text x={60} y={32} textAnchor="middle" fontSize="8" fill="var(--md-sys-color-on-surface-variant)">L_clear</text>
+                </g>
+              ),
+            },
+            {
+              key: 'l-hook',
+              x: 128,
+              title: '90° L-HOOK BAR',
+              formula: '+12d hook − 2d bend',
+              render: (
+                <g>
+                  <polyline points="16,24 16,46 106,46" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.8" strokeLinejoin="round" />
+                  <text x={22} y={32} fontSize="7.5" fill="var(--md-sys-color-tertiary)">12d</text>
+                  <text x={66} y={38} textAnchor="middle" fontSize="8" fill="var(--md-sys-color-on-surface-variant)">L_clear</text>
+                </g>
+              ),
+            },
+            {
+              key: 'u-bar',
+              x: 256,
+              title: '2×90° U-BAR',
+              formula: '+2×hook − 4d (2×90°)',
+              render: (
+                <g>
+                  <polyline points="16,24 16,46 104,46 104,24" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.8" strokeLinejoin="round" />
+                  <text x={21} y={32} fontSize="7.5" fill="var(--md-sys-color-tertiary)">90°</text>
+                  <text x={87} y={32} fontSize="7.5" fill="var(--md-sys-color-tertiary)">90°</text>
+                </g>
+              ),
+            },
+            {
+              key: 'cranked',
+              x: 384,
+              title: '45° CRANKED BAR',
+              formula: '+0.42h − 1d/45° bend',
+              render: (
+                <g>
+                  <polyline points="12,48 34,48 52,26 88,26 108,48" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.6" strokeLinejoin="round" />
+                  <text x={70} y={40} textAnchor="middle" fontSize="7.5" fill="var(--md-sys-color-tertiary)">45° (+0.42h)</text>
+                </g>
+              ),
+            },
+            {
+              key: 'stirrup-135',
+              x: 512,
+              title: '135° STIRRUP',
+              formula: '+2×10d(≥75) − 12d',
+              render: (
+                <g>
+                  <rect x={28} y={20} width={64} height={36} rx={3} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.4" />
+                  <polyline points="28,22 40,32" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.2" />
+                  <polyline points="30,20 40,28" fill="none" stroke="var(--md-sys-color-primary)" strokeWidth="2.2" />
+                  <text x={60} y={42} textAnchor="middle" fontSize="7.5" fill="var(--md-sys-color-on-surface-variant)">135° Seismic</text>
+                </g>
+              ),
+            },
+          ].map((card) => {
+            const isActive = activeShapes.has(card.key as any);
+            return (
+              <g key={card.key} transform={`translate(${card.x}, 20)`}>
+                <rect
+                  x={0}
+                  y={0}
+                  width={120}
+                  height={92}
+                  rx={5}
+                  fill={isActive ? 'var(--md-sys-color-surface-container)' : 'var(--md-sys-color-surface-container-low)'}
+                  stroke={isActive ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-outline-variant)'}
+                  strokeWidth={isActive ? 1.6 : 1}
+                />
+                <text
+                  x={60}
+                  y={14}
+                  textAnchor="middle"
+                  fontSize="8"
+                  fontWeight="700"
+                  fill={isActive ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface)'}
+                >
+                  {card.title}
+                </text>
+                {card.render}
+                <text x={60} y={76} textAnchor="middle" fontSize="7.5" fill="var(--md-sys-color-on-surface-variant)">
+                  {card.formula}
+                </text>
+              </g>
+            );
+          })}
         </g>
       </svg>
       <FormulaTooltipOverlay tooltip={tooltip} />
@@ -2242,7 +2450,7 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
 }) => {
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
-  const height = 230;
+  const height = 240;
 
   if (params.wallLengthM <= 0 || params.wallHeightM <= 0) {
     return (
@@ -2260,16 +2468,17 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
 
   const wallW = 360;
   const wallH = 130;
+  const hasLintelOpening = (params.openings || []).some((op) => op.type === 'lintel');
 
   return (
     <div ref={containerRef} className="relative w-full">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <text x={40} y={26} fontSize="11" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          MASONRY WALL ELEVATION &amp; OPENING DEDUCTIONS (NET AREA: {result.netWallAreaM2} m²)
+        <text x={40} y={24} fontSize="10.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+          MASONRY WALL ELEVATION &amp; DEDUCTIONS (NET: {result.netWallAreaM2} m² · {result.bricksPerM3Effective ?? 463} BRICKS/m³)
         </text>
 
         {/* Wall & Openings Group with Tooltips */}
-        <g transform="translate(50, 44)">
+        <g transform="translate(50, 42)">
           {/* Gross Wall Solid Face */}
           <g
             {...bindHover({
@@ -2277,22 +2486,27 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
               formula: 'V_gross = L_wall × H_wall × T_wall · A_gross = L_wall × H_wall',
               substitution: `${params.wallLengthM}m × ${params.wallHeightM}m × ${(params.wallThicknessM || 0.25).toFixed(3)}m = ${result.netWallVolumeM3.toFixed(2)} m³ net (A_gross = ${(params.wallLengthM * params.wallHeightM).toFixed(2)} m²)`,
               codeRef: 'BNBC 2020 Part 6 Masonry / PWD Specification',
-              description: 'Gross vertical facade area before deduction of door and window voids.',
+              description: 'Gross vertical facade area before deduction of door, window, ventilator, and lintel voids.',
             })}
           >
             <title>Gross Masonry Wall Envelope</title>
             <rect x={0} y={0} width={wallW} height={wallH} fill="var(--md-sys-color-tertiary-container)" stroke="var(--md-sys-color-tertiary)" strokeWidth="2" />
           </g>
 
+          {/* Optional Lintel Band Indicator */}
+          {hasLintelOpening && (
+            <rect x={25} y={26} width={220} height={11} fill="var(--md-sys-color-secondary-container)" stroke="var(--md-sys-color-secondary)" strokeWidth="1.2" />
+          )}
+
           {/* Door Opening Void */}
           <g
             transform="translate(35, 40)"
             {...bindHover({
-              title: 'Door Aperture Deduction (Net Takeoff)',
-              formula: 'A_deduct = W_door × H_door × N_doors · V_deduct = A_deduct × T_wall',
-              substitution: `Total Opening Deductions = ${result.totalOpeningAreaM2.toFixed(2)} m² across ${params.openings?.length || 0} scheduled openings`,
+              title: 'Door & Lintel Aperture Deduction (Net Takeoff)',
+              formula: 'A_deduct = Σ(W × H × Count) · V_deduct = A_deduct × T_wall',
+              substitution: `Total Deductions = ${result.totalOpeningAreaM2.toFixed(2)} m² across ${params.openings?.length || 0} scheduled items`,
               codeRef: 'BNBC 2020 / IS 1200 Part 3 Deduction Standard',
-              description: 'Clear architectural opening void subtracted from gross wall area for bricks & mortar.',
+              description: 'Clear architectural opening and lintel voids subtracted from gross wall volume.',
             })}
           >
             <title>Door Opening Deduction</title>
@@ -2302,13 +2516,13 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
 
           {/* Window Opening Void */}
           <g
-            transform="translate(160, 35)"
+            transform="translate(160, 40)"
             {...bindHover({
               title: 'Window Aperture Deduction (Net Takeoff)',
               formula: 'A_deduct = W_window × H_window × N_windows',
-              substitution: `Scheduled Openings Deducted = ${result.totalOpeningAreaM2.toFixed(2)} m² from gross facade`,
+              substitution: `Scheduled Deductions = ${result.totalOpeningAreaM2.toFixed(2)} m² from gross facade`,
               codeRef: 'BNBC 2020 / PWD Works Specification',
-              description: 'Standard opening deduction for windows exceeding 0.1 m² area per civil engineering codes.',
+              description: 'Standard opening deduction for windows and lintels.',
             })}
           >
             <title>Window Opening Deduction</title>
@@ -2319,23 +2533,35 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
 
         {/* Brick Estimator & Mortar Summary Card with Tooltip */}
         <g
-          transform="translate(440, 44)"
+          transform="translate(436, 42)"
           {...bindHover({
-            title: 'Modular Brick Takeoff with Jobsite Breakage',
+            title: 'Brick, Mortar & Jhama Khoa Takeoff',
             formula: 'N_bricks = (V_net / V_brick_nominal) × (1 + Wastage%)',
-            substitution: `${result.bricksWithWastageCount} Bricks (${result.requiredBricksCount} base + ${params.brickWastagePercent}% scrap)`,
-            codeRef: 'BNBC 2020 Section 2.1 Standard Bricks',
-            description: 'Calculated using 242mm × 114mm × 70mm nominal brick with 10mm mortar joint thickness.',
+            substitution: `${result.bricksWithWastageCount} Bricks (${result.requiredBricksCount} base + ${params.brickWastagePercent}% scrap) · ${result.brickStandardUsed || 'BD Standard'}`,
+            codeRef: 'BNBC 2020 / PWD Schedule of Rates',
+            description: 'Calculated using active brick standard and mortar joint thickness.',
           })}
         >
           <title>Masonry Takeoff Schedule</title>
-          <rect x={0} y={0} width={190} height={130} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
-          <text x={14} y={24} fontSize="10" fontWeight="600" fill="var(--md-sys-color-tertiary)">BRICK ESTIMATOR</text>
-          <text x={14} y={52} fontSize="20" fontWeight="700" fill="var(--md-sys-color-on-surface)">{result.bricksWithWastageCount} Nos</text>
-          <text x={14} y={76} fontSize="11" fill="var(--md-sys-color-on-surface-variant)">Mortar: {result.mortarCementBags50Kg.toFixed(1)} Bags</text>
-          <text x={14} y={98} fontSize="11" fill="var(--md-sys-color-on-surface-variant)">Sand: {result.mortarSandCft.toFixed(1)} cft</text>
-          <text x={14} y={120} fontSize="10" fill="var(--md-sys-color-primary)">Plaster: {result.plasterCementBags.toFixed(1)} Bags</text>
+          <rect x={0} y={0} width={204} height={152} rx={6} fill="var(--md-sys-color-surface-container)" stroke="var(--md-sys-color-outline-variant)" />
+          <text x={14} y={22} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-tertiary)">BRICK &amp; FINISH ESTIMATOR</text>
+          <text x={14} y={48} fontSize="19" fontWeight="700" fill="var(--md-sys-color-on-surface)">{result.bricksWithWastageCount} Nos</text>
+          <text x={14} y={70} fontSize="10.5" fill="var(--md-sys-color-on-surface-variant)">Wall Mortar: {result.mortarCementBags50Kg.toFixed(1)} Bags</text>
+          <text x={14} y={88} fontSize="10.5" fill="var(--md-sys-color-on-surface-variant)">Sand: {result.mortarSandCft.toFixed(1)} cft</text>
+          <text x={14} y={106} fontSize="10" fill="var(--md-sys-color-primary)">Plaster: {result.plasterCementBags.toFixed(1)} Bags</text>
+          <text x={14} y={124} fontSize="10" fill="var(--md-sys-color-secondary)">
+            Paint: {result.paintPuttySchedule?.paintLitersRequired ?? 0} L · Tiles: {result.tileBoxesCount} box
+          </text>
+          {result.jhamaKhoaSchedule && result.jhamaKhoaSchedule.bricksWithWastageCount > 0 && (
+            <text x={14} y={142} fontSize="9" fontWeight="600" fill="var(--md-sys-color-tertiary)">
+              Jhama Khoa: {result.jhamaKhoaSchedule.bricksWithWastageCount} bricks
+            </text>
+          )}
         </g>
+
+        <text x={50} y={208} fontSize="9.5" fill="var(--md-sys-color-on-surface-variant)">
+          Standard: {result.brickStandardUsed || 'BD PWD Metric'} · Joint: {params.mortarJointMm}mm · Deducted Openings: {result.totalOpeningAreaM2.toFixed(2)} m²
+        </text>
       </svg>
       <FormulaTooltipOverlay tooltip={tooltip} />
       <DiagramFormulaHint />
@@ -2350,84 +2576,268 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
 }) => {
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
-  const height = 230;
+  const stations = result.stationSchedule && result.stationSchedule.length >= 2 ? result.stationSchedule : null;
+  const height = stations ? 345 : 240;
 
   if (result.bankVolumeM3 <= 0) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+      <svg viewBox={`0 0 ${width} 230`} className="w-full h-auto select-none font-mono" role="img">
+        <rect x={10} y={10} width={width - 20} height={210} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
+        <text x={width / 2} y={105} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
           ZERO EARTHWORK EXCAVATION (0.00 m³)
         </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
+        <text x={width / 2} y={127} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
           Enter excavation dimensions or alignment cross-sections to compute bank, loose and compacted volumes
         </text>
       </svg>
     );
   }
 
+  // Derive representative cross-section geometry (b, h, s, isEmbankment)
+  let repWidthB = 2.0;
+  let repDepthH = 1.5;
+  let repSlopeS = 0.5;
+  let isFillEmbankment = false;
+  let repCrossSlopePct = 0;
+
+  if (params.calculationType === 'pit-excavation') {
+    repDepthH = Math.max(0.2, params.pitDepthM || 1.5);
+    repSlopeS = Math.max(0, params.pitSideSlopeH || 0);
+    repWidthB = Math.max(0.5, (params.pitTopWidthM || 3) - 2 * repSlopeS * repDepthH);
+  } else if (params.calculationType === 'trapezoidal-trench') {
+    repWidthB = Math.max(0.5, params.trenchBottomWidthM || 1.0);
+    repDepthH = Math.max(0.2, params.trenchDepthM || 1.5);
+    repSlopeS = Math.max(0, params.trenchSideSlopeH || 0.5);
+  } else {
+    repWidthB = Math.max(1.0, params.formationWidthM || 6.5);
+    repSlopeS = Math.max(0, params.sideSlopeS ?? 1.5);
+    if (stations) {
+      const maxFill = Math.max(...stations.map((st) => st.fillHeightM));
+      const maxCut = Math.max(...stations.map((st) => st.cutDepthM));
+      isFillEmbankment = maxFill >= maxCut;
+      const peakSt = stations.find((st) => (isFillEmbankment ? st.fillHeightM === maxFill : st.cutDepthM === maxCut)) || stations[0];
+      repDepthH = Math.max(0.3, isFillEmbankment ? peakSt.fillHeightM : peakSt.cutDepthM);
+      repCrossSlopePct = peakSt.groundCrossSlopePct || 0;
+    } else {
+      repDepthH = Math.max(0.3, params.depthStation2M || params.depthStation1M || 1.2);
+    }
+  }
+
+  // Scale trapezoidal cross-section inside box [20..315, 42..185]
+  const topOrToeTotalW = repWidthB + 2 * repSlopeS * repDepthH;
+  const maxDrawW = 220;
+  const maxDrawH = 74;
+  const scaleX = maxDrawW / Math.max(topOrToeTotalW, 1);
+  const scaleY = maxDrawH / Math.max(repDepthH, 0.5);
+  const cx = 165;
+  const bPx = Math.max(36, repWidthB * scaleX);
+  const sPx = repSlopeS * repDepthH * scaleX;
+  const hPx = Math.max(26, Math.min(maxDrawH, repDepthH * scaleY));
+
+  const yBase = isFillEmbankment ? 150 : 72;
+  const yOther = isFillEmbankment ? yBase - hPx : yBase + hPx;
+  const tiltDy = Math.max(-14, Math.min(14, (repCrossSlopePct / 100) * 110));
+
+  const trapPoints = isFillEmbankment
+    ? `${cx - bPx / 2 - sPx},${yBase - tiltDy} ${cx - bPx / 2},${yOther} ${cx + bPx / 2},${yOther} ${cx + bPx / 2 + sPx},${yBase + tiltDy}`
+    : `${cx - bPx / 2 - sPx},${yBase - tiltDy} ${cx + bPx / 2 + sPx},${yBase + tiltDy} ${cx + bPx / 2},${yOther} ${cx - bPx / 2},${yOther}`;
+
   return (
     <div ref={containerRef} className="relative w-full">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <text x={40} y={26} fontSize="11" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          SOIL VOLUME STATE TRANSITION (BANK → LOOSE → COMPACTED · {result.soilClassification.toUpperCase()})
+        <text x={20} y={22} fontSize="10.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+          TRAPEZOIDAL SECTION &amp; SOIL STATE TRANSITION ({result.soilClassification.toUpperCase()})
         </text>
 
-        <g transform="translate(50, 50)">
-          {/* Bank (In-Situ) Box with Tooltip */}
+        {/* Left Panel: Trapezoidal Cross-Section CAD Schematic */}
+        <g
+          {...bindHover({
+            title: isFillEmbankment ? 'Trapezoidal Embankment Fill Cross-Section' : 'Trapezoidal Cut / Trench Cross-Section',
+            formula: 'A = (b + s · h) · h   [W_outer = b + 2·s·h]',
+            substitution: `b = ${repWidthB.toFixed(2)} m, h = ${repDepthH.toFixed(2)} m, s = ${repSlopeS.toFixed(2)}:1 → A = ${((repWidthB + repSlopeS * repDepthH) * repDepthH).toFixed(2)} m²`,
+            codeRef: 'AASHTO / RHD / BNBC 2020 Section 3.4 Earthwork',
+            description: 'Representative cross-section showing formation/bottom width b, side batter s:1 (H:V), and governing depth/height h.',
+          })}
+        >
+          <title>Trapezoidal Earthwork Cross-Section</title>
+          <rect x={20} y={34} width={295} height={152} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" />
+          <text x={30} y={50} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+            {isFillEmbankment ? 'EMBANKMENT FILL SECTION' : 'EXCAVATION / CUT SECTION'}
+          </text>
+
+          {/* Natural Ground Line */}
+          <line
+            x1={35}
+            y1={yBase - tiltDy * 1.15}
+            x2={300}
+            y2={yBase + tiltDy * 1.15}
+            stroke="var(--md-sys-color-outline)"
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+          />
+
+          {/* Trapezoid Polygon */}
+          <polygon
+            points={trapPoints}
+            fill={isFillEmbankment ? 'var(--md-sys-color-primary-container)' : 'var(--md-sys-color-tertiary-container)'}
+            fillOpacity="0.65"
+            stroke={isFillEmbankment ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-tertiary)'}
+            strokeWidth="2"
+          />
+
+          {/* Formation Width Dimension b */}
+          <line
+            x1={cx - bPx / 2}
+            y1={isFillEmbankment ? yOther - 10 : yOther + 12}
+            x2={cx + bPx / 2}
+            y2={isFillEmbankment ? yOther - 10 : yOther + 12}
+            stroke="var(--md-sys-color-on-surface)"
+            strokeWidth="1.2"
+          />
+          <text
+            x={cx}
+            y={isFillEmbankment ? yOther - 15 : yOther + 24}
+            textAnchor="middle"
+            fontSize="9.5"
+            fontWeight="700"
+            fill="var(--md-sys-color-on-surface)"
+          >
+            b = {repWidthB.toFixed(2)} m
+          </text>
+
+          {/* Depth / Height Dimension h */}
+          <line x1={cx} y1={yBase} x2={cx} y2={yOther} stroke="var(--md-sys-color-primary)" strokeWidth="1.2" strokeDasharray="2 2" />
+          <text x={cx + 5} y={(yBase + yOther) / 2 + 3} fontSize="9" fontWeight="700" fill="var(--md-sys-color-primary)">
+            h={repDepthH.toFixed(2)}m
+          </text>
+
+          {/* Side Slope Label s:1 */}
+          <text x={30} y={176} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">
+            Slope s:1 = {repSlopeS.toFixed(2)}:1{repCrossSlopePct !== 0 ? ` · Ground Tilt ${repCrossSlopePct}%` : ''}
+          </text>
+        </g>
+
+        {/* Right Panel: Bank -> Loose -> Compacted Soil Volume States */}
+        <g transform="translate(330, 34)">
           <g
             {...bindHover({
               title: 'In-Situ Bank Soil Volume (V_bank)',
-              formula: 'V_bank = L × ((W_top + W_bot) / 2) × H_cut',
+              formula: 'V_bank = V_cut + Borrow_required',
               substitution: `${result.bankVolumeM3.toFixed(1)} m³ (Base State · Factor = 1.00)`,
               codeRef: 'BNBC 2020 Section 3.4 Earthwork Excavations',
-              description: 'Undisturbed natural virgin ground state prior to excavation or trenching.',
+              description: 'Undisturbed natural virgin ground state prior to excavation or borrow pit haulage.',
             })}
           >
             <title>Bank In-Situ Soil State</title>
-            <rect x={0} y={20} width={160} height={100} rx={6} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" />
-            <text x={14} y={44} fontSize="10" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">BANK (IN-SITU)</text>
-            <text x={14} y={76} fontSize="18" fontWeight="700" fill="var(--md-sys-color-on-surface)">{result.bankVolumeM3.toFixed(1)} m³</text>
-            <text x={14} y={102} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">Factor: 1.00 (Base)</text>
+            <rect x={0} y={0} width={104} height={152} rx={8} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" />
+            <text x={10} y={22} fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">BANK (1.00)</text>
+            <text x={10} y={56} fontSize="14.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">{result.bankVolumeM3.toFixed(1)}</text>
+            <text x={10} y={72} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">m³ In-Situ</text>
+            <text x={10} y={120} fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">Excavated /</text>
+            <text x={10} y={134} fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">Borrowed</text>
           </g>
 
-          {/* Loose (Swelled) Box with Tooltip */}
           <g
-            transform="translate(200, 0)"
+            transform="translate(113, 0)"
             {...bindHover({
               title: 'Loose Volume & Bulking Swell Factor',
-              formula: 'V_loose = V_bank × (1 + Swell%) = V_bank × F_swell',
-              substitution: `${result.bankVolumeM3.toFixed(1)} m³ × ${result.swellFactor.toFixed(2)} = ${result.looseVolumeM3.toFixed(1)} m³ (${result.haulTruckTripsCount10M3} dump truck trips @ 10m³)`,
+              formula: 'V_loose = V_bank × (1 + Swell%)',
+              substitution: `${result.bankVolumeM3.toFixed(1)} × ${result.swellFactor.toFixed(2)} = ${result.looseVolumeM3.toFixed(1)} m³ (${result.haulTruckTripsCount10M3} trips)`,
               codeRef: 'Caterpillar Earthmoving Fundamentals / AASHTO',
-              description: 'Excavation mechanically disrupts soil structure, generating air voids and increasing hauling bulk.',
+              description: 'Excavation disrupts soil structure, increasing hauling bulk and dump truck trip count.',
             })}
           >
             <title>Loose Swelled Soil State</title>
-            <rect x={0} y={0} width={170} height={120} rx={6} fill="var(--md-sys-color-tertiary-container)" stroke="var(--md-sys-color-tertiary)" strokeWidth="1.5" />
-            <text x={14} y={28} fontSize="10" fontWeight="600" fill="var(--md-sys-color-tertiary)">LOOSE (SWELLED)</text>
-            <text x={14} y={64} fontSize="20" fontWeight="700" fill="var(--md-sys-color-tertiary)">{result.looseVolumeM3.toFixed(1)} m³</text>
-            <text x={14} y={90} fontSize="11" fill="var(--md-sys-color-on-surface)">Swell: {((result.swellFactor - 1) * 100).toFixed(0)}%</text>
-            <text x={14} y={110} fontSize="10" fontWeight="600" fill="var(--md-sys-color-on-surface)">{result.haulTruckTripsCount10M3} Trucks (10m³)</text>
+            <rect x={0} y={0} width={110} height={152} rx={8} fill="var(--md-sys-color-tertiary-container)" stroke="var(--md-sys-color-tertiary)" strokeWidth="1.5" />
+            <text x={10} y={22} fontSize="9" fontWeight="700" fill="var(--md-sys-color-tertiary)">LOOSE (+{((result.swellFactor - 1) * 100).toFixed(0)}%)</text>
+            <text x={10} y={56} fontSize="14.5" fontWeight="700" fill="var(--md-sys-color-tertiary)">{result.looseVolumeM3.toFixed(1)}</text>
+            <text x={10} y={72} fontSize="10" fill="var(--md-sys-color-on-surface)">m³ Hauling</text>
+            <text x={10} y={120} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">{result.haulTruckTripsCount10M3} Trucks</text>
+            <text x={10} y={134} fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">@ {result.haulTruckCapacityM3 || 10} m³/trip</text>
           </g>
 
-          {/* Compacted (Fill) Box with Tooltip */}
           <g
-            transform="translate(410, 35)"
+            transform="translate(232, 0)"
             {...bindHover({
               title: 'Compacted Engineered Fill & Shrinkage Factor',
-              formula: 'V_compact = V_bank × (1 - Shrinkage%) = V_bank × F_shrinkage',
-              substitution: `${result.bankVolumeM3.toFixed(1)} m³ × ${result.shrinkageFactor.toFixed(2)} = ${result.compactedVolumeM3.toFixed(1)} m³`,
+              formula: 'V_compact = V_bank × F_shrinkage',
+              substitution: `${result.compactedVolumeM3.toFixed(1)} m³ @ ${(result.shrinkageFactor * 100).toFixed(0)}% compaction`,
               codeRef: 'ASTM D698 / AASHTO T-99 Standard Proctor Compaction',
-              description: 'Vibratory roller compaction expels pore air to achieve target dry density (e.g. 95% MDD).',
+              description: 'Roller compaction expels air voids to achieve specified field dry density.',
             })}
           >
             <title>Compacted Fill Soil State</title>
-            <rect x={0} y={0} width={160} height={85} rx={6} fill="var(--md-sys-color-primary-container)" stroke="var(--md-sys-color-primary)" />
-            <text x={14} y={23} fontSize="10" fontWeight="600" fill="var(--md-sys-color-primary)">COMPACTED (FILL)</text>
-            <text x={14} y={53} fontSize="18" fontWeight="700" fill="var(--md-sys-color-primary)">{result.compactedVolumeM3.toFixed(1)} m³</text>
-            <text x={14} y={73} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">Factor: {(result.shrinkageFactor * 100).toFixed(0)}%</text>
+            <rect x={0} y={0} width={98} height={152} rx={8} fill="var(--md-sys-color-primary-container)" stroke="var(--md-sys-color-primary)" />
+            <text x={10} y={22} fontSize="9" fontWeight="700" fill="var(--md-sys-color-primary)">COMP. ({(result.shrinkageFactor * 100).toFixed(0)}%)</text>
+            <text x={10} y={56} fontSize="14.5" fontWeight="700" fill="var(--md-sys-color-primary)">{result.compactedVolumeM3.toFixed(1)}</text>
+            <text x={10} y={72} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">m³ Fill</text>
+            <text x={10} y={120} fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">Roller</text>
+            <text x={10} y={134} fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">Compacted</text>
           </g>
         </g>
+
+        {/* Bottom Longitudinal Chainage Profile & Mass-Haul Strip (Multi-Station Mode) */}
+        {stations && (() => {
+          const minCh = stations[0].chainageM;
+          const maxCh = Math.max(minCh + 1, stations[stations.length - 1].chainageM);
+          const maxDepth = Math.max(0.5, ...stations.map((s) => Math.max(s.cutDepthM, s.fillHeightM)));
+          const plotX0 = 60;
+          const plotW = 575;
+          const baseY = 262;
+          const ampY = 34;
+
+          const toX = (ch: number) => plotX0 + ((ch - minCh) / (maxCh - minCh)) * plotW;
+
+          const maxMass = Math.max(1, ...stations.map((s) => Math.abs(s.cumMassHaulBalanceM3)));
+          const massPoints = stations
+            .map((s) => `${toX(s.chainageM).toFixed(1)},${(baseY - (s.cumMassHaulBalanceM3 / maxMass) * (ampY - 4)).toFixed(1)}`)
+            .join(' ');
+
+          return (
+            <g transform="translate(0, 10)">
+              <rect x={20} y={190} width={640} height={134} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" />
+              <text x={32} y={208} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+                LONGITUDINAL CUT/FILL PROFILE &amp; MASS-HAUL CURVE (Ch {minCh}m → Ch {maxCh}m)
+              </text>
+              <text x={648} y={208} textAnchor="end" fontSize="9" fontWeight="700" fill={(result.netMassHaulBalanceM3 ?? 0) >= 0 ? '#0284c7' : '#e11d48'}>
+                {(result.netMassHaulBalanceM3 ?? 0) >= 0
+                  ? `Net Surplus Cut: +${(result.surplusCutBankM3 || 0).toFixed(1)} m³`
+                  : `Net Borrow Required: -${(result.borrowFillBankM3 || 0).toFixed(1)} m³`}
+              </text>
+
+              {/* Zero Formation / Balance Line */}
+              <line x1={plotX0} y1={baseY} x2={plotX0 + plotW} y2={baseY} stroke="var(--md-sys-color-outline)" strokeDasharray="3 3" />
+
+              {/* Cut (above line, amber) and Fill (below line, emerald) station bars */}
+              {stations.map((s) => {
+                const x = toX(s.chainageM);
+                const cutH = (s.cutDepthM / maxDepth) * ampY;
+                const fillH = (s.fillHeightM / maxDepth) * ampY;
+                return (
+                  <g key={s.id}>
+                    {s.cutDepthM > 0 && (
+                      <rect x={x - 6} y={baseY - cutH} width={12} height={cutH} rx={2} fill="#d97706" fillOpacity="0.45" stroke="#d97706" strokeWidth="1" />
+                    )}
+                    {s.fillHeightM > 0 && (
+                      <rect x={x - 6} y={baseY} width={12} height={fillH} rx={2} fill="#059669" fillOpacity="0.45" stroke="#059669" strokeWidth="1" />
+                    )}
+                    <text x={x} y={314} textAnchor="middle" fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">
+                      {s.chainageM}m
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Mass-Haul Cumulative Balance Polyline */}
+              <polyline fill="none" stroke="#0284c7" strokeWidth="2" points={massPoints} />
+              {stations.map((s) => {
+                const x = toX(s.chainageM);
+                const y = baseY - (s.cumMassHaulBalanceM3 / maxMass) * (ampY - 4);
+                return <circle key={`pt-${s.id}`} cx={x} cy={y} r={3} fill="#0284c7" />;
+              })}
+            </g>
+          );
+        })()}
       </svg>
       <FormulaTooltipOverlay tooltip={tooltip} />
       <DiagramFormulaHint />

@@ -16,7 +16,7 @@ import { useWorkbench } from '../../context/WorkbenchContext';
 
 interface DisciplineMatrixProps {
   onSelectModule: (moduleId: EngineeringModuleId) => void;
-  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank' | 'services') => void;
   onOpenCadModal?: (tab: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
 }
@@ -52,7 +52,7 @@ export const DisciplineMatrix: React.FC<DisciplineMatrixProps> = ({
 
   const handleLaunchTool = (tool: ToolRegistryEntry) => {
     if (tool.modalType === 'architecture' && onOpenArchitectureModal) {
-      onOpenArchitectureModal(tool.modalTab as 'far' | 'staircase' | 'watertank' | 'septictank');
+      onOpenArchitectureModal(tool.modalTab as 'far' | 'staircase' | 'watertank' | 'septictank' | 'services');
     } else if (tool.modalType === 'cad' && onOpenCadModal) {
       onOpenCadModal(tool.modalTab as 'viewport' | 'shortcuts' | 'excel');
     } else if (tool.modalType === 'site-qc' && onOpenSiteQcModal) {

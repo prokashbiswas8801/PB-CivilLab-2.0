@@ -46,7 +46,7 @@ export interface SidebarSubItem {
   name: string;
   subtitle?: string;
   moduleId?: EngineeringModuleId;
-  actionType?: 'module' | 'far-setback' | 'watertank' | 'septictank' | 'staircase' | 'cad-viewport' | 'cad-shortcuts' | 'excel-formulas' | 'site-qc' | 'earth-pressure';
+  actionType?: 'module' | 'far-setback' | 'watertank' | 'septictank' | 'staircase' | 'arch-services' | 'cad-viewport' | 'cad-shortcuts' | 'excel-formulas' | 'site-qc' | 'earth-pressure';
   badge?: string;
 }
 
@@ -59,7 +59,7 @@ export interface SidebarProps {
   isDashboardActive: boolean;
   onSelectDashboard: () => void;
   onSelectModule: (moduleId: EngineeringModuleId, subAction?: string) => void;
-  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank') => void;
+  onOpenArchitectureModal?: (tab: 'far' | 'staircase' | 'watertank' | 'septictank' | 'services') => void;
   onOpenCadModal?: (tab: 'viewport' | 'shortcuts' | 'excel') => void;
   onOpenSiteQcModal?: () => void;
   onOpenWorkspaceManager?: () => void;
@@ -103,6 +103,7 @@ export const SIDEBAR_CATEGORIES: SidebarCategory[] = [
       { id: 'staircase-ergonomics', name: 'Staircase Ergonomics', subtitle: '2R + T = 600mm / Waist Slab', moduleId: 'rebar-bbs', actionType: 'staircase' },
       { id: 'water-tank-ugwr', name: 'Water Reservoir (UGWR / OHT)', subtitle: 'LPCD Per Capita Sizer', actionType: 'watertank', badge: 'MEP' },
       { id: 'septic-tank-sizer', name: 'Septic Tank & Soak Pit', subtitle: '2-Chamber Sedimentation', actionType: 'septictank', badge: 'Sanitary' },
+      { id: 'rwh-daylight-planner', name: 'Rainwater, Daylight & Vent', subtitle: 'RWH Cistern & Room Ratio ≥10%', actionType: 'arch-services', badge: 'Eco' },
     ],
   },
   {
@@ -111,6 +112,7 @@ export const SIDEBAR_CATEGORIES: SidebarCategory[] = [
     icon: FileSpreadsheet,
     items: [
       { id: 'concrete-mix-design', name: 'Concrete Mix Design', subtitle: 'ACI 211.1 Absolute Volume', moduleId: 'concrete-mix', actionType: 'module' },
+      { id: 'concrete-materials-takeoff', name: 'Concrete Materials & Bags', subtitle: '1.54 Dry Volume Cement/Sand/Stone', moduleId: 'concrete-materials', actionType: 'module' },
       { id: 'materials-takeoff', name: 'Brickwork, Plaster & Tiles', subtitle: 'Opening Deductions & Mortar', moduleId: 'masonry-finishes', actionType: 'module' },
       { id: 'rebar-bbs-generator', name: 'Bar Bending Schedule (BBS)', subtitle: 'Exact Bar Cutting & Tonnage', moduleId: 'rebar-bbs', actionType: 'module' },
       { id: 'surveying-land-suite', name: 'Surveying & Land Suite', subtitle: 'Irregular Land & Leveling Book', moduleId: 'surveying-suite', actionType: 'module', badge: 'Survey' },
@@ -203,6 +205,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (item.actionType === 'staircase') {
       if (onOpenArchitectureModal) onOpenArchitectureModal('staircase');
       else onSelectModule('rebar-bbs', 'staircase');
+    } else if (item.actionType === 'arch-services') {
+      if (onOpenArchitectureModal) onOpenArchitectureModal('services');
     } else if (item.actionType === 'cad-viewport') {
       if (onOpenCadModal) onOpenCadModal('viewport');
     } else if (item.actionType === 'cad-shortcuts') {

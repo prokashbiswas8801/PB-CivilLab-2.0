@@ -16,6 +16,7 @@ import {
   SectionAnalyzerParams,
   RcColumnParams,
   StrutAndTieParams,
+  MasterMarketRates,
 } from '../types/civil';
 import { persistToIndexedDB, clearIndexedDB, loadFromIndexedDB } from './indexedStorage';
 import { createDefaultCustomPolygon } from './sectionMechanics';
@@ -197,31 +198,73 @@ export function createDefaultArchitectureParameters(): ArchitectureParameters {
       landAreaValue: 5.0,
       customKathaSqFt: 720,
       occupancy: 'residential',
-      roadWidthM: 9.14,
-      frontageM: 14.5,
-      plotDepthM: 23.0,
+      occupancyType: 'residential-a2',
+      plotAreaCategory: '2-to-5-katha',
+      roadWidthM: 6.1,
+      frontRoadWidthM: 6.1,
+      frontageM: 14.46,
+      plotDepthM: 23.13,
       isAutoDimension: true,
+      isCornerPlot: false,
+      roadSurrenderWidthM: 0,
+      proposedFloors: 6,
+      storyHeightM: 3.05,
+      proposedGroundCoverageM2: 195.0,
+      proposedTotalFloorAreaM2: 1050.0,
+      basementCount: 0,
+      unitsCount: 10,
+      avgUnitAreaSqm: 105.0,
+      providedCarParkingBays: 5,
+      providedSetbacks: { front: 1.5, rear: 2.0, side1: 1.25, side2: 1.25 },
       enableOverride: false,
       overrideFar: 3.5,
       overrideMgc: 60,
       overrideSetbacks: { front: 1.5, rear: 2.0, side1: 1.25, side2: 1.25 },
     },
+    occupancyType: 'residential-a2',
+    plotAreaCategory: '2-to-5-katha',
+    frontRoadWidthM: 6.1,
+    proposedFloors: 6,
+    proposedGroundCoverageM2: 195.0,
+    proposedTotalFloorAreaM2: 1050.0,
+    basementCount: 0,
+    unitsCount: 10,
+    avgUnitAreaSqm: 105.0,
     staircase: {
       stairType: 'dog-legged',
+      stairTopology: 'dog-legged',
+      buildingOccupancy: 'residential',
       floorHeightMm: 3000,
-      stairwellLengthMm: 4500,
-      stairwellWidthMm: 2400,
+      floorToFloorHeightM: 3.0,
+      stairwellLengthMm: 4650,
+      stairwellWidthMm: 2450,
       preferredRiserMm: 150,
+      riserHeightMm: 150,
       preferredTreadMm: 275,
+      treadWidthMm: 275,
+      flightWidthMm: 1150,
       waistSlabMm: 150,
+      waistSlabThicknessMm: 150,
       slabThicknessMm: 150,
       landingWidthMm: 1200,
+      wellGapMm: 150,
+      handrailHeightMm: 950,
       nosingMm: 25,
       liveLoadKpa: 3.0,
       finishesLoadKpa: 1.0,
     },
+    stairTopology: 'dog-legged',
+    buildingOccupancy: 'residential',
+    floorToFloorHeightM: 3.0,
+    riserHeightMm: 150,
+    treadWidthMm: 275,
+    flightWidthMm: 1150,
+    landingWidthMm: 1200,
+    waistSlabThicknessMm: 150,
+    wellGapMm: 150,
     waterTank: {
       calcMode: 'building',
+      occupancyPreset: 'residential-135',
       numFloors: 6,
       unitsPerFloor: 2,
       personsPerUnit: 5,
@@ -230,6 +273,9 @@ export function createDefaultArchitectureParameters(): ArchitectureParameters {
       lpcd: 135,
       storageDays: 1.0,
       fireReserveL: 10000,
+      fireReserveMinutes: 45,
+      firePumpFlowLpm: 225,
+      fireReserveAutoMode: false,
       ugwrSharePercent: 65,
       ugwrWaterDepthM: 2.0,
       ugwrLwRatio: 1.5,
@@ -246,8 +292,44 @@ export function createDefaultArchitectureParameters(): ArchitectureParameters {
       septicDepthM: 1.6,
       septicLwRatio: 2.5,
       soilPercolationRate: 30,
+      soilPercolationMinPer25mm: 18,
       soakPitDiaM: 1.8,
     },
+    rainwaterDaylight: {
+      roofCatchmentAreaM2: 220,
+      runoffCoefficient: 0.9,
+      annualRainfallMm: 2050,
+      monsoonCaptureSharePct: 75,
+      drySpellDays: 25,
+      dailyRwhDemandLpd: 900,
+      cisternDepthM: 2.0,
+      cisternLwRatio: 1.5,
+      roomName: 'Master Bedroom 01',
+      roomOccupancyType: 'habitable',
+      roomLengthM: 4.2,
+      roomWidthM: 3.4,
+      ceilingHeightM: 3.0,
+      windowCount: 2,
+      windowWidthM: 1.5,
+      windowHeightM: 1.35,
+      openableWindowPct: 50,
+      ventilatorAreaM2: 0.25,
+    },
+  };
+}
+
+export function createDefaultMasterMarketRates(): MasterMarketRates {
+  return {
+    cementBag50Kg: 545,
+    sylhetSandPerCft: 68,
+    localSandPerCft: 34,
+    stoneChips20mmPerCft: 195,
+    brickKhoaPerCft: 125,
+    firstClassBrickPer1000: 12500,
+    rebar500WPerTon: 102000,
+    headMasonDailyWage: 950,
+    helperDailyWage: 650,
+    barBenderDailyWage: 900,
   };
 }
 
@@ -296,6 +378,7 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         waterElectricityPercent: 0,
         contractorProfitPercent: 0,
       },
+      marketRates: createDefaultMasterMarketRates(),
       converter: {
         category: 'volume',
         fromUnit: 'm3',
@@ -495,6 +578,7 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         depthStation3M: 0,
         customSwellPercent: 0,
         customShrinkagePercent: 0,
+        chainageStations: [],
       },
       continuousBeam: {
         spanCount: 2,
@@ -1687,6 +1771,10 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
               : fallback.workspaces[0].boq.items,
           },
           rateAnalysis: { ...fallback.workspaces[0].rateAnalysis, ...(ws.rateAnalysis || {}) },
+          marketRates: {
+            ...createDefaultMasterMarketRates(),
+            ...(ws.marketRates || {}),
+          },
           converter: { ...fallback.workspaces[0].converter, ...(ws.converter || {}) },
           beam: { ...fallback.workspaces[0].beam, ...(ws.beam || {}) },
           bearing: { ...fallback.workspaces[0].bearing, ...(ws.bearing || {}) },
@@ -1695,7 +1783,13 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
           concreteMaterials: { ...fallback.workspaces[0].concreteMaterials, ...(ws.concreteMaterials || {}) },
           rebarBbs: { ...fallback.workspaces[0].rebarBbs, ...(ws.rebarBbs || {}) },
           masonry: { ...fallback.workspaces[0].masonry, ...(ws.masonry || {}) },
-          earthwork: { ...fallback.workspaces[0].earthwork, ...(ws.earthwork || {}) },
+          earthwork: {
+            ...fallback.workspaces[0].earthwork,
+            ...(ws.earthwork || {}),
+            chainageStations: Array.isArray(ws.earthwork?.chainageStations)
+              ? ws.earthwork.chainageStations
+              : [],
+          },
           frameTruss2d: ws.frameTruss2d
             ? {
                 ...createDefaultFrameTruss2D(),
@@ -1742,14 +1836,120 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
             fieldUnits: ws.unitPreferences?.fieldUnits || {},
             outputUnits: ws.unitPreferences?.outputUnits || {},
           },
-          architecture: ws.architecture
-            ? {
-                farMgc: { ...(fallback.workspaces[0].architecture?.farMgc || createDefaultArchitectureParameters().farMgc), ...(ws.architecture.farMgc || {}) },
-                staircase: { ...(fallback.workspaces[0].architecture?.staircase || createDefaultArchitectureParameters().staircase), ...(ws.architecture.staircase || {}) },
-                waterTank: { ...(fallback.workspaces[0].architecture?.waterTank || createDefaultArchitectureParameters().waterTank), ...(ws.architecture.waterTank || {}) },
-                septicTank: { ...(fallback.workspaces[0].architecture?.septicTank || createDefaultArchitectureParameters().septicTank), ...(ws.architecture.septicTank || {}) },
-              }
-            : fallback.workspaces[0].architecture || createDefaultArchitectureParameters(),
+          architecture: (() => {
+            const defArch = createDefaultArchitectureParameters();
+            if (!ws.architecture) {
+              return fallback.workspaces[0].architecture || defArch;
+            }
+            const rawFar = ws.architecture.farMgc || ({} as Partial<ArchitectureParameters['farMgc']>);
+            const legacyOcc = rawFar.occupancy || 'residential';
+            const mappedOccType =
+              rawFar.occupancyType ||
+              ws.architecture.occupancyType ||
+              (legacyOcc === 'commercial'
+                ? 'commercial'
+                : legacyOcc === 'mixed'
+                ? 'mixed-use'
+                : legacyOcc === 'educational'
+                ? 'institutional'
+                : 'residential-a2');
+            const syncedRoadM =
+              typeof rawFar.frontRoadWidthM === 'number'
+                ? rawFar.frontRoadWidthM
+                : typeof ws.architecture.frontRoadWidthM === 'number'
+                ? ws.architecture.frontRoadWidthM
+                : typeof rawFar.roadWidthM === 'number'
+                ? rawFar.roadWidthM
+                : defArch.farMgc.roadWidthM;
+            const mergedFar = {
+              ...defArch.farMgc,
+              ...rawFar,
+              occupancyType: mappedOccType,
+              roadWidthM: syncedRoadM,
+              frontRoadWidthM: syncedRoadM,
+              proposedFloors: rawFar.proposedFloors ?? ws.architecture.proposedFloors ?? defArch.farMgc.proposedFloors,
+              proposedGroundCoverageM2:
+                rawFar.proposedGroundCoverageM2 ??
+                ws.architecture.proposedGroundCoverageM2 ??
+                defArch.farMgc.proposedGroundCoverageM2,
+              proposedTotalFloorAreaM2:
+                rawFar.proposedTotalFloorAreaM2 ??
+                ws.architecture.proposedTotalFloorAreaM2 ??
+                defArch.farMgc.proposedTotalFloorAreaM2,
+              basementCount: rawFar.basementCount ?? ws.architecture.basementCount ?? defArch.farMgc.basementCount,
+              unitsCount: rawFar.unitsCount ?? ws.architecture.unitsCount ?? defArch.farMgc.unitsCount,
+              avgUnitAreaSqm: rawFar.avgUnitAreaSqm ?? ws.architecture.avgUnitAreaSqm ?? defArch.farMgc.avgUnitAreaSqm,
+              overrideSetbacks: {
+                ...defArch.farMgc.overrideSetbacks,
+                ...(rawFar.overrideSetbacks || {}),
+              },
+              providedSetbacks: {
+                ...(defArch.farMgc.providedSetbacks || { front: 1.5, rear: 2.0, side1: 1.25, side2: 1.25 }),
+                ...(rawFar.providedSetbacks || {}),
+              },
+            };
+            const rawStair = ws.architecture.staircase || ({} as Partial<ArchitectureParameters['staircase']>);
+            const legacyStairType = rawStair.stairType || 'dog-legged';
+            const mappedTopology =
+              rawStair.stairTopology ||
+              ws.architecture.stairTopology ||
+              (legacyStairType === 'straight' ? 'straight-flight' : legacyStairType);
+            const floorHeightMm =
+              typeof rawStair.floorHeightMm === 'number'
+                ? rawStair.floorHeightMm
+                : typeof rawStair.floorToFloorHeightM === 'number'
+                ? Math.round(rawStair.floorToFloorHeightM * 1000)
+                : defArch.staircase.floorHeightMm;
+            const preferredRiserMm = rawStair.riserHeightMm ?? rawStair.preferredRiserMm ?? defArch.staircase.preferredRiserMm;
+            const preferredTreadMm = rawStair.treadWidthMm ?? rawStair.preferredTreadMm ?? defArch.staircase.preferredTreadMm;
+            const waistSlabMm = rawStair.waistSlabThicknessMm ?? rawStair.waistSlabMm ?? defArch.staircase.waistSlabMm;
+            const mergedStair = {
+              ...defArch.staircase,
+              ...rawStair,
+              stairTopology: mappedTopology,
+              buildingOccupancy: rawStair.buildingOccupancy ?? ws.architecture.buildingOccupancy ?? 'residential',
+              floorHeightMm,
+              floorToFloorHeightM: Number((floorHeightMm / 1000).toFixed(3)),
+              preferredRiserMm,
+              riserHeightMm: preferredRiserMm,
+              preferredTreadMm,
+              treadWidthMm: preferredTreadMm,
+              flightWidthMm: rawStair.flightWidthMm ?? ws.architecture.flightWidthMm ?? defArch.staircase.flightWidthMm,
+              waistSlabMm,
+              waistSlabThicknessMm: waistSlabMm,
+              landingWidthMm: rawStair.landingWidthMm ?? ws.architecture.landingWidthMm ?? defArch.staircase.landingWidthMm,
+              wellGapMm: rawStair.wellGapMm ?? ws.architecture.wellGapMm ?? defArch.staircase.wellGapMm,
+              handrailHeightMm: rawStair.handrailHeightMm ?? 950,
+            };
+            return {
+              farMgc: mergedFar,
+              occupancyType: mergedFar.occupancyType,
+              plotAreaCategory: mergedFar.plotAreaCategory,
+              frontRoadWidthM: mergedFar.frontRoadWidthM,
+              proposedFloors: mergedFar.proposedFloors,
+              proposedGroundCoverageM2: mergedFar.proposedGroundCoverageM2,
+              proposedTotalFloorAreaM2: mergedFar.proposedTotalFloorAreaM2,
+              basementCount: mergedFar.basementCount,
+              unitsCount: mergedFar.unitsCount,
+              avgUnitAreaSqm: mergedFar.avgUnitAreaSqm,
+              staircase: mergedStair,
+              stairTopology: mergedStair.stairTopology,
+              buildingOccupancy: mergedStair.buildingOccupancy,
+              floorToFloorHeightM: mergedStair.floorToFloorHeightM,
+              riserHeightMm: mergedStair.riserHeightMm,
+              treadWidthMm: mergedStair.treadWidthMm,
+              flightWidthMm: mergedStair.flightWidthMm,
+              landingWidthMm: mergedStair.landingWidthMm,
+              waistSlabThicknessMm: mergedStair.waistSlabThicknessMm,
+              wellGapMm: mergedStair.wellGapMm,
+              waterTank: { ...(fallback.workspaces[0].architecture?.waterTank || defArch.waterTank), ...(ws.architecture.waterTank || {}) },
+              septicTank: { ...(fallback.workspaces[0].architecture?.septicTank || defArch.septicTank), ...(ws.architecture.septicTank || {}) },
+              rainwaterDaylight: {
+                ...(fallback.workspaces[0].architecture?.rainwaterDaylight || defArch.rainwaterDaylight!),
+                ...(ws.architecture.rainwaterDaylight || {}),
+              },
+            };
+          })(),
         }))
       : fallback.workspaces;
 
@@ -2092,6 +2292,10 @@ export function parseAndValidateProjectWorkspacePackage(
           ...fallback.rateAnalysis,
           ...(candidateWs.rateAnalysis || {}),
         },
+        marketRates: {
+          ...createDefaultMasterMarketRates(),
+          ...(candidateWs.marketRates || {}),
+        },
       };
 
       const history: CalculationRecord[] = Array.isArray(raw.history)
@@ -2132,6 +2336,10 @@ export function parseAndValidateProjectWorkspacePackage(
         rateAnalysis: {
           ...fallback.rateAnalysis,
           ...(candidateWs.rateAnalysis || {}),
+        },
+        marketRates: {
+          ...createDefaultMasterMarketRates(),
+          ...(candidateWs.marketRates || {}),
         },
       };
       return { workspace: normalizedWs, history: [] };
