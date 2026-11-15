@@ -138,13 +138,15 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
     else if (drawingUnit === 'inch') unitToPaperFactor = 25.4;
     else if (drawingUnit === 'ft') unitToPaperFactor = 304.8;
 
-    const zoomFactorDecimal = unitToPaperFactor / scaleRatio;
+    const zoomFactorDecimal = scaleRatio > 0 ? unitToPaperFactor / scaleRatio : 0;
     const zoomXpCommand =
-      drawingUnit === 'm'
-        ? `1000/${scaleRatio}xp`
-        : drawingUnit === 'mm'
-        ? `1/${scaleRatio}xp`
-        : `${zoomFactorDecimal.toFixed(4)}xp`;
+      scaleRatio <= 0
+        ? '0xp'
+        : drawingUnit === 'm'
+          ? `1000/${scaleRatio}xp`
+          : drawingUnit === 'mm'
+            ? `1/${scaleRatio}xp`
+            : `${zoomFactorDecimal.toFixed(4)}xp`;
 
     // Model space text height needed to plot at desired paper height:
     // H_model = H_paper * (scale / unitToPaperFactor)
@@ -621,9 +623,10 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
                   </label>
                   <input
                     type="number"
+                    min={0}
                     step="0.5"
                     value={paperTextMm}
-                    onChange={(e) => setPaperTextMm(Math.max(1.0, Number(e.target.value)))}
+                    onChange={(e) => setPaperTextMm(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                   <span className="text-[10px] text-slate-500">ISO standard: 2.5 mm</span>
@@ -634,9 +637,10 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
                   </label>
                   <input
                     type="number"
+                    min={0}
                     step="0.5"
                     value={paperTitleMm}
-                    onChange={(e) => setPaperTitleMm(Math.max(2.0, Number(e.target.value)))}
+                    onChange={(e) => setPaperTitleMm(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                   <span className="text-[10px] text-slate-500">Major headings: 5.0 mm</span>

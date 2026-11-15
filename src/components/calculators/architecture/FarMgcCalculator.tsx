@@ -57,16 +57,16 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
     initialValues?.occupancy || 'residential',
     initialValues?.occupancyType
   );
-  const initialRoadM = initialValues?.frontRoadWidthM ?? initialValues?.roadWidthM ?? 6.1;
+  const initialRoadM = initialValues?.frontRoadWidthM ?? initialValues?.roadWidthM ?? 0;
 
   // Core Plot & Zoning State
   const [landUnit, setLandUnit] = useState<LandUnit>(initialValues?.landUnit || 'katha');
-  const [landAreaValue, setLandAreaValue] = useState<number>(initialValues?.landAreaValue ?? 5.0);
+  const [landAreaValue, setLandAreaValue] = useState<number>(initialValues?.landAreaValue ?? 0);
   const [customKathaSqFt, setCustomKathaSqFt] = useState<number>(initialValues?.customKathaSqFt ?? 720);
   const [occupancyType, setOccupancyType] = useState<ArchitectureOccupancyType>(initialOccType);
   const [frontRoadWidthM, setFrontRoadWidthM] = useState<number>(initialRoadM);
-  const [frontageM, setFrontageM] = useState<number>(initialValues?.frontageM ?? 14.46);
-  const [plotDepthM, setPlotDepthM] = useState<number>(initialValues?.plotDepthM ?? 23.13);
+  const [frontageM, setFrontageM] = useState<number>(initialValues?.frontageM ?? 0);
+  const [plotDepthM, setPlotDepthM] = useState<number>(initialValues?.plotDepthM ?? 0);
   const [isAutoDimension, setIsAutoDimension] = useState<boolean>(initialValues?.isAutoDimension ?? true);
   const [isCornerPlot, setIsCornerPlot] = useState<boolean>(initialValues?.isCornerPlot ?? false);
   const [roadSurrenderWidthM, setRoadSurrenderWidthM] = useState<number>(
@@ -74,39 +74,39 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
   );
 
   // Proposed Building & Parking State
-  const [proposedFloors, setProposedFloors] = useState<number>(initialValues?.proposedFloors ?? 6);
-  const [storyHeightM, setStoryHeightM] = useState<number>(initialValues?.storyHeightM ?? 3.05);
+  const [proposedFloors, setProposedFloors] = useState<number>(initialValues?.proposedFloors ?? 0);
+  const [storyHeightM, setStoryHeightM] = useState<number>(initialValues?.storyHeightM ?? 0);
   const [proposedGroundCoverageM2, setProposedGroundCoverageM2] = useState<number>(
-    initialValues?.proposedGroundCoverageM2 ?? 195.0
+    initialValues?.proposedGroundCoverageM2 ?? 0
   );
   const [proposedTotalFloorAreaM2, setProposedTotalFloorAreaM2] = useState<number>(
-    initialValues?.proposedTotalFloorAreaM2 ?? 1050.0
+    initialValues?.proposedTotalFloorAreaM2 ?? 0
   );
   const [basementCount, setBasementCount] = useState<number>(initialValues?.basementCount ?? 0);
-  const [unitsCount, setUnitsCount] = useState<number>(initialValues?.unitsCount ?? 10);
-  const [avgUnitAreaSqm, setAvgUnitAreaSqm] = useState<number>(initialValues?.avgUnitAreaSqm ?? 105.0);
+  const [unitsCount, setUnitsCount] = useState<number>(initialValues?.unitsCount ?? 0);
+  const [avgUnitAreaSqm, setAvgUnitAreaSqm] = useState<number>(initialValues?.avgUnitAreaSqm ?? 0);
   const [providedCarParkingBays, setProvidedCarParkingBays] = useState<number>(
-    initialValues?.providedCarParkingBays ?? 5
+    initialValues?.providedCarParkingBays ?? 0
   );
   const [providedSetbacks, setProvidedSetbacks] = useState<SetbackValues>(
     initialValues?.providedSetbacks || {
-      front: 1.5,
-      rear: 2.0,
-      side1: 1.25,
-      side2: 1.25,
+      front: 0,
+      rear: 0,
+      side1: 0,
+      side2: 0,
     }
   );
 
   // Custom By-Law Variance / Override
   const [enableOverride, setEnableOverride] = useState<boolean>(initialValues?.enableOverride ?? false);
-  const [overrideFar, setOverrideFar] = useState<number>(initialValues?.overrideFar ?? 3.25);
-  const [overrideMgc, setOverrideMgc] = useState<number>(initialValues?.overrideMgc ?? 62.5);
+  const [overrideFar, setOverrideFar] = useState<number>(initialValues?.overrideFar ?? 0);
+  const [overrideMgc, setOverrideMgc] = useState<number>(initialValues?.overrideMgc ?? 0);
   const [overrideSetbacks, setOverrideSetbacks] = useState<SetbackValues>(
     initialValues?.overrideSetbacks || {
-      front: 1.5,
-      rear: 2.0,
-      side1: 1.25,
-      side2: 1.25,
+      front: 0,
+      rear: 0,
+      side1: 0,
+      side2: 0,
     }
   );
 
@@ -121,7 +121,7 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
 
   // Auto-calculate frontage & depth (1:1.6 aspect ratio) when Auto Geometry is active
   const normalizedAreaSqm = useMemo(() => {
-    const val = Math.max(0.1, landAreaValue);
+    const val = Math.max(0, landAreaValue);
     if (landUnit === 'katha') return (val * customKathaSqFt) / SQFT_PER_SQM;
     if (landUnit === 'decimal') return (val * 435.6) / SQFT_PER_SQM;
     if (landUnit === 'sqft') return val / SQFT_PER_SQM;
@@ -129,11 +129,16 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
   }, [landAreaValue, landUnit, customKathaSqFt]);
 
   useEffect(() => {
-    if (isAutoDimension && normalizedAreaSqm > 0) {
-      const estWidth = Math.sqrt(normalizedAreaSqm / 1.6);
-      const estLength = estWidth * 1.6;
-      setFrontageM(Number(estWidth.toFixed(2)));
-      setPlotDepthM(Number(estLength.toFixed(2)));
+    if (isAutoDimension) {
+      if (normalizedAreaSqm > 0) {
+        const estWidth = Math.sqrt(normalizedAreaSqm / 1.6);
+        const estLength = estWidth * 1.6;
+        setFrontageM(Number(estWidth.toFixed(2)));
+        setPlotDepthM(Number(estLength.toFixed(2)));
+      } else {
+        setFrontageM(0);
+        setPlotDepthM(0);
+      }
     }
   }, [normalizedAreaSqm, isAutoDimension]);
 
@@ -299,12 +304,12 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
     const pdfData = {
       projectMeta: {
         projectName: 'FAR, MGC & Mandatory Setback Code Compliance',
-        projectCode: 'BNBC-BYLAW-2026',
-        client: 'Municipal Planning & Development Control',
+        projectCode: 'PRJ-001',
+        client: '',
         location: `${res.plotAreaKatha} Katha (${res.plotCategoryLabel})`,
         date: new Date().toISOString().slice(0, 10),
         unitSystem: 'SI' as const,
-        engineerName: 'BD. CivilLab Architecture Engine',
+        engineerName: '',
       },
       moduleMeta: {
         moduleId: 'far-mgc-calculator',
@@ -494,11 +499,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
               <input
                 type="number"
                 step="0.1"
-                min="0.1"
+                min="0"
                 value={landAreaValue}
                 onChange={(e) => {
                   setActivePresetId('');
-                  setLandAreaValue(Math.max(0.1, Number(e.target.value) || 0.1));
+                  setLandAreaValue(Math.max(0, Number(e.target.value) || 0));
                 }}
                 className="w-full px-2.5 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
               />
@@ -565,11 +570,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                 <input
                   type="number"
                   step="0.25"
-                  min="1.8"
+                  min="0"
                   value={frontRoadWidthM}
                   onChange={(e) => {
                     setActivePresetId('');
-                    setFrontRoadWidthM(Math.max(1.8, Number(e.target.value) || 1.8));
+                    setFrontRoadWidthM(Math.max(0, Number(e.target.value) || 0));
                   }}
                   className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
@@ -635,10 +640,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                 <input
                   type="number"
                   step="0.25"
-                  min="3"
+                  min="0"
                   value={frontageM}
                   disabled={isAutoDimension}
-                  onChange={(e) => setFrontageM(Math.max(3, Number(e.target.value) || 3))}
+                  onChange={(e) => setFrontageM(Math.max(0, Number(e.target.value) || 0))}
                   className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] disabled:opacity-70"
                 />
                 <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -649,10 +654,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                 <input
                   type="number"
                   step="0.25"
-                  min="3"
+                  min="0"
                   value={plotDepthM}
                   disabled={isAutoDimension}
-                  onChange={(e) => setPlotDepthM(Math.max(3, Number(e.target.value) || 3))}
+                  onChange={(e) => setPlotDepthM(Math.max(0, Number(e.target.value) || 0))}
                   className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] disabled:opacity-70"
                 />
                 <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -671,11 +676,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             </label>
             <input
               type="number"
-              min="1"
+              min="0"
               max="60"
               step="1"
               value={proposedFloors}
-              onChange={(e) => setProposedFloors(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+              onChange={(e) => setProposedFloors(Math.max(0, Math.round(Number(e.target.value) || 0)))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -689,10 +694,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             </label>
             <input
               type="number"
-              min="10"
+              min="0"
               step="2"
               value={proposedGroundCoverageM2}
-              onChange={(e) => setProposedGroundCoverageM2(Math.max(10, Number(e.target.value) || 10))}
+              onChange={(e) => setProposedGroundCoverageM2(Math.max(0, Number(e.target.value) || 0))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -719,10 +724,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             </div>
             <input
               type="number"
-              min="10"
+              min="0"
               step="10"
               value={proposedTotalFloorAreaM2}
-              onChange={(e) => setProposedTotalFloorAreaM2(Math.max(10, Number(e.target.value) || 10))}
+              onChange={(e) => setProposedTotalFloorAreaM2(Math.max(0, Number(e.target.value) || 0))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -755,10 +760,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             </label>
             <input
               type="number"
-              min="1"
+              min="0"
               step="1"
               value={unitsCount}
-              onChange={(e) => setUnitsCount(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+              onChange={(e) => setUnitsCount(Math.max(0, Math.round(Number(e.target.value) || 0)))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -772,10 +777,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             </label>
             <input
               type="number"
-              min="25"
+              min="0"
               step="5"
               value={avgUnitAreaSqm}
-              onChange={(e) => setAvgUnitAreaSqm(Math.max(25, Number(e.target.value) || 25))}
+              onChange={(e) => setAvgUnitAreaSqm(Math.max(0, Number(e.target.value) || 0))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -869,8 +874,9 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
               <input
                 type="number"
                 step="0.05"
+                min="0"
                 value={overrideFar}
-                onChange={(e) => setOverrideFar(Math.max(0.5, Number(e.target.value) || 0.5))}
+                onChange={(e) => setOverrideFar(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -879,8 +885,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
               <input
                 type="number"
                 step="0.5"
+                min="0"
+                max="95"
                 value={overrideMgc}
-                onChange={(e) => setOverrideMgc(Math.max(10, Math.min(95, Number(e.target.value) || 50)))}
+                onChange={(e) => setOverrideMgc(Math.max(0, Math.min(95, Number(e.target.value) || 0)))}
                 className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1044,6 +1052,39 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
               {(() => {
                 const svgW = 540;
                 const svgH = 400;
+                if (res.frontageM <= 0 || res.plotDepthM <= 0) {
+                  return (
+                    <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto max-h-[410px]">
+                      <rect
+                        x="24"
+                        y="24"
+                        width={svgW - 48}
+                        height={svgH - 48}
+                        rx="12"
+                        fill="none"
+                        stroke="var(--md-sys-color-outline-variant)"
+                        strokeDasharray="6 4"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={svgW / 2}
+                        y={svgH / 2 - 8}
+                        textAnchor="middle"
+                        className="text-xs font-mono font-bold fill-[var(--md-sys-color-on-surface)]"
+                      >
+                        0 BASELINE ACTIVE — FAR &amp; SETBACK CAD STANDBY
+                      </text>
+                      <text
+                        x={svgW / 2}
+                        y={svgH / 2 + 12}
+                        textAnchor="middle"
+                        className="text-[11px] font-mono fill-[var(--md-sys-color-on-surface-variant)]"
+                      >
+                        Enter Land Area &amp; Front Road Width (or select a Worked Example) to render plot geometry.
+                      </text>
+                    </svg>
+                  );
+                }
                 const padLeft = 78;
                 const padRight = isCornerPlot ? 84 : 64;
                 const padTop = 52;

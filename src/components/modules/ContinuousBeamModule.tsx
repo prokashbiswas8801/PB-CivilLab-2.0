@@ -5,6 +5,7 @@ import {
   TriangularLoadPattern,
 } from '../../types/civil';
 import { ContinuousBeamResult } from '../../utils/calculations';
+import { createDefaultContinuousBeam } from '../../utils/storage';
 import {
   Layers,
   Activity,
@@ -29,22 +30,7 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
   activeWorkspace,
   updateActiveWorkspace,
 }) => {
-  const cb = activeWorkspace.continuousBeam || {
-    spanCount: 3,
-    spans: [
-      { id: 's1', spanIndex: 0, lengthM: 6.0, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 25.0, pointLoadKn: 40.0, pointLoadPositionM: 3.0, triangularLoadKnPerM: 0, triangularLoadPattern: 'increasing' },
-      { id: 's2', spanIndex: 1, lengthM: 7.5, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 30.0, pointLoadKn: 60.0, pointLoadPositionM: 3.75, triangularLoadKnPerM: 0, triangularLoadPattern: 'increasing' },
-      { id: 's3', spanIndex: 2, lengthM: 5.5, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 20.0, pointLoadKn: 30.0, pointLoadPositionM: 2.75, triangularLoadKnPerM: 0, triangularLoadPattern: 'increasing' },
-    ],
-    leftSupport: 'pin',
-    rightSupport: 'pin',
-    allowableStressMpa: 250,
-    sectionDepthMm: 600,
-    sectionWidthMm: 300,
-    concreteGradeFckMpa: 25,
-    steelGradeFyMpa: 420,
-    codeStandard: 'BNBC-2020',
-  };
+  const cb = activeWorkspace.continuousBeam || createDefaultContinuousBeam();
 
   const handleSpanCountChange = (count: 2 | 3 | 4) => {
     let currentSpans = [...cb.spans];
@@ -53,12 +39,12 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
         currentSpans.push({
           id: `span-${i + 1}`,
           spanIndex: i,
-          lengthM: 6.0,
-          momentOfInertiaCm4: 120000,
-          elasticModulusGpa: 200,
-          udlKnPerM: 25.0,
-          pointLoadKn: 40.0,
-          pointLoadPositionM: 3.0,
+          lengthM: 0,
+          momentOfInertiaCm4: 0,
+          elasticModulusGpa: 0,
+          udlKnPerM: 0,
+          pointLoadKn: 0,
+          pointLoadPositionM: 0,
           triangularLoadKnPerM: 0,
           triangularLoadPattern: 'increasing',
         });
@@ -452,10 +438,10 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                   <input
                     type="range"
                     aria-label={`Span ${sIdx + 1} length slider`}
-                    min={1}
+                    min={0}
                     max={20}
                     step={0.25}
-                    value={Math.min(20, Math.max(1, span.lengthM || 1))}
+                    value={Math.min(20, Math.max(0, span.lengthM || 0))}
                     onChange={(e) => updateSpan(sIdx, { lengthM: Number(e.target.value) })}
                     className="w-full h-1.5 mt-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
                   />
@@ -630,10 +616,10 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                 <input
                   type="number"
                   value={span.momentOfInertiaCm4}
-                  onChange={(e) => updateSpan(sIdx, { momentOfInertiaCm4: Math.max(100, Number(e.target.value) || 1000) })}
+                  onChange={(e) => updateSpan(sIdx, { momentOfInertiaCm4: Math.max(0, Number(e.target.value) || 0) })}
                   className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   step="5000"
-                  min="100"
+                  min="0"
                 />
               </div>
             </div>
@@ -649,10 +635,16 @@ export interface ContinuousBeamMetricsProps {
 }
 
 export const ContinuousBeamMetrics: React.FC<ContinuousBeamMetricsProps> = ({ result }) => {
-  const isPass = result.safetyStatus === 'PASS';
-  const isWarn = result.safetyStatus === 'WARNING';
+  const isZero =
+    (result as any).status === 'zero_baseline' ||
+    (result.safetyStatus as string) === 'STANDBY' ||
+    (result.totalLengthM === 0 && result.maxSaggingMomentKnm === 0 && result.maxHoggingMomentKnm === 0);
+  const isPass = !isZero && result.safetyStatus === 'PASS';
+  const isWarn = !isZero && result.safetyStatus === 'WARNING';
 
-  const statusBg = isPass
+  const statusBg = isZero
+    ? 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-300'
+    : isPass
     ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400'
     : isWarn
     ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400'
@@ -663,7 +655,9 @@ export const ContinuousBeamMetrics: React.FC<ContinuousBeamMetricsProps> = ({ re
       {/* Executive Safety Summary Banner (ACI 318 / BNBC 2020) */}
       <div className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${statusBg}`}>
         <div className="flex items-center gap-3">
-          {isPass ? (
+          {isZero ? (
+            <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
+          ) : isPass ? (
             <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
           ) : isWarn ? (
             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
@@ -672,13 +666,19 @@ export const ContinuousBeamMetrics: React.FC<ContinuousBeamMetricsProps> = ({ re
           )}
           <div>
             <div className="font-bold text-sm font-mono flex items-center gap-2">
-              <span>{result.codeChecks.governingCode} LIMIT STATE: {result.safetyStatus}</span>
+              <span>
+                {isZero
+                  ? `${result.codeChecks.governingCode} 0 BASELINE STANDBY`
+                  : `${result.codeChecks.governingCode} LIMIT STATE: ${result.safetyStatus}`}
+              </span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--md-sys-color-surface)]/80 font-mono">
-                Gov. DCR = {(result.utilizationRatio * 100).toFixed(1)}%
+                {isZero ? '0.0% DCR' : `Gov. DCR = ${(result.utilizationRatio * 100).toFixed(1)}%`}
               </span>
             </div>
             <div className="text-xs opacity-90 mt-0.5">
-              {result.governingFailureMode === 'Adequate'
+              {isZero
+                ? '0 Baseline Active — Enter span lengths, section properties, and UDL/point loads to run continuous beam solver.'
+                : result.governingFailureMode === 'Adequate'
                 ? 'Section moment capacity and shear reinforcement demands fully compliant with code safety margins.'
                 : `Governing Limit State: ${result.governingFailureMode}. Verification required.`}
             </div>

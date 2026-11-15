@@ -67,7 +67,7 @@ export const FieldNotebookModule: React.FC = () => {
     content: '',
     voiceTranscript: '',
     priority: 'Normal' as 'Normal' | 'High' | 'Critical',
-    recordedBy: 'Site Engineer',
+    recordedBy: '',
     date: new Date().toISOString().split('T')[0],
   });
 
@@ -185,7 +185,7 @@ export const FieldNotebookModule: React.FC = () => {
       content: noteForm.content.trim(),
       voiceTranscript: noteForm.voiceTranscript.trim() || undefined,
       priority: noteForm.priority,
-      recordedBy: noteForm.recordedBy.trim() || 'Site Engineer',
+      recordedBy: noteForm.recordedBy.trim(),
       isResolved: false,
     });
 
@@ -197,7 +197,7 @@ export const FieldNotebookModule: React.FC = () => {
       content: '',
       voiceTranscript: '',
       priority: 'Normal',
-      recordedBy: 'Site Engineer',
+      recordedBy: '',
       date: new Date().toISOString().split('T')[0],
     });
   };

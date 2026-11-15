@@ -76,7 +76,7 @@ export const PettyCashModule: React.FC = () => {
   const [voucherNo, setVoucherNo] = useState('');
   const [description, setDescription] = useState('');
   const [receiverOrSupplier, setReceiverOrSupplier] = useState('');
-  const [approvedBy, setApprovedBy] = useState('Engr. Site In-Charge');
+  const [approvedBy, setApprovedBy] = useState('');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -120,7 +120,7 @@ export const PettyCashModule: React.FC = () => {
     setVoucherNo(type === 'Expense' ? `V-PC-${nextSeq.toString().padStart(3, '0')}` : `HO-CASH-${nextSeq.toString().padStart(3, '0')}`);
     setDescription('');
     setReceiverOrSupplier('');
-    setApprovedBy('Engr. Site In-Charge');
+    setApprovedBy('');
     setIsModalOpen(true);
   };
 
@@ -134,7 +134,7 @@ export const PettyCashModule: React.FC = () => {
     setVoucherNo(entry.voucherNo);
     setDescription(entry.description);
     setReceiverOrSupplier(entry.receiverOrSupplier || '');
-    setApprovedBy(entry.approvedBy || 'Engr. Site In-Charge');
+    setApprovedBy(entry.approvedBy || '');
     setIsModalOpen(true);
   };
 

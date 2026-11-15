@@ -247,7 +247,7 @@ export interface EngineeringReportData {
     moduleTitle: string;
     category?: string;
     standard?: string;
-    status?: 'PASS' | 'SAFE' | 'WARNING' | 'FAIL' | 'CRITICAL' | 'VERIFIED';
+    status?: 'PASS' | 'SAFE' | 'WARNING' | 'FAIL' | 'CRITICAL' | 'VERIFIED' | 'ZERO BASELINE';
     dcrMax?: number;
   };
   inputs: ReportParameterRow[];
@@ -448,13 +448,13 @@ export async function generateEngineeringPDF(
   doc.setTextColor(100, 116, 139);
   doc.text(`Governing Standard: ${sanitizeEngineeringSymbols(reportData.moduleMeta.standard || 'BNBC 2020 / ACI 318-19 / AISC 360-16')}`, col1X, yPos + 9.5);
 
-  doc.text(`Project Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectName || 'Civil Infrastructure Design')}`, col1X, yPos + 14.5);
-  doc.text(`Project Code: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectCode || 'BDCL-PRJ')}`, col1X, yPos + 18.5);
-  doc.text(`Location: ${sanitizeEngineeringSymbols(reportData.projectMeta.location || 'Jobsite Engineering Office')}`, col1X, yPos + 22.5);
+  doc.text(`Project Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectName || 'Untitled Project')}`, col1X, yPos + 14.5);
+  doc.text(`Project Code: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectCode || 'PRJ-001')}`, col1X, yPos + 18.5);
+  doc.text(`Location: ${sanitizeEngineeringSymbols(reportData.projectMeta.location || '________________________')}`, col1X, yPos + 22.5);
 
   // Col 2
-  doc.text(`Client / Agency: ${sanitizeEngineeringSymbols(reportData.projectMeta.client || 'Client Representative')}`, col2X, yPos + 14.5);
-  doc.text(`Engineer of Record: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerName || 'Civil Project Engineer, PE')}`, col2X, yPos + 18.5);
+  doc.text(`Client / Agency: ${sanitizeEngineeringSymbols(reportData.projectMeta.client || '________________________')}`, col2X, yPos + 14.5);
+  doc.text(`Engineer of Record: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerName || '________________________')}`, col2X, yPos + 18.5);
   doc.text(`Date & Unit Standard: ${dateStr}  |  ${reportData.projectMeta.unitSystem} Units`, col2X, yPos + 22.5);
 
   yPos += metaBoxHeight + 5;
@@ -792,9 +792,9 @@ export async function generateEngineeringPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerName || 'Design Engineer, PE')}`, margin + 4, yPos + 9);
-  doc.text(`Reg / License No: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerLicense || 'PE-104928')}`, margin + 4, yPos + 13);
-  doc.text(`Organization: ${sanitizeEngineeringSymbols(reportData.projectMeta.organization || 'BD. Civil Engineering Lab')}`, margin + 4, yPos + 17);
+  doc.text(`Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerName || '________________________')}`, margin + 4, yPos + 9);
+  doc.text(`Reg / License No: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerLicense || '________________________')}`, margin + 4, yPos + 13);
+  doc.text(`Organization: ${sanitizeEngineeringSymbols(reportData.projectMeta.organization || '________________________')}`, margin + 4, yPos + 17);
   doc.text('Signature: __________________________   Date: ____________', margin + 4, yPos + 23);
 
   // Column Right: Checked & Approved By
@@ -806,8 +806,8 @@ export async function generateEngineeringPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(71, 85, 105);
-  doc.text('Title: Senior Structural / Geotechnical Engineer', margin + halfWidth + 4, yPos + 9);
-  doc.text('PE Seal / Verification: Cryptographically Anchored In App Registry', margin + halfWidth + 4, yPos + 13);
+  doc.text('Reviewer: ____________________________', margin + halfWidth + 4, yPos + 9);
+  doc.text('Reg / Seal No: _______________________', margin + halfWidth + 4, yPos + 13);
   doc.text(`Date of Submittal: ${dateStr}`, margin + halfWidth + 4, yPos + 17);
   doc.text('Signature: __________________________   Date: ____________', margin + halfWidth + 4, yPos + 23);
 
@@ -892,18 +892,18 @@ export function buildReportDataFromWorkspace(
   const unitSys: 'SI' | 'Imperial' = workspace.unitPreferences?.systemPreset === 'imperial' ? 'Imperial' : 'SI';
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  const clientName = (workspace as any).client || 'Client Representative';
+  const clientName = (workspace as any).client || '';
 
   const projectMeta = {
     projectName: workspace.name,
     projectCode: workspace.projectCode,
     client: clientName,
-    location: workspace.siteLocation || 'Site Engineering Office',
+    location: workspace.siteLocation || '',
     date: dateStr,
     unitSystem: unitSys,
-    engineerName: userProfile?.fullName || workspace.engineerOfRecord || 'Civil Project Engineer, PE',
-    engineerLicense: userProfile?.licenseNumber || 'PE-104928',
-    organization: userProfile?.organization || 'BD. Civil Engineering Lab',
+    engineerName: userProfile?.fullName || workspace.engineerOfRecord || '',
+    engineerLicense: userProfile?.licenseNumber || '',
+    organization: userProfile?.organization || '',
   };
 
   const governing = getGoverningEquations(moduleId);
@@ -915,7 +915,7 @@ export function buildReportDataFromWorkspace(
       moduleTitle: moduleId.toUpperCase(),
       category: governing.category,
       standard: governing.codeStandard,
-      status: envelope.status === 'valid' ? 'SAFE' : 'WARNING',
+      status: envelope.status === 'zero_baseline' ? 'ZERO BASELINE' : envelope.status === 'valid' ? 'SAFE' : 'WARNING',
     },
     inputs: [],
     outputs: [],
@@ -1008,7 +1008,7 @@ export function buildReportDataFromWorkspace(
 
       baseReport.inputs = [
         { name: 'RCC Element Type', symbol: 'Type', value: bbs.elementType, unit: 'type', notes: 'Structural element' },
-        { name: 'Nominal Clear Cover', symbol: 'c_c', value: bbs.clearCoverMm || 20, unit: 'mm', notes: 'BNBC 2020 / ACI 318 standard' },
+        { name: 'Nominal Clear Cover', symbol: 'c_c', value: bbs.clearCoverMm ?? 0, unit: 'mm', notes: 'BNBC 2020 / ACI 318 standard' },
         { name: 'Standard Hook Bend Angle', symbol: 'theta_hook', value: `${bbs.hookAngle || '90'} deg`, unit: 'deg', notes: 'Standard bend deduction' },
       ];
 
@@ -1245,12 +1245,12 @@ export function buildReportDataFromWorkspace(
       baseReport.moduleMeta.moduleTitle = 'Continuous Beam Analysis (Clapeyron Theorem)';
       baseReport.moduleMeta.status = 'SAFE';
 
-      const span1Len = cb?.spans?.[0]?.lengthM || 6.0;
-      const span2Len = cb?.spans?.[1]?.lengthM || 6.0;
-      const span1W = cb?.spans?.[0]?.udlKnPerM || 25.0;
+      const span1Len = cb?.spans?.[0]?.lengthM ?? 0;
+      const span2Len = cb?.spans?.[1]?.lengthM ?? 0;
+      const span1W = cb?.spans?.[0]?.udlKnPerM ?? 0;
 
       baseReport.inputs = [
-        { name: 'Span Count', symbol: 'N_span', value: cb?.spanCount || 2, unit: 'spans', notes: 'Multi-span beam' },
+        { name: 'Span Count', symbol: 'N_span', value: cb?.spanCount ?? 0, unit: 'spans', notes: 'Multi-span beam' },
         { name: 'Span 1 Length', symbol: 'L_1', value: span1Len, unit: 'm', notes: 'First span clear length' },
         { name: 'Span 2 Length', symbol: 'L_2', value: span2Len, unit: 'm', notes: 'Second span clear length' },
         { name: 'Span 1 Uniform Load', symbol: 'w_1', value: span1W, unit: 'kN/m', notes: 'UDL 1' },
@@ -1330,7 +1330,7 @@ export function buildReportDataFromWorkspace(
         { name: 'Column Dimensions (b x h)', symbol: 'b x h', value: `${r.widthB_Mm} x ${r.depthH_Mm}`, unit: 'mm', notes: `Cover ${r.clearCoverMm} mm` },
         { name: 'Concrete & Rebar Grades', symbol: 'f\'c / fy', value: `${r.concreteFcMpa} / ${r.rebarFyMpa}`, unit: 'MPa', notes: `${r.designCode}` },
         { name: 'Longitudinal Bars & Ties', symbol: 'Bars / Ties', value: `${r.totalBarCount}-Phi${r.longitudinalBarDiaMm} (${r.rhoPercent.toFixed(2)}%)`, unit: `Ties Phi${r.tieBarDiaMm}@${r.tieSpacingMm}`, notes: `Ast = ${r.astProvidedMm2.toFixed(0)} mm^2` },
-        { name: 'Factored Actions (Pu / Mux / Muy)', symbol: 'Pu / Mu', value: `${r.axialLoadPu_Kn} kN / ${col?.momentMux_Knm ?? r.momentMux_Knm} / ${col?.momentMuy_Knm ?? r.momentMuy_Knm} kN.m`, unit: 'actions', notes: `Lu = ${col?.unsupportedLengthLu_M ?? 3.4} m` },
+        { name: 'Factored Actions (Pu / Mux / Muy)', symbol: 'Pu / Mu', value: `${r.axialLoadPu_Kn} kN / ${col?.momentMux_Knm ?? r.momentMux_Knm} / ${col?.momentMuy_Knm ?? r.momentMuy_Knm} kN.m`, unit: 'actions', notes: `Lu = ${col?.unsupportedLengthLu_M ?? 0} m` },
       ];
 
       baseReport.outputs = [
@@ -1373,10 +1373,10 @@ export function buildReportDataFromWorkspace(
       baseReport.moduleMeta.status = 'SAFE';
 
       baseReport.inputs = [
-        { name: 'Pile Embedded Length', symbol: 'L', value: p?.lengthM || r.lengthM, unit: 'm', notes: 'Penetration length' },
-        { name: 'Pile Shaft Diameter', symbol: 'D', value: p?.diameterM || r.diameterM, unit: 'm', notes: 'Bored shaft diameter' },
+        { name: 'Pile Embedded Length', symbol: 'L', value: p?.lengthM ?? r.lengthM, unit: 'm', notes: 'Penetration length' },
+        { name: 'Pile Shaft Diameter', symbol: 'D', value: p?.diameterM ?? r.diameterM, unit: 'm', notes: 'Bored shaft diameter' },
         { name: 'Pile Foundation Type', symbol: 'Type', value: p?.pileType || r.pileType, unit: 'classification', notes: 'Installation method' },
-        { name: 'Design Factor of Safety', symbol: 'FoS', value: p?.factorOfSafety || 2.5, unit: 'ratio', notes: 'Code safety factor' },
+        { name: 'Design Factor of Safety', symbol: 'FoS', value: p?.factorOfSafety ?? 0, unit: 'ratio', notes: 'Code safety factor' },
       ];
 
       baseReport.outputs = [
@@ -1396,9 +1396,9 @@ export function buildReportDataFromWorkspace(
       baseReport.moduleMeta.status = 'SAFE';
 
       baseReport.inputs = [
-        { name: 'Pipe Internal Diameter', symbol: 'D', value: p?.internalDiameterMm || r.internalDiameterMm, unit: 'mm', notes: 'Inner bore' },
-        { name: 'Total Pipe Length', symbol: 'L', value: p?.lengthM || r.lengthM, unit: 'm', notes: 'Conduit length' },
-        { name: 'Volumetric Flow Rate', symbol: 'Q', value: p?.flowRateLps || r.flowRateLps, unit: 'L/s', notes: 'Conveyance discharge' },
+        { name: 'Pipe Internal Diameter', symbol: 'D', value: p?.internalDiameterMm ?? r.internalDiameterMm, unit: 'mm', notes: 'Inner bore' },
+        { name: 'Total Pipe Length', symbol: 'L', value: p?.lengthM ?? r.lengthM, unit: 'm', notes: 'Conduit length' },
+        { name: 'Volumetric Flow Rate', symbol: 'Q', value: p?.flowRateLps ?? r.flowRateLps, unit: 'L/s', notes: 'Conveyance discharge' },
         { name: 'Pipe Material Specification', symbol: 'Mat', value: p?.pipeMaterial || r.pipeMaterial, unit: 'type', notes: 'Roughness factor' },
       ];
 
@@ -1527,19 +1527,41 @@ export function buildReportDataFromWorkspace(
     }
 
     case 'surveying-suite': {
+      const sv = workspace.surveying;
+      const stations = sv?.stations || [];
+      const sumBS = stations.reduce((acc, s) => acc + (s.backsight ?? 0), 0);
+      const sumFS = stations.reduce((acc, s) => acc + (s.foresight ?? 0), 0);
+      const bmRl = sv?.benchmarkRL ?? 0;
+      const formRl = sv?.formationRL ?? 0;
+      const firstRl = stations.length > 0 ? stations[0].reducedLevel : bmRl;
+      const lastRl = stations.length > 0 ? stations[stations.length - 1].reducedLevel : bmRl;
+      const deltaSights = Number((sumBS - sumFS).toFixed(3));
+      const deltaRl = Number((lastRl - firstRl).toFixed(3));
+      const misclosure = Math.abs(deltaSights - deltaRl);
+      const areaM2 = sv?.computedAreaSqM ?? 0;
+      const volM3 = sv?.computedExcavationVolumeM3 ?? 0;
+      const isZeroBaseline = stations.length === 0 && bmRl === 0 && areaM2 === 0;
+
       baseReport.moduleMeta.moduleTitle = 'Field Surveying, Differential Leveling & Land Takeoff';
-      baseReport.moduleMeta.status = 'SAFE';
+      baseReport.moduleMeta.status = isZeroBaseline
+        ? 'ZERO BASELINE'
+        : misclosure <= 0.002
+          ? 'SAFE'
+          : 'WARNING';
 
       baseReport.inputs = [
-        { name: 'Survey Datum Benchmark', symbol: 'BM_01', value: '100.000', unit: 'm', notes: 'Permanent benchmark datum' },
-        { name: 'Reduction Method', symbol: 'Method', value: 'Rise & Fall / Height of Instrument', unit: 'standard', notes: 'Double reduction check' },
-        { name: 'Governing Standards', symbol: 'Code', value: 'Survey of Bangladesh / IS 1492', unit: 'standard', notes: 'Third-order geodetic check' },
+        { name: 'Survey Datum Benchmark', symbol: 'BM_01', value: bmRl.toFixed(3), unit: 'm', notes: 'Permanent benchmark datum' },
+        { name: 'Design Formation RL', symbol: 'RL_form', value: formRl.toFixed(3), unit: 'm', notes: 'Target grading datum' },
+        { name: 'Reduction Method', symbol: 'Method', value: sv?.method || 'height-of-instrument', unit: 'standard', notes: 'Double reduction check' },
+        { name: 'Recorded Level Stations', symbol: 'N_stn', value: stations.length, unit: 'nos', notes: 'Survey traverse points' },
       ];
 
       baseReport.outputs = [
-        { name: 'Arithmetic Sight Check (Sigma BS - Sigma FS)', symbol: 'Delta_Sights', value: '0.000', unit: 'm', limit: '<= 0.002 m', status: 'SAFE' },
-        { name: 'Reduced Level Check (Last RL - First RL)', symbol: 'Delta_RL', value: '0.000', unit: 'm', status: 'SAFE' },
-        { name: 'Three-Point Verification Status', symbol: 'Check', value: 'PASSED (0.000m error)', unit: 'audit', status: 'SAFE' },
+        { name: 'Computed Land Plot Area', symbol: 'A_plot', value: areaM2.toFixed(2), unit: 'm^2', status: isZeroBaseline ? 'INFO' : 'SAFE' },
+        { name: 'Net Cut / Fill Volume', symbol: 'V_earth', value: volM3.toFixed(2), unit: 'm^3', status: isZeroBaseline ? 'INFO' : 'SAFE' },
+        { name: 'Arithmetic Sight Check (Sigma BS - Sigma FS)', symbol: 'Delta_Sights', value: deltaSights.toFixed(3), unit: 'm', limit: '<= 0.002 m', status: isZeroBaseline ? 'INFO' : misclosure <= 0.002 ? 'SAFE' : 'WARNING' },
+        { name: 'Reduced Level Check (Last RL - First RL)', symbol: 'Delta_RL', value: deltaRl.toFixed(3), unit: 'm', status: isZeroBaseline ? 'INFO' : misclosure <= 0.002 ? 'SAFE' : 'WARNING' },
+        { name: 'Arithmetic Closure Error', symbol: 'Check', value: isZeroBaseline ? 'ZERO BASELINE (0 Stations)' : misclosure <= 0.002 ? `PASSED (${misclosure.toFixed(3)}m error)` : `MISCLOSURE (${misclosure.toFixed(3)}m)`, unit: 'audit', status: isZeroBaseline ? 'INFO' : misclosure <= 0.002 ? 'SAFE' : 'WARNING' },
       ];
       break;
     }
@@ -1666,7 +1688,7 @@ function populateSiteErpReportData(
 
       report.inputs = [
         { name: 'Project Identifier', symbol: 'Proj', value: workspace.projectCode, unit: 'code', notes: workspace.name },
-        { name: 'Site Store Location', symbol: 'Loc', value: workspace.siteLocation || 'Central Yard', unit: 'site', notes: 'Primary storage facility' },
+        { name: 'Site Store Location', symbol: 'Loc', value: workspace.siteLocation || '________________________', unit: 'site', notes: 'Primary storage facility' },
         { name: 'Total Catalog Stock Items', symbol: 'N_items', value: inventory.length, unit: 'SKUs', notes: 'Active materials in ledger' },
       ];
 
@@ -1758,7 +1780,7 @@ function populateSiteErpReportData(
     case 'labor-attendance': {
       const workers = siteData?.workers || [];
       const active = workers.filter((w: any) => w.isActive !== false).length;
-      const totalDailyWage = workers.reduce((sum: number, w: any) => sum + (w.dailyWage || 600), 0);
+      const totalDailyWage = workers.reduce((sum: number, w: any) => sum + (w.dailyWage ?? 0), 0);
 
       report.moduleMeta.moduleTitle = 'Labor Muster Roll & Daily Wage Distribution';
       report.moduleMeta.status = 'SAFE';
@@ -1779,7 +1801,7 @@ function populateSiteErpReportData(
           col1: w.id || w.workerId,
           col2: w.name,
           col3: w.trade || w.category || 'Mason / General',
-          col4: `${currency} ${(w.dailyWage || 600).toLocaleString()}`,
+          col4: `${currency} ${(w.dailyWage ?? 0).toLocaleString()}`,
           col5: w.phone || 'On Record',
           col6: w.isActive !== false ? 'ACTIVE' : 'INACTIVE',
           col7: 'Verified',
@@ -2436,16 +2458,16 @@ export async function exportArchitectureSubmittalPDF(
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'FD');
 
-  const engName = payload.userProfile?.fullName || 'Principal Architect / Engineer';
-  const engDesig = payload.userProfile?.designation || 'PE / Architect of Record';
-  const engOrg = payload.userProfile?.organization || 'BD. CivilLab Consultancy';
-  const engLic = payload.userProfile?.licenseNumber || 'RAJUK / IEB / IAB Verified';
+  const engName = payload.userProfile?.fullName || '________________________';
+  const engDesig = payload.userProfile?.designation || '________________________';
+  const engOrg = payload.userProfile?.organization || '________________________';
+  const engLic = payload.userProfile?.licenseNumber || '________________________';
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
   doc.text(
-    sanitizeEngineeringSymbols(`Project: ${payload.projectName || 'Building Development Project'} (${payload.projectCode || 'ARC-01'})`),
+    sanitizeEngineeringSymbols(`Project: ${payload.projectName || 'Untitled Project'} (${payload.projectCode || 'PRJ-001'})`),
     margin + 4,
     yPos + 6
   );
@@ -2453,7 +2475,7 @@ export async function exportArchitectureSubmittalPDF(
   doc.setFontSize(7);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    sanitizeEngineeringSymbols(`Site Location: ${payload.siteLocation || 'Municipal Jurisdiction'}  |  Date: ${dateStr}`),
+    sanitizeEngineeringSymbols(`Site Location: ${payload.siteLocation || '________________________'}  |  Date: ${dateStr}`),
     margin + 4,
     yPos + 11.5
   );
@@ -2668,10 +2690,10 @@ export async function printArchitectureSubmittalA4(
 
   const docId = generateSubmittalDocRef(new Date().getFullYear());
   const nowStr = new Date().toLocaleString();
-  const engName = payload.userProfile?.fullName || 'Principal Architect / Engineer';
-  const engDesig = payload.userProfile?.designation || 'PE / Architect of Record';
-  const engOrg = payload.userProfile?.organization || 'BD. CivilLab Consultancy';
-  const engLic = payload.userProfile?.licenseNumber || 'RAJUK / IEB Verified';
+  const engName = payload.userProfile?.fullName || '________________________';
+  const engDesig = payload.userProfile?.designation || '________________________';
+  const engOrg = payload.userProfile?.organization || '________________________';
+  const engLic = payload.userProfile?.licenseNumber || '________________________';
 
   let qrDataUrl = '';
   try {

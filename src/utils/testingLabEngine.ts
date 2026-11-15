@@ -3149,8 +3149,9 @@ export async function exportLabTestCertificatePdf(params: {
   y += 15;
 
   // Project & Sample Metadata Grid
-  const projectLabel = customOverrides?.projectName || workspace.name;
-  const engineerLabel = customOverrides?.signatoryName || userProfile?.fullName || workspace.engineerOfRecord;
+  const projectLabel = customOverrides?.projectName || workspace.name || 'Untitled Project';
+  const engineerLabel = customOverrides?.signatoryName || userProfile?.fullName || workspace.engineerOfRecord || '________________________';
+  const siteLabel = workspace.siteLocation || 'Not Set';
   const clientLine = customOverrides?.clientName ? `\nClient: ${sanitizeEngineeringSymbols(customOverrides.clientName)}` : '';
 
   autoTable(doc, {
@@ -3162,8 +3163,8 @@ export async function exportLabTestCertificatePdf(params: {
     head: [['Project & Engineering Authority', 'Sample & Code Identification']],
     body: [
       [
-        `Project: ${sanitizeEngineeringSymbols(projectLabel)} [${workspace.projectCode}]\nSite: ${sanitizeEngineeringSymbols(workspace.siteLocation)}${clientLine}\nEngineer: ${sanitizeEngineeringSymbols(engineerLabel)}`,
-        `Sample ID / Batch: ${sanitizeEngineeringSymbols(sampleRef || 'LAB-SMP-001')}\nMember / Grid Location: ${sanitizeEngineeringSymbols(locationGrid || 'Site Stockpile / Pour Zone')}\nAcceptance Standard: ${sanitizeEngineeringSymbols(evaluation.codeLimitText)}`,
+        `Project: ${sanitizeEngineeringSymbols(projectLabel)} [${workspace.projectCode || 'PRJ-001'}]\nSite: ${sanitizeEngineeringSymbols(siteLabel)}${clientLine}\nEngineer: ${sanitizeEngineeringSymbols(engineerLabel)}`,
+        `Sample ID / Batch: ${sanitizeEngineeringSymbols(sampleRef || '________________')}\nMember / Grid Location: ${sanitizeEngineeringSymbols(locationGrid || '________________')}\nAcceptance Standard: ${sanitizeEngineeringSymbols(evaluation.codeLimitText)}`,
       ],
     ],
   });
@@ -3327,8 +3328,8 @@ export async function exportLabTestCertificatePdf(params: {
     const colW = (contentWidth - 12) / 3;
     const tiers = [
       { title: '1. Tested / Inspected By', role: 'Site QA/QC Engineer', name: engineerLabel },
-      { title: '2. Checked / Verified By', role: 'Resident / Project Engineer', name: 'Project In-Charge' },
-      { title: '3. Approved By', role: 'Consultant / Client Rep', name: customOverrides?.clientName || 'Authorized Signatory' },
+      { title: '2. Checked / Verified By', role: 'Resident / Project Engineer', name: '________________________' },
+      { title: '3. Approved By', role: 'Consultant / Client Rep', name: customOverrides?.clientName || '________________________' },
     ];
     tiers.forEach((tier, idx) => {
       const xStart = margin + idx * (colW + 6);
@@ -3473,14 +3474,14 @@ export async function buildPrintableLabCertificateHtml(params: {
       <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-300 rounded text-xs font-mono print-avoid-break">
         <div>
           <div class="font-bold text-slate-500 uppercase text-[10px]">Project Information</div>
-          <div class="font-bold text-slate-900">${workspace.name} [${workspace.projectCode}]</div>
-          <div>Site: ${workspace.siteLocation}</div>
-          <div>Engineer: ${userProfile?.fullName || workspace.engineerOfRecord}</div>
+          <div class="font-bold text-slate-900">${workspace.name || 'Untitled Project'} [${workspace.projectCode || 'PRJ-001'}]</div>
+          <div>Site: ${workspace.siteLocation || 'Not Set'}</div>
+          <div>Engineer: ${userProfile?.fullName || workspace.engineerOfRecord || '________________________'}</div>
         </div>
         <div>
           <div class="font-bold text-slate-500 uppercase text-[10px]">Sample &amp; Code Reference</div>
-          <div>Sample Ref: <strong>${sampleRef || 'LAB-SMP-001'}</strong></div>
-          <div>Grid / Zone: ${locationGrid || 'Site Pour / Stockpile'}</div>
+          <div>Sample Ref: <strong>${sampleRef || '________________'}</strong></div>
+          <div>Grid / Zone: ${locationGrid || '________________'}</div>
           <div>Codes: ${test.governingCodes.join(' · ')}</div>
         </div>
       </div>
@@ -3546,15 +3547,15 @@ export async function buildPrintableLabCertificateHtml(params: {
       <div class="pt-10 grid grid-cols-3 gap-6 text-xs font-mono print-avoid-break">
         <div class="border-t border-slate-800 pt-1 text-center">
           <div class="font-bold">1. Tested / Inspected By</div>
-          <div class="text-[10px] text-slate-500">${userProfile?.fullName || 'Site QA/QC Engineer'}</div>
+          <div class="text-[10px] text-slate-500">${userProfile?.fullName || workspace.engineerOfRecord || '________________________'}</div>
         </div>
         <div class="border-t border-slate-800 pt-1 text-center">
           <div class="font-bold">2. Checked / Verified By</div>
-          <div class="text-[10px] text-slate-500">Resident / Project Engineer</div>
+          <div class="text-[10px] text-slate-500">________________________</div>
         </div>
         <div class="border-t border-slate-800 pt-1 text-center">
           <div class="font-bold">3. Approved By</div>
-          <div class="text-[10px] text-slate-500">Consultant / Client Rep</div>
+          <div class="text-[10px] text-slate-500">________________________</div>
         </div>
       </div>
       <div class="text-[9px] font-mono text-slate-400 text-center pt-1">

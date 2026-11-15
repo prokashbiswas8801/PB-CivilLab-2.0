@@ -68,12 +68,19 @@ export function createEnvelope<T>(
   extras?: {
     handCalculationSteps?: CalculationStep[];
     scopeAndLimits?: ScopeAndLimitsMetadata;
+    isZeroBaseline?: boolean;
   }
 ): CalculationEnvelope<T> {
   const hasErrors = issues.some((i) => i.severity === 'error');
   const hasWarnings = issues.some((i) => i.severity === 'warning');
   return {
-    status: hasErrors ? 'invalid' : hasWarnings ? 'warning' : 'valid',
+    status: hasErrors
+      ? 'invalid'
+      : extras?.isZeroBaseline
+        ? 'zero_baseline'
+        : hasWarnings
+          ? 'warning'
+          : 'valid',
     issues,
     result: hasErrors ? null : result,
     ...(extras?.handCalculationSteps ? { handCalculationSteps: extras.handCalculationSteps } : {}),
@@ -131,22 +138,6 @@ export function computeBeamAnalysis(
   const ovR = isOverhanging ? Math.max(0, params.overhangRightM || 0) : 0;
   const totalLenCheck = params.spanLengthM + ovL + ovR;
 
-  const isZeroBaseline = params.spanLengthM === 0;
-  if (params.spanLengthM < 0) {
-    issues.push({ field: 'spanLengthM', message: 'Span length cannot be negative.', severity: 'error' });
-  } else if (params.spanLengthM === 0) {
-    issues.push({ field: 'spanLengthM', message: 'Span length is currently 0 m (clean baseline). Calculation standing by.', severity: 'warning' });
-  }
-  if (isOverhanging && ((params.overhangLeftM ?? 0) < 0 || (params.overhangRightM ?? 0) < 0)) {
-    issues.push({ field: 'overhangLeftM', message: 'Overhang lengths cannot be negative.', severity: 'error' });
-  }
-  if (params.uniformLoadKnPerM < 0 || (params.endLoadKnPerM ?? 0) < 0) {
-    issues.push({ field: 'uniformLoadKnPerM', message: 'Distributed load intensity cannot be negative.', severity: 'error' });
-  }
-  if (params.pointLoadKn < 0) {
-    issues.push({ field: 'pointLoadKn', message: 'Concentrated point load cannot be negative.', severity: 'error' });
-  }
-
   const distType = params.distributedLoadType || 'uniform';
   const wLeft =
     distType === 'triangular-increasing'
@@ -161,8 +152,25 @@ export function computeBeamAnalysis(
           ? Math.max(0, params.endLoadKnPerM !== undefined ? params.endLoadKnPerM : params.uniformLoadKnPerM || 0)
           : Math.max(0, params.endLoadKnPerM !== undefined ? params.endLoadKnPerM : (params.uniformLoadKnPerM || 0) * 1.5);
 
-  if (wLeft === 0 && wRight === 0 && params.pointLoadKn === 0) {
-    issues.push({ field: 'loads', message: 'Applied loads are currently 0. Bending moments, shear forces, and deflections evaluate to zero.', severity: 'warning' });
+  const isZeroBaseline =
+    params.spanLengthM === 0 &&
+    wLeft === 0 &&
+    wRight === 0 &&
+    params.pointLoadKn === 0;
+
+  if (params.spanLengthM < 0) {
+    issues.push({ field: 'spanLengthM', message: 'Span length cannot be negative.', severity: 'error' });
+  } else if (params.spanLengthM === 0 && (wLeft > 0 || wRight > 0 || params.pointLoadKn > 0)) {
+    issues.push({ field: 'spanLengthM', message: 'Span length must be > 0 m when loads are applied.', severity: 'error' });
+  }
+  if (isOverhanging && ((params.overhangLeftM ?? 0) < 0 || (params.overhangRightM ?? 0) < 0)) {
+    issues.push({ field: 'overhangLeftM', message: 'Overhang lengths cannot be negative.', severity: 'error' });
+  }
+  if (params.uniformLoadKnPerM < 0 || (params.endLoadKnPerM ?? 0) < 0) {
+    issues.push({ field: 'uniformLoadKnPerM', message: 'Distributed load intensity cannot be negative.', severity: 'error' });
+  }
+  if (params.pointLoadKn < 0) {
+    issues.push({ field: 'pointLoadKn', message: 'Concentrated point load cannot be negative.', severity: 'error' });
   }
   if (params.pointLoadKn > 0 && (params.pointLoadPositionM < 0 || params.pointLoadPositionM > totalLenCheck)) {
     issues.push({ field: 'pointLoadPositionM', message: `Point load position must be within total beam length (0 to ${totalLenCheck.toFixed(2)} m).`, severity: 'error' });
@@ -224,7 +232,8 @@ export function computeBeamAnalysis(
     codeReference: `${code} · ${loadCombName}`,
   };
 
-  if (issues.some((i) => i.severity === 'error') || isZeroBaseline) {
+  if (issues.some((i) => i.severity === 'error') || isZeroBaseline || params.spanLengthM === 0) {
+    const hasErr = issues.some((i) => i.severity === 'error');
     return createEnvelope<BeamAnalysisResult>(
       {
         points: [],
@@ -252,7 +261,7 @@ export function computeBeamAnalysis(
         inflectionPointsM: [],
       },
       issues,
-      { scopeAndLimits }
+      { scopeAndLimits, isZeroBaseline: !hasErr && params.spanLengthM === 0 }
     );
   }
 
@@ -763,11 +772,11 @@ export function computeBearingCapacity(
 ): CalculationEnvelope<BearingAnalysisResult> {
   const issues: ValidationIssue[] = [];
 
-  const isZeroBaseline = params.footingWidthM === 0;
+  const isZeroBaseline = params.footingWidthM === 0 && (params.appliedColumnLoadKn || 0) === 0;
   if (params.footingWidthM < 0) {
     issues.push({ field: 'footingWidthM', message: 'Footing width B cannot be negative.', severity: 'error' });
-  } else if (params.footingWidthM === 0) {
-    issues.push({ field: 'footingWidthM', message: 'Footing width B is currently 0 m (clean baseline). Bearing capacity calculations standing by.', severity: 'warning' });
+  } else if (params.footingWidthM === 0 && (params.appliedColumnLoadKn || 0) > 0) {
+    issues.push({ field: 'footingWidthM', message: 'Footing width B must be > 0 m when column load is applied.', severity: 'error' });
   }
   if (params.embedmentDepthM < 0) {
     issues.push({ field: 'embedmentDepthM', message: 'Embedment depth D_f cannot be negative.', severity: 'error' });
@@ -778,26 +787,25 @@ export function computeBearingCapacity(
   if (params.frictionAngleDeg < 0 || params.frictionAngleDeg > 50) {
     issues.push({ field: 'frictionAngleDeg', message: 'Friction angle φ must be between 0° and 50°.', severity: 'error' });
   }
-  if (params.unitWeightKnPerM3 <= 0 && !isZeroBaseline) {
+  if (params.unitWeightKnPerM3 <= 0 && !isZeroBaseline && params.footingWidthM > 0) {
     issues.push({ field: 'unitWeightKnPerM3', message: 'Soil unit weight γ must be strictly positive (> 0 kN/m³).', severity: 'error' });
   }
   if (params.waterTableDepthM < 0) {
     issues.push({ field: 'waterTableDepthM', message: 'Groundwater table depth cannot be negative.', severity: 'error' });
   }
-  if (params.factorOfSafety < 1.0) {
+  if (!isZeroBaseline && params.footingWidthM > 0 && params.factorOfSafety < 1.0) {
     issues.push({ field: 'factorOfSafety', message: 'Factor of safety must be at least 1.0 (recommended ≥ 2.5 per BNBC-2020).', severity: 'error' });
   }
   if (params.appliedColumnLoadKn < 0) {
     issues.push({ field: 'appliedColumnLoadKn', message: 'Applied load P cannot be negative.', severity: 'error' });
-  } else if (params.appliedColumnLoadKn === 0) {
-    issues.push({ field: 'appliedColumnLoadKn', message: 'Applied load P is currently 0 kN (clean baseline). Soil pressure evaluates to zero.', severity: 'warning' });
   }
 
-  if (issues.some((i) => i.severity === 'error') || isZeroBaseline) {
+  if (issues.some((i) => i.severity === 'error') || params.footingWidthM === 0) {
+    const hasErr = issues.some((i) => i.severity === 'error');
     return createEnvelope<BearingAnalysisResult>(
       {
-        nc: 5.14,
-        nq: 1.0,
+        nc: 0,
+        nq: 0,
         nGamma: 0,
         shapeSc: 1.0,
         shapeSq: 1.0,
@@ -815,12 +823,12 @@ export function computeBearingCapacity(
         netAppliedPressureKpa: 0,
         footingAreaM2: 0,
         utilizationRatio: 0,
-        effectiveSafetyFactor: params.factorOfSafety || 2.5,
-        factorOfSafety: params.factorOfSafety || 2.5,
+        effectiveSafetyFactor: 0,
+        factorOfSafety: params.factorOfSafety || 0,
         immediateSettlementMm: 0,
         consolidationSettlementMm: 0,
         totalSettlementMm: 0,
-        permissibleSettlementMm: params.permissibleSettlementMm || 25,
+        permissibleSettlementMm: params.permissibleSettlementMm || 0,
         settlementUtilizationRatio: 0,
         settlementPass: true,
         boussinesqPoints: [],
@@ -834,12 +842,12 @@ export function computeBearingCapacity(
           terzaghiKpa: 0,
           hansenKpa: 0,
         },
-        footingThicknessMm: params.footingThicknessMm ?? 450,
-        colWidthMm: params.colWidthMm ?? 300,
-        colDepthMm: params.colDepthMm ?? 300,
-        effectiveDepthMm: (params.footingThicknessMm ?? 450) - (params.clearCoverMm ?? 75),
-        concreteStrengthFckMpa: params.fckMpa ?? 21,
-        rebarYieldFyMpa: params.fyMpa ?? 420,
+        footingThicknessMm: params.footingThicknessMm ?? 0,
+        colWidthMm: params.colWidthMm ?? 0,
+        colDepthMm: params.colDepthMm ?? 0,
+        effectiveDepthMm: 0,
+        concreteStrengthFckMpa: params.fckMpa ?? 0,
+        rebarYieldFyMpa: params.fyMpa ?? 0,
         factoredColumnLoadPuKn: 0,
         oneWayShearVuKn: 0,
         oneWayShearPhiVcKn: 0,
@@ -851,14 +859,15 @@ export function computeBearingCapacity(
         punchingShearDcr: 0,
         punchingShearPass: true,
         footingStructuralPass: true,
-        rawSptN: params.boreholeFieldSptN ?? (params.sptN60 ?? 15),
-        hammerEfficiency: params.hammerEfficiency ?? 0.60,
-        overburdenCorrectionCn: 1.0,
-        correctedSptN60: params.sptN60 ?? 15,
+        rawSptN: params.boreholeFieldSptN ?? (params.sptN60 ?? 0),
+        hammerEfficiency: params.hammerEfficiency ?? 0,
+        overburdenCorrectionCn: 0,
+        correctedSptN60: params.sptN60 ?? 0,
         empiricalSptAllowableKpa: 0,
         status: 'nominal',
       },
-      issues
+      issues,
+      { isZeroBaseline: !hasErr && params.footingWidthM === 0 }
     );
   }
 
@@ -1091,13 +1100,18 @@ export function computeBearingCapacity(
           ? B * L
           : B * 1.0; // strip per linear meter
 
-  const appliedPressureKpa = P / footingAreaM2;
+  const appliedPressureKpa = footingAreaM2 > 0 ? P / footingAreaM2 : 0;
   const netAppliedPressureKpa = Math.max(0, appliedPressureKpa - qOverburden);
-  const utilizationRatio = appliedPressureKpa / allowableBearingKpa;
-  const effectiveSafetyFactor = ultimateBearingKpa / Math.max(0.1, appliedPressureKpa);
+  const utilizationRatio =
+    allowableBearingKpa > 0
+      ? appliedPressureKpa / allowableBearingKpa
+      : appliedPressureKpa > 0
+        ? 9.99
+        : 0;
+  const effectiveSafetyFactor = appliedPressureKpa > 0 ? ultimateBearingKpa / appliedPressureKpa : 0;
 
   // 6. Automated Settlement Estimation (BNBC-2020 Clause 3.8 / Bowles / Schmertmann)
-  const EsKpa = EsMpa * 1000;
+  const EsKpa = Math.max(100, EsMpa * 1000);
   const poisson = params.poissonRatio || (phi > 0 ? 0.30 : 0.40);
 
   // Influence factor for rigid footing
@@ -1475,25 +1489,19 @@ export function computeConcreteMix(
   const isZeroStrength = params.targetStrengthMpa === 0;
   const isZeroWc = params.waterCementRatio === 0;
   const isZeroBatch = params.batchVolumeM3 === 0;
+  const isZeroBaseline = isZeroStrength && isZeroWc && isZeroBatch;
 
   if (params.targetStrengthMpa < 0) {
     issues.push({ field: 'targetStrengthMpa', message: 'Target compressive strength cannot be negative.', severity: 'error' });
-  } else if (isZeroStrength) {
-    issues.push({ field: 'targetStrengthMpa', message: 'Target strength is 0 MPa (clean baseline). Design mix proportions standing by.', severity: 'warning' });
   }
-
   if (params.waterCementRatio < 0 || params.waterCementRatio > 0.85) {
     issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio must be between 0.25 and 0.85.', severity: 'error' });
-  } else if (isZeroWc) {
-    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio is 0. Using standard 0.50 reference for volumetric proportions.', severity: 'warning' });
+  } else if (!isZeroBaseline && params.targetStrengthMpa > 0 && isZeroWc) {
+    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio must be > 0 (typically 0.35–0.65).', severity: 'error' });
   }
-
   if (params.batchVolumeM3 < 0) {
     issues.push({ field: 'batchVolumeM3', message: 'Batch volume cannot be negative.', severity: 'error' });
-  } else if (isZeroBatch) {
-    issues.push({ field: 'batchVolumeM3', message: 'Batch volume is 0 m³ (clean baseline). Batch quantities evaluate to zero.', severity: 'warning' });
   }
-
   if (params.slumpMm < 0) {
     issues.push({ field: 'slumpMm', message: 'Slump cannot be negative.', severity: 'error' });
   }
@@ -1502,21 +1510,67 @@ export function computeConcreteMix(
     return createEnvelope<ConcreteMixResult>(null, issues);
   }
 
+  if (isZeroBaseline || (isZeroStrength && isZeroWc)) {
+    return createEnvelope<ConcreteMixResult>(
+      {
+        waterKgPerM3: 0,
+        adjustedWaterKgPerM3: 0,
+        cementKgPerM3: 0,
+        coarseAggKgPerM3: 0,
+        batchedCoarseAggKgPerM3: 0,
+        fineAggKgPerM3: 0,
+        batchedFineAggKgPerM3: 0,
+        admixtureKgPerM3: 0,
+        admixtureVolumeM3: 0,
+        totalDensityKgPerM3: 0,
+        freshConcreteUnitWeightKgPerM3: 0,
+        batchCementKg: 0,
+        batchWaterKg: 0,
+        batchAdjustedWaterKg: 0,
+        batchFineAggKg: 0,
+        batchBatchedFineAggKg: 0,
+        batchCoarseAggKg: 0,
+        batchBatchedCoarseAggKg: 0,
+        batchAdmixtureKg: 0,
+        cementBags50Kg: 0,
+        estimated28DayMpa: 0,
+        status: 'nominal',
+        batchVolumeM3: params.batchVolumeM3 || 0,
+        cementBags: 0,
+        fineAggM3: 0,
+        coarseAggM3: 0,
+        items: [],
+        totalSolidVolumeM3: 0,
+        yieldM3: 0,
+        relativeYield: 0,
+        totalAggregateFreeWaterKgPerM3: 0,
+        designWaterReductionPercent: 0,
+        fineAggSolidVolumeM3: 0,
+        coarseAggSolidVolumeM3: 0,
+        cementSolidVolumeM3: 0,
+        waterSolidVolumeM3: 0,
+        airVolumeM3: 0,
+        admixtureSolidVolumeM3: 0,
+      },
+      issues,
+      { isZeroBaseline: true }
+    );
+  }
+
   const dMax = params.maxAggregateSizeMm || 20;
   const baseWater =
     dMax <= 10 ? 205 : dMax <= 12.5 ? 198 : dMax <= 20 ? 186 : dMax <= 25 ? 179 : 165;
-  const slump = params.slumpMm ?? 75;
+  const slump = params.slumpMm ?? 0;
   const slumpAdjustment = ((slump - 90) / 25) * 5.5;
   const initialWaterDemand = baseWater + slumpAdjustment;
 
   // Chemical admixture water reduction credit (superplasticizer / HRWR)
-  const admixDosePercent = params.admixtureDosePercent ?? 1.0;
-  const admixSG = params.admixtureSpecificGravity ?? 1.15;
+  const admixDosePercent = params.admixtureDosePercent ?? 0;
+  const admixSG = params.admixtureSpecificGravity || 1.15;
   const waterReductionPercent = admixDosePercent > 0 ? (params.admixtureWaterReductionPercent ?? 15) : 0;
   const waterKgPerM3 = Math.max(120, initialWaterDemand * (1 - waterReductionPercent / 100));
 
-  // Safe water-cement ratio: default to 0.50 if zero baseline
-  const effectiveWc = isZeroWc ? 0.50 : Math.max(0.20, params.waterCementRatio);
+  const effectiveWc = Math.max(0.20, params.waterCementRatio || 0.50);
 
   // Cementitious content from w/c
   const cementKgPerM3 = isZeroStrength ? 0 : waterKgPerM3 / effectiveWc;
@@ -1598,14 +1652,14 @@ export function computeConcreteMix(
   const freshConcreteUnitWeightKgPerM3 =
     cementKgPerM3 + adjustedWaterKgPerM3 + batchedFineAggKgPerM3 + batchedCoarseAggKgPerM3 + admixtureKgPerM3;
 
-  const V = params.batchVolumeM3 || 1.0;
+  const V = Math.max(0, params.batchVolumeM3 || 0);
 
   // Yield verification
   const yieldM3 = freshConcreteUnitWeightKgPerM3 > 0 ? (freshConcreteUnitWeightKgPerM3 / 2400) : 1.0;
   const relativeYield = Number((yieldM3 / 1.0).toFixed(3));
 
   // Compressive strength curve estimate (Abrams Law)
-  const estimated28DayMpa = 96.5 / Math.pow(7.2, 1.35 * params.waterCementRatio);
+  const estimated28DayMpa = effectiveWc > 0 ? 96.5 / Math.pow(7.2, 1.35 * effectiveWc) : 0;
   const status: 'nominal' | 'warning' | 'critical' =
     estimated28DayMpa < params.targetStrengthMpa * 0.92
       ? 'critical'
@@ -1811,11 +1865,13 @@ export function computeChannelHydraulics(
 
   const isZeroDepth = params.flowDepthM === 0;
   const isZeroWidth = shape !== 'circular' && params.bottomWidthM === 0;
+  const isZeroCirc = shape === 'circular' && (params.diameterM ?? 0) === 0;
+  const isZeroBaseline = isZeroDepth && (isZeroWidth || isZeroCirc || params.bedSlope === 0);
 
   if (shape !== 'circular' && params.bottomWidthM < 0) {
     issues.push({ field: 'bottomWidthM', message: 'Channel bed width b cannot be negative.', severity: 'error' });
-  } else if (isZeroWidth) {
-    issues.push({ field: 'bottomWidthM', message: 'Channel bed width b is 0 m (clean baseline).', severity: 'warning' });
+  } else if (shape !== 'circular' && params.flowDepthM > 0 && params.bottomWidthM === 0) {
+    issues.push({ field: 'bottomWidthM', message: 'Channel bed width b must be > 0 m when flow depth > 0.', severity: 'error' });
   }
 
   if (shape === 'trapezoidal' && params.sideSlopeZ < 0) {
@@ -1823,23 +1879,21 @@ export function computeChannelHydraulics(
   }
   if (shape === 'circular' && params.diameterM !== undefined && params.diameterM < 0) {
     issues.push({ field: 'diameterM', message: 'Conduit diameter D cannot be negative.', severity: 'error' });
-  } else if (shape === 'circular' && params.diameterM === 0) {
-    issues.push({ field: 'diameterM', message: 'Conduit diameter D is 0 m (clean baseline).', severity: 'warning' });
+  } else if (shape === 'circular' && params.flowDepthM > 0 && (params.diameterM ?? 0) === 0) {
+    issues.push({ field: 'diameterM', message: 'Conduit diameter D must be > 0 m when flow depth > 0.', severity: 'error' });
   }
 
   if (params.flowDepthM < 0) {
     issues.push({ field: 'flowDepthM', message: 'Flow depth y cannot be negative.', severity: 'error' });
-  } else if (isZeroDepth) {
-    issues.push({ field: 'flowDepthM', message: 'Flow depth y is 0 m (dry bed / clean baseline). Discharge and velocity evaluate to 0.', severity: 'warning' });
   }
 
   if (params.bedSlope < 0) {
     issues.push({ field: 'bedSlope', message: 'Bed slope S_0 cannot be negative.', severity: 'error' });
-  } else if (params.bedSlope === 0) {
-    issues.push({ field: 'bedSlope', message: 'Bed slope S_0 is 0 (horizontal bed).', severity: 'warning' });
+  } else if (!isZeroDepth && !isZeroWidth && !isZeroCirc && params.bedSlope === 0) {
+    issues.push({ field: 'bedSlope', message: 'Bed slope S_0 is 0 (horizontal bed): Manning uniform velocity evaluates to 0 m/s.', severity: 'warning' });
   }
 
-  if (params.manningN <= 0 && !isZeroDepth) {
+  if (params.manningN <= 0 && !isZeroDepth && !isZeroBaseline) {
     issues.push({ field: 'manningN', message: 'Manning roughness coefficient n must be strictly positive (> 0).', severity: 'error' });
   }
 
@@ -1851,7 +1905,8 @@ export function computeChannelHydraulics(
     });
   }
 
-  if (issues.some((i) => i.severity === 'error') || isZeroDepth || isZeroWidth) {
+  if (issues.some((i) => i.severity === 'error') || isZeroDepth || isZeroWidth || isZeroCirc) {
+    const hasErr = issues.some((i) => i.severity === 'error');
     return createEnvelope<ChannelHydraulicsResult>(
       {
         shape,
@@ -1884,15 +1939,16 @@ export function computeChannelHydraulics(
         eglHglProfile: [],
         status: 'nominal',
       },
-      issues
+      issues,
+      { isZeroBaseline: !hasErr && (isZeroDepth || isZeroWidth || isZeroCirc) }
     );
   }
 
-  const b = shape === 'circular' ? 0 : Math.max(0.01, params.bottomWidthM || 2.0);
+  const b = shape === 'circular' ? 0 : Math.max(0.01, params.bottomWidthM || 0);
   const z = shape === 'rectangular' ? 0 : Math.max(0, params.sideSlopeZ || 0);
-  const D = shape === 'circular' ? Math.max(0.05, params.diameterM || 1.0) : 1.0;
+  const D = shape === 'circular' ? Math.max(0.05, params.diameterM || 0) : 1.0;
   const y = params.flowDepthM;
-  const S = Math.max(0.00001, params.bedSlope);
+  const S = Math.max(0, params.bedSlope);
   const n = Math.max(0.005, params.manningN);
 
   const geom = calculateChannelGeometry(shape, y, b, z, D);
@@ -1903,14 +1959,14 @@ export function computeChannelHydraulics(
   const hydraulicDepthM = geom.hydraulicDepth;
 
   // Manning's Equation: V = (1/n) * R_h^(2/3) * S_0^(1/2)
-  const velocityMps = (1 / n) * Math.pow(hydraulicRadiusM, 2 / 3) * Math.sqrt(S);
+  const velocityMps = S > 0 ? (1 / n) * Math.pow(hydraulicRadiusM, 2 / 3) * Math.sqrt(S) : 0;
   const dischargeM3ps = flowAreaM2 * velocityMps;
   const g = 9.80665;
   const velocityHeadM = Math.pow(velocityMps, 2) / (2 * g);
   const specificEnergyM = y + velocityHeadM;
 
   // Froude Number: Fr = V / sqrt(g * D_h)
-  const froudeNumber = velocityMps / Math.sqrt(g * hydraulicDepthM);
+  const froudeNumber = hydraulicDepthM > 0 ? velocityMps / Math.sqrt(g * hydraulicDepthM) : 0;
   const flowRegime: 'Subcritical' | 'Critical' | 'Supercritical' =
     froudeNumber < 0.98
       ? 'Subcritical'
@@ -2107,8 +2163,6 @@ export function computeConcreteMaterials(
 
   if (effectiveWetVolumeM3 < 0) {
     issues.push({ field: 'wetVolumeM3', message: 'Wet volume cannot be negative.', severity: 'error' });
-  } else if (isZeroBaseline) {
-    issues.push({ field: 'wetVolumeM3', message: 'Wet volume is currently 0 m³ (clean baseline). Material batch quantities evaluate to zero.', severity: 'warning' });
   }
 
   if (params.ratioCement <= 0 && !isZeroBaseline) {
@@ -2143,6 +2197,7 @@ export function computeConcreteMaterials(
   };
 
   if (issues.some((i) => i.severity === 'error') || isZeroBaseline) {
+    const hasErr = issues.some((i) => i.severity === 'error');
     return createEnvelope<ConcreteMaterialResult>(
       {
         code: params.code,
@@ -2151,7 +2206,7 @@ export function computeConcreteMaterials(
         dryVolumeM3: 0,
         wastageMultiplier: 1 + (params.wastagePercent || 0) / 100,
         totalDryVolumeWithWastageM3: 0,
-        sumOfProportions: (params.ratioCement || 1) + (params.ratioSand || 2) + (params.ratioAggregate || 4),
+        sumOfProportions: (params.ratioCement || 0) + (params.ratioSand || 0) + (params.ratioAggregate || 0),
         cementVolumeM3: 0,
         cementMassKg: 0,
         cementBags50Kg: 0,
@@ -2170,7 +2225,7 @@ export function computeConcreteMaterials(
         status: 'nominal',
       },
       issues,
-      { scopeAndLimits, handCalculationSteps: [] }
+      { scopeAndLimits, handCalculationSteps: [], isZeroBaseline: !hasErr && isZeroBaseline }
     );
   }
 
@@ -2427,7 +2482,7 @@ export function computeRebarBBS(
   const lapSpliceAlerts: LapSpliceAdvisory[] = [];
   const coverM = params.clearCoverMm / 1000;
   const density = params.rebarDensityKgPerM3 || 7850;
-  const elementQty = Math.max(1, Math.round(params.elementCount || 1));
+  const elementQty = Math.max(0, Math.round(params.elementCount ?? 0));
 
   // Bend deduction factors: 45° = 1D, 90° = 2D, 135° = 3D, 180° = 4D
   const getBendDeduction = (diaMm: number, bendCount: number, angle: '45' | '90' | '135' | '180') => {
@@ -2527,18 +2582,16 @@ export function computeRebarBBS(
 
   if (normalizedType === 'beam') {
     const beamL = params.beamLengthM ?? 0;
-    const beamW = params.beamWidthMm ?? 300;
-    const beamD = params.beamDepthMm ?? 600;
-    const mainDia = params.beamMainBarDiaMm ?? 16;
-    const topCount = params.beamTopBarCount ?? 2;
-    const botCount = params.beamBotBarCount ?? 3;
-    const stirrupDia = params.beamStirrupDiaMm ?? 8;
-    const stirrupSpacing = params.beamStirrupSpacingMm ?? 150;
+    const beamW = params.beamWidthMm ?? 0;
+    const beamD = params.beamDepthMm ?? 0;
+    const mainDia = params.beamMainBarDiaMm ?? 0;
+    const topCount = params.beamTopBarCount ?? 0;
+    const botCount = params.beamBotBarCount ?? 0;
+    const stirrupDia = params.beamStirrupDiaMm ?? 0;
+    const stirrupSpacing = params.beamStirrupSpacingMm ?? 0;
 
     if (beamL < 0 || beamW < 0 || beamD < 0) {
       issues.push({ field: 'beamLengthM', message: 'Beam dimensions cannot be negative.', severity: 'error' });
-    } else if (beamL === 0 || beamW === 0 || beamD === 0) {
-      issues.push({ field: 'beamLengthM', message: 'Beam dimensions currently 0 (Zero Baseline Active). Enter span/depth or load standard preset.', severity: 'warning' });
     }
 
     if (!issues.some((i) => i.severity === 'error') && beamL > 0 && beamW > 0 && beamD > 0) {
@@ -2599,13 +2652,9 @@ export function computeRebarBBS(
   } else if (normalizedType === 'slab') {
     if (params.slabLengthM < 0 || params.slabWidthM < 0) {
       issues.push({ field: 'slabLengthM', message: 'Slab dimensions L and W cannot be negative.', severity: 'error' });
-    } else if (params.slabLengthM === 0 || params.slabWidthM === 0) {
-      issues.push({ field: 'slabLengthM', message: 'Slab dimensions are currently 0.00 m (Zero Baseline Active). Enter length/width or load standard preset.', severity: 'warning' });
     }
     if (params.mainBarDiaMm < 0 || params.mainBarSpacingMm < 0) {
       issues.push({ field: 'mainBarDiaMm', message: 'Main bar diameter and spacing cannot be negative.', severity: 'error' });
-    } else if (params.mainBarDiaMm === 0 || params.mainBarSpacingMm === 0) {
-      issues.push({ field: 'mainBarDiaMm', message: 'Main bar parameters are 0. Rebar schedule on standby.', severity: 'warning' });
     }
     if (params.distBarDiaMm < 0 || params.distBarSpacingMm < 0) {
       issues.push({ field: 'distBarDiaMm', message: 'Distribution bar diameter and spacing cannot be negative.', severity: 'error' });
@@ -2653,8 +2702,6 @@ export function computeRebarBBS(
   } else if (normalizedType === 'column-rect') {
     if (params.colLengthMm < 0 || params.colWidthMm < 0 || params.colHeightM < 0) {
       issues.push({ field: 'colLengthMm', message: 'Column dimensions L, B, and H cannot be negative.', severity: 'error' });
-    } else if (params.colLengthMm === 0 || params.colWidthMm === 0 || params.colHeightM === 0) {
-      issues.push({ field: 'colLengthMm', message: 'Column dimensions are currently 0 (Zero Baseline Active). Enter dimensions or load standard preset.', severity: 'warning' });
     }
     if (params.colMainBarDiaMm < 0 || params.colMainBarCount < 0) {
       issues.push({ field: 'colMainBarDiaMm', message: 'Main longitudinal bars cannot be negative.', severity: 'error' });
@@ -2705,8 +2752,6 @@ export function computeRebarBBS(
   } else if (normalizedType === 'column-circ') {
     if (params.circColDiaMm < 0 || params.circColHeightM < 0) {
       issues.push({ field: 'circColDiaMm', message: 'Circular column diameter and height cannot be negative.', severity: 'error' });
-    } else if (params.circColDiaMm === 0 || params.circColHeightM === 0) {
-      issues.push({ field: 'circColDiaMm', message: 'Circular column diameter and height are currently 0 (Zero Baseline Active).', severity: 'warning' });
     }
     if (params.circMainBarDiaMm < 0 || params.circMainBarCount < 0) {
       issues.push({ field: 'circMainBarDiaMm', message: 'Main longitudinal bars cannot be negative.', severity: 'error' });
@@ -2757,8 +2802,6 @@ export function computeRebarBBS(
   } else if (normalizedType === 'footing') {
     if (params.footingLengthM < 0 || params.footingWidthM < 0 || params.footingDepthMm < 0) {
       issues.push({ field: 'footingLengthM', message: 'Footing dimensions L, B, and D cannot be negative.', severity: 'error' });
-    } else if (params.footingLengthM === 0 || params.footingWidthM === 0 || params.footingDepthMm === 0) {
-      issues.push({ field: 'footingLengthM', message: 'Footing dimensions are currently 0 (Zero Baseline Active).', severity: 'warning' });
     }
     if (params.footingBarDiaMm < 0 || params.footingBarSpacingMm < 0) {
       issues.push({ field: 'footingBarDiaMm', message: 'Footing mesh diameter and spacing cannot be negative.', severity: 'error' });
@@ -2805,8 +2848,6 @@ export function computeRebarBBS(
   } else if (normalizedType === 'staircase-waist') {
     if (params.stairGoingM < 0 || params.stairTotalRiseM < 0 || params.waistSlabThicknessMm < 0) {
       issues.push({ field: 'stairGoingM', message: 'Stair going, rise, and waist slab thickness cannot be negative.', severity: 'error' });
-    } else if (params.stairGoingM === 0 || params.stairTotalRiseM === 0 || params.waistSlabThicknessMm === 0) {
-      issues.push({ field: 'stairGoingM', message: 'Stair going, rise, and thickness are currently 0 (Zero Baseline Active).', severity: 'warning' });
     }
     if (params.stairMainBarDiaMm < 0 || params.stairMainBarSpacingMm < 0) {
       issues.push({ field: 'stairMainBarDiaMm', message: 'Stair main rebar parameters cannot be negative.', severity: 'error' });
@@ -2854,26 +2895,24 @@ export function computeRebarBBS(
       }
     }
   } else if (normalizedType === 'lintel-chajja') {
-    const lintelL = params.lintelLengthM ?? 2.1;
-    const lintelW = params.lintelWidthMm ?? 250;
-    const lintelD = params.lintelDepthMm ?? 150;
-    const lintelMainDia = params.lintelMainBarDiaMm ?? 12;
-    const topCount = params.lintelTopBarCount ?? 2;
-    const botCount = params.lintelBotBarCount ?? 2;
-    const stirrupDia = params.lintelStirrupDiaMm ?? 8;
-    const stirrupSpacing = params.lintelStirrupSpacingMm ?? 150;
+    const lintelL = params.lintelLengthM ?? 0;
+    const lintelW = params.lintelWidthMm ?? 0;
+    const lintelD = params.lintelDepthMm ?? 0;
+    const lintelMainDia = params.lintelMainBarDiaMm ?? 0;
+    const topCount = params.lintelTopBarCount ?? 0;
+    const botCount = params.lintelBotBarCount ?? 0;
+    const stirrupDia = params.lintelStirrupDiaMm ?? 0;
+    const stirrupSpacing = params.lintelStirrupSpacingMm ?? 0;
 
-    const chajjaProj = params.chajjaProjectionM ?? 0.6;
-    const chajjaRootThick = params.chajjaRootThicknessMm ?? 100;
-    const chajjaMainDia = params.chajjaMainBarDiaMm ?? 10;
-    const chajjaMainSpacing = params.chajjaMainBarSpacingMm ?? 150;
-    const chajjaDistDia = params.chajjaDistBarDiaMm ?? 8;
-    const chajjaDistSpacing = params.chajjaDistBarSpacingMm ?? 200;
+    const chajjaProj = params.chajjaProjectionM ?? 0;
+    const chajjaRootThick = params.chajjaRootThicknessMm ?? 0;
+    const chajjaMainDia = params.chajjaMainBarDiaMm ?? 0;
+    const chajjaMainSpacing = params.chajjaMainBarSpacingMm ?? 0;
+    const chajjaDistDia = params.chajjaDistBarDiaMm ?? 0;
+    const chajjaDistSpacing = params.chajjaDistBarSpacingMm ?? 0;
 
     if (lintelL < 0 || lintelW < 0 || lintelD < 0) {
       issues.push({ field: 'lintelLengthM', message: 'Lintel dimensions cannot be negative.', severity: 'error' });
-    } else if (lintelL === 0 || lintelW === 0 || lintelD === 0) {
-      issues.push({ field: 'lintelLengthM', message: 'Lintel dimensions currently 0 (Zero Baseline Active). Enter dimensions or load standard preset.', severity: 'warning' });
     }
 
     if (!issues.some((i) => i.severity === 'error') && lintelL > 0 && lintelW > 0 && lintelD > 0) {
@@ -2971,20 +3010,18 @@ export function computeRebarBBS(
       }
     }
   } else if (normalizedType === 'pile-cage') {
-    const pileDia = params.pileDiaMm ?? 500;
-    const pileL = params.pileLengthM ?? 18.0;
-    const mainDia = params.pileMainBarDiaMm ?? 16;
-    const mainCount = params.pileMainBarCount ?? 7;
-    const spiralDia = params.pileSpiralDiaMm ?? 8;
-    const spiralPitch = params.pileSpiralPitchMm ?? 150;
-    const stiffenerDia = params.pileStiffenerBarDiaMm ?? 12;
-    const stiffenerSpacing = params.pileStiffenerSpacingM ?? 2.0;
-    const cutoffEmbed = params.pileCutoffEmbedmentM ?? 0.75;
+    const pileDia = params.pileDiaMm ?? 0;
+    const pileL = params.pileLengthM ?? 0;
+    const mainDia = params.pileMainBarDiaMm ?? 0;
+    const mainCount = params.pileMainBarCount ?? 0;
+    const spiralDia = params.pileSpiralDiaMm ?? 0;
+    const spiralPitch = params.pileSpiralPitchMm ?? 0;
+    const stiffenerDia = params.pileStiffenerBarDiaMm ?? 0;
+    const stiffenerSpacing = params.pileStiffenerSpacingM ?? 0;
+    const cutoffEmbed = params.pileCutoffEmbedmentM ?? 0;
 
     if (pileDia < 0 || pileL < 0) {
       issues.push({ field: 'pileDiaMm', message: 'Pile dimensions cannot be negative.', severity: 'error' });
-    } else if (pileDia === 0 || pileL === 0) {
-      issues.push({ field: 'pileDiaMm', message: 'Pile dimensions currently 0 (Zero Baseline Active). Enter diameter & length or load standard preset.', severity: 'warning' });
     }
 
     if (!issues.some((i) => i.severity === 'error') && pileDia > 0 && pileL > 0) {
@@ -3296,6 +3333,7 @@ export function computeRebarBBS(
     {
       handCalculationSteps: handSteps,
       scopeAndLimits,
+      isZeroBaseline: items.length === 0 && !issues.some((i) => i.severity === 'error'),
     }
   );
 }
@@ -3429,8 +3467,6 @@ export function computeMasonryFinishes(
 
   if (params.wallLengthM < 0 || params.wallHeightM < 0 || params.wallThicknessM < 0) {
     issues.push({ field: 'wallDimensions', message: 'Wall dimensions cannot be negative.', severity: 'error' });
-  } else if (isZeroBaseline) {
-    issues.push({ field: 'wallDimensions', message: 'Wall dimensions are currently 0 m (clean baseline). Brickwork counts evaluate to zero.', severity: 'warning' });
   }
 
   if ((params.brickLengthMm <= 0 || params.brickWidthMm <= 0 || params.brickHeightMm <= 0) && !isZeroBaseline) {
@@ -3456,6 +3492,7 @@ export function computeMasonryFinishes(
   };
 
   if (issues.some((i) => i.severity === 'error') || isZeroBaseline) {
+    const hasErr = issues.some((i) => i.severity === 'error');
     return createEnvelope<MasonryResult>(
       {
         grossWallAreaM2: 0,
@@ -3477,14 +3514,14 @@ export function computeMasonryFinishes(
         plasterSandM3: 0,
         plasterSandCft: 0,
         floorAreaM2: (params.floorLengthM || 0) * (params.floorWidthM || 0),
-        singleTileAreaM2: ((params.tileLengthMm || 600) / 1000) * ((params.tileWidthMm || 600) / 1000),
+        singleTileAreaM2: ((params.tileLengthMm || 0) / 1000) * ((params.tileWidthMm || 0) / 1000),
         tilesRequiredCount: 0,
         tilesWithWastageCount: 0,
         tileBoxesCount: 0,
         status: 'nominal',
       },
       issues,
-      { scopeAndLimits, handCalculationSteps: [] }
+      { scopeAndLimits, handCalculationSteps: [], isZeroBaseline: !hasErr && isZeroBaseline }
     );
   }
 
@@ -4015,12 +4052,13 @@ export function computeEarthwork(
   let step2Res = 'V_bank = 0.00 m³';
   let step2Reason = 'Baseline zero-state.';
 
+  let isZeroBaselineMode = false;
+
   if (params.calculationType === 'pit-excavation') {
     const isZero = params.pitTopLengthM === 0 || params.pitTopWidthM === 0 || params.pitDepthM === 0;
+    isZeroBaselineMode = isZero;
     if (params.pitTopLengthM < 0 || params.pitTopWidthM < 0 || params.pitDepthM < 0) {
       issues.push({ field: 'pitTopLengthM', message: 'Pit excavation dimensions cannot be negative.', severity: 'error' });
-    } else if (isZero) {
-      issues.push({ field: 'pitTopLengthM', message: 'Pit excavation dimensions are currently 0 m (clean baseline). Volumes evaluate to 0 m³.', severity: 'warning' });
     }
 
     if (!issues.some((i) => i.severity === 'error') && !isZero) {
@@ -4060,10 +4098,9 @@ export function computeEarthwork(
     }
   } else if (params.calculationType === 'trapezoidal-trench') {
     const isZero = params.trenchLengthM === 0 || params.trenchBottomWidthM === 0 || params.trenchDepthM === 0;
+    isZeroBaselineMode = isZero;
     if (params.trenchLengthM < 0 || params.trenchBottomWidthM < 0 || params.trenchDepthM < 0) {
       issues.push({ field: 'trenchLengthM', message: 'Trench dimensions cannot be negative.', severity: 'error' });
-    } else if (isZero) {
-      issues.push({ field: 'trenchLengthM', message: 'Trench dimensions are currently 0 m (clean baseline). Volumes evaluate to 0 m³.', severity: 'warning' });
     }
 
     if (!issues.some((i) => i.severity === 'error') && !isZero) {
@@ -4235,10 +4272,9 @@ export function computeEarthwork(
     } else {
       // Legacy 3-station Road Prismoidal Alignment
       const isZero = params.roadLengthM === 0 || params.formationWidthM === 0;
+      isZeroBaselineMode = isZero;
       if (params.roadLengthM < 0 || params.formationWidthM < 0) {
         issues.push({ field: 'roadLengthM', message: 'Road dimensions cannot be negative.', severity: 'error' });
-      } else if (isZero) {
-        issues.push({ field: 'roadLengthM', message: 'Road prismoidal dimensions are currently 0 m (clean baseline). Volumes evaluate to 0 m³.', severity: 'warning' });
       }
 
       if (!issues.some((i) => i.severity === 'error') && !isZero) {
@@ -4364,8 +4400,9 @@ export function computeEarthwork(
     },
     issues,
     {
-      handCalculationSteps,
+      handCalculationSteps: isZeroBaselineMode ? [] : handCalculationSteps,
       scopeAndLimits,
+      isZeroBaseline: isZeroBaselineMode && !issues.some((i) => i.severity === 'error'),
     }
   );
 }
@@ -4484,13 +4521,7 @@ export function getCurrencySymbol(code: CurrencyCode): string {
 export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<BOQResult> {
   const issues: ValidationIssue[] = [];
 
-  if (!params.items || params.items.length === 0) {
-    issues.push({
-      field: 'items',
-      message: 'Takeoff sheet currently contains no line items.',
-      severity: 'warning',
-    });
-  }
+  const isBoqZeroBaseline = !params.items || params.items.length === 0;
 
   if (params.contingencyPercent < 0 || params.contingencyPercent > 50) {
     issues.push({
@@ -5039,6 +5070,7 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
     {
       handCalculationSteps,
       scopeAndLimits: boqScopeAndLimits,
+      isZeroBaseline: isBoqZeroBaseline && !issues.some((i) => i.severity === 'error'),
     }
   );
 }
@@ -5129,23 +5161,92 @@ export function computeRateAnalysis(
 ): CalculationEnvelope<RateAnalysisResult> {
   const issues: ValidationIssue[] = [];
 
-  const isZeroBasis = params.basisVolumeM3 === 0;
+  const isZeroRateBaseline =
+    params.basisVolumeM3 === 0 ||
+    (params.cementPricePerBag === 0 &&
+      params.sandPricePerM3 === 0 &&
+      params.stoneChipsPricePerM3 === 0 &&
+      params.rebarPricePerKg === 0 &&
+      params.masonDailyWage === 0 &&
+      params.laborerDailyWage === 0);
+
   if (params.basisVolumeM3 < 0) {
     issues.push({
       field: 'basisVolumeM3',
       message: 'Analysis basis volume cannot be negative.',
       severity: 'error',
     });
-  } else if (isZeroBasis) {
-    issues.push({
-      field: 'basisVolumeM3',
-      message: 'Analysis basis volume is currently 0 m³ (clean baseline). Unit rate calculated on 1.0 m³ reference basis.',
-      severity: 'warning',
-    });
   }
 
-  const vol = isZeroBasis ? 1.0 : Math.max(0.001, params.basisVolumeM3);
   const symbol = getCurrencySymbol(params.currency || 'USD');
+
+  if (issues.some((i) => i.severity === 'error') || params.basisVolumeM3 === 0 || isZeroRateBaseline) {
+    const hasErr = issues.some((i) => i.severity === 'error');
+    const basisUnitLabelEmpty: 'm³' | 'm²' | 'Ton' =
+      params.workType === 'brickwork-125mm-1-4'
+        ? 'm²'
+        : params.workType === 'rebar-fabrication'
+          ? 'Ton'
+          : 'm³';
+    return createEnvelope<RateAnalysisResult>(
+      {
+        workType: params.workType,
+        workDescription: `${params.workType} (Zero Baseline)`,
+        basisVolumeM3: params.basisVolumeM3 || 0,
+        basisUnitLabel: basisUnitLabelEmpty,
+        currency: params.currency || 'USD',
+        currencySymbol: symbol,
+        localCostIndex: params.localCostIndex ?? 1.0,
+        materialCostIndex: params.materialCostIndex ?? 1.0,
+        laborCostIndex: params.laborCostIndex ?? 1.0,
+        equipmentCostIndex: params.equipmentCostIndex ?? 1.0,
+        materials: [],
+        materialsCost: 0,
+        baseMaterialsCost: 0,
+        materialWastagePercent: params.wastagePercent ?? 0,
+        materialWastageCost: 0,
+        labors: [],
+        laborsCost: 0,
+        baseLaborsCost: 0,
+        equipment: [],
+        equipmentCost: 0,
+        baseEquipmentCost: 0,
+        primeCost: 0,
+        basePrimeCost: 0,
+        waterElectricityPercent: params.waterElectricityPercent ?? 0,
+        waterElectricityCost: 0,
+        subtotalBeforeProfit: 0,
+        contractorProfitPercent: params.contractorProfitPercent ?? 0,
+        contractorProfitCost: 0,
+        grandTotalCost: 0,
+        baseGrandTotalCost: 0,
+        unitRatePerM3: 0,
+        unitRatePerCft: 0,
+        baseUnitRatePerM3: 0,
+        directCostPerM3: 0,
+        vatAitPercent: params.vatAitPercent ?? 0,
+        vatAitCost: 0,
+        commercialQuotedTotalCost: 0,
+        commercialQuotedRatePerM3: 0,
+        commercialQuotedRatePerCft: 0,
+        netProfitAmount: 0,
+        netProfitPerM3: 0,
+        netProfitPerCft: 0,
+        costDistributionPercent: {
+          materials: 0,
+          labor: 0,
+          equipment: 0,
+          waterElectricity: 0,
+          contractorProfit: 0,
+        },
+        status: 'nominal',
+      },
+      issues,
+      { handCalculationSteps: [], isZeroBaseline: !hasErr }
+    );
+  }
+
+  const vol = Math.max(0.001, params.basisVolumeM3);
 
   let desc = '';
   const materials: RateAnalysisMaterialBreakdown[] = [];
@@ -5161,8 +5262,8 @@ export function computeRateAnalysis(
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 1.5;
       const stoneM3 = cementM3 * 3.0;
-      const rebarKg = (params.rebarAllowanceKgPerM3 || 100) * vol;
-      const admixKg = (params.admixtureDoseKgPerM3 || 0) * vol;
+      const rebarKg = (params.rebarAllowanceKgPerM3 ?? 0) * vol;
+      const admixKg = (params.admixtureDoseKgPerM3 ?? 0) * vol;
 
       materials.push(
         {
@@ -5219,7 +5320,7 @@ export function computeRateAnalysis(
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 2.0;
       const stoneM3 = cementM3 * 4.0;
-      const rebarKg = (params.rebarAllowanceKgPerM3 || 80) * vol;
+      const rebarKg = (params.rebarAllowanceKgPerM3 ?? 0) * vol;
 
       materials.push(
         {
@@ -5307,7 +5408,7 @@ export function computeRateAnalysis(
       const cementM3 = dryMortarM3 / 7;
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 6;
-      const brickPriceEach = (params.brickPricePer1000 || 12500) / 1000;
+      const brickPriceEach = (params.brickPricePer1000 ?? 0) / 1000;
       const sandUnitRate = params.localSandPricePerM3 && params.localSandPricePerM3 > 0
         ? params.localSandPricePerM3
         : params.sandPricePerM3;
@@ -5348,7 +5449,7 @@ export function computeRateAnalysis(
       const cementM3 = dryMortarM3 / 5;
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 4;
-      const brickPriceEach = (params.brickPricePer1000 || 12500) / 1000;
+      const brickPriceEach = (params.brickPricePer1000 ?? 0) / 1000;
       const sandUnitRate = params.localSandPricePerM3 && params.localSandPricePerM3 > 0
         ? params.localSandPricePerM3
         : params.sandPricePerM3;
@@ -5480,8 +5581,8 @@ export function computeRateAnalysis(
           name: 'Concrete Cover Spacers (40mm/25mm)',
           quantity: Number(coverBlocksNos.toFixed(0)),
           unit: 'Nos',
-          unitPrice: 4.5,
-          totalCost: Number((coverBlocksNos * 4.5).toFixed(2)),
+          unitPrice: params.rebarPricePerKg > 0 ? 4.5 : 0,
+          totalCost: Number((coverBlocksNos * (params.rebarPricePerKg > 0 ? 4.5 : 0)).toFixed(2)),
           percentageOfMaterial: 0,
         }
       );
@@ -5908,6 +6009,62 @@ export function computeContinuousBeam(
   const spanCount = Math.max(2, Math.min(4, params.spanCount || 2));
   const rawSpans = (params.spans || []).slice(0, spanCount);
 
+  if (rawSpans.length === 0 || rawSpans.every((sp) => (sp.lengthM || 0) === 0)) {
+    const hasNeg = rawSpans.some((sp) => sp.lengthM < 0 || sp.udlKnPerM < 0 || sp.pointLoadKn < 0);
+    if (hasNeg) {
+      issues.push({ field: 'spans', message: 'Span lengths and loads cannot be negative.', severity: 'error' });
+    }
+    return createEnvelope<ContinuousBeamResult>(
+      {
+        spanCount: rawSpans.length || spanCount,
+        totalLengthM: 0,
+        supportMomentsKnm: [],
+        momentDistributionMomentsKnm: [],
+        supportReactionsKn: [],
+        spans: [],
+        points: [],
+        maxSaggingMomentKnm: 0,
+        maxSaggingLocationM: 0,
+        maxHoggingMomentKnm: 0,
+        maxHoggingSupportIndex: 0,
+        maxShearKn: 0,
+        maxShearLocationM: 0,
+        maxDeflectionMm: 0,
+        maxDeflectionLocationM: 0,
+        allInflectionPointsTotalM: [],
+        criticalCoordinates: [],
+        bendingStressMpa: 0,
+        allowableStressMpa: params.allowableStressMpa || 0,
+        flexuralDcr: 0,
+        criticalShearKn: 0,
+        concreteShearCapacityVcKn: 0,
+        shearStressMpa: 0,
+        allowableShearStressMpa: 0,
+        shearDcr: 0,
+        utilizationRatio: 0,
+        safetyStatus: 'PASS',
+        governingFailureMode: 'Adequate',
+        codeChecks: {
+          flexurePass: true,
+          shearPass: true,
+          maxDeflectionEstimateMm: 0,
+          deflectionRatio: 'L/∞',
+          deflectionPass: true,
+          governingCode: params.codeStandard || 'BNBC-2020 / ACI-318',
+        },
+        momentDistributionSummary: {
+          converged: true,
+          iterations: 0,
+          maxDiscrepancyPercent: 0,
+          methodComparison: [],
+        },
+        status: 'nominal',
+      },
+      issues,
+      { handCalculationSteps: [], isZeroBaseline: !hasNeg }
+    );
+  }
+
   if (rawSpans.length < spanCount) {
     issues.push({
       field: 'spans',
@@ -5919,7 +6076,14 @@ export function computeContinuousBeam(
 
   // Sanitize and normalize span geometry & loads
   const spans = rawSpans.map((sp, idx) => {
-    const lengthM = Math.max(0.2, sp.lengthM || 6.0);
+    if (sp.lengthM <= 0) {
+      issues.push({
+        field: `span_${idx}_length`,
+        message: sp.lengthM < 0 ? `Span ${idx + 1} length cannot be negative.` : `Span ${idx + 1} length must be > 0 m for active continuous beam solver.`,
+        severity: 'error',
+      });
+    }
+    const lengthM = Math.max(0.2, sp.lengthM || 0.2);
     const I = Math.max(10, sp.momentOfInertiaCm4 || 120000);
     const E = Math.max(1, sp.elasticModulusGpa || 200);
     const w = Math.max(0, sp.udlKnPerM || 0);
@@ -5927,20 +6091,6 @@ export function computeContinuousBeam(
     const a = Math.min(lengthM, Math.max(0, sp.pointLoadPositionM ?? lengthM / 2));
     const wTri = Math.max(0, sp.triangularLoadKnPerM || 0);
     const triPattern = sp.triangularLoadPattern || 'increasing';
-
-    if (sp.lengthM < 0) {
-      issues.push({
-        field: `span_${idx}_length`,
-        message: `Span ${idx + 1} length cannot be negative.`,
-        severity: 'error',
-      });
-    } else if (sp.lengthM === 0) {
-      issues.push({
-        field: `span_${idx}_length`,
-        message: `Span ${idx + 1} length is currently 0 m (clean baseline).`,
-        severity: 'warning',
-      });
-    }
 
     return {
       ...sp,
@@ -5954,6 +6104,10 @@ export function computeContinuousBeam(
       triangularLoadPattern: triPattern,
     };
   });
+
+  if (issues.some((i) => i.severity === 'error')) {
+    return createEnvelope<ContinuousBeamResult>(null, issues);
+  }
 
   const numSupports = spanCount + 1;
 
@@ -6946,25 +7100,86 @@ export function computePileCapacity(
   params: PileCapacityParameters
 ): CalculationEnvelope<PileCapacityResult> {
   const issues: ValidationIssue[] = [];
-  const zeroFields: string[] = [];
-  if (params.diameterM === 0) zeroFields.push('Pile Diameter');
-  if (params.lengthM === 0) zeroFields.push('Pile Length');
-  if (params.appliedLoadKn === 0) zeroFields.push('Applied Axial Load');
-  if (zeroFields.length > 0) {
-    issues.push({
-      field: 'pileParameters',
-      message: `Pile parameter(s) [${zeroFields.join(', ')}] are currently 0 (clean baseline). Capacity calculated with standard reference geometry.`,
-      severity: 'warning',
-    });
-  }
-
-  const D = Math.max(0.2, params.diameterM || 0.6);
-  const L = Math.max(1.0, params.lengthM || 20.0);
-  const P = Math.max(0, params.appliedLoadKn || 1500);
-  const FS = Math.max(1.5, params.factorOfSafety || 2.5);
-  const Dw = Math.max(0, params.groundwaterDepthM ?? 3.0);
   const method = params.method || 'combined-bnbc';
   const governingCode = params.codeStandard || 'BNBC-2020 / ACI-318';
+
+  if (params.diameterM < 0 || params.lengthM < 0 || params.appliedLoadKn < 0) {
+    issues.push({ field: 'diameterM', message: 'Pile diameter, length, and load cannot be negative.', severity: 'error' });
+  } else if (params.appliedLoadKn > 0 && (params.diameterM <= 0 || params.lengthM <= 0)) {
+    issues.push({ field: 'diameterM', message: 'Pile diameter D and length L must be > 0 m when axial load is applied.', severity: 'error' });
+  }
+
+  const isZeroPileBaseline = params.diameterM === 0 || params.lengthM === 0;
+  if (issues.some((i) => i.severity === 'error') || isZeroPileBaseline) {
+    const hasErr = issues.some((i) => i.severity === 'error');
+    return createEnvelope<PileCapacityResult>(
+      {
+        pileType: params.pileType,
+        methodUsed: method,
+        diameterM: params.diameterM || 0,
+        lengthM: params.lengthM || 0,
+        perimeterM: 0,
+        crossSectionAreaM2: 0,
+        skinFrictionKn: 0,
+        endBearingKn: 0,
+        ultimateCapacityKn: 0,
+        allowableCapacityKn: 0,
+        appliedLoadKn: params.appliedLoadKn || 0,
+        factorOfSafety: params.factorOfSafety || 0,
+        effectiveSafetyFactor: 0,
+        utilizationRatio: 0,
+        unitEndBearingKpa: 0,
+        overburdenAtTipKpa: 0,
+        layerContributions: [],
+        structuralCapacityKn: 0,
+        structuralUtilizationRatio: 0,
+        structuralPass: true,
+        settlementShaftMm: 0,
+        settlementBaseMm: 0,
+        settlementInteractionMm: 0,
+        elasticSettlementMm: 0,
+        consolidationSettlementMm: 0,
+        totalSettlementMm: 0,
+        permissibleSettlementMm: params.permissibleSettlementMm || 0,
+        settlementPass: true,
+        alphaBetaCapacityKn: { qs: 0, qp: 0, qult: 0, qall: 0 },
+        meyerhofSptCapacityKn: { qs: 0, qp: 0, qult: 0, qall: 0 },
+        terzaghiCapacityKn: { qs: 0, qp: 0, qult: 0, qall: 0 },
+        pileGroupSummary: {
+          rows: params.pileGroupRows || 0,
+          cols: params.pileGroupCols || 0,
+          totalPiles: 0,
+          spacingM: params.pileSpacingM || 0,
+          spacingRatio: 0,
+          efficiency: 1,
+          groupEfficiency: 1,
+          totalAllowableCapacityKn: 0,
+          groupAllowableCapacityKn: 0,
+          totalAppliedLoadKn: 0,
+          groupUtilizationRatio: 0,
+          groupDcr: 0,
+        },
+        governingCode,
+        codeChecks: {
+          geotechnicalCapacityPass: true,
+          structuralCapacityPass: true,
+          settlementPass: true,
+          governingCode,
+          bnbcClauses: [],
+        },
+        calculationsBreakdown: [],
+        status: 'nominal',
+      },
+      issues,
+      { isZeroBaseline: !hasErr && isZeroPileBaseline }
+    );
+  }
+
+  const D = Math.max(0.05, params.diameterM);
+  const L = Math.max(0.5, params.lengthM);
+  const P = Math.max(0, params.appliedLoadKn || 0);
+  const FS = Math.max(1.0, params.factorOfSafety || 2.5);
+  const Dw = Math.max(0, params.groundwaterDepthM ?? 0);
 
   const Ap = (Math.PI * Math.pow(D, 2)) / 4;
   const p = Math.PI * D;
@@ -6972,49 +7187,14 @@ export function computePileCapacity(
   const isSteelPipe = params.pileType === 'driven-steel-pipe';
   const isDrivenPrecast = params.pileType === 'driven-precast';
 
-  // Default soil strata if layers empty
-  const layers: SoilLayer[] =
-    params.layers && params.layers.length > 0
-      ? params.layers
-      : [
-          {
-            id: 'l1',
-            name: 'Soft Silty Clay (Upper Overburden)',
-            thicknessM: 6.0,
-            soilType: 'clay',
-            cohesionKpa: 30,
-            frictionAngleDeg: 0,
-            unitWeightKnPerM3: 17.5,
-            sptN: 4,
-            elasticModulusEsMpa: 12,
-            compressionIndexCc: 0.28,
-            initialVoidRatioE0: 0.90,
-          },
-          {
-            id: 'l2',
-            name: 'Medium Stiff Clayey Silt',
-            thicknessM: 8.0,
-            soilType: 'silt',
-            cohesionKpa: 55,
-            frictionAngleDeg: 15,
-            unitWeightKnPerM3: 18.5,
-            sptN: 10,
-            elasticModulusEsMpa: 22,
-            compressionIndexCc: 0.18,
-            initialVoidRatioE0: 0.78,
-          },
-          {
-            id: 'l3',
-            name: 'Dense Bearing Sand & Gravel Strata',
-            thicknessM: 10.0,
-            soilType: 'sand',
-            cohesionKpa: 0,
-            frictionAngleDeg: 36,
-            unitWeightKnPerM3: 20.0,
-            sptN: 32,
-            elasticModulusEsMpa: 60,
-          },
-        ];
+  const layers: SoilLayer[] = Array.isArray(params.layers) ? params.layers : [];
+  if (layers.length === 0) {
+    issues.push({
+      field: 'layers',
+      message: 'No soil strata added; shaft skin friction Qs evaluates to 0 kN. Add soil strata or load a standard preset.',
+      severity: 'warning',
+    });
+  }
 
   let currentDepth = 0;
   let overburdenStressKpa = 0;
@@ -7681,31 +7861,83 @@ export function computePipeHydraulics(
   params: PipeHydraulicsParameters
 ): CalculationEnvelope<PipeHydraulicsResult> {
   const issues: ValidationIssue[] = [];
-  const zeroFields: string[] = [];
-  if (params.internalDiameterMm === 0) zeroFields.push('Internal Diameter');
-  if (params.flowRateLps === 0) zeroFields.push('Flow Rate');
-  if (params.lengthM === 0) zeroFields.push('Pipe Length');
-  if (zeroFields.length > 0) {
-    issues.push({
-      field: 'pipeParameters',
-      message: `Pipe hydraulics parameter(s) [${zeroFields.join(', ')}] are currently 0 (clean baseline). Hydraulics calculated with standard DN200 reference.`,
-      severity: 'warning',
-    });
-  }
-
   const serviceType = params.serviceType || 'pressure';
   const matInfo = getHydraulicMaterial(params.pipeMaterial);
+
+  if (params.internalDiameterMm < 0 || params.lengthM < 0 || params.flowRateLps < 0) {
+    issues.push({ field: 'internalDiameterMm', message: 'Pipe diameter, length, and flow rate cannot be negative.', severity: 'error' });
+  } else if (params.flowRateLps > 0 && params.internalDiameterMm <= 0) {
+    issues.push({ field: 'internalDiameterMm', message: 'Pipe internal diameter must be > 0 mm when flow rate > 0 L/s.', severity: 'error' });
+  }
+
+  const isZeroPipeBaseline =
+    params.internalDiameterMm === 0 || (params.flowRateLps === 0 && params.lengthM === 0);
+
+  if (issues.some((i) => i.severity === 'error') || isZeroPipeBaseline) {
+    const hasErr = issues.some((i) => i.severity === 'error');
+    return createEnvelope<PipeHydraulicsResult>(
+      {
+        serviceType,
+        pipeMaterial: params.pipeMaterial,
+        materialName: matInfo.name,
+        hazenWilliamsC: params.hazenWilliamsC || matInfo.hazenWilliamsC,
+        manningN: params.manningN || matInfo.manningN,
+        internalDiameterMm: params.internalDiameterMm || 0,
+        lengthM: params.lengthM || 0,
+        flowRateLps: params.flowRateLps || 0,
+        flowRateM3ps: 0,
+        flowAreaM2: 0,
+        velocityMps: 0,
+        hydraulicRadiusM: 0,
+        reynoldsNumber: 0,
+        kinematicViscosityM2s: 0,
+        flowRegime: 'Laminar',
+        regimeDescription: 'Zero flow baseline.',
+        frictionSlopeMPerM: 0,
+        frictionHeadLossM: 0,
+        minorHeadLossM: 0,
+        totalHeadLossM: 0,
+        velocityHeadM: 0,
+        inletTotalHeadM: 0,
+        outletTotalHeadM: 0,
+        inletPressureKpa: params.inletPressureKpa || 0,
+        outletPressureKpa: 0,
+        inletHglM: 0,
+        outletHglM: 0,
+        inletEglM: 0,
+        outletEglM: 0,
+        selfCleansingStatus: 'pass',
+        maxVelocityStatus: 'pass',
+        cavitationWarning: false,
+        utilizationRatio: 0,
+        status: 'nominal',
+        darcyFrictionFactor: 0,
+        darcyHeadLossM: 0,
+        darcyTotalHeadLossM: 0,
+        equivalentRoughnessMm: matInfo.darcyRoughnessMm,
+        sizingRecommendation: {
+          recommendedDn: 0,
+          sizingNotes: 'Enter pipe diameter and design flow to generate commercial sizing.',
+          commercialOptions: [],
+        },
+        profileStations: [],
+      },
+      issues,
+      { isZeroBaseline: !hasErr && isZeroPipeBaseline }
+    );
+  }
+
   const C = Math.max(40, Math.min(160, params.hazenWilliamsC || matInfo.hazenWilliamsC));
   const n = Math.max(0.008, Math.min(0.040, params.manningN || matInfo.manningN));
-  const D_mm = Math.max(25, params.internalDiameterMm || 200);
+  const D_mm = Math.max(10, params.internalDiameterMm);
   const D_m = D_mm / 1000;
-  const L = Math.max(1, params.lengthM || 100);
-  const Q_lps = Math.max(0.1, params.flowRateLps || 25);
+  const L = Math.max(0, params.lengthM || 0);
+  const Q_lps = Math.max(0, params.flowRateLps || 0);
   const Q_m3s = Q_lps / 1000;
-  const K = Math.max(0, params.minorLossCoefficientK || 1.5);
-  const z1 = params.inletElevationM ?? 15.0;
-  const z2 = params.outletElevationM ?? 10.0;
-  const P_in_kpa = Math.max(0, params.inletPressureKpa || 250);
+  const K = Math.max(0, params.minorLossCoefficientK ?? 0);
+  const z1 = params.inletElevationM ?? 0;
+  const z2 = params.outletElevationM ?? 0;
+  const P_in_kpa = Math.max(0, params.inletPressureKpa ?? 0);
   const T_c = params.waterTempC || 20;
 
   const Area = (Math.PI * Math.pow(D_m, 2)) / 4;

@@ -2,7 +2,7 @@ import { TestingLabWorkspaceState } from './testingLab';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
-export type CalculationStatus = 'valid' | 'warning' | 'invalid';
+export type CalculationStatus = 'valid' | 'warning' | 'invalid' | 'zero_baseline';
 
 export interface ValidationIssue {
   field: string;
@@ -1258,8 +1258,10 @@ export interface UserProfile {
   licenseNumber?: string;
   email?: string;
   phone?: string;
+  address?: string;
   initials?: string;
   bio?: string;
+  signatureText?: string;
 }
 
 export interface RegionalLandRules {

@@ -6,6 +6,7 @@ import {
   PileAnalysisMethod,
 } from '../../types/civil';
 import { PileCapacityResult } from '../../utils/calculations';
+import { createDefaultPileCapacity } from '../../utils/storage';
 import {
   HardHat,
   Layers,
@@ -32,31 +33,7 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'geometry' | 'strata' | 'group' | 'structural'>('geometry');
 
-  const pile = activeWorkspace.pile || {
-    pileType: 'bored-cast-in-situ',
-    method: 'combined-bnbc' as PileAnalysisMethod,
-    diameterM: 0.6,
-    lengthM: 22.0,
-    groundwaterDepthM: 3.0,
-    appliedLoadKn: 1650,
-    factorOfSafety: 2.5,
-    layers: [
-      { id: 'l1', name: 'Soft Silty Clay (Overburden)', thicknessM: 6.0, soilType: 'clay', cohesionKpa: 28, frictionAngleDeg: 0, unitWeightKnPerM3: 17.5, sptN: 4, elasticModulusEsMpa: 12, compressionIndexCc: 0.28, initialVoidRatioE0: 0.85, overconsolidationRatioOcr: 1.0 },
-      { id: 'l2', name: 'Medium Dense Silty Sand', thicknessM: 8.0, soilType: 'sand', cohesionKpa: 0, frictionAngleDeg: 30, unitWeightKnPerM3: 18.5, sptN: 14, elasticModulusEsMpa: 28 },
-      { id: 'l3', name: 'Dense Bearing Sand & Gravel', thicknessM: 10.0, soilType: 'sand', cohesionKpa: 0, frictionAngleDeg: 36, unitWeightKnPerM3: 20.0, sptN: 35, elasticModulusEsMpa: 65 },
-    ],
-    tipBearingCohesionKpa: 0,
-    tipBearingFrictionDeg: 36,
-    tipBearingUnitWeightKnPerM3: 20.0,
-    tipSptN: 35,
-    permissibleSettlementMm: 25.0,
-    pileConcreteFckMpa: 25,
-    steelYieldFyMpa: 345,
-    pipeWallThicknessMm: 12,
-    pileGroupRows: 1,
-    pileGroupCols: 1,
-    pileSpacingM: 1.8,
-  };
+  const pile = activeWorkspace.pile || createDefaultPileCapacity();
 
   const updatePile = (patch: Partial<typeof pile>) => {
     updateActiveWorkspace((ws) => ({
@@ -86,7 +63,6 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
   };
 
   const removeLayer = (idx: number) => {
-    if (pile.layers.length <= 1) return;
     updatePile({ layers: pile.layers.filter((_, i) => i !== idx) });
   };
 
@@ -320,10 +296,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
             <input
               type="number"
               value={pile.factorOfSafety}
-              onChange={(e) => updatePile({ factorOfSafety: Math.max(1.5, Number(e.target.value) || 2.5) })}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                updatePile({ factorOfSafety: Math.max(0, isNaN(raw) ? 0 : raw) });
+              }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               step="0.1"
-              min="1.5"
+              min="0"
               max="4.0"
             />
           </div>
@@ -352,10 +331,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                   <input
                     type="number"
                     min="0"
-                    max={pile.lengthM}
+                    max={Math.max(0, pile.lengthM)}
                     step="0.5"
-                    value={pile.casingLengthM ?? Math.min(6.0, Math.round(pile.lengthM * 0.3 * 10) / 10)}
-                    onChange={(e) => updatePile({ casingLengthM: Math.max(0, Number(e.target.value) || 0) })}
+                    value={pile.casingLengthM ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updatePile({ casingLengthM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
@@ -367,10 +349,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                   <label className="block text-[11px] font-semibold mb-1">Marsh Funnel Viscosity (sec)</label>
                   <input
                     type="number"
-                    min="25"
+                    min="0"
                     max="60"
-                    value={pile.bentoniteViscositySec ?? 35}
-                    onChange={(e) => updatePile({ bentoniteViscositySec: Number(e.target.value) || 35 })}
+                    value={pile.bentoniteViscositySec ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updatePile({ bentoniteViscositySec: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
@@ -382,11 +367,14 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                   <label className="block text-[11px] font-semibold mb-1">Slurry Density (g/cm³)</label>
                   <input
                     type="number"
-                    min="1.0"
-                    max="1.3"
+                    min="0"
+                    max="1.5"
                     step="0.01"
-                    value={pile.bentoniteDensityGPerCc ?? 1.08}
-                    onChange={(e) => updatePile({ bentoniteDensityGPerCc: Number(e.target.value) || 1.08 })}
+                    value={pile.bentoniteDensityGPerCc ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updatePile({ bentoniteDensityGPerCc: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
@@ -446,8 +434,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                     <td className="py-1.5 px-2 w-20">
                       <input
                         type="number"
+                        min="0"
                         value={layer.thicknessM}
-                        onChange={(e) => updateLayer(idx, { thicknessM: Math.max(0.5, Number(e.target.value) || 1) })}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          updateLayer(idx, { thicknessM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                         step="0.5"
                       />
@@ -467,8 +459,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                     <td className="py-1.5 px-2 w-16">
                       <input
                         type="number"
-                        value={layer.sptN ?? 10}
-                        onChange={(e) => updateLayer(idx, { sptN: Math.max(1, Number(e.target.value) || 10) })}
+                        min="0"
+                        value={layer.sptN ?? 0}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          updateLayer(idx, { sptN: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                         step="1"
                       />
@@ -476,8 +472,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                     <td className="py-1.5 px-2 w-20">
                       <input
                         type="number"
+                        min="0"
                         value={layer.cohesionKpa}
-                        onChange={(e) => updateLayer(idx, { cohesionKpa: Math.max(0, Number(e.target.value) || 0) })}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          updateLayer(idx, { cohesionKpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                         step="5"
                       />
@@ -485,8 +485,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                     <td className="py-1.5 px-2 w-18">
                       <input
                         type="number"
+                        min="0"
                         value={layer.frictionAngleDeg}
-                        onChange={(e) => updateLayer(idx, { frictionAngleDeg: Math.max(0, Number(e.target.value) || 0) })}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          updateLayer(idx, { frictionAngleDeg: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                         step="1"
                       />
@@ -494,8 +498,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                     <td className="py-1.5 px-2 w-18">
                       <input
                         type="number"
+                        min="0"
                         value={layer.unitWeightKnPerM3}
-                        onChange={(e) => updateLayer(idx, { unitWeightKnPerM3: Math.max(10, Number(e.target.value) || 18) })}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          updateLayer(idx, { unitWeightKnPerM3: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                         step="0.5"
                       />
@@ -503,8 +511,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                     <td className="py-1.5 px-2 w-18">
                       <input
                         type="number"
-                        value={layer.elasticModulusEsMpa ?? 25}
-                        onChange={(e) => updateLayer(idx, { elasticModulusEsMpa: Math.max(2, Number(e.target.value) || 25) })}
+                        min="0"
+                        value={layer.elasticModulusEsMpa ?? 0}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          updateLayer(idx, { elasticModulusEsMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                         step="5"
                       />
@@ -513,8 +525,7 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                       <button
                         type="button"
                         onClick={() => removeLayer(idx)}
-                        disabled={pile.layers.length <= 1}
-                        className="p-1 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-30"
+                        className="p-1 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                         title="Remove Stratum"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -533,8 +544,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
+                min="0"
                 value={pile.groundwaterDepthM}
-                onChange={(e) => updatePile({ groundwaterDepthM: Math.max(0, Number(e.target.value) || 0) })}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ groundwaterDepthM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 step="0.5"
               />
@@ -545,8 +560,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
-                value={pile.tipSptN ?? 30}
-                onChange={(e) => updatePile({ tipSptN: Math.max(1, Number(e.target.value) || 30) })}
+                min="0"
+                value={pile.tipSptN ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ tipSptN: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 step="1"
               />
@@ -557,8 +576,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
+                min="0"
                 value={pile.tipBearingCohesionKpa}
-                onChange={(e) => updatePile({ tipBearingCohesionKpa: Math.max(0, Number(e.target.value) || 0) })}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ tipBearingCohesionKpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 step="5"
               />
@@ -569,8 +592,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
+                min="0"
                 value={pile.tipBearingFrictionDeg}
-                onChange={(e) => updatePile({ tipBearingFrictionDeg: Math.max(0, Number(e.target.value) || 0) })}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ tipBearingFrictionDeg: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 step="1"
               />
@@ -594,10 +621,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 max="10"
-                value={pile.pileGroupRows ?? 1}
-                onChange={(e) => updatePile({ pileGroupRows: Math.max(1, parseInt(e.target.value) || 1) })}
+                value={pile.pileGroupRows ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                  updatePile({ pileGroupRows: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -611,10 +641,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 max="10"
-                value={pile.pileGroupCols ?? 1}
-                onChange={(e) => updatePile({ pileGroupCols: Math.max(1, parseInt(e.target.value) || 1) })}
+                value={pile.pileGroupCols ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                  updatePile({ pileGroupCols: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -629,10 +662,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <input
                 type="number"
                 step="0.1"
-                min="0.5"
+                min="0"
                 max="6.0"
-                value={pile.pileSpacingM ?? Math.round(pile.diameterM * 3 * 10) / 10}
-                onChange={(e) => updatePile({ pileSpacingM: Math.max(0.5, Number(e.target.value) || 1.8) })}
+                value={pile.pileSpacingM ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ pileSpacingM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -644,8 +680,8 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
           <div className="p-2.5 rounded-lg bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] text-xs text-[var(--md-sys-color-on-surface-variant)] flex items-start gap-2">
             <Info className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0 mt-0.5" />
             <div>
-              Total Piles: <strong className="text-[var(--md-sys-color-on-surface)]">{(pile.pileGroupRows ?? 1) * (pile.pileGroupCols ?? 1)} piles</strong>.
-              Spacing Ratio: <strong className="text-[var(--md-sys-color-on-surface)]">{((pile.pileSpacingM ?? (pile.diameterM * 3)) / pile.diameterM).toFixed(1)} × Diameter D</strong>.
+              Total Piles: <strong className="text-[var(--md-sys-color-on-surface)]">{(pile.pileGroupRows ?? 0) * (pile.pileGroupCols ?? 0)} piles</strong>.
+              Spacing Ratio: <strong className="text-[var(--md-sys-color-on-surface)]">{pile.diameterM > 0 ? ((pile.pileSpacingM ?? 0) / pile.diameterM).toFixed(1) : '0.0'} × Diameter D</strong>.
               Converse-Labarre efficiency accounts for stress field overlapping in pile groups.
             </div>
           </div>
@@ -667,10 +703,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
-                min="15"
+                min="0"
                 max="60"
-                value={pile.pileConcreteFckMpa ?? 25}
-                onChange={(e) => updatePile({ pileConcreteFckMpa: Math.max(15, Number(e.target.value) || 25) })}
+                value={pile.pileConcreteFckMpa ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ pileConcreteFckMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -686,10 +725,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                   </label>
                   <input
                     type="number"
-                    min="200"
+                    min="0"
                     max="600"
-                    value={pile.steelYieldFyMpa ?? 345}
-                    onChange={(e) => updatePile({ steelYieldFyMpa: Math.max(200, Number(e.target.value) || 345) })}
+                    value={pile.steelYieldFyMpa ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updatePile({ steelYieldFyMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -703,10 +745,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                   </label>
                   <input
                     type="number"
-                    min="5"
+                    min="0"
                     max="40"
-                    value={pile.pipeWallThicknessMm ?? 12}
-                    onChange={(e) => updatePile({ pipeWallThicknessMm: Math.max(5, Number(e.target.value) || 12) })}
+                    value={pile.pipeWallThicknessMm ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updatePile({ pipeWallThicknessMm: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -722,10 +767,13 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
-                min="5"
+                min="0"
                 max="100"
-                value={pile.permissibleSettlementMm ?? 25}
-                onChange={(e) => updatePile({ permissibleSettlementMm: Math.max(5, Number(e.target.value) || 25) })}
+                value={pile.permissibleSettlementMm ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ permissibleSettlementMm: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -739,11 +787,14 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
-                min="400"
+                min="0"
                 max="3000"
                 step="50"
-                value={pile.pileCapThicknessMm ?? 1000}
-                onChange={(e) => updatePile({ pileCapThicknessMm: Math.max(400, Number(e.target.value) || 1000) })}
+                value={pile.pileCapThicknessMm ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ pileCapThicknessMm: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -757,11 +808,14 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               </label>
               <input
                 type="number"
-                min="0.15"
+                min="0"
                 max="1.5"
                 step="0.05"
-                value={pile.pileCapOverhangM ?? 0.35}
-                onChange={(e) => updatePile({ pileCapOverhangM: Math.max(0.15, Number(e.target.value) || 0.35) })}
+                value={pile.pileCapOverhangM ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePile({ pileCapOverhangM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -808,8 +862,19 @@ export const PileCapacityMetrics: React.FC<PileCapacityMetricsProps> = ({ result
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const isZeroBaseline =
+    (result.diameterM ?? 0) <= 0 ||
+    (result.lengthM ?? 0) <= 0 ||
+    result.ultimateCapacityKn === 0;
+
   return (
     <div className="space-y-4">
+      {isZeroBaseline && (
+        <div className="px-3.5 py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs font-mono flex items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider">0 BASELINE STANDBY</span>
+          <span className="opacity-90">Enter pile diameter, embedment length, and soil strata to compute BNBC-2020 pile capacity.</span>
+        </div>
+      )}
       {/* Top 4 KPI Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-1">

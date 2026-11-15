@@ -90,7 +90,7 @@ export interface RcColumnDesignResult {
   breslerContourDcr: number;
   axialDcr: number;
   governingDcr: number;
-  status: 'nominal' | 'warning' | 'critical';
+  status: 'nominal' | 'warning' | 'critical' | 'zero_baseline';
 }
 
 function getCodeConstants(code: RcColumnDesignCode, fcMpa: number, fyMpa: number) {
@@ -493,6 +493,78 @@ export function computeRcColumnDesign(
     ]);
   }
   const issues: ValidationIssue[] = [];
+
+  const isZeroColumnBaseline =
+    params.widthB_Mm === 0 &&
+    params.depthH_Mm === 0 &&
+    params.axialLoadPu_Kn === 0 &&
+    params.momentMux_Knm === 0 &&
+    params.momentMuy_Knm === 0;
+
+  if (isZeroColumnBaseline) {
+    const emptyAxis = (axis: 'X' | 'Y'): RcColumnAxisResult => ({
+      axis,
+      depthMm: 0,
+      widthMm: 0,
+      dEffectiveMm: 0,
+      beta1: 0,
+      cBalancedMm: 0,
+      aBalancedMm: 0,
+      pBalancedKn: 0,
+      mBalancedKnm: 0,
+      phiPBalancedKn: 0,
+      phiMBalancedKnm: 0,
+      phiMnAtPuKnm: 0,
+      mnAtPuKnm: 0,
+      slendernessRatioKluR: 0,
+      slendernessLimit: 22,
+      isSlender: false,
+      pcEulerKn: 0,
+      magnifierDeltaNs: 1,
+      appliedMomentKnm: 0,
+      minEccentricityMomentKnm: 0,
+      magnifiedMomentKnm: 0,
+      uniaxialDcr: 0,
+      curve: [],
+    });
+    return createEnvelope<RcColumnDesignResult>(
+      {
+        designCode: params.designCode,
+        widthB_Mm: 0,
+        depthH_Mm: 0,
+        clearCoverMm: params.clearCoverMm || 0,
+        grossAreaMm2: 0,
+        totalBarCount: 0,
+        longitudinalBarDiaMm: params.longitudinalBarDiaMm || 0,
+        astProvidedMm2: 0,
+        rhoPercent: 0,
+        rhoOk: true,
+        bars: [],
+        tieBarDiaMm: params.tieBarDiaMm || 0,
+        tieSpacingMm: params.tieSpacingMm || 0,
+        maxAllowedTieSpacingMm: 0,
+        tieDetailingOk: true,
+        concreteFcMpa: params.concreteFcMpa || 0,
+        rebarFyMpa: params.rebarFyMpa || 0,
+        p0Kn: 0,
+        phiPnMaxKn: 0,
+        ptTensionKn: 0,
+        phiPtTensionKn: 0,
+        axialLoadPu_Kn: 0,
+        momentMux_Knm: 0,
+        momentMuy_Knm: 0,
+        xAxis: emptyAxis('X'),
+        yAxis: emptyAxis('Y'),
+        breslerAlpha: 1,
+        breslerContourDcr: 0,
+        axialDcr: 0,
+        governingDcr: 0,
+        status: 'zero_baseline',
+      },
+      issues,
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
 
   if (params.widthB_Mm < 150 || params.depthH_Mm < 150) {
     issues.push({

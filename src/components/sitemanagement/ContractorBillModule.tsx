@@ -86,12 +86,12 @@ export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ acti
   const [contractorName, setContractorName] = useState('');
   const [workTrade, setWorkTrade] = useState(COMMON_TRADES[0]);
   const [unit, setUnit] = useState('Sq.Ft');
-  const [contractRate, setContractRate] = useState<number | ''>(145);
+  const [contractRate, setContractRate] = useState<number | ''>(0);
   const [previousMeasuredQty, setPreviousMeasuredQty] = useState<number | ''>(0);
-  const [currentMeasuredQty, setCurrentMeasuredQty] = useState<number | ''>(1000);
-  const [retentionPercent, setRetentionPercent] = useState<number>(10);
+  const [currentMeasuredQty, setCurrentMeasuredQty] = useState<number | ''>(0);
+  const [retentionPercent, setRetentionPercent] = useState<number>(0);
   const [advanceDeducted, setAdvanceDeducted] = useState<number | ''>(0);
-  const [taxPercent, setTaxPercent] = useState<number>(3); // 3% AIT default
+  const [taxPercent, setTaxPercent] = useState<number>(0);
   const [voucherNo, setVoucherNo] = useState('');
   const [remarks, setRemarks] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<'Draft' | 'Certified' | 'Paid'>('Draft');
@@ -137,12 +137,12 @@ export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ acti
     setContractorName('');
     setWorkTrade(COMMON_TRADES[0]);
     setUnit('Sq.Ft');
-    setContractRate(145);
+    setContractRate(0);
     setPreviousMeasuredQty(0);
-    setCurrentMeasuredQty(500);
-    setRetentionPercent(10);
+    setCurrentMeasuredQty(0);
+    setRetentionPercent(0);
     setAdvanceDeducted(0);
-    setTaxPercent(3);
+    setTaxPercent(0);
     setVoucherNo(`V-RA-${nextSeq.toString().padStart(2, '0')}`);
     setRemarks('');
     setPaymentStatus('Draft');

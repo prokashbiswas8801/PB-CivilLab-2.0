@@ -86,82 +86,73 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
   }, [language]);
 
   const [docMeta, setDocMeta] = useState({
-    memoNo: `CL/SITE/${new Date().getFullYear()}/${Math.floor(100 + Math.random() * 900)}`,
+    memoNo: '',
     date: todayStr,
-    organization: userProfile?.organization || 'National Engineering & Construction Consortium',
-    projectName: activeWorkspace?.name || 'Multi-Story Residential & Commercial Complex',
-    projectCode: activeWorkspace?.projectCode || 'PRJ-2026-08',
-    siteLocation: activeWorkspace?.siteLocation || 'Plot 42, Sector 11, Uttara, Dhaka-1230',
-    clientName: 'Modern Living Properties Ltd.',
-    contractorName: 'Eastern Star Builders & Civil Contractors Ltd.',
-    engineerName: userProfile?.name || 'Engr. Md. Tanvir Hasan',
-    engineerTitle: userProfile?.title || 'Resident Project Engineer',
-    licenseNo: userProfile?.licenseNo || 'IEB M-38491 / PEng 1024',
-    consultantOrg: 'Design Consortium Engineers & Architects',
+    organization: userProfile?.organization || '',
+    projectName: activeWorkspace?.name || '',
+    projectCode: activeWorkspace?.projectCode || '',
+    siteLocation: activeWorkspace?.siteLocation || '',
+    clientName: '',
+    contractorName: '',
+    engineerName: userProfile?.name || activeWorkspace?.engineerOfRecord || '',
+    engineerTitle: userProfile?.title || '',
+    licenseNo: userProfile?.licenseNo || '',
+    consultantOrg: '',
   });
 
   // 1. GATE PASS & CHALLAN SPECIFIC STATE
   const [gatePassData, setGatePassData] = useState({
     passType: 'Returnable' as 'Returnable' | 'Non-Returnable',
-    vehicleNo: 'Dhaka Metro-Ta-11-8492',
-    driverName: 'Md. Rafiqul Islam',
-    driverPhone: '+880 1711-902834',
-    destination: 'Godown Depot #2, Hemayetpur, Savar',
-    purpose: 'Transfer of surplus scaffolding props and hydraulic cutter for repair',
-    authorizedBy: userProfile?.name || 'Engr. Md. Tanvir Hasan',
-    securityOfficer: 'Md. Anisur Rahman (Chief Security)',
-    items: [
-      { sl: 1, description: 'Steel Tubular Scaffolding Props (3.5m Heavy Duty)', quantity: '120', unit: 'Pcs', purposeOrDestination: 'Site Transfer', remarks: 'Good Condition' },
-      { sl: 2, description: 'Bar Bending Hydraulic Machine (32mm Capacity)', quantity: '1', unit: 'Set', purposeOrDestination: 'Workshop Servicing', remarks: 'Motor overhauling' },
-      { sl: 3, description: 'G.I. Coupler Clamps & Base Plates', quantity: '250', unit: 'Nos', purposeOrDestination: 'Site Transfer', remarks: 'In gunny bags' },
-    ] as GatePassItem[],
+    vehicleNo: '',
+    driverName: '',
+    driverPhone: '',
+    destination: '',
+    purpose: '',
+    authorizedBy: userProfile?.name || activeWorkspace?.engineerOfRecord || '',
+    securityOfficer: '',
+    items: [] as GatePassItem[],
   });
 
   // 2. SUB-CONTRACTOR WORK ORDER STATE
   const [workOrderData, setWorkOrderData] = useState({
-    workOrderNo: `WO/RCC/${new Date().getFullYear()}/042`,
-    trade: 'RCC Structural Formwork, Rebar Binding & Concreting',
+    workOrderNo: '',
+    trade: '',
     commencementDate: todayStr,
-    completionTargetDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
-    totalOrderValue: '18,50,000',
-    retentionPercent: '10',
-    defectLiabilityMonths: '12',
-    advancePercent: '5',
-    scopeSummary: 'Execution of complete RCC frame structure including column casting, beam-slab formwork shuttering, rebar fabrication per approved BBS, and machine-mix concrete casting per BNBC-2020 specifications.',
-    items: [
-      { sl: 1, itemDescription: 'Fabrication & binding of deformed rebar (500W/60 grade) per approved BBS', qty: '45', unit: 'Ton', rate: '9,500', amount: '4,27,500' },
-      { sl: 2, itemDescription: 'Marine ply & steel prop formwork shuttering for beam, slab & column', qty: '12,500', unit: 'SFT', rate: '48', amount: '6,00,000' },
-      { sl: 3, itemDescription: 'Batch mixing, hoisting, pouring, compacting and finishing of M25 concrete', qty: '8,200', unit: 'CFT', rate: '32', amount: '2,62,400' },
-      { sl: 4, itemDescription: 'Solid brick masonry in 1:4 cement mortar with curing', qty: '3,800', unit: 'CFT', rate: '65', amount: '2,47,000' },
-    ] as WorkOrderItem[],
+    completionTargetDate: '',
+    totalOrderValue: '',
+    retentionPercent: '0',
+    defectLiabilityMonths: '0',
+    advancePercent: '0',
+    scopeSummary: '',
+    items: [] as WorkOrderItem[],
   });
 
   // 3. JOINT MEASUREMENT & RA BILL FORWARDING LETTER STATE
   const [raBillLetterData, setRaBillLetterData] = useState({
-    billNo: 'RA-04 (Interim Payment Certificate)',
-    measurementPeriod: '1st October 2026 to 31st October 2026',
-    subContractor: 'Eastern Star Builders & Civil Contractors Ltd.',
-    workTrade: 'RCC Structural Civil & Finishing Works',
-    grossAmountClaimed: '12,45,000',
-    grossAmountCertified: '11,80,000',
-    retentionAmount: '1,18,000', // 10%
-    aitTaxDeduction: '35,400', // 3%
-    advanceMobilizationRecovery: '50,000',
-    netRecommendedPayable: '9,76,600',
-    recommendationNote: 'The joint on-site measurement recorded in MB-08 (Pages 42-65) has been thoroughly verified against approved structural drawings. Concrete cylinder 28-day crushing reports comply with BNBC M25 specifications. Release of net payment is recommended.',
+    billNo: '',
+    measurementPeriod: '',
+    subContractor: '',
+    workTrade: '',
+    grossAmountClaimed: '0',
+    grossAmountCertified: '0',
+    retentionAmount: '0',
+    aitTaxDeduction: '0',
+    advanceMobilizationRecovery: '0',
+    netRecommendedPayable: '0',
+    recommendationNote: '',
   });
 
   // 4. SITE INSTRUCTION / NON-CONFORMANCE NOTICE (NCR) STATE
   const [ncrData, setNcrData] = useState({
-    ncrNo: `NCR/STR/${new Date().getFullYear()}/015`,
-    issuedTo: 'M/S Prime Builders & Associates (Structural Contractor)',
-    locationGrid: '4th Floor Beam B-12 and Column C-3 junction (Grid Line B-3)',
+    ncrNo: '',
+    issuedTo: '',
+    locationGrid: '',
     severity: 'Major' as 'Minor' | 'Major' | 'Critical / Safety Hazard',
-    defectDescription: 'During post-deshuttering joint inspection, severe honeycombing and exposed stirrups were observed on the beam-column core junction of Column C-3. Additionally, clear cover of 40mm was found compromised due to missing cover blocks.',
-    governingCode: 'BNBC-2020 Part 6 Chapter 5 (Concrete Quality & Placement) & ACI 318 Section 26.5',
-    rectificationActionRequired: 'Chip off loose concrete until sound aggregate is exposed under supervision of Resident Engineer. Apply bonding agent (Sika Top Armatec 110) and pressure-grout using non-shrink structural micro-concrete (fck >= 40 MPa). Provide certified test cube report.',
-    targetRectificationDays: '3',
-    followUpInspectionDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+    defectDescription: '',
+    governingCode: '',
+    rectificationActionRequired: '',
+    targetRectificationDays: '0',
+    followUpInspectionDate: todayStr,
   });
 
   // Consume Pending NCR Draft sent from Testing Lab & Field QA/QC
@@ -188,14 +179,14 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
 
   // 5. PROJECT COMPLETION & HANDOVER CERTIFICATE STATE
   const [handoverData, setHandoverData] = useState({
-    certNo: `PCC/FINAL/${new Date().getFullYear()}/008`,
-    contractRef: 'PRJ/CIVIL/CONTRACT-2024-001',
-    scheduledCompletionDate: '30 September 2026',
-    actualCompletionDate: '15 October 2026',
-    finalContractValue: '4,85,50,000',
-    defectsLiabilityEndDate: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
-    scopeCompleted: 'Turnkey construction of 10-story RCC commercial building including foundation piles, superstructure frame, plumbing, electrical substations, firefighting, and architectural finishes.',
-    declaration: 'It is hereby certified that the subject project works have been inspected and tested in accordance with the contract documents, approved structural drawings, and BNBC-2020 standards, and are found to be substantially completed in sound, functional condition.',
+    certNo: '',
+    contractRef: '',
+    scheduledCompletionDate: '',
+    actualCompletionDate: '',
+    finalContractValue: '0',
+    defectsLiabilityEndDate: '',
+    scopeCompleted: '',
+    declaration: '',
   });
 
   // Handlers for Gate Pass Item CRUD
@@ -421,22 +412,22 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
       signatories: [
         {
           role: 'Prepared by Resident Engineer',
-          name: docMeta.engineerName,
-          title: docMeta.engineerTitle,
-          license: docMeta.licenseNo,
+          name: docMeta.engineerName || '________________________',
+          title: docMeta.engineerTitle || 'Prepared By',
+          license: docMeta.licenseNo || '________________________',
           verifiedStatus: 'CERTIFIED & AUTHENTIC',
         },
         {
           role: 'Checked by Project Manager / Consultant',
-          name: 'Lead Consultant, PE',
-          title: docMeta.consultantOrg,
-          license: 'IEB F-14290 (Verified)',
+          name: '________________________',
+          title: docMeta.consultantOrg || 'Checked By',
+          license: '________________________',
           verifiedStatus: 'VERIFIED',
         },
         {
           role: 'Accepted by Contractor / Recipient',
-          name: 'Authorized Signatory',
-          title: docMeta.contractorName,
+          name: '________________________',
+          title: docMeta.contractorName || 'Accepted By',
           verifiedStatus: 'ACKNOWLEDGED',
         },
       ],
@@ -1696,10 +1687,10 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                 {/* 1. Prepared by Site Engineer */}
                 <div className="text-center">
                   <div className="border-t border-zinc-900 pt-2 font-bold text-zinc-950">
-                    {docMeta.engineerName}
+                    {docMeta.engineerName || '________________________'}
                   </div>
-                  <div className="text-[11px] text-zinc-600">{docMeta.engineerTitle}</div>
-                  <div className="text-[10px] font-mono text-zinc-500">{docMeta.licenseNo}</div>
+                  <div className="text-[11px] text-zinc-600">{docMeta.engineerTitle || 'Prepared By / Engineer'}</div>
+                  <div className="text-[10px] font-mono text-zinc-500">{docMeta.licenseNo || '________________________'}</div>
                   <div className="text-[10px] text-zinc-400 mt-1">Resident Engineer / EOR</div>
                 </div>
 
@@ -1708,8 +1699,8 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                   <div className="border-t border-zinc-900 pt-2 font-bold text-zinc-950">
                     Project Manager
                   </div>
-                  <div className="text-[11px] text-zinc-600">{docMeta.organization}</div>
-                  <div className="text-[10px] font-mono text-zinc-500">IEB F-14290</div>
+                  <div className="text-[11px] text-zinc-600">{docMeta.organization || '________________________'}</div>
+                  <div className="text-[10px] font-mono text-zinc-500">________________________</div>
                   <div className="text-[10px] text-zinc-400 mt-1">Consulting Engineer</div>
                 </div>
 
@@ -1718,7 +1709,7 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                   <div className="border-t border-zinc-900 pt-2 font-bold text-zinc-950">
                     Authorized Signatory
                   </div>
-                  <div className="text-[11px] text-zinc-600">{docMeta.contractorName}</div>
+                  <div className="text-[11px] text-zinc-600">{docMeta.contractorName || '________________________'}</div>
                   <div className="text-[10px] font-mono text-zinc-500">Managing Director / Rep</div>
                   <div className="text-[10px] text-zinc-400 mt-1">Received & Acknowledged</div>
                 </div>

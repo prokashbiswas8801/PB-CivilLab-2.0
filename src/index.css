@@ -916,6 +916,18 @@ th,
   animation: checkmark-spring 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes input-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+.animate-input-shake {
+  animation: input-shake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
 /* ==========================================================================
    FORCE NIKOSH FONT ON ALL D3, RECHARTS & SVG CHART COMPONENTS & LABELS
    Ensures complete visual consistency with the application's Bengali typography

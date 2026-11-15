@@ -495,6 +495,50 @@ export function computeFrameTruss2D(
     });
   }
 
+  if (nodes.length === 0 && members.length === 0 && nodalLoads.length === 0) {
+    return createEnvelope<FrameTruss2DResult>(
+      {
+        analysisMode,
+        governingCode,
+        nodeCount: 0,
+        memberCount: 0,
+        totalDofs: 0,
+        freeDofs: 0,
+        restrainedDofs: 0,
+        nodalResults: [],
+        memberResults: [],
+        maxDisplacementMm: 0,
+        maxDisplacementNodeLabel: '',
+        maxHorizontalDriftMm: 0,
+        driftRatioDenominator: 0,
+        maxAbsAxialKn: 0,
+        maxAbsShearKn: 0,
+        maxAbsMomentKnm: 0,
+        maxCombinedStressMpa: 0,
+        allowableStressMpa: params.allowableStressMpa || 0,
+        utilizationRatio: 0,
+        status: 'nominal',
+        firstOrderMaxDispMm: 0,
+        firstOrderMaxMomentKnm: 0,
+        pDeltaIterations: 0,
+        pDeltaConverged: true,
+        pDeltaDisplacementAmplification: 1,
+        pDeltaMomentAmplification: 1,
+        criticalBucklingFactorAlphaCr: 0,
+        b2AmplificationFactor: 1,
+        appliedSumFxKn: 0,
+        appliedSumFyKn: 0,
+        appliedSumMzKnm: 0,
+        reactionSumFxKn: 0,
+        reactionSumFyKn: 0,
+        reactionSumMzKnm: 0,
+        equilibriumResidualKn: 0,
+      },
+      issues,
+      { handCalculationSteps: [], scopeAndLimits, isZeroBaseline: true }
+    );
+  }
+
   if (nodes.length < 2) {
     issues.push({
       field: 'nodes',

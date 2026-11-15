@@ -135,7 +135,10 @@ export function calculateBarCuttingLength(row: BBSRow): {
     }
   }
 
-  const netLengthMm = Math.max(50, rawLengthMm - bendDeductionMm);
+  const netLengthMm =
+    row.dimA <= 0 && row.dimB <= 0 && row.dimC <= 0
+      ? 0
+      : Math.max(0, rawLengthMm - bendDeductionMm);
   const cuttingLengthM = Number((netLengthMm / 1000).toFixed(3));
 
   return {
@@ -154,6 +157,14 @@ export function calculateDevelopmentLength(fcMpa: number, fyMpa: number, diaMm: 
   lapClassBMm: number;
   compressionLapMm: number;
 } {
+  if (fcMpa <= 0 || fyMpa <= 0 || diaMm <= 0) {
+    return {
+      ldMm: 0,
+      lapClassAMm: 0,
+      lapClassBMm: 0,
+      compressionLapMm: 0,
+    };
+  }
   // tau_bd bond stress approximation: 0.16 * sqrt(fc) * 1.6 for deformed bars
   const tauBd = 0.25 * Math.sqrt(Math.max(15, fcMpa));
   const ld = Math.max(300, Math.round((fyMpa / (4 * tauBd)) * diaMm * 0.8)); // 0.8 factor for normal conditions
@@ -363,34 +374,34 @@ const PRESET_SCHEDULES: Record<string, { label: string; rows: BBSRow[] }> = {
 };
 
 export const BBSGenerator: React.FC = () => {
-  const [rows, setRows] = useState<BBSRow[]>(PRESET_SCHEDULES.beam.rows);
-  const [wastagePercent, setWastagePercent] = useState<number>(3.5);
+  const [rows, setRows] = useState<BBSRow[]>([]);
+  const [wastagePercent, setWastagePercent] = useState<number>(0);
   const [activeShapePreview, setActiveShapePreview] = useState<BarShapeType>('rectangular-stirrup');
   const [activeTab, setActiveTab] = useState<'schedule' | 'lapping'>('schedule');
 
   // Lapping & Development Length Parameters
-  const [fcMpa, setFcMpa] = useState<number>(25);
-  const [fyMpa, setFyMpa] = useState<number>(500);
+  const [fcMpa, setFcMpa] = useState<number>(0);
+  const [fyMpa, setFyMpa] = useState<number>(0);
 
   // Smart Rebar Suggestion Helper State
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(PRESET_SCHEDULES.beam.rows[0]?.id || null);
-  const [isHelperOpen, setIsHelperOpen] = useState<boolean>(true);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [isHelperOpen, setIsHelperOpen] = useState<boolean>(false);
   const [helperElementType, setHelperElementType] = useState<StructuralElementTypeKey>('beam');
   const [helperRoleKey, setHelperRoleKey] = useState<RebarRoleKey>('beam-bottom-tension');
-  const [helperWidthMm, setHelperWidthMm] = useState<number>(300);
-  const [helperDepthMm, setHelperDepthMm] = useState<number>(500);
-  const [helperLengthMm, setHelperLengthMm] = useState<number>(6000);
-  const [helperCoverMm, setHelperCoverMm] = useState<number>(40);
+  const [helperWidthMm, setHelperWidthMm] = useState<number>(0);
+  const [helperDepthMm, setHelperDepthMm] = useState<number>(0);
+  const [helperLengthMm, setHelperLengthMm] = useState<number>(0);
+  const [helperCoverMm, setHelperCoverMm] = useState<number>(0);
   const [appliedToast, setAppliedToast] = useState<string | null>(null);
 
   // Compute rebar suggestions based on selected member section & code ratios
   const suggestions = useMemo(() => {
     return computeRebarSuggestions({
       roleKey: helperRoleKey,
-      widthMm: Math.max(50, helperWidthMm),
-      depthMm: Math.max(50, helperDepthMm),
-      lengthMm: Math.max(100, helperLengthMm),
-      clearCoverMm: Math.max(10, helperCoverMm),
+      widthMm: Math.max(0, helperWidthMm),
+      depthMm: Math.max(0, helperDepthMm),
+      lengthMm: Math.max(0, helperLengthMm),
+      clearCoverMm: Math.max(0, helperCoverMm),
     });
   }, [helperRoleKey, helperWidthMm, helperDepthMm, helperLengthMm, helperCoverMm]);
 
@@ -567,8 +578,8 @@ export const BBSGenerator: React.FC = () => {
   };
 
   const handleDeleteRow = (id: string) => {
-    if (rows.length <= 1) return;
     setRows(rows.filter((r) => r.id !== id));
+    if (selectedRowId === id) setSelectedRowId(null);
   };
 
   const handleUpdateRow = (id: string, patch: Partial<BBSRow>) => {
@@ -578,7 +589,21 @@ export const BBSGenerator: React.FC = () => {
   const handleLoadPreset = (key: string) => {
     if (PRESET_SCHEDULES[key]) {
       setRows(PRESET_SCHEDULES[key].rows);
+      setSelectedRowId(PRESET_SCHEDULES[key].rows[0]?.id || null);
+      setWastagePercent(3.5);
     }
+  };
+
+  const handleResetToZero = () => {
+    setRows([]);
+    setSelectedRowId(null);
+    setWastagePercent(0);
+    setFcMpa(0);
+    setFyMpa(0);
+    setHelperWidthMm(0);
+    setHelperDepthMm(0);
+    setHelperLengthMm(0);
+    setHelperCoverMm(0);
   };
 
   // Calculations per row
@@ -744,18 +769,18 @@ export const BBSGenerator: React.FC = () => {
     const pdfReportData = {
       projectMeta: {
         projectName: 'Structural RCC Rebar Schedule & Cutting List',
-        projectCode: 'BBS-CIVIL-2026',
-        client: 'Client Engineering Review',
-        location: 'Site Engineering Submittal',
+        projectCode: 'PRJ-001',
+        client: '',
+        location: '',
         date: new Date().toISOString().slice(0, 10),
         unitSystem: 'SI' as const,
-        engineerName: 'Prokash Biswas, PE',
+        engineerName: '',
       },
       moduleMeta: {
         moduleId: 'rebar-bbs',
         moduleTitle: 'BAR BENDING SCHEDULE (BBS) & REBAR WORKBENCH',
         standard: 'BNBC-2020 / ACI-318 / IS-2502',
-        status: 'VERIFIED' as const,
+        status: calculatedRows.length === 0 ? ('ZERO BASELINE' as const) : ('VERIFIED' as const),
       },
       inputs: [
         { name: "Concrete Strength", symbol: "f'c", value: fcMpa, unit: 'MPa' },
@@ -962,10 +987,18 @@ export const BBSGenerator: React.FC = () => {
 
           {activeTab === 'schedule' && (
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetToZero}
+                className="px-2.5 py-1 rounded-md text-xs font-semibold border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-error-container)]/30 hover:text-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-surface)] flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <RefreshCw className="w-3 h-3 text-[var(--md-sys-color-error)]" />
+                <span>Reset to Zero</span>
+              </button>
               <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
                 Load Preset:
               </span>
-              {Object.entries(PRESET_SCHEDULES).map(([key, item]) => (
+              {Object.entries(PRESET_SCHEDULES).map(([key]) => (
                 <button
                   key={key}
                   type="button"
@@ -1472,9 +1505,9 @@ export const BBSGenerator: React.FC = () => {
                       <td className="py-2 px-2">
                         <input
                           type="number"
-                          min="1"
+                          min="0"
                           value={r.numMembers}
-                          onChange={(e) => handleUpdateRow(r.id, { numMembers: Math.max(1, Number(e.target.value)) })}
+                          onChange={(e) => handleUpdateRow(r.id, { numMembers: Math.max(0, Number(e.target.value) || 0) })}
                           className="w-14 px-1.5 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-center"
                         />
                       </td>
@@ -1482,9 +1515,9 @@ export const BBSGenerator: React.FC = () => {
                       <td className="py-2 px-2">
                         <input
                           type="number"
-                          min="1"
+                          min="0"
                           value={r.barsPerMember}
-                          onChange={(e) => handleUpdateRow(r.id, { barsPerMember: Math.max(1, Number(e.target.value)) })}
+                          onChange={(e) => handleUpdateRow(r.id, { barsPerMember: Math.max(0, Number(e.target.value) || 0) })}
                           className="w-14 px-1.5 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-center"
                         />
                       </td>
@@ -1595,12 +1628,11 @@ export const BBSGenerator: React.FC = () => {
                           <button
                             type="button"
                             title="Delete Bar Mark"
-                            disabled={rows.length <= 1}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteRow(r.id);
                             }}
-                            className="p-1 rounded text-rose-500 hover:text-rose-700 disabled:opacity-30 cursor-pointer"
+                            className="p-1 rounded text-rose-500 hover:text-rose-700 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1721,6 +1753,7 @@ export const BBSGenerator: React.FC = () => {
                     onChange={(e) => setFcMpa(Number(e.target.value))}
                     className="px-2 py-1 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
                   >
+                    <option value={0}>0 MPa (Select)</option>
                     <option value={20}>20 MPa (M20)</option>
                     <option value={25}>25 MPa (M25)</option>
                     <option value={30}>30 MPa (M30)</option>
@@ -1736,6 +1769,7 @@ export const BBSGenerator: React.FC = () => {
                     onChange={(e) => setFyMpa(Number(e.target.value))}
                     className="px-2 py-1 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
                   >
+                    <option value={0}>0 MPa (Select)</option>
                     <option value={415}>415 MPa / 60 Grade</option>
                     <option value={500}>500 MPa / 500W Grade</option>
                     <option value={550}>550 MPa / 550W Grade</option>

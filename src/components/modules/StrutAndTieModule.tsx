@@ -96,7 +96,7 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
   };
 
   const removeNode = (id: string) => {
-    if (stm.nodes.length <= 3) return;
+    if (stm.nodes.length <= 1) return;
     commit({
       nodes: stm.nodes.filter((n) => n.id !== id),
       members: stm.members.filter((m) => m.startNodeId !== id && m.endNodeId !== id),
@@ -129,7 +129,7 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
   };
 
   const removeMember = (id: string) => {
-    if (stm.members.length <= 2) return;
+    if (stm.members.length === 0) return;
     commit({
       members: stm.members.filter((m) => m.id !== id),
     });
@@ -227,11 +227,11 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={150}
+                min={0}
                 max={2000}
                 step={25}
                 value={stm.memberThicknessMm}
-                onChange={(e) => commit({ memberThicknessMm: Number(e.target.value) || 300 })}
+                onChange={(e) => commit({ memberThicknessMm: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -241,11 +241,11 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={15}
+                min={0}
                 max={70}
                 step={1}
                 value={stm.concreteFcMpa}
-                onChange={(e) => commit({ concreteFcMpa: Number(e.target.value) || 28 })}
+                onChange={(e) => commit({ concreteFcMpa: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -255,11 +255,11 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={250}
+                min={0}
                 max={600}
                 step={20}
                 value={stm.rebarFyMpa}
-                onChange={(e) => commit({ rebarFyMpa: Number(e.target.value) || 420 })}
+                onChange={(e) => commit({ rebarFyMpa: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -320,7 +320,7 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                       <button
                         type="button"
                         onClick={() => removeNode(node.id)}
-                        disabled={stm.nodes.length <= 3}
+                        disabled={stm.nodes.length <= 1}
                         className="p-1 rounded text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] disabled:opacity-30 cursor-pointer"
                         title="Remove node"
                       >
@@ -452,7 +452,7 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                       <button
                         type="button"
                         onClick={() => removeMember(mem.id)}
-                        disabled={stm.members.length <= 2}
+                        disabled={stm.members.length === 0}
                         className="p-1 rounded text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] disabled:opacity-30 cursor-pointer"
                         title="Remove member"
                       >
@@ -498,10 +498,10 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                         </label>
                         <input
                           type="number"
-                          min={5}
+                          min={0}
                           step={25}
                           value={mem.areaCm2}
-                          onChange={(e) => updateMember(mem.id, { areaCm2: Number(e.target.value) || 50 })}
+                          onChange={(e) => updateMember(mem.id, { areaCm2: Math.max(0, Number(e.target.value) || 0) })}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-[11px]"
                         />
                       </div>
@@ -529,7 +529,8 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
 export const StrutAndTieMetrics: React.FC<{
   result: StrutAndTieResult;
 }> = ({ result }) => {
-  const eqOk = result.equilibriumResidualKn < 1e-2 && result.momentResidualKnm < 1e-2;
+  const isZero = (result as any).status === 'zero_baseline' || (result.strutCount === 0 && result.tieCount === 0 && result.maxCompressionStrutKn === 0 && result.maxTensionTieKn === 0);
+  const eqOk = !isZero && result.equilibriumResidualKn < 1e-2 && result.momentResidualKnm < 1e-2;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
@@ -574,17 +575,23 @@ export const StrutAndTieMetrics: React.FC<{
         </div>
         <div
           className={`text-xl font-bold font-mono tabular-nums mt-1 ${
-            result.status === 'critical'
+            isZero
+              ? 'text-amber-600 dark:text-amber-400'
+              : result.status === 'critical'
               ? 'text-[var(--md-sys-color-error)]'
               : eqOk
               ? 'text-emerald-700 dark:text-emerald-400'
               : 'text-amber-600 dark:text-amber-400'
           }`}
         >
-          {(result.governingDcr * 100).toFixed(1)}%
+          {isZero ? '0.0% (Standby)' : `${(result.governingDcr * 100).toFixed(1)}%`}
         </div>
         <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-          {eqOk ? 'ΣF=0, ΣM=0 Verified' : `Residual ${result.equilibriumResidualKn.toExponential(1)}`}
+          {isZero
+            ? 'Load a worked example or add nodes/members'
+            : eqOk
+            ? 'ΣF=0, ΣM=0 Verified'
+            : `Residual ${result.equilibriumResidualKn.toExponential(1)}`}
         </div>
       </div>
     </div>

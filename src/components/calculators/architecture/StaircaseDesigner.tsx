@@ -57,40 +57,40 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
     initialValues?.floorHeightMm ??
       (initialValues?.floorToFloorHeightM
         ? Math.round(initialValues.floorToFloorHeightM * 1000)
-        : 3000)
+        : 0)
   );
   const [preferredRiserMm, setPreferredRiserMm] = useState<number>(
-    initialValues?.riserHeightMm ?? initialValues?.preferredRiserMm ?? 150
+    initialValues?.riserHeightMm ?? initialValues?.preferredRiserMm ?? 0
   );
   const [preferredTreadMm, setPreferredTreadMm] = useState<number>(
-    initialValues?.treadWidthMm ?? initialValues?.preferredTreadMm ?? 275
+    initialValues?.treadWidthMm ?? initialValues?.preferredTreadMm ?? 0
   );
   const [flightWidthMm, setFlightWidthMm] = useState<number>(
-    initialValues?.flightWidthMm ?? 1150
+    initialValues?.flightWidthMm ?? 0
   );
   const [landingWidthMm, setLandingWidthMm] = useState<number>(
-    initialValues?.landingWidthMm ?? 1200
+    initialValues?.landingWidthMm ?? 0
   );
   const [waistSlabMm, setWaistSlabMm] = useState<number>(
-    initialValues?.waistSlabThicknessMm ?? initialValues?.waistSlabMm ?? 150
+    initialValues?.waistSlabThicknessMm ?? initialValues?.waistSlabMm ?? 0
   );
   const [slabThicknessMm, setSlabThicknessMm] = useState<number>(
-    initialValues?.slabThicknessMm ?? 150
+    initialValues?.slabThicknessMm ?? 0
   );
-  const [wellGapMm, setWellGapMm] = useState<number>(initialValues?.wellGapMm ?? 150);
+  const [wellGapMm, setWellGapMm] = useState<number>(initialValues?.wellGapMm ?? 0);
   const [handrailHeightMm, setHandrailHeightMm] = useState<number>(
-    initialValues?.handrailHeightMm ?? 950
+    initialValues?.handrailHeightMm ?? 0
   );
   const [stairwellLengthMm, setStairwellLengthMm] = useState<number>(
-    initialValues?.stairwellLengthMm ?? 4650
+    initialValues?.stairwellLengthMm ?? 0
   );
   const [stairwellWidthMm, setStairwellWidthMm] = useState<number>(
-    initialValues?.stairwellWidthMm ?? 2450
+    initialValues?.stairwellWidthMm ?? 0
   );
-  const [nosingMm, setNosingMm] = useState<number>(initialValues?.nosingMm ?? 25);
-  const [liveLoadKpa, setLiveLoadKpa] = useState<number>(initialValues?.liveLoadKpa ?? 3.0);
+  const [nosingMm, setNosingMm] = useState<number>(initialValues?.nosingMm ?? 0);
+  const [liveLoadKpa, setLiveLoadKpa] = useState<number>(initialValues?.liveLoadKpa ?? 0);
   const [finishesLoadKpa, setFinishesLoadKpa] = useState<number>(
-    initialValues?.finishesLoadKpa ?? 1.0
+    initialValues?.finishesLoadKpa ?? 0
   );
 
   const [activePresetId, setActivePresetId] = useState<string>('');
@@ -245,12 +245,12 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
     const pdfData = {
       projectMeta: {
         projectName: 'Staircase Ergonomics, BNBC Part 4 Egress & Structural Takeoff',
-        projectCode: 'STAIR-BNBC-2026',
-        client: 'Architectural & Structural Engineering',
+        projectCode: 'PRJ-001',
+        client: '',
         location: res.occupancyLabel,
         date: new Date().toISOString().slice(0, 10),
         unitSystem: 'SI' as const,
-        engineerName: 'BD. CivilLab Architecture Engine',
+        engineerName: '',
       },
       moduleMeta: {
         moduleId: 'staircase-designer',
@@ -290,6 +290,22 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
   const renderSectionalElevation = () => {
     const svgW = 560;
     const svgH = 310;
+    if (res.floorHeightMm <= 0 || res.actualRiserMm <= 0 || res.actualTreadMm <= 0 || res.totalRisers <= 0) {
+      return (
+        <svg
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          className="w-full h-auto bg-slate-950 rounded-xl border border-[var(--md-sys-color-outline-variant)]"
+        >
+          <rect x="20" y="20" width={svgW - 40} height={svgH - 40} rx="10" fill="none" stroke="#334155" strokeDasharray="6 4" strokeWidth="1.5" />
+          <text x={svgW / 2} y={svgH / 2 - 8} textAnchor="middle" fill="#e2e8f0" fontSize="12" fontWeight="bold" className="font-mono">
+            0 BASELINE ACTIVE — STAIRCASE SECTION STANDBY
+          </text>
+          <text x={svgW / 2} y={svgH / 2 + 12} textAnchor="middle" fill="#94a3b8" fontSize="10.5" className="font-mono">
+            Enter Floor Height, Riser (R) &amp; Tread (T) or select a Worked Preset to plot section.
+          </text>
+        </svg>
+      );
+    }
     const stepsCount = res.treadsPerFlight[0] || 9;
     const flightGoingMm = stepsCount * res.actualTreadMm;
     const flightRiseMm = (res.risersPerFlight[0] || 10) * res.actualRiserMm;
@@ -452,14 +468,30 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
   const renderPlanFootprint = () => {
     const svgW = 560;
     const svgH = 310;
+    if (res.floorHeightMm <= 0 || res.actualTreadMm <= 0 || res.flightWidthMm <= 0) {
+      return (
+        <svg
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          className="w-full h-auto bg-slate-950 rounded-xl border border-[var(--md-sys-color-outline-variant)]"
+        >
+          <rect x="20" y="20" width={svgW - 40} height={svgH - 40} rx="10" fill="none" stroke="#334155" strokeDasharray="6 4" strokeWidth="1.5" />
+          <text x={svgW / 2} y={svgH / 2 - 8} textAnchor="middle" fill="#e2e8f0" fontSize="12" fontWeight="bold" className="font-mono">
+            0 BASELINE ACTIVE — PLAN FOOTPRINT STANDBY
+          </text>
+          <text x={svgW / 2} y={svgH / 2 + 12} textAnchor="middle" fill="#94a3b8" fontSize="10.5" className="font-mono">
+            Enter Stairwell, Flight Width &amp; Tread dimensions to plot plan view.
+          </text>
+        </svg>
+      );
+    }
     const padX = 58;
     const padY = 40;
 
     const availW = svgW - padX * 2;
     const availH = svgH - padY * 2 - 20;
 
-    const planLen = Math.max(res.stairwellLengthMm, res.requiredStairwellLengthMm);
-    const planWid = Math.max(res.stairwellWidthMm, res.requiredStairwellWidthMm);
+    const planLen = Math.max(1000, res.stairwellLengthMm, res.requiredStairwellLengthMm);
+    const planWid = Math.max(1000, res.stairwellWidthMm, res.requiredStairwellWidthMm);
     const scale = Math.min(availW / planLen, availH / planWid);
 
     const boxW = planLen * scale;
@@ -1063,11 +1095,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                 />
                 <input
                   type="number"
-                  min={1800}
+                  min={0}
                   max={6000}
                   step={25}
                   value={floorHeightMm}
-                  onChange={(e) => setFloorHeightMm(Math.max(1800, Number(e.target.value) || 2400))}
+                  onChange={(e) => setFloorHeightMm(Math.max(0, Number(e.target.value) || 0))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1099,11 +1131,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                 />
                 <input
                   type="number"
-                  min={110}
+                  min={0}
                   max={220}
                   step={1}
                   value={preferredRiserMm}
-                  onChange={(e) => setPreferredRiserMm(Math.max(110, Number(e.target.value) || 150))}
+                  onChange={(e) => setPreferredRiserMm(Math.max(0, Number(e.target.value) || 0))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1135,11 +1167,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                 />
                 <input
                   type="number"
-                  min={200}
+                  min={0}
                   max={380}
                   step={5}
                   value={preferredTreadMm}
-                  onChange={(e) => setPreferredTreadMm(Math.max(200, Number(e.target.value) || 275))}
+                  onChange={(e) => setPreferredTreadMm(Math.max(0, Number(e.target.value) || 0))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1171,11 +1203,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                 />
                 <input
                   type="number"
-                  min={750}
+                  min={0}
                   max={3000}
                   step={25}
                   value={flightWidthMm}
-                  onChange={(e) => setFlightWidthMm(Math.max(750, Number(e.target.value) || 1150))}
+                  onChange={(e) => setFlightWidthMm(Math.max(0, Number(e.target.value) || 0))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1190,9 +1222,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={50}
                 value={landingWidthMm}
-                onChange={(e) => setLandingWidthMm(Math.max(800, Number(e.target.value) || 1000))}
+                onChange={(e) => setLandingWidthMm(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1203,9 +1236,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={10}
                 value={waistSlabMm}
-                onChange={(e) => setWaistSlabMm(Math.max(100, Number(e.target.value) || 150))}
+                onChange={(e) => setWaistSlabMm(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1216,10 +1250,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={50}
                 disabled={stairTopology === 'straight-flight'}
                 value={wellGapMm}
-                onChange={(e) => setWellGapMm(Math.max(50, Number(e.target.value) || 150))}
+                onChange={(e) => setWellGapMm(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums disabled:opacity-60"
               />
             </div>
@@ -1230,9 +1265,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={25}
                 value={handrailHeightMm}
-                onChange={(e) => setHandrailHeightMm(Math.max(700, Number(e.target.value) || 950))}
+                onChange={(e) => setHandrailHeightMm(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1243,9 +1279,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={100}
                 value={stairwellLengthMm}
-                onChange={(e) => setStairwellLengthMm(Math.max(2000, Number(e.target.value) || 4000))}
+                onChange={(e) => setStairwellLengthMm(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1256,9 +1293,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={100}
                 value={stairwellWidthMm}
-                onChange={(e) => setStairwellWidthMm(Math.max(1000, Number(e.target.value) || 2400))}
+                onChange={(e) => setStairwellWidthMm(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1272,9 +1310,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={0.5}
                 value={liveLoadKpa}
-                onChange={(e) => setLiveLoadKpa(Math.max(1.5, Number(e.target.value) || 3.0))}
+                onChange={(e) => setLiveLoadKpa(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1284,9 +1323,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               </label>
               <input
                 type="number"
+                min={0}
                 step={0.25}
                 value={finishesLoadKpa}
-                onChange={(e) => setFinishesLoadKpa(Math.max(0.25, Number(e.target.value) || 1.0))}
+                onChange={(e) => setFinishesLoadKpa(Math.max(0, Number(e.target.value) || 0))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>

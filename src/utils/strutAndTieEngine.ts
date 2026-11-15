@@ -212,10 +212,50 @@ export function computeStrutAndTie(
   const issues: ValidationIssue[] = [];
   const { nodes = [], members = [], nodalLoads = [], concreteFcMpa, rebarFyMpa } = params;
 
+  if (nodes.length === 0 && members.length === 0 && nodalLoads.length === 0) {
+    return createEnvelope<StrutAndTieResult>(
+      {
+        presetName: params.presetName || '',
+        memberThicknessMm: params.memberThicknessMm || 0,
+        concreteFcMpa: concreteFcMpa || 0,
+        rebarFyMpa: rebarFyMpa || 0,
+        nodeCount: 0,
+        memberCount: 0,
+        strutCount: 0,
+        tieCount: 0,
+        zeroForceCount: 0,
+        totalAppliedFxKn: 0,
+        totalAppliedFyKn: 0,
+        totalReactionRxKn: 0,
+        totalReactionRyKn: 0,
+        equilibriumResidualKn: 0,
+        momentResidualKnm: 0,
+        maxCompressionStrutKn: 0,
+        maxTensionTieKn: 0,
+        totalRequiredTieSteelMm2: 0,
+        maxDisplacementMm: 0,
+        governingDcr: 0,
+        status: 'nominal',
+        nodeResults: [],
+        memberResults: [],
+      },
+      issues,
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
+
   if (nodes.length < 3 || members.length < 2) {
     issues.push({
       field: 'nodes',
       message: 'A valid Strut-and-Tie truss requires at least 3 nodes and 2 members.',
+      severity: 'error',
+    });
+    return createEnvelope<StrutAndTieResult>(null, issues);
+  }
+  if (concreteFcMpa <= 0 || rebarFyMpa <= 0) {
+    issues.push({
+      field: 'concreteFcMpa',
+      message: 'Concrete strength f\'c and rebar yield f_y must be > 0 MPa.',
       severity: 'error',
     });
     return createEnvelope<StrutAndTieResult>(null, issues);

@@ -93,8 +93,8 @@ export const BoqSummaryWidget: React.FC<BoqSummaryWidgetProps> = ({
     const vatAmt = calc.result?.vatTaxAmount ?? 0;
     const markupsAmt = contingencyAmt + overheadAmt + vatAmt;
 
-    const activeItems = items.filter((it) => (it.numberOfMembers ?? 1) > 0 && (it.unitRate ?? 0) > 0);
-    const zeroValuedItems = items.filter((it) => (it.numberOfMembers ?? 1) === 0 || (it.unitRate ?? 0) === 0);
+    const activeItems = items.filter((it) => (it.numberOfMembers ?? 0) > 0 && (it.unitRate ?? 0) > 0);
+    const zeroValuedItems = items.filter((it) => (it.numberOfMembers ?? 0) === 0 || (it.unitRate ?? 0) === 0);
     const categories = new Set(items.map((it) => it.category).filter(Boolean));
     const currency = boq?.currency || 'BDT';
     const currencySymbol = getCurrencySymbol(currency);
@@ -113,9 +113,9 @@ export const BoqSummaryWidget: React.FC<BoqSummaryWidgetProps> = ({
       categoryCount: categories.size,
       currencySymbol,
       currency,
-      contingencyPercent: boq?.contingencyPercent ?? 5,
-      overheadPercent: boq?.contractorOverheadPercent ?? 10,
-      vatPercent: boq?.vatTaxPercent ?? 7.5,
+      contingencyPercent: boq?.contingencyPercent ?? 0,
+      overheadPercent: boq?.contractorOverheadPercent ?? 0,
+      vatPercent: boq?.vatTaxPercent ?? 0,
       avgItemCost,
     };
   }, [boq]);
@@ -368,9 +368,9 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   onSyncFromModules,
   selectedWbsSectionId = 'sec-100',
   setSelectedWbsSectionId,
-  itemStartMonth = 1,
+  itemStartMonth = 0,
   setItemStartMonth,
-  itemDurationMonths = 2,
+  itemDurationMonths = 0,
   setItemDurationMonths,
 }) => {
   // Encapsulated Form State
@@ -378,13 +378,13 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   const [internalItemNo, setInternalItemNo] = useState('');
   const [internalItemDesc, setInternalItemDesc] = useState('');
   const [internalItemCategory, setInternalItemCategory] = useState<TakeoffCategory>('substructure');
-  const [internalItemMembers, setInternalItemMembers] = useState(1);
+  const [internalItemMembers, setInternalItemMembers] = useState(0);
   const [internalItemLength, setInternalItemLength] = useState(0);
   const [internalItemWidth, setInternalItemWidth] = useState(0);
   const [internalItemHeight, setInternalItemHeight] = useState(0);
   const [internalItemDeduction, setInternalItemDeduction] = useState(0);
   const [internalItemUnit, setInternalItemUnit] = useState<TakeoffUnit>('m3');
-  const [internalItemWastage, setInternalItemWastage] = useState(3.0);
+  const [internalItemWastage, setInternalItemWastage] = useState(0);
   const [internalItemUnitRate, setInternalItemUnitRate] = useState(0);
 
   const activeEditingId = editingTakeoffItemId !== undefined ? editingTakeoffItemId : internalEditingId;
@@ -503,12 +503,12 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
     setActiveEditingId(null);
     setItemNoAction('');
     setItemDescAction('');
-    setItemMembersAction(1);
+    setItemMembersAction(0);
     setItemLengthAction(0);
     setItemWidthAction(0);
     setItemHeightAction(0);
     setItemDeductionAction(0);
-    setItemWastageAction(3.0);
+    setItemWastageAction(0);
     setItemUnitRateAction(0);
   };
 
@@ -731,7 +731,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               step="any"
               min="0"
               max="25"
-              value={activeWorkspace.boq.aitTaxPercent ?? 5.0}
+              value={activeWorkspace.boq.aitTaxPercent ?? 0}
               onChange={(e) => {
                 const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
@@ -740,7 +740,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 }));
               }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
-              placeholder="5.0%"
+              placeholder="0%"
             />
           </div>
 
@@ -755,7 +755,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               step="any"
               min="0"
               max="20"
-              value={activeWorkspace.boq.retentionMoneyPercent ?? 7.5}
+              value={activeWorkspace.boq.retentionMoneyPercent ?? 0}
               onChange={(e) => {
                 const val = e.target.value === '' ? 0 : Number(e.target.value);
                 updateActiveWorkspace((ws) => ({
@@ -764,7 +764,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 }));
               }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
-              placeholder="7.5%"
+              placeholder="0%"
             />
           </div>
 
@@ -1077,11 +1077,12 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               <label className="block text-[10px] font-semibold mb-1">Start Month</label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 max="36"
                 value={localStartMonth}
                 onChange={(e) => {
-                  const val = Math.max(1, Number(e.target.value));
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = Math.max(0, isNaN(raw) ? 0 : raw);
                   setLocalStartMonth(val);
                   if (setItemStartMonth) setItemStartMonth(val);
                 }}
@@ -1092,11 +1093,12 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
               <label className="block text-[10px] font-semibold mb-1">Duration (Months)</label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 max="24"
                 value={localDurationMonths}
                 onChange={(e) => {
-                  const val = Math.max(1, Number(e.target.value));
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = Math.max(0, isNaN(raw) ? 0 : raw);
                   setLocalDurationMonths(val);
                   if (setItemDurationMonths) setItemDurationMonths(val);
                 }}
@@ -1285,8 +1287,8 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
   // Cash Flow & S-Curve Schedule
   const cashFlowResult: CashFlowForecastResult = useMemo(() => {
     return computeCashFlowForecast(boqResult.items, {
-      totalProjectMonths: activeWorkspace?.boq?.projectDurationMonths || 12,
-      retainagePercent: activeWorkspace?.boq?.retainagePercent || 5,
+      totalProjectMonths: activeWorkspace?.boq?.projectDurationMonths ?? 0,
+      retainagePercent: activeWorkspace?.boq?.retainagePercent ?? 0,
       contingencyPercent: boqResult.contingencyPercent,
       contractorOverheadPercent: boqResult.contractorOverheadPercent,
       vatTaxPercent: boqResult.vatTaxPercent,
@@ -1408,7 +1410,7 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
             </div>
             <h2 className="text-lg md:text-xl font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-2 mt-0.5">
               <FileSpreadsheet className="w-5 h-5 text-[var(--md-sys-color-primary)] shrink-0" />
-              <span>Project Bill of Quantities &middot; {activeWorkspace?.projectCode || 'BDCL-2026'}</span>
+              <span>Project Bill of Quantities &middot; {activeWorkspace?.projectCode || 'PRJ-001'}</span>
             </h2>
           </div>
 

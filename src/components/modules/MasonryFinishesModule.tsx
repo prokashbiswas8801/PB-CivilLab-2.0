@@ -227,7 +227,7 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   <option value="traditional-field">Traditional Field Brick (241 × 114 × 70 mm, 10mm joint)</option>
                 </select>
                 <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
-                  Nominal with mortar: {(m.brickLengthMm || 240) + (m.mortarJointMm || 12)} × {(m.brickWidthMm || 115) + (m.mortarJointMm || 12)} × {(m.brickHeightMm || 70) + (m.mortarJointMm || 12)} mm
+                  Nominal with mortar: {(m.brickLengthMm ?? 0) + (m.mortarJointMm ?? 0)} × {(m.brickWidthMm ?? 0) + (m.mortarJointMm ?? 0)} × {(m.brickHeightMm ?? 0) + (m.mortarJointMm ?? 0)} mm
                 </span>
               </div>
 
@@ -238,11 +238,14 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   </label>
                   <input
                     type="number"
-                    min="6"
-                    max="20"
+                    min="0"
+                    max="25"
                     step="1"
-                    value={m.mortarJointMm ?? 12}
-                    onChange={(e) => updateMasonry({ mortarJointMm: Math.max(4, Number(e.target.value) || 10) })}
+                    value={m.mortarJointMm ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateMasonry({ mortarJointMm: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                   />
                 </div>
@@ -251,10 +254,14 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                     Mortar Ratio (1:N)
                   </label>
                   <select
-                    value={m.mortarRatioSand || 5}
-                    onChange={(e) => updateMasonry({ mortarRatioCement: 1, mortarRatioSand: Number(e.target.value) })}
+                    value={m.mortarRatioSand ?? 0}
+                    onChange={(e) => {
+                      const ratio = Number(e.target.value);
+                      updateMasonry({ mortarRatioCement: ratio > 0 ? 1 : 0, mortarRatioSand: ratio });
+                    }}
                     className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   >
+                    <option value="0">0 (Unset)</option>
                     <option value="4">1 : 4 (5" Wall)</option>
                     <option value="5">1 : 5 (10" Wall)</option>
                     <option value="6">1 : 6 (General)</option>
@@ -269,8 +276,11 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                     min="0"
                     max="15"
                     step="0.5"
-                    value={m.brickWastagePercent ?? 5}
-                    onChange={(e) => updateMasonry({ brickWastagePercent: Math.max(0, Number(e.target.value) || 0) })}
+                    value={m.brickWastagePercent ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateMasonry({ brickWastagePercent: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                   />
                 </div>
@@ -320,14 +330,17 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   <label className="block text-[11px] font-semibold mb-1">Sub-Base Area (m²)</label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     step="1"
-                    value={m.bfsLayerAreaM2 ?? Math.round(m.wallLengthM * (m.wallThicknessM + 0.3) * 10) / 10}
-                    onChange={(e) => updateMasonry({ bfsLayerAreaM2: Math.max(0, Number(e.target.value) || 0) })}
+                    value={m.bfsLayerAreaM2 ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateMasonry({ bfsLayerAreaM2: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
-                    ~{((m.bfsLayerAreaM2 ?? m.wallLengthM * 0.5) * 10.7639).toFixed(0)} SFT bed
+                    ~{((m.bfsLayerAreaM2 ?? 0) * 10.7639).toFixed(0)} SFT bed
                   </span>
                 </div>
 
@@ -335,11 +348,14 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   <label className="block text-[11px] font-semibold mb-1">Sand Cushion Bed (mm)</label>
                   <input
                     type="number"
-                    min="25"
+                    min="0"
                     max="200"
                     step="25"
-                    value={m.bfsSandCushionThicknessMm ?? 75}
-                    onChange={(e) => updateMasonry({ bfsSandCushionThicknessMm: Math.max(0, Number(e.target.value) || 0) })}
+                    value={m.bfsSandCushionThicknessMm ?? 0}
+                    onChange={(e) => {
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      updateMasonry({ bfsSandCushionThicknessMm: Math.max(0, isNaN(raw) ? 0 : raw) });
+                    }}
                     className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
@@ -451,11 +467,12 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                     <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">×</span>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       value={op.count}
                       onChange={(e) => {
                         const updated = [...(m.openings || [])];
-                        updated[idx] = { ...updated[idx], count: Math.max(1, Number(e.target.value) || 1) };
+                        const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                        updated[idx] = { ...updated[idx], count: Math.max(0, isNaN(raw) ? 0 : raw) };
                         updateMasonry({ openings: updated });
                       }}
                       className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
@@ -511,10 +528,11 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   Plaster Thk (mm)
                 </label>
                 <select
-                  value={m.plasterThicknessMm || 12}
+                  value={m.plasterThicknessMm ?? 0}
                   onChange={(e) => updateMasonry({ plasterThicknessMm: Number(e.target.value) })}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 >
+                  <option value="0">0 mm (None)</option>
                   <option value="12">12 mm (Internal)</option>
                   <option value="15">15 mm (Rough Face)</option>
                   <option value="20">20 mm (External)</option>
@@ -525,10 +543,11 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   Plaster Faces
                 </label>
                 <select
-                  value={m.plasterSides || 2}
+                  value={m.plasterSides ?? 0}
                   onChange={(e) => updateMasonry({ plasterSides: Number(e.target.value) })}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 >
+                  <option value="0">0 Faces (None)</option>
                   <option value="2">Both Sides (×2)</option>
                   <option value="1">Single Face (×1)</option>
                 </select>
@@ -538,10 +557,14 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   Plaster Mix (1:N)
                 </label>
                 <select
-                  value={m.plasterRatioSand || 4}
-                  onChange={(e) => updateMasonry({ plasterRatioCement: 1, plasterRatioSand: Number(e.target.value) })}
+                  value={m.plasterRatioSand ?? 0}
+                  onChange={(e) => {
+                    const ratio = Number(e.target.value);
+                    updateMasonry({ plasterRatioCement: ratio > 0 ? 1 : 0, plasterRatioSand: ratio });
+                  }}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 >
+                  <option value="0">0 (Unset)</option>
                   <option value="4">1 : 4 (Rich Coat)</option>
                   <option value="5">1 : 5 (Standard)</option>
                   <option value="6">1 : 6 (Ceiling/Lean)</option>
@@ -601,10 +624,13 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   max="30"
-                  value={m.tilesPerBox || 4}
-                  onChange={(e) => updateMasonry({ tilesPerBox: Math.max(1, Number(e.target.value) || 4) })}
+                  value={m.tilesPerBox ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateMasonry({ tilesPerBox: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -620,8 +646,11 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   type="number"
                   min="0"
                   max="3"
-                  value={m.puttyCoats ?? 2}
-                  onChange={(e) => updateMasonry({ puttyCoats: Math.max(0, Number(e.target.value) || 0) })}
+                  value={m.puttyCoats ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateMasonry({ puttyCoats: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -631,10 +660,13 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   max="4"
-                  value={m.paintCoats ?? 2}
-                  onChange={(e) => updateMasonry({ paintCoats: Math.max(1, Number(e.target.value) || 2) })}
+                  value={m.paintCoats ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateMasonry({ paintCoats: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -645,9 +677,12 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                 <input
                   type="number"
                   step="0.5"
-                  min="4"
-                  value={m.primerCoverageM2PerL ?? 10.0}
-                  onChange={(e) => updateMasonry({ primerCoverageM2PerL: Math.max(2, Number(e.target.value) || 10) })}
+                  min="0"
+                  value={m.primerCoverageM2PerL ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateMasonry({ primerCoverageM2PerL: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -658,9 +693,12 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                 <input
                   type="number"
                   step="0.5"
-                  min="4"
-                  value={m.paintCoverageM2PerL ?? 11.0}
-                  onChange={(e) => updateMasonry({ paintCoverageM2PerL: Math.max(2, Number(e.target.value) || 11) })}
+                  min="0"
+                  value={m.paintCoverageM2PerL ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateMasonry({ paintCoverageM2PerL: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -689,11 +727,21 @@ export const MasonryFinishesMetrics: React.FC<MasonryFinishesMetricsProps> = ({
   updateOutputUnit,
   onPushToBoq,
 }) => {
-  const ratePerM3 = result.bricksPerM3Effective ?? 463;
+  const ratePerM3 = result.bricksPerM3Effective ?? 0;
   const ratePerCft = ratePerM3 / 35.314667;
+  const isZeroBaseline =
+    (activeWorkspace.masonry.wallLengthM ?? 0) <= 0 ||
+    (activeWorkspace.masonry.wallHeightM ?? 0) <= 0 ||
+    (activeWorkspace.masonry.wallThicknessM ?? 0) <= 0;
 
   return (
     <div className="space-y-4 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      {isZeroBaseline && (
+        <div className="px-3.5 py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs font-mono flex items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider">0 BASELINE STANDBY</span>
+          <span className="opacity-90">Enter wall length, height, and thickness to compute brick masonry, mortar &amp; finishes.</span>
+        </div>
+      )}
       {/* Primary Brickwork & Mortar Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3 rounded-xl border bg-[var(--md-sys-color-primary-container)]/30 border-[var(--md-sys-color-primary)]">

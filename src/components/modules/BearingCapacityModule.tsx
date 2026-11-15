@@ -67,38 +67,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
     }));
   };
 
-  const layers = activeWorkspace.bearing.layers || [
-    {
-      id: 'b-l1',
-      name: 'Upper Footing Foundation Strata',
-      thicknessM: activeWorkspace.bearing.embedmentDepthM + 1.0,
-      soilType: 'sand',
-      cohesionKpa: activeWorkspace.bearing.soilCohesionKpa,
-      frictionAngleDeg: activeWorkspace.bearing.frictionAngleDeg,
-      unitWeightKnPerM3: activeWorkspace.bearing.unitWeightKnPerM3,
-      sptN: activeWorkspace.bearing.sptN60 || 15,
-      elasticModulusEsMpa: activeWorkspace.bearing.elasticModulusEsMpa || 25,
-      compressionIndexCc: activeWorkspace.bearing.compressionIndexCc || 0.25,
-      recompressionIndexCr: activeWorkspace.bearing.recompressionIndexCr || 0.04,
-      initialVoidRatioE0: activeWorkspace.bearing.initialVoidRatioE0 || 0.75,
-      overconsolidationRatioOcr: activeWorkspace.bearing.overconsolidationRatioOcr || 1.0,
-    },
-    {
-      id: 'b-l2',
-      name: 'Lower Influence Zone Subgrade',
-      thicknessM: activeWorkspace.bearing.footingWidthM * 2,
-      soilType: 'clay',
-      cohesionKpa: Math.max(20, activeWorkspace.bearing.soilCohesionKpa * 1.2),
-      frictionAngleDeg: Math.max(0, activeWorkspace.bearing.frictionAngleDeg - 10),
-      unitWeightKnPerM3: activeWorkspace.bearing.unitWeightKnPerM3,
-      sptN: Math.max(4, Math.round((activeWorkspace.bearing.sptN60 || 15) * 0.8)),
-      elasticModulusEsMpa: Math.max(10, Math.round((activeWorkspace.bearing.elasticModulusEsMpa || 25) * 0.7)),
-      compressionIndexCc: 0.30,
-      recompressionIndexCr: 0.05,
-      initialVoidRatioE0: 0.85,
-      overconsolidationRatioOcr: 1.2,
-    },
-  ];
+  const layers = activeWorkspace.bearing.layers || [];
 
   const updateLayers = (newLayers: SoilLayer[]) => {
     updateActiveWorkspace((ws) => ({
@@ -135,7 +104,6 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
   };
 
   const removeLayer = (idx: number) => {
-    if (layers.length <= 1) return;
     updateLayers(layers.filter((_, i) => i !== idx));
   };
 
@@ -293,7 +261,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                 { label: '3.2 m', valueSI: 3.2, title: 'Large Combined / Core Footing' },
               ]}
               validationRule={{
-                minSI: 0.5,
+                minSI: 0,
                 maxSI: 10.0,
                 warningBelowSI: 0.8,
                 warningAboveSI: 5.0,
@@ -324,7 +292,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                 { label: '2.5 m', valueSI: 2.5, title: 'Basement Level / Deep Trench' },
               ]}
               validationRule={{
-                minSI: 0.4,
+                minSI: 0,
                 maxSI: 8.0,
                 warningBelowSI: 0.9,
                 warningHint: 'Embedment Df should be ≥ 1.0m under BNBC 2020 to prevent seasonal moisture fluctuations and topsoil erosion.',
@@ -355,11 +323,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="25"
-                min="150"
+                min="0"
                 max="2500"
-                value={activeWorkspace.bearing.footingThicknessMm ?? 450}
+                value={activeWorkspace.bearing.footingThicknessMm ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, footingThicknessMm: val },
@@ -375,11 +344,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="25"
-                min="150"
+                min="0"
                 max="2000"
-                value={activeWorkspace.bearing.colWidthMm ?? 300}
+                value={activeWorkspace.bearing.colWidthMm ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, colWidthMm: val },
@@ -395,11 +365,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="25"
-                min="150"
+                min="0"
                 max="2000"
-                value={activeWorkspace.bearing.colDepthMm ?? 300}
+                value={activeWorkspace.bearing.colDepthMm ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, colDepthMm: val },
@@ -413,16 +384,17 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
             <div>
               <label className="block text-xs font-semibold mb-1">Concrete f'c (MPa)</label>
               <select
-                value={activeWorkspace.bearing.fckMpa ?? 21}
+                value={activeWorkspace.bearing.fckMpa ?? 0}
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    bearing: { ...ws.bearing, fckMpa: val },
+                    bearing: { ...ws.bearing, fckMpa: isNaN(val) ? 0 : val },
                   }));
                 }}
                 className="w-full min-h-[44px] touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               >
+                <option value="0">0 MPa (Standby)</option>
                 <option value="17">17 MPa (2500 psi)</option>
                 <option value="21">21 MPa (3000 psi - BNBC)</option>
                 <option value="25">25 MPa (3600 psi)</option>
@@ -435,16 +407,17 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
             <div>
               <label className="block text-xs font-semibold mb-1">Rebar Yield fy (MPa)</label>
               <select
-                value={activeWorkspace.bearing.fyMpa ?? 420}
+                value={activeWorkspace.bearing.fyMpa ?? 0}
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    bearing: { ...ws.bearing, fyMpa: val },
+                    bearing: { ...ws.bearing, fyMpa: isNaN(val) ? 0 : val },
                   }));
                 }}
                 className="w-full min-h-[44px] touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               >
+                <option value="0">0 MPa (Standby)</option>
                 <option value="300">300 MPa (Grade 40)</option>
                 <option value="420">420 MPa (Grade 60 - 500W)</option>
                 <option value="500">500 MPa (Grade 72 / 500D)</option>
@@ -458,11 +431,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="5"
-                min="50"
+                min="0"
                 max="125"
-                value={activeWorkspace.bearing.clearCoverMm ?? 75}
+                value={activeWorkspace.bearing.clearCoverMm ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, clearCoverMm: val },
@@ -548,8 +522,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         <td className="py-1.5 px-2 w-18">
                           <input
                             type="number"
+                            min="0"
                             value={layer.thicknessM}
-                            onChange={(e) => updateSingleLayer(idx, { thicknessM: Math.max(0.5, Number(e.target.value) || 1) })}
+                            onChange={(e) => {
+                              const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                              updateSingleLayer(idx, { thicknessM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                            }}
                             className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                             step="0.5"
                           />
@@ -569,8 +547,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         <td className="py-1.5 px-2 w-16">
                           <input
                             type="number"
-                            value={layer.sptN ?? 15}
-                            onChange={(e) => updateSingleLayer(idx, { sptN: Math.max(1, Number(e.target.value) || 15) })}
+                            min="0"
+                            value={layer.sptN ?? 0}
+                            onChange={(e) => {
+                              const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                              updateSingleLayer(idx, { sptN: Math.max(0, isNaN(raw) ? 0 : raw) });
+                            }}
                             className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                             step="1"
                           />
@@ -578,8 +560,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         <td className="py-1.5 px-2 w-18">
                           <input
                             type="number"
+                            min="0"
                             value={layer.cohesionKpa}
-                            onChange={(e) => updateSingleLayer(idx, { cohesionKpa: Math.max(0, Number(e.target.value) || 0) })}
+                            onChange={(e) => {
+                              const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                              updateSingleLayer(idx, { cohesionKpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                            }}
                             className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                             step="5"
                           />
@@ -587,8 +573,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         <td className="py-1.5 px-2 w-16">
                           <input
                             type="number"
+                            min="0"
                             value={layer.frictionAngleDeg}
-                            onChange={(e) => updateSingleLayer(idx, { frictionAngleDeg: Math.max(0, Number(e.target.value) || 0) })}
+                            onChange={(e) => {
+                              const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                              updateSingleLayer(idx, { frictionAngleDeg: Math.max(0, isNaN(raw) ? 0 : raw) });
+                            }}
                             className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                             step="1"
                           />
@@ -596,8 +586,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         <td className="py-1.5 px-2 w-18">
                           <input
                             type="number"
+                            min="0"
                             value={layer.unitWeightKnPerM3}
-                            onChange={(e) => updateSingleLayer(idx, { unitWeightKnPerM3: Math.max(10, Number(e.target.value) || 18) })}
+                            onChange={(e) => {
+                              const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                              updateSingleLayer(idx, { unitWeightKnPerM3: Math.max(0, isNaN(raw) ? 0 : raw) });
+                            }}
                             className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                             step="0.5"
                           />
@@ -605,8 +599,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                         <td className="py-1.5 px-2 w-18">
                           <input
                             type="number"
-                            value={layer.elasticModulusEsMpa ?? 25}
-                            onChange={(e) => updateSingleLayer(idx, { elasticModulusEsMpa: Math.max(5, Number(e.target.value) || 25) })}
+                            min="0"
+                            value={layer.elasticModulusEsMpa ?? 0}
+                            onChange={(e) => {
+                              const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                              updateSingleLayer(idx, { elasticModulusEsMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                            }}
                             className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                             step="5"
                           />
@@ -615,8 +613,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                           <button
                             type="button"
                             onClick={() => removeLayer(idx)}
-                            disabled={layers.length <= 1}
-                            className="p-1 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-30"
+                            className="p-1 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -769,11 +766,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                 <label className="block text-[11px] font-semibold mb-1">Field Borehole SPT N (Uncorrected)</label>
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   max="70"
-                  value={activeWorkspace.bearing.boreholeFieldSptN ?? (activeWorkspace.bearing.sptN60 || 16)}
+                  value={activeWorkspace.bearing.boreholeFieldSptN ?? (activeWorkspace.bearing.sptN60 ?? 0)}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    const val = isNaN(raw) ? 0 : Math.max(0, raw);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
                       bearing: { ...ws.bearing, boreholeFieldSptN: val, sptN60: val },
@@ -858,11 +856,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="0.1"
-                min="1.0"
+                min="0"
                 max="10.0"
                 value={activeWorkspace.bearing.factorOfSafety}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, factorOfSafety: val },
@@ -930,11 +929,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1">SPT N60 Value</label>
               <input
                 type="number"
-                min="2"
+                min="0"
                 max="60"
-                value={activeWorkspace.bearing.sptN60 || 15}
+                value={activeWorkspace.bearing.sptN60 ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, sptN60: val },
@@ -949,11 +949,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="1"
-                min="5"
+                min="0"
                 max="200"
-                value={activeWorkspace.bearing.elasticModulusEsMpa || 25}
+                value={activeWorkspace.bearing.elasticModulusEsMpa ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, elasticModulusEsMpa: val },
@@ -968,11 +969,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="0.05"
-                min="0.15"
+                min="0"
                 max="0.49"
-                value={activeWorkspace.bearing.poissonRatio ?? 0.30}
+                value={activeWorkspace.bearing.poissonRatio ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, poissonRatio: val },
@@ -989,9 +991,10 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                 step="0.5"
                 min="0"
                 max="20"
-                value={activeWorkspace.bearing.clayLayerThicknessM ?? 4.0}
+                value={activeWorkspace.bearing.clayLayerThicknessM ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, clayLayerThicknessM: val },
@@ -1006,11 +1009,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="0.1"
-                min="1.0"
+                min="0"
                 max="10.0"
-                value={activeWorkspace.bearing.overconsolidationRatioOcr ?? 1.0}
+                value={activeWorkspace.bearing.overconsolidationRatioOcr ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, overconsolidationRatioOcr: val },
@@ -1019,7 +1023,7 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
                 className="w-full min-h-[44px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
-                {(activeWorkspace.bearing.overconsolidationRatioOcr ?? 1.0) <= 1.0 ? 'Normally Consolidated' : 'Overconsolidated (Cr applies)'}
+                {(activeWorkspace.bearing.overconsolidationRatioOcr ?? 0) <= 1.0 ? 'Normally Consolidated' : 'Overconsolidated (Cr applies)'}
               </span>
             </div>
 
@@ -1028,11 +1032,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="0.02"
-                min="0.05"
+                min="0"
                 max="0.8"
-                value={activeWorkspace.bearing.compressionIndexCc ?? 0.25}
+                value={activeWorkspace.bearing.compressionIndexCc ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, compressionIndexCc: val },
@@ -1047,11 +1052,12 @@ export const BearingCapacityInputs: React.FC<BearingCapacityInputsProps> = ({
               <input
                 type="number"
                 step="5"
-                min="10"
+                min="0"
                 max="100"
-                value={activeWorkspace.bearing.permissibleSettlementMm || 25}
+                value={activeWorkspace.bearing.permissibleSettlementMm ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     bearing: { ...ws.bearing, permissibleSettlementMm: val },
@@ -1349,8 +1355,22 @@ export const BearingCapacityMetrics: React.FC<BearingCapacityMetricsProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${result.status === 'nominal' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30' : result.status === 'warning' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/30' : 'bg-rose-500/10 text-rose-600 border border-rose-500/30'}`}>
-            {result.status === 'nominal' ? 'PASS (BNBC-2020 / ACI Compliant)' : result.status === 'warning' ? 'WARNING (Near Limit)' : 'CRITICAL (Exceeds Capacity)'}
+          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+            result.ultimateBearingKpa === 0
+              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+              : result.status === 'nominal'
+                ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30'
+                : result.status === 'warning'
+                  ? 'bg-amber-500/10 text-amber-600 border border-amber-500/30'
+                  : 'bg-rose-500/10 text-rose-600 border border-rose-500/30'
+          }`}>
+            {result.ultimateBearingKpa === 0
+              ? '0 BASELINE STANDBY — Enter footing dimensions & soil properties'
+              : result.status === 'nominal'
+                ? 'PASS (BNBC-2020 / ACI Compliant)'
+                : result.status === 'warning'
+                  ? 'WARNING (Near Limit)'
+                  : 'CRITICAL (Exceeds Capacity)'}
           </span>
         </div>
       </div>

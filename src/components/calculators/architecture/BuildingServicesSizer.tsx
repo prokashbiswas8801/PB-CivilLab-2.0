@@ -87,75 +87,73 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
   const [occupancyPreset, setOccupancyPreset] = useState<WaterOccupancyPreset>(
     initialWaterValues?.occupancyPreset || 'residential-135'
   );
-  const [numFloors, setNumFloors] = useState<number>(initialWaterValues?.numFloors ?? 6);
-  const [unitsPerFloor, setUnitsPerFloor] = useState<number>(initialWaterValues?.unitsPerFloor ?? 2);
+  const [numFloors, setNumFloors] = useState<number>(initialWaterValues?.numFloors ?? 0);
+  const [unitsPerFloor, setUnitsPerFloor] = useState<number>(initialWaterValues?.unitsPerFloor ?? 0);
   const [personsPerUnit, setPersonsPerUnit] = useState<number>(
-    initialWaterValues?.personsPerUnit ?? 5
+    initialWaterValues?.personsPerUnit ?? 0
   );
   const [directOccupants, setDirectOccupants] = useState<number>(
-    initialWaterValues?.directOccupants ?? 50
+    initialWaterValues?.directOccupants ?? 0
   );
   const [floatingPopulation, setFloatingPopulation] = useState<number>(
-    initialWaterValues?.floatingPopulation ?? 5
+    initialWaterValues?.floatingPopulation ?? 0
   );
-  const [lpcd, setLpcd] = useState<number>(initialWaterValues?.lpcd ?? 135);
-  const [storageDays, setStorageDays] = useState<number>(initialWaterValues?.storageDays ?? 1.0);
+  const [lpcd, setLpcd] = useState<number>(initialWaterValues?.lpcd ?? 0);
+  const [storageDays, setStorageDays] = useState<number>(initialWaterValues?.storageDays ?? 0);
   const [fireReserveL, setFireReserveL] = useState<number>(
-    initialWaterValues?.fireReserveL ?? 10000
+    initialWaterValues?.fireReserveL ?? 0
   );
   const [fireReserveMinutes, setFireReserveMinutes] = useState<number>(
-    initialWaterValues?.fireReserveMinutes ?? 45
+    initialWaterValues?.fireReserveMinutes ?? 0
   );
   const [firePumpFlowLpm, setFirePumpFlowLpm] = useState<number>(
-    initialWaterValues?.firePumpFlowLpm ?? 225
+    initialWaterValues?.firePumpFlowLpm ?? 0
   );
   const [fireReserveAutoMode, setFireReserveAutoMode] = useState<boolean>(
     initialWaterValues?.fireReserveAutoMode ?? false
   );
   const [ugwrSharePercent, setUgwrSharePercent] = useState<number>(
-    initialWaterValues?.ugwrSharePercent ?? 65
+    initialWaterValues?.ugwrSharePercent ?? 0
   );
   const [ugwrWaterDepthM, setUgwrWaterDepthM] = useState<number>(
-    initialWaterValues?.ugwrWaterDepthM ?? 2.0
+    initialWaterValues?.ugwrWaterDepthM ?? 0
   );
-  const [ugwrLwRatio, setUgwrLwRatio] = useState<number>(initialWaterValues?.ugwrLwRatio ?? 1.5);
+  const [ugwrLwRatio, setUgwrLwRatio] = useState<number>(initialWaterValues?.ugwrLwRatio ?? 0);
   const [ohtWaterDepthM, setOhtWaterDepthM] = useState<number>(
-    initialWaterValues?.ohtWaterDepthM ?? 1.6
+    initialWaterValues?.ohtWaterDepthM ?? 0
   );
-  const [ohtLwRatio, setOhtLwRatio] = useState<number>(initialWaterValues?.ohtLwRatio ?? 1.3);
+  const [ohtLwRatio, setOhtLwRatio] = useState<number>(initialWaterValues?.ohtLwRatio ?? 0);
   const [pumpFillHours, setPumpFillHours] = useState<number>(
-    initialWaterValues?.pumpFillHours ?? 2.0
+    initialWaterValues?.pumpFillHours ?? 0
   );
-  const [totalHeadM, setTotalHeadM] = useState<number>(initialWaterValues?.totalHeadM ?? 28);
+  const [totalHeadM, setTotalHeadM] = useState<number>(initialWaterValues?.totalHeadM ?? 0);
 
   // =========================================================================
   // 2. SEPTIC TANK & SOAK PIT STATE
   // =========================================================================
-  const [septicUsers, setSepticUsers] = useState<number>(initialSepticValues?.septicUsers ?? 35);
+  const [septicUsers, setSepticUsers] = useState<number>(initialSepticValues?.septicUsers ?? 0);
   const [sewageRateLpcd, setSewageRateLpcd] = useState<number>(
-    initialSepticValues?.sewageRateLpcd ?? 90
+    initialSepticValues?.sewageRateLpcd ?? 0
   );
   const [detentionHours, setDetentionHours] = useState<number>(
-    initialSepticValues?.detentionHours ?? 24
+    initialSepticValues?.detentionHours ?? 0
   );
   const [desludgingYears, setDesludgingYears] = useState<number>(
-    initialSepticValues?.desludgingYears ?? 2.0
+    initialSepticValues?.desludgingYears ?? 0
   );
   const [septicDepthM, setSepticDepthM] = useState<number>(
-    initialSepticValues?.septicDepthM ?? 1.6
+    initialSepticValues?.septicDepthM ?? 0
   );
   const [septicLwRatio, setSepticLwRatio] = useState<number>(
-    initialSepticValues?.septicLwRatio ?? 2.5
+    initialSepticValues?.septicLwRatio ?? 0
   );
   const [soilPercolationMinPer25mm, setSoilPercolationMinPer25mm] = useState<number>(
-    initialSepticValues?.soilPercolationMinPer25mm ??
-      infiltrationRateToPercolationMin(initialSepticValues?.soilPercolationRate ?? 30)
+    initialSepticValues?.soilPercolationMinPer25mm ?? 0
   );
   const [soilPercolationRate, setSoilPercolationRate] = useState<number>(
-    initialSepticValues?.soilPercolationRate ??
-      percolationMinToInfiltrationRate(initialSepticValues?.soilPercolationMinPer25mm ?? 18)
+    initialSepticValues?.soilPercolationRate ?? 0
   );
-  const [soakPitDiaM, setSoakPitDiaM] = useState<number>(initialSepticValues?.soakPitDiaM ?? 1.8);
+  const [soakPitDiaM, setSoakPitDiaM] = useState<number>(initialSepticValues?.soakPitDiaM ?? 0);
 
   const onWaterChangeRef = useRef(onWaterChange);
   onWaterChangeRef.current = onWaterChange;
@@ -259,9 +257,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
   };
 
   const handlePercolationMinChange = (mins: number) => {
-    const safeMin = Math.max(1, Math.min(90, mins));
+    const safeMin = Math.max(0, Math.min(90, mins || 0));
     setSoilPercolationMinPer25mm(safeMin);
-    setSoilPercolationRate(percolationMinToInfiltrationRate(safeMin));
+    setSoilPercolationRate(safeMin > 0 ? percolationMinToInfiltrationRate(safeMin) : 0);
   };
 
   const handleSendToBOQ = () => {
@@ -331,18 +329,18 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
         {
           projectMeta: {
             projectName: 'Water Reservoir (UGWR & OHT) & Pump Sizing Assessment',
-            projectCode: 'MEP-WATER-2026',
-            client: 'Building Services & Water Supply Division',
-            location: 'Plumbing Engineering Submittal',
+            projectCode: 'PRJ-001',
+            client: '',
+            location: '',
             date: new Date().toISOString().slice(0, 10),
             unitSystem: 'SI' as const,
-            engineerName: 'Design Engineer, PE',
+            engineerName: '',
           },
           moduleMeta: {
             moduleId: 'water-reservoir-sizer',
             moduleTitle: 'WATER RESERVOIRS (UGWR / OHT) & PUMP SIZING REPORT',
             standard: 'BNBC 2020 Part 8 Chap 5 / IS 1172 / NFPA 22',
-            status: waterCalc.overallCompliant ? 'SAFE' : 'WARNING',
+            status: waterCalc.totalNetWaterL <= 0 ? 'ZERO BASELINE' : waterCalc.overallCompliant ? 'SAFE' : 'WARNING',
           },
           inputs: [
             { name: 'Occupancy Demand Class', symbol: 'Preset', value: waterCalc.occupancyLabel, unit: 'LPCD' },
@@ -383,18 +381,18 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
         {
           projectMeta: {
             projectName: 'Septic Tank & Soak Well Sanitary Sizing Assessment',
-            projectCode: 'SAN-SEPTIC-2026',
-            client: 'Public Health Engineering Division',
-            location: 'Building Sanitation & Effluent Submittal',
+            projectCode: 'PRJ-001',
+            client: '',
+            location: '',
             date: new Date().toISOString().slice(0, 10),
             unitSystem: 'SI' as const,
-            engineerName: 'Design Engineer, PE',
+            engineerName: '',
           },
           moduleMeta: {
             moduleId: 'septic-system-sizer',
             moduleTitle: 'SEPTIC TANK & SOAK PIT SANITATION DESIGN REPORT',
             standard: 'BNBC 2020 Part 8 Chap 6 / IS 2470',
-            status: septicCalc.overallCompliant ? 'SAFE' : 'WARNING',
+            status: septicCalc.totalSepticVolumeM3 <= 0 ? 'ZERO BASELINE' : septicCalc.overallCompliant ? 'SAFE' : 'WARNING',
           },
           inputs: [
             { name: 'Contributing Design Population', symbol: 'N_users', value: septicUsers, unit: 'persons' },
@@ -666,9 +664,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       value={numFloors}
-                      onChange={(e) => setNumFloors(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) => setNumFloors(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -678,9 +676,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       value={unitsPerFloor}
-                      onChange={(e) => setUnitsPerFloor(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) => setUnitsPerFloor(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -690,9 +688,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       value={personsPerUnit}
-                      onChange={(e) => setPersonsPerUnit(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) => setPersonsPerUnit(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -705,9 +703,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       value={directOccupants}
-                      onChange={(e) => setDirectOccupants(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) => setDirectOccupants(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -719,7 +717,7 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                       type="number"
                       min={0}
                       value={floatingPopulation}
-                      onChange={(e) => setFloatingPopulation(Math.max(0, Number(e.target.value)))}
+                      onChange={(e) => setFloatingPopulation(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -734,11 +732,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   </label>
                   <input
                     type="number"
-                    min={15}
+                    min={0}
                     value={lpcd}
                     onChange={(e) => {
                       setOccupancyPreset('custom');
-                      setLpcd(Math.max(15, Number(e.target.value)));
+                      setLpcd(Math.max(0, Number(e.target.value) || 0));
                     }}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
@@ -750,9 +748,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="0.5"
-                    min={0.5}
+                    min={0}
                     value={storageDays}
-                    onChange={(e) => setStorageDays(Math.max(0.5, Number(e.target.value)))}
+                    onChange={(e) => setStorageDays(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -854,9 +852,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="0.2"
-                    min={1.0}
+                    min={0}
                     value={ugwrWaterDepthM}
-                    onChange={(e) => setUgwrWaterDepthM(Math.max(1.0, Number(e.target.value)))}
+                    onChange={(e) => setUgwrWaterDepthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -867,9 +865,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="0.2"
-                    min={0.8}
+                    min={0}
                     value={ohtWaterDepthM}
-                    onChange={(e) => setOhtWaterDepthM(Math.max(0.8, Number(e.target.value)))}
+                    onChange={(e) => setOhtWaterDepthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -884,9 +882,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="0.5"
-                    min={0.5}
+                    min={0}
                     value={pumpFillHours}
-                    onChange={(e) => setPumpFillHours(Math.max(0.5, Number(e.target.value)))}
+                    onChange={(e) => setPumpFillHours(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -897,9 +895,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="1"
-                    min={5}
+                    min={0}
                     value={totalHeadM}
-                    onChange={(e) => setTotalHeadM(Math.max(5, Number(e.target.value)))}
+                    onChange={(e) => setTotalHeadM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1164,9 +1162,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   </label>
                   <input
                     type="number"
-                    min={5}
+                    min={0}
                     value={septicUsers}
-                    onChange={(e) => setSepticUsers(Math.max(5, Number(e.target.value)))}
+                    onChange={(e) => setSepticUsers(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1176,9 +1174,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   </label>
                   <input
                     type="number"
-                    min={30}
+                    min={0}
                     value={sewageRateLpcd}
-                    onChange={(e) => setSewageRateLpcd(Math.max(30, Number(e.target.value)))}
+                    onChange={(e) => setSewageRateLpcd(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1192,9 +1190,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="6"
-                    min={12}
+                    min={0}
                     value={detentionHours}
-                    onChange={(e) => setDetentionHours(Math.max(12, Number(e.target.value)))}
+                    onChange={(e) => setDetentionHours(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1230,9 +1228,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="0.1"
-                    min={1.0}
+                    min={0}
                     value={septicDepthM}
-                    onChange={(e) => setSepticDepthM(Math.max(1.0, Number(e.target.value)))}
+                    onChange={(e) => setSepticDepthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1243,10 +1241,10 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <input
                     type="number"
                     step="0.2"
-                    min={1.5}
+                    min={0}
                     max={4.5}
                     value={septicLwRatio}
-                    onChange={(e) => setSepticLwRatio(Math.max(1.5, Number(e.target.value)))}
+                    onChange={(e) => setSepticLwRatio(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1287,7 +1285,7 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       max={90}
                       value={soilPercolationMinPer25mm}
                       onChange={(e) => handlePercolationMinChange(Number(e.target.value))}
@@ -1301,9 +1299,9 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <input
                       type="number"
                       step="0.2"
-                      min={0.9}
+                      min={0}
                       value={soakPitDiaM}
-                      onChange={(e) => setSoakPitDiaM(Math.max(0.9, Number(e.target.value)))}
+                      onChange={(e) => setSoakPitDiaM(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>

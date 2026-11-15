@@ -51,8 +51,10 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
   };
 
   const totalBarCount =
-    2 * Math.max(2, col.barsAlongWidthB) +
-    2 * Math.max(0, Math.max(2, col.barsAlongDepthH) - 2);
+    col.barsAlongWidthB === 0 && col.barsAlongDepthH === 0
+      ? 0
+      : 2 * Math.max(0, col.barsAlongWidthB) +
+        2 * Math.max(0, Math.max(0, col.barsAlongDepthH) - 2);
 
   return (
     <div className="space-y-4">
@@ -66,14 +68,18 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
           {result && (
             <span
               className={`text-[11px] font-mono font-bold ${
-                result.status === 'critical'
+                result.status === 'zero_baseline'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : result.status === 'critical'
                   ? 'text-[var(--md-sys-color-error)]'
                   : result.status === 'warning'
                   ? 'text-amber-600 dark:text-amber-400'
                   : 'text-emerald-700 dark:text-emerald-400'
               }`}
             >
-              Governing DCR: {(result.governingDcr * 100).toFixed(1)}%
+              {result.status === 'zero_baseline'
+                ? '0 Baseline Standby'
+                : `Governing DCR: ${(result.governingDcr * 100).toFixed(1)}%`}
             </span>
           )}
         </div>
@@ -157,11 +163,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={150}
+                min={0}
                 max={2500}
                 step={25}
                 value={col.widthB_Mm}
-                onChange={(e) => commit({ widthB_Mm: Number(e.target.value) || 0 })}
+                onChange={(e) => commit({ widthB_Mm: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -177,11 +183,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={150}
+                min={0}
                 max={2500}
                 step={25}
                 value={col.depthH_Mm}
-                onChange={(e) => commit({ depthH_Mm: Number(e.target.value) || 0 })}
+                onChange={(e) => commit({ depthH_Mm: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -192,11 +198,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={20}
+                min={0}
                 max={100}
                 step={5}
                 value={col.clearCoverMm}
-                onChange={(e) => commit({ clearCoverMm: Number(e.target.value) || 0 })}
+                onChange={(e) => commit({ clearCoverMm: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -212,11 +218,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={1.0}
+                min={0}
                 max={18.0}
                 step={0.1}
                 value={col.unsupportedLengthLu_M}
-                onChange={(e) => commit({ unsupportedLengthLu_M: Number(e.target.value) || 0 })}
+                onChange={(e) => commit({ unsupportedLengthLu_M: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -227,11 +233,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               </label>
               <input
                 type="number"
-                min={0.5}
+                min={0}
                 max={2.5}
                 step={0.05}
                 value={col.effectiveLengthFactorK}
-                onChange={(e) => commit({ effectiveLengthFactorK: Number(e.target.value) || 0 })}
+                onChange={(e) => commit({ effectiveLengthFactorK: Math.max(0, Number(e.target.value) || 0) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -245,8 +251,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 min={0}
                 max={1}
                 step={0.1}
-                value={col.sustainedLoadRatioBetaDns ?? 0.6}
-                onChange={(e) => commit({ sustainedLoadRatioBetaDns: Number(e.target.value) })}
+                value={col.sustainedLoadRatioBetaDns ?? 0}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  commit({ sustainedLoadRatioBetaDns: isNaN(val) ? 0 : val });
+                }}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -283,11 +292,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min={15}
+                  min={0}
                   max={80}
                   step={1}
                   value={col.concreteFcMpa}
-                  onChange={(e) => commit({ concreteFcMpa: Number(e.target.value) || 0 })}
+                  onChange={(e) => commit({ concreteFcMpa: Math.max(0, Number(e.target.value) || 0) })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -331,11 +340,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min={2}
+                  min={0}
                   max={8}
                   step={1}
                   value={col.barsAlongWidthB}
-                  onChange={(e) => commit({ barsAlongWidthB: Math.max(2, Number(e.target.value) || 2) })}
+                  onChange={(e) => commit({ barsAlongWidthB: Math.max(0, Number(e.target.value) || 0) })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -346,11 +355,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min={2}
+                  min={0}
                   max={8}
                   step={1}
                   value={col.barsAlongDepthH}
-                  onChange={(e) => commit({ barsAlongDepthH: Math.max(2, Number(e.target.value) || 2) })}
+                  onChange={(e) => commit({ barsAlongDepthH: Math.max(0, Number(e.target.value) || 0) })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -371,11 +380,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                   </select>
                   <input
                     type="number"
-                    min={75}
+                    min={0}
                     max={400}
                     step={25}
                     value={col.tieSpacingMm}
-                    onChange={(e) => commit({ tieSpacingMm: Number(e.target.value) || 150 })}
+                    onChange={(e) => commit({ tieSpacingMm: Math.max(0, Number(e.target.value) || 0) })}
                     className="w-1/2 px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -531,17 +540,21 @@ export const RcColumnMetrics: React.FC<{
         </div>
         <div
           className={`text-xl font-bold font-mono tabular-nums mt-1 ${
-            result.status === 'critical'
+            result.status === 'zero_baseline'
+              ? 'text-amber-600 dark:text-amber-400'
+              : result.status === 'critical'
               ? 'text-[var(--md-sys-color-error)]'
               : result.status === 'warning'
               ? 'text-amber-600 dark:text-amber-400'
               : 'text-emerald-700 dark:text-emerald-400'
           }`}
         >
-          {(result.governingDcr * 100).toFixed(1)}%
+          {result.status === 'zero_baseline' ? '0.0% (Standby)' : `${(result.governingDcr * 100).toFixed(1)}%`}
         </div>
         <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-          Bresler Biaxial: {(result.breslerContourDcr * 100).toFixed(1)}% · α={result.breslerAlpha.toFixed(2)}
+          {result.status === 'zero_baseline'
+            ? 'Enter dimensions & axial/moment loads to compute'
+            : `Bresler Biaxial: ${(result.breslerContourDcr * 100).toFixed(1)}% · α=${result.breslerAlpha.toFixed(2)}`}
         </div>
       </div>
 

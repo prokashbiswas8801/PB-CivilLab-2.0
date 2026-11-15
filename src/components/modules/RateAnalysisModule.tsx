@@ -295,12 +295,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
         <div className="flex items-center gap-3 pt-1">
           <input
             type="range"
-            min="0.50"
+            min="0"
             max="2.50"
             step="0.05"
             value={localCostIndex}
             onChange={(e) => {
-              const val = Number(e.target.value);
+              const raw = e.target.value === '' ? 0 : Number(e.target.value);
+              const val = isNaN(raw) ? 0 : Math.max(0, raw);
               updateActiveWorkspace((ws) => ({
                 ...ws,
                 rateAnalysis: { ...ws.rateAnalysis, localCostIndex: val },
@@ -312,11 +313,12 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="0.01"
-              min="0.20"
+              min="0"
               max="5.00"
               value={localCostIndex}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, localCostIndex: val },
@@ -369,11 +371,12 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               <input
                 type="number"
                 step="0.05"
-                min="0.5"
+                min="0"
                 max="3.0"
                 value={materialCostIndex}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     rateAnalysis: { ...ws.rateAnalysis, materialCostIndex: val },
@@ -389,11 +392,12 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               <input
                 type="number"
                 step="0.05"
-                min="0.5"
+                min="0"
                 max="3.0"
                 value={laborCostIndex}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     rateAnalysis: { ...ws.rateAnalysis, laborCostIndex: val },
@@ -409,11 +413,12 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               <input
                 type="number"
                 step="0.05"
-                min="0.5"
+                min="0"
                 max="3.0"
                 value={equipmentCostIndex}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
                     rateAnalysis: { ...ws.rateAnalysis, equipmentCostIndex: val },
@@ -668,7 +673,7 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 type="number"
                 step="any"
                 min="0"
-                value={activeWorkspace.rateAnalysis.localSandPricePerM3 ?? activeWorkspace.rateAnalysis.sandPricePerM3}
+                value={activeWorkspace.rateAnalysis.localSandPricePerM3 ?? 0}
                 onChange={(e) => {
                   const val = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
@@ -688,7 +693,7 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                   type="number"
                   step="any"
                   min="0"
-                  value={activeWorkspace.rateAnalysis.brickKhoaPricePerM3 ?? Math.round(activeWorkspace.rateAnalysis.stoneChipsPricePerM3 * 0.65)}
+                  value={activeWorkspace.rateAnalysis.brickKhoaPricePerM3 ?? 0}
                   onChange={(e) => {
                     const val = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
@@ -718,9 +723,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="50"
+              min="0"
               value={activeWorkspace.rateAnalysis.masonDailyWage}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, masonDailyWage: val },
@@ -736,9 +743,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="0.05"
+              min="0"
               value={activeWorkspace.rateAnalysis.masonDaysRequired}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, masonDaysRequired: val },
@@ -754,9 +763,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="50"
+              min="0"
               value={activeWorkspace.rateAnalysis.laborerDailyWage}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, laborerDailyWage: val },
@@ -772,9 +783,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="0.1"
+              min="0"
               value={activeWorkspace.rateAnalysis.laborerDaysRequired}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, laborerDaysRequired: val },
@@ -790,9 +803,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="50"
+              min="0"
               value={activeWorkspace.rateAnalysis.barBenderDailyWage}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, barBenderDailyWage: val },
@@ -808,9 +823,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="0.05"
+              min="0"
               value={activeWorkspace.rateAnalysis.barBenderDaysRequired}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, barBenderDaysRequired: val },
@@ -836,9 +853,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="10"
+              min="0"
               value={activeWorkspace.rateAnalysis.mixerHirePerM3}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, mixerHirePerM3: val },
@@ -854,9 +873,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="5"
+              min="0"
               value={activeWorkspace.rateAnalysis.vibratorHirePerM3}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, vibratorHirePerM3: val },
@@ -872,9 +893,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="20"
+              min="0"
               value={activeWorkspace.rateAnalysis.shutteringScaffoldingPerM3}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, shutteringScaffoldingPerM3: val },
@@ -890,9 +913,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <input
               type="number"
               step="0.5"
+              min="0"
               value={activeWorkspace.rateAnalysis.waterElectricityPercent}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
                   rateAnalysis: { ...ws.rateAnalysis, waterElectricityPercent: val },
@@ -911,10 +936,11 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               min="0"
               value={activeWorkspace.rateAnalysis.contractorProfitPercent}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, contractorProfitPercent: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, contractorProfitPercent: val },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
@@ -929,12 +955,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               step="0.5"
               min="0"
               max="20"
-              value={activeWorkspace.rateAnalysis.wastagePercent ?? 2.5}
+              value={activeWorkspace.rateAnalysis.wastagePercent ?? 0}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, wastagePercent: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, wastagePercent: val },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
@@ -949,12 +976,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               step="0.5"
               min="0"
               max="35"
-              value={activeWorkspace.rateAnalysis.vatAitPercent ?? 7.5}
+              value={activeWorkspace.rateAnalysis.vatAitPercent ?? 0}
               onChange={(e) => {
-                const val = Number(e.target.value);
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                const val = isNaN(raw) ? 0 : Math.max(0, raw);
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, vatAitPercent: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, vatAitPercent: val },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
@@ -1002,11 +1030,11 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
       : unitLabel === 'Ton'
         ? directPerM3 / 1000
         : directPerM3 / 35.3146667;
-  const quotedPerM3 = rateResult.commercialQuotedRatePerM3 ?? rateResult.unitRatePerM3 * (1 + (rateResult.vatAitPercent ?? 7.5) / 100);
+  const quotedPerM3 = rateResult.commercialQuotedRatePerM3 ?? rateResult.unitRatePerM3 * (1 + (rateResult.vatAitPercent ?? 0) / 100);
   const quotedPerSub =
     unitLabel === 'Ton'
       ? quotedPerM3 / 1000
-      : rateResult.commercialQuotedRatePerCft ?? subUnitRate * (1 + (rateResult.vatAitPercent ?? 7.5) / 100);
+      : rateResult.commercialQuotedRatePerCft ?? subUnitRate * (1 + (rateResult.vatAitPercent ?? 0) / 100);
   const profitPerM3 = rateResult.netProfitPerM3 ?? rateResult.contractorProfitCost / Math.max(0.001, rateResult.basisVolumeM3);
   const profitPerSub =
     unitLabel === 'Ton'
@@ -1077,7 +1105,7 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
             <span>Cost Sensitivity &amp; Margin Breakdown</span>
           </div>
           <span className="text-[11px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)]">
-            CP&amp;OH {rateResult.contractorProfitPercent}% · VAT/AIT {(rateResult.vatAitPercent ?? 7.5).toFixed(1)}% · Wastage {(rateResult.materialWastagePercent ?? 2.5).toFixed(1)}%
+            CP&amp;OH {rateResult.contractorProfitPercent}% · VAT/AIT {(rateResult.vatAitPercent ?? 0).toFixed(1)}% · Wastage {(rateResult.materialWastagePercent ?? 0).toFixed(1)}%
           </span>
         </div>
 

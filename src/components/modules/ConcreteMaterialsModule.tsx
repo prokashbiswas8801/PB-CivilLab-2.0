@@ -173,7 +173,7 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
               { label: '30.0 m³', valueSI: 30.0, title: 'Complete Floor Pour' },
             ]}
             validationRule={{
-              minSI: 0.1,
+              minSI: 0,
               maxSI: 1000.0,
               warningAboveSI: 200.0,
               warningHint: 'Large batch volume exceeding 200 m³ typically requires continuous ready-mix supply with retarder admixtures.',
@@ -231,9 +231,9 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
             <input
               type="number"
               step="0.25"
-              min="0.5"
+              min="0"
               value={cm.ratioCement}
-              onChange={(e) => updateCM({ ratioCement: Math.max(0.1, Number(e.target.value) || 0) })}
+              onChange={(e) => updateCM({ ratioCement: Math.max(0, Number(e.target.value) || 0) })}
               className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-sm bg-[var(--md-sys-color-surface)]"
             />
           </div>
@@ -244,9 +244,9 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
             <input
               type="number"
               step="0.25"
-              min="0.5"
+              min="0"
               value={cm.ratioSand}
-              onChange={(e) => updateCM({ ratioSand: Math.max(0.1, Number(e.target.value) || 0) })}
+              onChange={(e) => updateCM({ ratioSand: Math.max(0, Number(e.target.value) || 0) })}
               className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-sm bg-[var(--md-sys-color-surface)]"
             />
           </div>
@@ -294,10 +294,10 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
             <input
               type="number"
               step="0.01"
-              min="1.30"
+              min="0"
               max="1.75"
-              value={cm.customDryFactor || (cm.code === 'IS-456' ? 1.52 : 1.54)}
-              onChange={(e) => updateCM({ customDryFactor: Math.max(1.2, Number(e.target.value) || 1.54) })}
+              value={cm.customDryFactor ?? 0}
+              onChange={(e) => updateCM({ customDryFactor: Math.max(0, Number(e.target.value) || 0) })}
               className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
             />
           </div>
@@ -308,10 +308,10 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
             <input
               type="number"
               step="0.02"
-              min="0.30"
+              min="0"
               max="0.75"
-              value={cm.waterCementRatio || 0.45}
-              onChange={(e) => updateCM({ waterCementRatio: Math.max(0.25, Number(e.target.value) || 0.45) })}
+              value={cm.waterCementRatio ?? 0}
+              onChange={(e) => updateCM({ waterCementRatio: Math.max(0, Number(e.target.value) || 0) })}
               className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
             />
           </div>
@@ -324,7 +324,7 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
               step="0.5"
               min="0"
               max="15"
-              value={cm.wastagePercent ?? 2}
+              value={cm.wastagePercent ?? 0}
               onChange={(e) => updateCM({ wastagePercent: Math.max(0, Number(e.target.value) || 0) })}
               className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
             />
@@ -413,11 +413,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                       <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Qty:</span>
                       <input
                         type="number"
-                        min="1"
+                        min="0"
                         value={m.count}
                         onChange={(e) => {
                           const next = [...members];
-                          next[idx] = { ...next[idx], count: Math.max(1, Number(e.target.value) || 1) };
+                          next[idx] = { ...next[idx], count: Math.max(0, Number(e.target.value) || 0) };
                           syncMembers(next);
                         }}
                         className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
@@ -446,11 +446,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                           <input
                             type="number"
                             step="0.05"
-                            min="0.1"
+                            min="0"
                             value={m.diameterM ?? m.widthM}
                             onChange={(e) => {
                               const next = [...members];
-                              const updated = { ...next[idx], diameterM: Math.max(0.05, Number(e.target.value) || 0) };
+                              const updated = { ...next[idx], diameterM: Math.max(0, Number(e.target.value) || 0) };
                               updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                               next[idx] = updated;
                               syncMembers(next);
@@ -463,11 +463,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                           <input
                             type="number"
                             step="0.1"
-                            min="0.1"
+                            min="0"
                             value={m.heightM}
                             onChange={(e) => {
                               const next = [...members];
-                              const updated = { ...next[idx], heightM: Math.max(0.05, Number(e.target.value) || 0) };
+                              const updated = { ...next[idx], heightM: Math.max(0, Number(e.target.value) || 0) };
                               updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                               next[idx] = updated;
                               syncMembers(next);
@@ -483,11 +483,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                           <input
                             type="number"
                             step="0.1"
-                            min="0.05"
+                            min="0"
                             value={m.lengthM}
                             onChange={(e) => {
                               const next = [...members];
-                              const updated = { ...next[idx], lengthM: Math.max(0.05, Number(e.target.value) || 0) };
+                              const updated = { ...next[idx], lengthM: Math.max(0, Number(e.target.value) || 0) };
                               updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                               next[idx] = updated;
                               syncMembers(next);
@@ -502,11 +502,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                           <input
                             type="number"
                             step="0.05"
-                            min="0.05"
+                            min="0"
                             value={m.widthM}
                             onChange={(e) => {
                               const next = [...members];
-                              const updated = { ...next[idx], widthM: Math.max(0.05, Number(e.target.value) || 0) };
+                              const updated = { ...next[idx], widthM: Math.max(0, Number(e.target.value) || 0) };
                               updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                               next[idx] = updated;
                               syncMembers(next);
@@ -519,11 +519,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                           <input
                             type="number"
                             step="0.05"
-                            min="0.05"
+                            min="0"
                             value={m.heightM}
                             onChange={(e) => {
                               const next = [...members];
-                              const updated = { ...next[idx], heightM: Math.max(0.05, Number(e.target.value) || 0) };
+                              const updated = { ...next[idx], heightM: Math.max(0, Number(e.target.value) || 0) };
                               updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                               next[idx] = updated;
                               syncMembers(next);
@@ -538,11 +538,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                               <input
                                 type="number"
                                 step="0.05"
-                                min="0.1"
-                                value={m.topLengthM ?? 0.5}
+                                min="0"
+                                value={m.topLengthM ?? 0}
                                 onChange={(e) => {
                                   const next = [...members];
-                                  const updated = { ...next[idx], topLengthM: Math.max(0.05, Number(e.target.value) || 0) };
+                                  const updated = { ...next[idx], topLengthM: Math.max(0, Number(e.target.value) || 0) };
                                   updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                                   next[idx] = updated;
                                   syncMembers(next);
@@ -555,11 +555,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                               <input
                                 type="number"
                                 step="0.05"
-                                min="0.1"
-                                value={m.topWidthM ?? 0.5}
+                                min="0"
+                                value={m.topWidthM ?? 0}
                                 onChange={(e) => {
                                   const next = [...members];
-                                  const updated = { ...next[idx], topWidthM: Math.max(0.05, Number(e.target.value) || 0) };
+                                  const updated = { ...next[idx], topWidthM: Math.max(0, Number(e.target.value) || 0) };
                                   updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                                   next[idx] = updated;
                                   syncMembers(next);
@@ -575,11 +575,11 @@ export const ConcreteMaterialsInputs: React.FC<ConcreteMaterialsInputsProps> = (
                             <input
                               type="number"
                               step="0.05"
-                              min="0.1"
-                              value={m.topWidthM ?? 0.2}
+                              min="0"
+                              value={m.topWidthM ?? 0}
                               onChange={(e) => {
                                 const next = [...members];
-                                const updated = { ...next[idx], topWidthM: Math.max(0.05, Number(e.target.value) || 0) };
+                                const updated = { ...next[idx], topWidthM: Math.max(0, Number(e.target.value) || 0) };
                                 updated.computedVolumeM3 = Number(computeMemberUnitVolume(updated).toFixed(4));
                                 next[idx] = updated;
                                 syncMembers(next);

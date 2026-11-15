@@ -50,7 +50,7 @@ export interface PublicEngineeringReportRecord {
     codeStandard: string;
   };
   summary: {
-    status: 'nominal' | 'warning' | 'critical' | 'valid';
+    status: 'nominal' | 'warning' | 'critical' | 'valid' | 'zero_baseline';
     dcr?: {
       metricLabel: string;
       formattedValue: string;
@@ -81,31 +81,31 @@ export function extractCompactInputs(
   switch (moduleId) {
     case 'boq-estimator':
       return [
-        { label: 'Schedule Items Count', value: workspace.boq?.items?.length || 0, unit: 'items' },
-        { label: 'Contingency Rate', value: `${workspace.boq?.contingencyPercent || 3}%` },
-        { label: 'Overhead & Contractor Profit', value: `${workspace.boq?.contractorOverheadPercent || 10}%` },
-        { label: 'VAT / Tax Rate', value: `${workspace.boq?.vatTaxPercent || 7.5}%` },
+        { label: 'Schedule Items Count', value: workspace.boq?.items?.length ?? 0, unit: 'items' },
+        { label: 'Contingency Rate', value: `${workspace.boq?.contingencyPercent ?? 0}%` },
+        { label: 'Overhead & Contractor Profit', value: `${workspace.boq?.contractorOverheadPercent ?? 0}%` },
+        { label: 'VAT / Tax Rate', value: `${workspace.boq?.vatTaxPercent ?? 0}%` },
       ];
     case 'rate-analysis':
       return [
         { label: 'Work Classification', value: (workspace.rateAnalysis?.workType || 'rcc-1-1.5-3').toUpperCase() },
-        { label: 'Batch Volume Basis', value: workspace.rateAnalysis?.basisVolumeM3 || 1.0, unit: 'm³' },
-        { label: 'Cement Price', value: `${workspace.rateAnalysis?.cementPricePerBag || 520} /bag` },
-        { label: 'Sand Price', value: `${workspace.rateAnalysis?.sandPricePerM3 || 1800} /m³` },
+        { label: 'Batch Volume Basis', value: workspace.rateAnalysis?.basisVolumeM3 ?? 0, unit: 'm³' },
+        { label: 'Cement Price', value: `${workspace.rateAnalysis?.cementPricePerBag ?? 0} /bag` },
+        { label: 'Sand Price', value: `${workspace.rateAnalysis?.sandPricePerM3 ?? 0} /m³` },
       ];
     case 'concrete-materials':
       return [
-        { label: 'Wet Concrete Volume', value: workspace.concreteMaterials?.wetVolumeM3 || 10, unit: 'm³' },
-        { label: 'Mix Proportion (C:S:A)', value: `1 : ${workspace.concreteMaterials?.ratioSand || 1.5} : ${workspace.concreteMaterials?.ratioAggregate || 3.0}` },
-        { label: 'Dry Factor', value: workspace.concreteMaterials?.customDryFactor || 1.54 },
-        { label: 'Cement Bag Net Weight', value: workspace.concreteMaterials?.cementBagWeightKg || 50, unit: 'kg' },
+        { label: 'Wet Concrete Volume', value: workspace.concreteMaterials?.wetVolumeM3 ?? 0, unit: 'm³' },
+        { label: 'Mix Proportion (C:S:A)', value: `1 : ${workspace.concreteMaterials?.ratioSand ?? 0} : ${workspace.concreteMaterials?.ratioAggregate ?? 0}` },
+        { label: 'Dry Factor', value: workspace.concreteMaterials?.customDryFactor ?? 0 },
+        { label: 'Cement Bag Net Weight', value: workspace.concreteMaterials?.cementBagWeightKg ?? 0, unit: 'kg' },
       ];
     case 'rebar-bbs':
       return [
         { label: 'Structural Member', value: (workspace.rebarBbs?.elementType || 'slab').toUpperCase() },
-        { label: 'Clear Span Length', value: workspace.rebarBbs?.slabLengthM || 6.0, unit: 'm' },
-        { label: 'Clear Cover', value: workspace.rebarBbs?.clearCoverMm || 25, unit: 'mm' },
-        { label: 'Main Bar Size', value: `T${workspace.rebarBbs?.mainBarDiaMm || 16} @ ${workspace.rebarBbs?.mainBarSpacingMm || 150}mm` },
+        { label: 'Clear Span Length', value: workspace.rebarBbs?.slabLengthM ?? 0, unit: 'm' },
+        { label: 'Clear Cover', value: workspace.rebarBbs?.clearCoverMm ?? 0, unit: 'mm' },
+        { label: 'Main Bar Size', value: `T${workspace.rebarBbs?.mainBarDiaMm ?? 0} @ ${workspace.rebarBbs?.mainBarSpacingMm ?? 0}mm` },
       ];
     case 'beam-analysis':
       return [
@@ -139,52 +139,52 @@ export function extractCompactInputs(
       ];
     case 'continuous-beam':
       return [
-        { label: 'Span Count', value: workspace.continuousBeam?.spanCount || 3, unit: 'spans' },
+        { label: 'Span Count', value: workspace.continuousBeam?.spanCount ?? 0, unit: 'spans' },
         { label: 'Total Beam Length', value: (workspace.continuousBeam?.spans || []).reduce((acc, s) => acc + s.lengthM, 0), unit: 'm' },
-        { label: 'Allowable Bending Stress', value: workspace.continuousBeam?.allowableStressMpa || 250, unit: 'MPa' },
+        { label: 'Allowable Bending Stress', value: workspace.continuousBeam?.allowableStressMpa ?? 0, unit: 'MPa' },
       ];
     case 'frame-truss-2d':
       return [
-        { label: 'Nodes / Members', value: `${workspace.frameTruss2d?.nodes?.length || 4} / ${workspace.frameTruss2d?.members?.length || 3}` },
+        { label: 'Nodes / Members', value: `${workspace.frameTruss2d?.nodes?.length ?? 0} / ${workspace.frameTruss2d?.members?.length ?? 0}` },
         { label: 'Analysis Mode', value: workspace.frameTruss2d?.analysisMode === 'second-order-p-delta' ? '2nd-Order P-Delta' : '1st-Order Linear' },
-        { label: 'Allowable Stress', value: workspace.frameTruss2d?.allowableStressMpa || 250, unit: 'MPa' },
+        { label: 'Allowable Stress', value: workspace.frameTruss2d?.allowableStressMpa ?? 0, unit: 'MPa' },
       ];
     case 'section-analyzer':
       return [
-        { label: 'Section Profile', value: workspace.sectionAnalyzer?.presetId ? workspace.sectionAnalyzer.presetId.toUpperCase() : (workspace.sectionAnalyzer?.shape || 'IPE 300') },
-        { label: 'Steel Grade f_y', value: workspace.sectionAnalyzer?.fyMpa || 275, unit: 'MPa' },
-        { label: 'Design Actions (N / M_y)', value: `${workspace.sectionAnalyzer?.axialForceN_Kn ?? -420} kN / ${workspace.sectionAnalyzer?.momentMy_Knm ?? 115} kN·m` },
+        { label: 'Section Profile', value: workspace.sectionAnalyzer?.presetId ? workspace.sectionAnalyzer.presetId.toUpperCase() : (workspace.sectionAnalyzer?.shape || 'Custom') },
+        { label: 'Steel Grade f_y', value: workspace.sectionAnalyzer?.fyMpa ?? 0, unit: 'MPa' },
+        { label: 'Design Actions (N / M_y)', value: `${workspace.sectionAnalyzer?.axialForceN_Kn ?? 0} kN / ${workspace.sectionAnalyzer?.momentMy_Knm ?? 0} kN·m` },
       ];
     case 'rc-column-design':
       return [
-        { label: 'Column Section (b × h)', value: `${workspace.rcColumn?.widthB_Mm ?? 400} × ${workspace.rcColumn?.depthH_Mm ?? 500}`, unit: 'mm' },
-        { label: 'Code & Materials', value: `${workspace.rcColumn?.designCode || 'BNBC-2020'} · f'c=${workspace.rcColumn?.concreteFcMpa ?? 28} / fy=${workspace.rcColumn?.rebarFyMpa ?? 420} MPa` },
-        { label: 'Factored Actions', value: `Pu=${workspace.rcColumn?.axialLoadPu_Kn ?? 1850} kN, Mux=${workspace.rcColumn?.momentMux_Knm ?? 140}, Muy=${workspace.rcColumn?.momentMuy_Knm ?? 65} kN·m` },
+        { label: 'Column Section (b × h)', value: `${workspace.rcColumn?.widthB_Mm ?? 0} × ${workspace.rcColumn?.depthH_Mm ?? 0}`, unit: 'mm' },
+        { label: 'Code & Materials', value: `${workspace.rcColumn?.designCode || 'BNBC-2020'} · f'c=${workspace.rcColumn?.concreteFcMpa ?? 0} / fy=${workspace.rcColumn?.rebarFyMpa ?? 0} MPa` },
+        { label: 'Factored Actions', value: `Pu=${workspace.rcColumn?.axialLoadPu_Kn ?? 0} kN, Mux=${workspace.rcColumn?.momentMux_Knm ?? 0}, Muy=${workspace.rcColumn?.momentMuy_Knm ?? 0} kN·m` },
       ];
     case 'strut-and-tie':
       return [
-        { label: 'STM D-Region Model', value: workspace.strutAndTie?.presetName || 'Deep Beam STM' },
-        { label: 'Materials & Thickness', value: `t=${workspace.strutAndTie?.memberThicknessMm ?? 400}mm · f'c=${workspace.strutAndTie?.concreteFcMpa ?? 28} / fy=${workspace.strutAndTie?.rebarFyMpa ?? 420} MPa` },
+        { label: 'STM D-Region Model', value: workspace.strutAndTie?.presetName || 'Custom STM' },
+        { label: 'Materials & Thickness', value: `t=${workspace.strutAndTie?.memberThicknessMm ?? 0}mm · f'c=${workspace.strutAndTie?.concreteFcMpa ?? 0} / fy=${workspace.strutAndTie?.rebarFyMpa ?? 0} MPa` },
         { label: 'Scope Status', value: 'Partial (Truss Equilibrium & Member Forces)' },
       ];
     case 'pile-capacity':
       return [
         { label: 'Pile Type', value: workspace.pile?.pileType === 'bored-cast-in-situ' ? 'Bored Cast-in-Situ' : 'Driven Precast' },
-        { label: 'Diameter D', value: workspace.pile?.diameterM || 0.6, unit: 'm' },
-        { label: 'Length L', value: workspace.pile?.lengthM || 22.0, unit: 'm' },
-        { label: 'Design Axial Load', value: workspace.pile?.appliedLoadKn || 1650, unit: 'kN' },
+        { label: 'Diameter D', value: workspace.pile?.diameterM ?? 0, unit: 'm' },
+        { label: 'Length L', value: workspace.pile?.lengthM ?? 0, unit: 'm' },
+        { label: 'Design Axial Load', value: workspace.pile?.appliedLoadKn ?? 0, unit: 'kN' },
       ];
     case 'pipe-hydraulics':
       return [
         { label: 'Pipe Material', value: (workspace.pipe?.pipeMaterial || 'pvc-hdpe').toUpperCase() },
-        { label: 'Diameter D', value: workspace.pipe?.internalDiameterMm || 250, unit: 'mm' },
-        { label: 'Length L', value: workspace.pipe?.lengthM || 180, unit: 'm' },
-        { label: 'Discharge Q', value: workspace.pipe?.flowRateLps || 45, unit: 'L/s' },
+        { label: 'Diameter D', value: workspace.pipe?.internalDiameterMm ?? 0, unit: 'mm' },
+        { label: 'Length L', value: workspace.pipe?.lengthM ?? 0, unit: 'm' },
+        { label: 'Discharge Q', value: workspace.pipe?.flowRateLps ?? 0, unit: 'L/s' },
       ];
     default:
       return [
         { label: 'Governing Building Code', value: workspace.governingCode },
-        { label: 'Site Location', value: workspace.siteLocation },
+        { label: 'Site Location', value: workspace.siteLocation || 'Not Set' },
       ];
   }
 }
@@ -243,10 +243,10 @@ export function extractCompactOutputs(
       ];
     case 'concrete-mix':
       return [
-        { label: 'Target Mean Strength f\'cr', value: result.targetStrengthMpa || 25, unit: 'MPa', status: 'pass' },
-        { label: 'Design w/c Ratio', value: result.waterCementRatio || 0.45, status: 'pass' },
-        { label: 'Cement Batch Mass', value: (result.cementKgPerM3 || result.batchCementKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
-        { label: 'Coarse Aggregate Mass', value: (result.coarseAggKgPerM3 || result.batchCoarseAggKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
+        { label: 'Target Mean Strength f\'cr', value: result.targetStrengthMpa ?? 0, unit: 'MPa', status: 'pass' },
+        { label: 'Design w/c Ratio', value: result.waterCementRatio ?? 0, status: 'pass' },
+        { label: 'Cement Batch Mass', value: (result.cementKgPerM3 ?? result.batchCementKg ?? 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
+        { label: 'Coarse Aggregate Mass', value: (result.coarseAggKgPerM3 ?? result.batchCoarseAggKg ?? 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
       ];
     case 'open-channel':
       return [
@@ -338,30 +338,30 @@ export function createVerifiedReportRecord(
   const keyInputs = extractCompactInputs(activeModule, workspace);
   const keyOutputs = extractCompactOutputs(activeModule, envelope.result, workspace);
 
-  const engineerName = userProfile?.fullName || workspace.engineerOfRecord || 'Structural Design Engineer, PE';
-  const engineerDesig = userProfile?.designation || 'Lead Civil & Structural Modeler';
-  const engineerOrg = userProfile?.organization || 'Civil Consulting Engineering Group';
-  const engineerLic = userProfile?.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Official PE Registered Seal';
+  const engineerName = userProfile?.fullName || workspace.engineerOfRecord || '';
+  const engineerDesig = userProfile?.designation || '';
+  const engineerOrg = userProfile?.organization || '';
+  const engineerLic = userProfile?.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : '';
 
   const signatories = {
     preparedBy: {
-      name: engineerName,
-      designation: engineerDesig,
-      license: engineerLic,
+      name: engineerName || '________________________',
+      designation: engineerDesig || 'Prepared By (Design)',
+      license: engineerLic || '________________________',
       date: dateStr,
       status: 'certified' as const,
     },
     checkedBy: {
-      name: (userProfile as any)?.checkerName || 'Senior Structural QA Reviewer, PE/SE',
-      designation: 'Lead QA/QC Structural Peer Reviewer',
-      license: 'Lic: SE/PE-82941 (QA Verified)',
+      name: (userProfile as any)?.checkerName || '________________________',
+      designation: 'Checked By (QA / Peer Review)',
+      license: '________________________',
       date: dateStr,
       status: 'certified' as const,
     },
     approvedBy: {
-      name: workspace.engineerOfRecord || engineerName,
-      designation: 'Engineer of Record (EOR) / Principal',
-      license: engineerLic,
+      name: workspace.engineerOfRecord || engineerName || '________________________',
+      designation: 'Approved By (Engineer of Record)',
+      license: engineerLic || '________________________',
       date: dateStr,
       status: 'certified' as const,
     },
@@ -387,7 +387,7 @@ export function createVerifiedReportRecord(
       fullName: engineerName,
       designation: engineerDesig,
       organization: engineerOrg,
-      licenseNumber: userProfile?.licenseNumber || 'PE-49120',
+      licenseNumber: userProfile?.licenseNumber || '',
       role: userProfile?.role,
     },
     signatories,
@@ -398,7 +398,14 @@ export function createVerifiedReportRecord(
       codeStandard: eqInfo?.codeStandard || workspace.governingCode,
     },
     summary: {
-      status: envelope.status === 'invalid' ? 'critical' : envelope.status === 'warning' ? 'warning' : 'nominal',
+      status:
+        envelope.status === 'invalid'
+          ? 'critical'
+          : envelope.status === 'warning'
+            ? 'warning'
+            : envelope.status === 'zero_baseline'
+              ? 'zero_baseline'
+              : 'nominal',
       dcr: capInfo
         ? {
             metricLabel: capInfo.metricLabel,
@@ -438,7 +445,7 @@ interface CompactVerificationPayload {
   sig: [string, string, string]; // [prepName, checkName, appName]
   m: [string, string, string]; // [id, name, codeStd]
   s: {
-    st: 'nominal' | 'warning' | 'critical' | 'valid';
+    st: 'nominal' | 'warning' | 'critical' | 'valid' | 'zero_baseline';
     dcr?: [string, string, number, 'safe' | 'warning' | 'critical', string?];
     inp: Array<[string, string | number, string?]>;
     out: Array<[string, string | number, string?, ('pass' | 'fail')?]>;
@@ -558,9 +565,9 @@ export function decodeVerificationToken(token: string): PublicEngineeringReportR
           status: 'certified',
         },
         checkedBy: {
-          name: compact.sig[1],
-          designation: 'Lead QA/QC Structural Peer Reviewer',
-          license: 'Lic: SE/PE-82941 (QA Verified)',
+          name: compact.sig[1] || '________________________',
+          designation: 'Checked By (QA / Peer Review)',
+          license: '________________________',
           date: dateStr,
           status: 'certified',
         },

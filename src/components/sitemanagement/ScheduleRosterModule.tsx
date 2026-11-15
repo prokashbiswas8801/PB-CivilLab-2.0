@@ -121,7 +121,7 @@ export const ScheduleRosterModule: React.FC = () => {
     title: '',
     category: 'Quality Inspection' as EngineerTask['category'],
     priority: 'Urgent' as EngineerTask['priority'],
-    assignedTo: 'Site Engineer',
+    assignedTo: '',
     targetDate: new Date().toISOString().split('T')[0],
     remarks: '',
   });
@@ -222,7 +222,7 @@ export const ScheduleRosterModule: React.FC = () => {
       title: inspectionForm.title.trim(),
       category: inspectionForm.category,
       priority: inspectionForm.priority,
-      assignedTo: inspectionForm.assignedTo.trim() || 'Site Engineer',
+      assignedTo: inspectionForm.assignedTo.trim(),
       targetDate: inspectionForm.targetDate,
       isCompleted: false,
       remarks: inspectionForm.remarks.trim() || undefined,
@@ -234,7 +234,7 @@ export const ScheduleRosterModule: React.FC = () => {
       title: '',
       category: 'Quality Inspection',
       priority: 'Urgent',
-      assignedTo: 'Site Engineer',
+      assignedTo: '',
       targetDate: new Date().toISOString().split('T')[0],
       remarks: '',
     });

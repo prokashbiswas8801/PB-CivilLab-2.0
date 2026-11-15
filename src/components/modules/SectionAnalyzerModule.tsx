@@ -150,6 +150,7 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
   };
 
   const cls = result?.classification;
+  const isZero = (result as any)?.status === 'zero_baseline' || result?.areaCm2 === 0;
   const isBlocked = cls && !cls.isPlasticAllowed;
 
   return (
@@ -158,27 +159,31 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
       {cls && (
         <div
           className={`rounded-xl border p-3 text-xs ${
-            isBlocked
+            isZero
+              ? 'border-amber-500/40 bg-amber-500/5 text-[var(--md-sys-color-on-surface)]'
+              : isBlocked
               ? 'border-amber-500/60 bg-amber-500/10 text-[var(--md-sys-color-on-surface)]'
               : 'border-emerald-500/40 bg-emerald-500/5 text-[var(--md-sys-color-on-surface)]'
           }`}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-start gap-2">
-              {isBlocked ? (
+              {isZero || isBlocked ? (
                 <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               ) : (
                 <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
               )}
               <div>
                 <div className="font-bold flex items-center gap-2 flex-wrap">
-                  <span>{cls.classLabel}</span>
+                  <span>{isZero ? '0 Baseline Standby' : cls.classLabel}</span>
                   <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                    · {cls.aiscEquivalent} ({sa.designCode})
+                    · {isZero ? sa.designCode : `${cls.aiscEquivalent} (${sa.designCode})`}
                   </span>
                 </div>
                 <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 leading-relaxed">
-                  {isBlocked
+                  {isZero
+                    ? '0 Baseline Active — Enter cross-section dimensions & material yield strength to classify section.'
+                    : isBlocked
                     ? cls.plasticBlockedReason
                     : `Full plastic hinge & N–M interaction allowed (${cls.governingPart}: flange c/t=${cls.flangeSlenderness} ≤ ${cls.flangeLimitClass2}, web c/t=${cls.webSlenderness} ≤ ${cls.webLimitClass2}).`}
                 </p>
@@ -265,10 +270,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                   </label>
                   <input
                     type="number"
-                    min={10}
+                    min={0}
                     step={1}
                     value={sa.depthH_Mm}
-                    onChange={(e) => commit({ presetId: 'custom', depthH_Mm: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => commit({ presetId: 'custom', depthH_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                   />
                   {isImp && (
@@ -285,10 +290,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                     </label>
                     <input
                       type="number"
-                      min={10}
+                      min={0}
                       step={1}
                       value={sa.widthB_Mm}
-                      onChange={(e) => commit({ presetId: 'custom', widthB_Mm: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => commit({ presetId: 'custom', widthB_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
                       className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                     />
                     {isImp && (
@@ -306,10 +311,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                     </label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       step={0.5}
                       value={sa.wallThicknessT_Mm}
-                      onChange={(e) => commit({ presetId: 'custom', wallThicknessT_Mm: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => commit({ presetId: 'custom', wallThicknessT_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
                       className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -323,10 +328,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                       </label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         step={0.2}
                         value={sa.webThicknessTw_Mm}
-                        onChange={(e) => commit({ presetId: 'custom', webThicknessTw_Mm: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => commit({ presetId: 'custom', webThicknessTw_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
                         className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                       />
                     </div>
@@ -336,10 +341,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                       </label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         step={0.2}
                         value={sa.flangeThicknessTf_Mm}
-                        onChange={(e) => commit({ presetId: 'custom', flangeThicknessTf_Mm: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => commit({ presetId: 'custom', flangeThicknessTf_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
                         className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                       />
                     </div>
@@ -447,10 +452,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min={100}
+                  min={0}
                   step={5}
                   value={sa.fyMpa}
-                  onChange={(e) => commit({ fyMpa: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => commit({ fyMpa: Math.max(0, parseFloat(e.target.value) || 0) })}
                   className="w-full px-2 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
                 {isImp && (
@@ -466,10 +471,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min={10}
+                  min={0}
                   step={5}
                   value={sa.elasticModulusGpa}
-                  onChange={(e) => commit({ elasticModulusGpa: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => commit({ elasticModulusGpa: Math.max(0, parseFloat(e.target.value) || 0) })}
                   className="w-full px-2 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>
@@ -480,10 +485,13 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 </label>
                 <input
                   type="number"
-                  min={0.9}
+                  min={0}
                   step={0.05}
                   value={sa.gammaM0}
-                  onChange={(e) => commit({ gammaM0: parseFloat(e.target.value) || 1.0 })}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    commit({ gammaM0: isNaN(v) ? 0 : Math.max(0, v) });
+                  }}
                   className="w-full px-2 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>
@@ -645,6 +653,7 @@ export const SectionAnalyzerMetrics: React.FC<{
 }> = ({ result, activeWorkspace }) => {
   const isImp = activeWorkspace?.unitPreferences?.systemPreset === 'imperial';
   const cls = result.classification;
+  const isZero = (result as any).status === 'zero_baseline' || result.areaCm2 === 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -685,14 +694,20 @@ export const SectionAnalyzerMetrics: React.FC<{
         </div>
         <div
           className={`text-lg font-mono font-extrabold mt-1 flex items-center gap-1.5 ${
-            cls.isPlasticAllowed ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+            isZero
+              ? 'text-amber-600 dark:text-amber-400'
+              : cls.isPlasticAllowed
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-amber-600 dark:text-amber-400'
           }`}
         >
-          {!cls.isPlasticAllowed && <AlertTriangle className="w-4 h-4 shrink-0" />}
-          <span>Class {cls.sectionClass}</span>
+          {!isZero && !cls.isPlasticAllowed && <AlertTriangle className="w-4 h-4 shrink-0" />}
+          <span>{isZero ? '0 Baseline' : `Class ${cls.sectionClass}`}</span>
         </div>
         <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-0.5 tabular-nums">
-          {cls.isPlasticAllowed
+          {isZero
+            ? 'Awaiting dimensions'
+            : cls.isPlasticAllowed
             ? `z_PNA = ${result.plasticNeutralAxisZMm >= 0 ? '+' : ''}${result.plasticNeutralAxisZMm.toFixed(1)} mm`
             : 'Plastic blocked (Elastic limit)'}
         </div>
@@ -705,14 +720,16 @@ export const SectionAnalyzerMetrics: React.FC<{
         </div>
         <div
           className={`text-lg font-mono font-extrabold tabular-nums mt-1 ${
-            result.governingDcr > 1.0
+            isZero
+              ? 'text-amber-600 dark:text-amber-400'
+              : result.governingDcr > 1.0
               ? 'text-rose-600 dark:text-rose-400'
               : result.governingDcr > 0.85
               ? 'text-amber-600 dark:text-amber-400'
               : 'text-emerald-600 dark:text-emerald-400'
           }`}
         >
-          {(result.governingDcr * 100).toFixed(1)}%
+          {isZero ? '0.0% (Standby)' : `${(result.governingDcr * 100).toFixed(1)}%`}
         </div>
         <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-0.5 tabular-nums">
           M_N,Rd = {cls.isPlasticAllowed ? `${result.mNyReducedRdKnm.toFixed(1)} kN·m` : `${result.mElYRdKnm.toFixed(1)} kN·m (El)`}

@@ -1053,7 +1053,7 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Engr. Prokash / Store Incharge"
+                    placeholder="e.g. Store In-Charge"
                     value={inwardForm.receiver}
                     onChange={(e) => setInwardForm({ ...inwardForm, receiver: e.target.value })}
                     className="w-full px-4 py-2 rounded-full text-xs border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)]"

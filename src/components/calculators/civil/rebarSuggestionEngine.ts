@@ -227,6 +227,18 @@ export function computeRebarSuggestions(params: ElementInputParameters): RebarSu
   const role = REBAR_ROLE_DEFINITIONS[params.roleKey];
   const { widthMm, depthMm, lengthMm, clearCoverMm } = params;
 
+  if (widthMm <= 0 || depthMm <= 0 || lengthMm <= 0) {
+    return {
+      role,
+      grossAreaMm2: 0,
+      targetAreaMm2: 0,
+      minAreaMm2: 0,
+      maxAreaMm2: 0,
+      options: [],
+      recommendedDimensions: { dimA: 0, dimB: 0, dimC: 0, dimH: 0 },
+    };
+  }
+
   // Concrete gross section area
   let grossAreaMm2 = widthMm * depthMm;
   if (role.elementType === 'slab') {

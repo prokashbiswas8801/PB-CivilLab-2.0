@@ -186,7 +186,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   { label: '8.0 m', valueSI: 8.0, title: 'Long Span Transfer Girder' },
                 ]}
                 validationRule={{
-                  minSI: 0.5,
+                  minSI: 0,
                   maxSI: 35,
                   warningBelowSI: 1.0,
                   warningAboveSI: 15.0,
@@ -200,10 +200,10 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                 <input
                   type="range"
                   aria-label="Live scrub main span length in meters"
-                  min={1}
+                  min={0}
                   max={20}
                   step={0.25}
-                  value={Math.min(20, Math.max(1, activeWorkspace.beam.spanLengthM || 1))}
+                  value={Math.min(20, Math.max(0, activeWorkspace.beam.spanLengthM || 0))}
                   onChange={(e) => {
                     const val = Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
@@ -565,18 +565,18 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
 
           const soilClass = activeWorkspace.beam.siteSoilClass || distData.typicalSoilClass || 'SD';
           const soilFactorS = soilClass === 'SA' ? 1.0 : soilClass === 'SB' ? 1.2 : soilClass === 'SC' ? 1.15 : soilClass === 'SD' ? 1.35 : 1.40;
-          const importanceI = activeWorkspace.beam.seismicImportanceI ?? 1.0;
-          const reductionR = Math.max(1.0, activeWorkspace.beam.responseReductionR ?? 5.0);
-          const seismicWeightW = Math.max(0, activeWorkspace.beam.buildingSeismicWeightKn ?? 5000);
+          const importanceI = activeWorkspace.beam.seismicImportanceI ?? 0;
+          const reductionR = activeWorkspace.beam.responseReductionR ?? 0;
+          const seismicWeightW = Math.max(0, activeWorkspace.beam.buildingSeismicWeightKn ?? 0);
 
-          const seismicCs = (2 / 3) * (zVal * importanceI / reductionR) * soilFactorS;
+          const seismicCs = reductionR > 0 ? (2 / 3) * (zVal * importanceI / reductionR) * soilFactorS : 0;
           const baseShearVbKn = Number((seismicCs * seismicWeightW).toFixed(1));
 
-          const windV0 = activeWorkspace.beam.basicWindSpeedMs ?? distData.basicWindSpeedMs;
-          const buildingHeight = Math.max(3, activeWorkspace.beam.buildingHeightM ?? 20);
-          const tribWidth = Math.max(0.5, activeWorkspace.beam.tributaryWidthM ?? 5.0);
+          const windV0 = activeWorkspace.beam.basicWindSpeedMs ?? 0;
+          const buildingHeight = Math.max(0, activeWorkspace.beam.buildingHeightM ?? 0);
+          const tribWidth = Math.max(0, activeWorkspace.beam.tributaryWidthM ?? 0);
 
-          const kz = Number(Math.min(1.8, Math.max(0.70, 2.01 * Math.pow(Math.min(300, buildingHeight) / 365, 2 / 7))).toFixed(2));
+          const kz = buildingHeight > 0 ? Number(Math.min(1.8, Math.max(0.70, 2.01 * Math.pow(Math.min(300, buildingHeight) / 365, 2 / 7))).toFixed(2)) : 0;
           const qzKpa = Number((0.000613 * kz * Math.pow(windV0, 2)).toFixed(3));
           const designWindPressKpa = Number((qzKpa * 1.105).toFixed(2));
           const beamWindUdlKnPerM = Number((designWindPressKpa * tribWidth).toFixed(2));
@@ -665,14 +665,14 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   <input
                     type="number"
                     step="500"
-                    min="100"
+                    min="0"
                     max="100000"
-                    value={activeWorkspace.beam.buildingSeismicWeightKn ?? 5000}
+                    value={activeWorkspace.beam.buildingSeismicWeightKn ?? 0}
                     onChange={(e) => {
-                      const val = Number(e.target.value);
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, buildingSeismicWeightKn: val },
+                        beam: { ...ws.beam, buildingSeismicWeightKn: isNaN(raw) ? 0 : Math.max(0, raw) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
@@ -684,19 +684,19 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   <input
                     type="number"
                     step="1"
-                    min="30"
+                    min="0"
                     max="100"
-                    value={activeWorkspace.beam.basicWindSpeedMs ?? distData.basicWindSpeedMs}
+                    value={activeWorkspace.beam.basicWindSpeedMs ?? 0}
                     onChange={(e) => {
-                      const val = Number(e.target.value);
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, basicWindSpeedMs: val },
+                        beam: { ...ws.beam, basicWindSpeedMs: isNaN(raw) ? 0 : Math.max(0, raw) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
                   />
-                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{((activeWorkspace.beam.basicWindSpeedMs ?? distData.basicWindSpeedMs) * 3.6).toFixed(0)} km/h</span>
+                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{((activeWorkspace.beam.basicWindSpeedMs ?? 0) * 3.6).toFixed(0)} km/h</span>
                 </div>
 
                 <div>
@@ -704,14 +704,14 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   <input
                     type="number"
                     step="1"
-                    min="3"
+                    min="0"
                     max="150"
-                    value={activeWorkspace.beam.buildingHeightM ?? 20}
+                    value={activeWorkspace.beam.buildingHeightM ?? 0}
                     onChange={(e) => {
-                      const val = Number(e.target.value);
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, buildingHeightM: val },
+                        beam: { ...ws.beam, buildingHeightM: isNaN(raw) ? 0 : Math.max(0, raw) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
@@ -723,14 +723,14 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   <input
                     type="number"
                     step="0.5"
-                    min="0.5"
+                    min="0"
                     max="20"
-                    value={activeWorkspace.beam.tributaryWidthM ?? 5.0}
+                    value={activeWorkspace.beam.tributaryWidthM ?? 0}
                     onChange={(e) => {
-                      const val = Number(e.target.value);
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, tributaryWidthM: val },
+                        beam: { ...ws.beam, tributaryWidthM: isNaN(raw) ? 0 : Math.max(0, raw) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
@@ -740,7 +740,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Frame Type (R)</label>
                   <select
-                    value={activeWorkspace.beam.responseReductionR ?? 5.0}
+                    value={activeWorkspace.beam.responseReductionR ?? 0}
                     onChange={(e) => {
                       const val = Number(e.target.value);
                       updateActiveWorkspace((ws) => ({
@@ -750,6 +750,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
                   >
+                    <option value="0">0 (Unset)</option>
                     <option value="8.0">SMFR - Special Moment Frame (R = 8)</option>
                     <option value="5.0">IMFR - Intermediate Frame (R = 5)</option>
                     <option value="3.0">OMFR - Ordinary Frame (R = 3)</option>
@@ -855,7 +856,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                 { label: '750 mm', valueSI: 0.75, title: 'Heavy 30" Transfer Girder' },
               ]}
               validationRule={{
-                minSI: 0.1,
+                minSI: 0,
                 maxSI: 2.5,
                 warningBelowSI: activeWorkspace.beam.spanLengthM / 25,
                 warningHint: `Deflection warning: Section depth (${activeWorkspace.beam.sectionDepthMm} mm) is shallower than L/25 (${Math.round((activeWorkspace.beam.spanLengthM / 25) * 1000)} mm). ACI 318 recommends minimum depth d ≥ L/16 (${Math.round((activeWorkspace.beam.spanLengthM / 16) * 1000)} mm) to satisfy serviceability deflection limits without specialized calculations.`,
@@ -902,13 +903,13 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
               <input
                 type="number"
                 step="100"
-                min="1"
+                min="0"
                 value={activeWorkspace.beam.momentOfInertiaCm4}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    beam: { ...ws.beam, momentOfInertiaCm4: val },
+                    beam: { ...ws.beam, momentOfInertiaCm4: isNaN(raw) ? 0 : Math.max(0, raw) },
                   }));
                 }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
@@ -980,7 +981,7 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                 { label: '14 MPa', valueSI: 14e6, title: 'Concrete Permissible Flexural Stress WSD (0.45 fc)' },
               ]}
               validationRule={{
-                minSI: 1e6,
+                minSI: 0,
                 maxSI: 600e6,
                 warningAboveSI: 350e6,
                 warningHint: 'Allowable bending stress Fb exceeding 350 MPa exceeds standard structural steel working stress limits under AISC 360 ASD.',
@@ -1011,43 +1012,55 @@ export const BeamAnalysisMetrics: React.FC<BeamAnalysisMetricsProps> = ({
   getOutputUnit,
   updateOutputUnit,
 }) => {
+  const isZeroBaseline =
+    (activeWorkspace.beam.spanLengthM ?? 0) <= 0 ||
+    ((activeWorkspace.beam.uniformLoadKnPerM ?? 0) === 0 && (activeWorkspace.beam.pointLoadKn ?? 0) === 0);
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-      <UnitValueDisplay
-        label="Max Moment (Mmax)"
-        category="moment"
-        siValue={result.maxMomentKnm * 1000}
-        currentUnitId={getOutputUnit('beam.out.moment', 'moment', 'kN.m')}
-        onUnitChange={(u) => updateOutputUnit('beam.out.moment', u)}
-        customUnits={customUnits}
-        highlight={true}
-      />
-      <UnitValueDisplay
-        label="Max Shear (Vmax)"
-        category="force"
-        siValue={result.maxShearKn * 1000}
-        currentUnitId={getOutputUnit('beam.out.shear', 'force', 'kN')}
-        onUnitChange={(u) => updateOutputUnit('beam.out.shear', u)}
-        customUnits={customUnits}
-      />
-      <UnitValueDisplay
-        label="Max Deflection"
-        category="length"
-        siValue={result.maxDeflectionMm * 0.001}
-        currentUnitId={getOutputUnit('beam.out.defl', 'length', 'mm')}
-        onUnitChange={(u) => updateOutputUnit('beam.out.defl', u)}
-        customUnits={customUnits}
-        subText={`Allowable limit: ${result.allowableDeflectionMm.toFixed(2)} mm`}
-      />
-      <UnitValueDisplay
-        label="Max Flexural Stress"
-        category="pressure"
-        siValue={result.bendingStressMpa * 1000000}
-        currentUnitId={getOutputUnit('beam.out.stress', 'pressure', 'MPa')}
-        onUnitChange={(u) => updateOutputUnit('beam.out.stress', u)}
-        customUnits={customUnits}
-        subText={`Allowable: ${activeWorkspace.beam.allowableStressMpa} MPa`}
-      />
+    <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      {isZeroBaseline && (
+        <div className="px-3.5 py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs font-mono flex items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider">0 BASELINE STANDBY</span>
+          <span className="opacity-90">Enter span length L and distributed or point load to compute SFD, BMD &amp; deflection.</span>
+        </div>
+      )}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <UnitValueDisplay
+          label="Max Moment (Mmax)"
+          category="moment"
+          siValue={result.maxMomentKnm * 1000}
+          currentUnitId={getOutputUnit('beam.out.moment', 'moment', 'kN.m')}
+          onUnitChange={(u) => updateOutputUnit('beam.out.moment', u)}
+          customUnits={customUnits}
+          highlight={true}
+        />
+        <UnitValueDisplay
+          label="Max Shear (Vmax)"
+          category="force"
+          siValue={result.maxShearKn * 1000}
+          currentUnitId={getOutputUnit('beam.out.shear', 'force', 'kN')}
+          onUnitChange={(u) => updateOutputUnit('beam.out.shear', u)}
+          customUnits={customUnits}
+        />
+        <UnitValueDisplay
+          label="Max Deflection"
+          category="length"
+          siValue={result.maxDeflectionMm * 0.001}
+          currentUnitId={getOutputUnit('beam.out.defl', 'length', 'mm')}
+          onUnitChange={(u) => updateOutputUnit('beam.out.defl', u)}
+          customUnits={customUnits}
+          subText={`Allowable limit: ${result.allowableDeflectionMm.toFixed(2)} mm`}
+        />
+        <UnitValueDisplay
+          label="Max Flexural Stress"
+          category="pressure"
+          siValue={result.bendingStressMpa * 1000000}
+          currentUnitId={getOutputUnit('beam.out.stress', 'pressure', 'MPa')}
+          onUnitChange={(u) => updateOutputUnit('beam.out.stress', u)}
+          customUnits={customUnits}
+          subText={`Allowable: ${activeWorkspace.beam.allowableStressMpa} MPa`}
+        />
+      </div>
     </div>
   );
 };

@@ -9,7 +9,7 @@ import {
   BuildingCode,
 } from '../../types/civil';
 import { FrameTruss2DResult } from '../../utils/frameSolver2d';
-import { createDefaultFrameTruss2D } from '../../utils/storage';
+import { createDefaultFrameTruss2D, createPresetFrameTruss2D } from '../../utils/storage';
 import {
   Network,
   Plus,
@@ -33,7 +33,7 @@ export type FrameTruss2DPresetId =
 
 export function getFrameTruss2DPreset(presetId: FrameTruss2DPresetId): FrameTruss2DParams {
   if (presetId === 'portal-sway') {
-    return createDefaultFrameTruss2D();
+    return createPresetFrameTruss2D();
   }
   if (presetId === 'pratt-truss') {
     return {
@@ -190,7 +190,6 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
   };
 
   const handleDeleteNode = (id: string) => {
-    if (ft.nodes.length <= 2) return;
     commitFrameState({
       ...ft,
       nodes: ft.nodes.filter((n) => n.id !== id),
@@ -230,7 +229,6 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
   };
 
   const handleDeleteMember = (id: string) => {
-    if (ft.members.length <= 1) return;
     commitFrameState({
       ...ft,
       members: ft.members.filter((m) => m.id !== id),
@@ -393,12 +391,13 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
             </label>
             <input
               type="number"
-              min={10}
+              min={0}
               step={10}
-              value={ft.allowableStressMpa ?? 250}
-              onChange={(e) =>
-                commitFrameState({ ...ft, allowableStressMpa: Math.max(10, Number(e.target.value) || 0) })
-              }
+              value={ft.allowableStressMpa ?? 0}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                commitFrameState({ ...ft, allowableStressMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+              }}
               className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs"
             />
           </div>
@@ -408,12 +407,13 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
             </label>
             <input
               type="number"
-              min={50}
+              min={0}
               step={25}
-              value={ft.sectionDepthMm ?? 350}
-              onChange={(e) =>
-                commitFrameState({ ...ft, sectionDepthMm: Math.max(50, Number(e.target.value) || 0) })
-              }
+              value={ft.sectionDepthMm ?? 0}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                commitFrameState({ ...ft, sectionDepthMm: Math.max(0, isNaN(raw) ? 0 : raw) });
+              }}
               className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs"
             />
           </div>
@@ -425,9 +425,10 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
               type="number"
               step={5}
               value={ft.thermalDeltaC ?? 0}
-              onChange={(e) =>
-                commitFrameState({ ...ft, thermalDeltaC: Number(e.target.value) || 0 })
-              }
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                commitFrameState({ ...ft, thermalDeltaC: isNaN(raw) ? 0 : raw });
+              }}
               className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs"
             />
           </div>
@@ -535,9 +536,8 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteNode(node.id)}
-                        disabled={ft.nodes.length <= 2}
                         title="Remove node"
-                        className="p-1 rounded text-rose-500 hover:bg-rose-500/10 disabled:opacity-30 cursor-pointer"
+                        className="p-1 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -552,8 +552,11 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                           type="number"
                           min={0}
                           step={500}
-                          value={node.springKx ?? 5000}
-                          onChange={(e) => handleUpdateNode(node.id, { springKx: Math.max(0, Number(e.target.value) || 0) })}
+                          value={node.springKx ?? 0}
+                          onChange={(e) => {
+                            const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                            handleUpdateNode(node.id, { springKx: Math.max(0, isNaN(raw) ? 0 : raw) });
+                          }}
                           className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums"
                         />
                       </div>
@@ -563,8 +566,11 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                           type="number"
                           min={0}
                           step={500}
-                          value={node.springKy ?? 15000}
-                          onChange={(e) => handleUpdateNode(node.id, { springKy: Math.max(0, Number(e.target.value) || 0) })}
+                          value={node.springKy ?? 0}
+                          onChange={(e) => {
+                            const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                            handleUpdateNode(node.id, { springKy: Math.max(0, isNaN(raw) ? 0 : raw) });
+                          }}
                           className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums"
                         />
                       </div>
@@ -575,7 +581,10 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                           min={0}
                           step={500}
                           value={node.springKr ?? 0}
-                          onChange={(e) => handleUpdateNode(node.id, { springKr: Math.max(0, Number(e.target.value) || 0) })}
+                          onChange={(e) => {
+                            const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                            handleUpdateNode(node.id, { springKr: Math.max(0, isNaN(raw) ? 0 : raw) });
+                          }}
                           className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums"
                         />
                       </div>
@@ -662,9 +671,8 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteMember(m.id)}
-                        disabled={ft.members.length <= 1}
                         title="Remove member"
-                        className="p-1 rounded text-rose-500 hover:bg-rose-500/10 disabled:opacity-30 cursor-pointer"
+                        className="p-1 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -677,10 +685,13 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">A (cm²)</label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         step={5}
                         value={m.areaCm2}
-                        onChange={(e) => handleUpdateMember(m.id, { areaCm2: Math.max(0.1, Number(e.target.value) || 0) })}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          handleUpdateMember(m.id, { areaCm2: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
@@ -692,7 +703,10 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                         step={1000}
                         disabled={m.memberType === 'truss'}
                         value={m.memberType === 'truss' ? 0 : m.inertiaCm4}
-                        onChange={(e) => handleUpdateMember(m.id, { inertiaCm4: Math.max(0, Number(e.target.value) || 0) })}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          handleUpdateMember(m.id, { inertiaCm4: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs disabled:opacity-45"
                       />
                     </div>
@@ -700,10 +714,13 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">E (GPa)</label>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         step={5}
                         value={m.elasticModulusGpa}
-                        onChange={(e) => handleUpdateMember(m.id, { elasticModulusGpa: Math.max(1, Number(e.target.value) || 0) })}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          handleUpdateMember(m.id, { elasticModulusGpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        }}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
@@ -868,8 +885,18 @@ export interface FrameTruss2DMetricsProps {
 }
 
 export const FrameTruss2DMetrics: React.FC<FrameTruss2DMetricsProps> = ({ result }) => {
+  const isZeroBaseline =
+    (result.status as string) === 'zero_baseline' ||
+    (result.maxDisplacementMm === 0 &&
+      result.maxAbsMomentKnm === 0 &&
+      result.maxAbsShearKn === 0 &&
+      result.maxAbsAxialKn === 0 &&
+      result.utilizationRatio === 0);
+
   const statusIcon =
-    result.status === 'critical' ? (
+    isZeroBaseline ? (
+      <AlertTriangle className="w-4 h-4 text-amber-500" />
+    ) : result.status === 'critical' ? (
       <XCircle className="w-4 h-4 text-rose-500" />
     ) : result.status === 'warning' ? (
       <AlertTriangle className="w-4 h-4 text-amber-500" />
@@ -877,72 +904,82 @@ export const FrameTruss2DMetrics: React.FC<FrameTruss2DMetricsProps> = ({ result
       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
     );
 
-  const alphaDisplay = Number.isFinite(result.criticalBucklingFactorAlphaCr)
+  const alphaDisplay = isZeroBaseline
+    ? '0.00'
+    : Number.isFinite(result.criticalBucklingFactorAlphaCr)
     ? result.criticalBucklingFactorAlphaCr.toFixed(2)
     : '∞ (Pure Tension)';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      {/* Card 1: Max Displacement & Sway Drift */}
-      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
-        <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          <span>Max Displacement Δ</span>
-          <Move className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+    <div className="space-y-3">
+      {isZeroBaseline && (
+        <div className="px-3.5 py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs font-mono flex items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider">0 BASELINE STANDBY</span>
+          <span className="opacity-90">Add nodes, members &amp; loads or select a structural benchmark to run DSM / P-Δ analysis.</span>
         </div>
-        <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
-          {result.maxDisplacementMm.toFixed(2)} <span className="text-xs font-normal opacity-75">mm</span>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Card 1: Max Displacement & Sway Drift */}
+        <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
+          <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            <span>Max Displacement Δ</span>
+            <Move className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+          </div>
+          <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
+            {result.maxDisplacementMm.toFixed(2)} <span className="text-xs font-normal opacity-75">mm</span>
+          </div>
+          <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            Node {result.maxDisplacementNodeLabel} · Drift{' '}
+            {result.driftRatioDenominator > 0 ? `H/${Math.round(result.driftRatioDenominator)}` : '0'}
+          </div>
         </div>
-        <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          Node {result.maxDisplacementNodeLabel} · Drift{' '}
-          {result.driftRatioDenominator > 0 ? `H/${Math.round(result.driftRatioDenominator)}` : '0'}
-        </div>
-      </div>
 
-      {/* Card 2: P-Delta & Buckling Factor */}
-      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
-        <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          <span>Buckling α_cr / P-Δ</span>
-          <Activity className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+        {/* Card 2: P-Delta & Buckling Factor */}
+        <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
+          <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            <span>Buckling α_cr / P-Δ</span>
+            <Activity className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+          </div>
+          <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
+            {alphaDisplay}
+          </div>
+          <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            {result.analysisMode === 'second-order-p-delta'
+              ? `2nd-Order Amp: ${result.pDeltaDisplacementAmplification.toFixed(3)}× (${result.pDeltaIterations} it.)`
+              : `Est. B₂ Factor: ${result.b2AmplificationFactor.toFixed(3)}×`}
+          </div>
         </div>
-        <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
-          {alphaDisplay}
-        </div>
-        <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          {result.analysisMode === 'second-order-p-delta'
-            ? `2nd-Order Amp: ${result.pDeltaDisplacementAmplification.toFixed(3)}× (${result.pDeltaIterations} it.)`
-            : `Est. B₂ Factor: ${result.b2AmplificationFactor.toFixed(3)}×`}
-        </div>
-      </div>
 
-      {/* Card 3: Governing Member Envelopes */}
-      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
-        <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          <span>Peak Member Actions</span>
-          <Layers className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+        {/* Card 3: Governing Member Envelopes */}
+        <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
+          <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            <span>Peak Member Actions</span>
+            <Layers className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+          </div>
+          <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
+            {result.maxAbsMomentKnm.toFixed(1)} <span className="text-xs font-normal opacity-75">kN·m</span>
+          </div>
+          <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            |V|={result.maxAbsShearKn.toFixed(1)} kN · |N|={result.maxAbsAxialKn.toFixed(1)} kN
+          </div>
         </div>
-        <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
-          {result.maxAbsMomentKnm.toFixed(1)} <span className="text-xs font-normal opacity-75">kN·m</span>
-        </div>
-        <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          |V|={result.maxAbsShearKn.toFixed(1)} kN · |N|={result.maxAbsAxialKn.toFixed(1)} kN
-        </div>
-      </div>
 
-      {/* Card 4: Combined Stress DCR & Equilibrium */}
-      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
-        <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-          <span>Stress DCR &amp; Equilibrium</span>
-          {statusIcon}
-        </div>
-        <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
-          {(result.utilizationRatio * 100).toFixed(1)}%{' '}
-          <span className="text-xs font-normal uppercase">({result.status})</span>
-        </div>
-        <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
-          <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
-          <span>
-            σ={result.maxCombinedStressMpa.toFixed(1)} MPa · Res {result.equilibriumResidualKn.toExponential(1)}
-          </span>
+        {/* Card 4: Combined Stress DCR & Equilibrium */}
+        <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5">
+          <div className="flex items-center justify-between text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            <span>Stress DCR &amp; Equilibrium</span>
+            {statusIcon}
+          </div>
+          <div className="mt-1 text-xl font-bold font-mono tabular-nums text-[var(--md-sys-color-on-surface)]">
+            {(result.utilizationRatio * 100).toFixed(1)}%{' '}
+            <span className="text-xs font-normal uppercase">({isZeroBaseline ? '0 STANDBY' : result.status})</span>
+          </div>
+          <div className="mt-1 text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
+            <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
+            <span>
+              σ={result.maxCombinedStressMpa.toFixed(1)} MPa · Res {result.equilibriumResidualKn.toExponential(1)}
+            </span>
+          </div>
         </div>
       </div>
     </div>

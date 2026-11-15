@@ -298,13 +298,13 @@ export function ReportVerificationView({
               </div>
               <div>
                 <div className="font-bold text-sm text-[var(--md-sys-color-on-surface)]">
-                  {record.engineer.fullName}
+                  {record.engineer.fullName || 'Not Set'}
                 </div>
                 <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                  {record.engineer.designation} · {record.engineer.organization}
+                  {record.engineer.designation || 'Not Set'} · {record.engineer.organization || 'Not Set'}
                 </div>
                 <div className="font-mono text-xs text-[var(--md-sys-color-primary)] mt-1">
-                  License #{record.engineer.licenseNumber}
+                  License #{record.engineer.licenseNumber || 'Not Set'}
                 </div>
               </div>
             </div>
@@ -318,17 +318,17 @@ export function ReportVerificationView({
               <div className="space-y-2 text-xs">
                 <div>
                   <span className="text-[var(--md-sys-color-on-surface-variant)]">Project Name: </span>
-                  <span className="font-semibold text-[var(--md-sys-color-on-surface)]">{record.project.name}</span>
+                  <span className="font-semibold text-[var(--md-sys-color-on-surface)]">{record.project.name || 'Untitled Project'}</span>
                 </div>
                 <div>
                   <span className="text-[var(--md-sys-color-on-surface-variant)]">Project Code: </span>
                   <span className="font-mono font-bold text-[var(--md-sys-color-primary)]">
-                    {record.project.projectCode}
+                    {record.project.projectCode || 'PRJ-001'}
                   </span>
                 </div>
                 <div>
                   <span className="text-[var(--md-sys-color-on-surface-variant)]">Site Location: </span>
-                  <span className="text-[var(--md-sys-color-on-surface)]">{record.project.siteLocation}</span>
+                  <span className="text-[var(--md-sys-color-on-surface)]">{record.project.siteLocation || 'Not Set'}</span>
                 </div>
                 <div>
                   <span className="text-[var(--md-sys-color-on-surface-variant)]">Governing Code: </span>
@@ -368,6 +368,8 @@ export function ReportVerificationView({
                         ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
                         : record.summary.status === 'warning'
                         ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                        : record.summary.status === 'zero_baseline'
+                        ? 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border border-slate-500/30'
                         : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                     }`}
                   >
@@ -376,7 +378,11 @@ export function ReportVerificationView({
                     ) : (
                       <CheckCircle2 className="w-3.5 h-3.5" />
                     )}
-                    <span>{record.summary.status.toUpperCase()} STATUS</span>
+                    <span>
+                      {record.summary.status === 'zero_baseline'
+                        ? 'ZERO BASELINE STATUS'
+                        : `${record.summary.status.toUpperCase()} STATUS`}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -592,13 +598,13 @@ export function ReportVerificationView({
                     1. Prepared By (Designer)
                   </div>
                   <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
-                    {record.signatories.preparedBy.name}
+                    {record.signatories.preparedBy.name || '________________________'}
                   </div>
                   <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    {record.signatories.preparedBy.designation}
+                    {record.signatories.preparedBy.designation || '________________________'}
                   </div>
                   <div className="pt-2 text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-dashed border-[var(--md-sys-color-outline-variant)]">
-                    <div>Lic: {record.signatories.preparedBy.license}</div>
+                    <div>Lic: {record.signatories.preparedBy.license || '________________________'}</div>
                     <div>Date: {record.signatories.preparedBy.date}</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                       Status: {record.signatories.preparedBy.status.toUpperCase()}
@@ -612,13 +618,13 @@ export function ReportVerificationView({
                     2. Checked By (Peer Reviewer)
                   </div>
                   <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
-                    {record.signatories.checkedBy.name}
+                    {record.signatories.checkedBy.name || '________________________'}
                   </div>
                   <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    {record.signatories.checkedBy.designation}
+                    {record.signatories.checkedBy.designation || '________________________'}
                   </div>
                   <div className="pt-2 text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-dashed border-[var(--md-sys-color-outline-variant)]">
-                    <div>Lic: {record.signatories.checkedBy.license}</div>
+                    <div>Lic: {record.signatories.checkedBy.license || '________________________'}</div>
                     <div>Date: {record.signatories.checkedBy.date}</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                       Status: {record.signatories.checkedBy.status.toUpperCase()}
@@ -632,13 +638,13 @@ export function ReportVerificationView({
                     3. Approved By (EOR)
                   </div>
                   <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
-                    {record.signatories.approvedBy.name}
+                    {record.signatories.approvedBy.name || '________________________'}
                   </div>
                   <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    {record.signatories.approvedBy.designation}
+                    {record.signatories.approvedBy.designation || '________________________'}
                   </div>
                   <div className="pt-2 text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-dashed border-[var(--md-sys-color-outline-variant)]">
-                    <div>Lic: {record.signatories.approvedBy.license}</div>
+                    <div>Lic: {record.signatories.approvedBy.license || '________________________'}</div>
                     <div>Date: {record.signatories.approvedBy.date}</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                       Status: {record.signatories.approvedBy.status.toUpperCase()}

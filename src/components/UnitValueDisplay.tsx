@@ -145,27 +145,30 @@ export const UnitValueDisplay: React.FC<UnitValueDisplayProps> = ({
             {displayFormatted}
           </div>
 
-          {/* Dual secondary representation for length */}
-          {lengthDual && (
+          {/* 1-Click Length Unit Cycle (0'-0" ↔ 0.00' ↔ m ↔ mm) */}
+          {category === 'length' && (
             <button
               type="button"
               onClick={() => {
-                if (activeUnitInfo.id === 'ft') {
-                  onUnitChange('ft-in');
-                } else if (activeUnitInfo.id === 'ft-in') {
-                  onUnitChange('ft');
-                } else {
-                  onUnitChange('ft-in');
-                }
+                const cycleOrder = ['ft-in', 'ft', 'm', 'mm'];
+                const idx = cycleOrder.indexOf(activeUnitInfo.id);
+                const nextUnit = idx >= 0 ? cycleOrder[(idx + 1) % cycleOrder.length] : 'ft-in';
+                onUnitChange(nextUnit);
               }}
               className="text-[11px] font-mono font-medium px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary-container)] transition-colors cursor-pointer shrink-0"
-              title="Click to toggle between Decimal Feet and Compound Feet-Inches"
+              title="1-Click Cycle: 0'-0&quot; → 0.00' → m → mm"
             >
-              {activeUnitInfo.id === 'ft-in'
-                ? `(${lengthDual.decimalFtStr})`
+              {lengthDual
+                ? activeUnitInfo.id === 'ft-in'
+                  ? `(${lengthDual.decimalFtStr})`
+                  : activeUnitInfo.id === 'ft'
+                  ? `(${lengthDual.compoundFtInStr})`
+                  : `[${lengthDual.compoundFtInStr} / ${lengthDual.decimalFtStr}]`
+                : activeUnitInfo.id === 'ft-in'
+                ? '0.00\' · m · mm'
                 : activeUnitInfo.id === 'ft'
-                ? `(${lengthDual.compoundFtInStr})`
-                : `[${lengthDual.compoundFtInStr} / ${lengthDual.decimalFtStr}]`}
+                ? '0\'-0" · m · mm'
+                : '0\'-0" / 0.00\''}
             </button>
           )}
         </div>

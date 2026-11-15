@@ -74,7 +74,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
     date: new Date().toISOString().split('T')[0],
     requiredByDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     urgency: 'Urgent' as UrgencyLevel,
-    requestedBy: 'Site Engineer',
+    requestedBy: '',
     notes: '',
   });
 
@@ -83,8 +83,8 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
       itemId: '',
       itemName: '',
       unit: 'Bags',
-      requestedQty: 100,
-      estimatedRate: 580,
+      requestedQty: 0,
+      estimatedRate: 0,
       currentStockAtReq: 0,
       notes: '',
     },
@@ -97,7 +97,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
     challanNo: '',
     truckNo: '',
     supplier: '',
-    receiver: 'Storekeeper',
+    receiver: '',
   });
 
   // Filtered Requisitions
@@ -161,7 +161,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
         itemId: '',
         itemName: '',
         unit: 'Bags',
-        requestedQty: 10,
+        requestedQty: 0,
         estimatedRate: 0,
         currentStockAtReq: 0,
         notes: '',
@@ -203,7 +203,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
       date: new Date().toISOString().split('T')[0],
       requiredByDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       urgency: 'Urgent',
-      requestedBy: 'Site Engineer',
+      requestedBy: '',
       notes: '',
     });
     setFormItems([
@@ -211,8 +211,8 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
         itemId: '',
         itemName: '',
         unit: 'Bags',
-        requestedQty: 100,
-        estimatedRate: 580,
+        requestedQty: 0,
+        estimatedRate: 0,
         currentStockAtReq: 0,
         notes: '',
       },
@@ -239,7 +239,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
     if (success) {
       showToast(`Requisition ${receiveModalReq.reqNo} marked as Received & items stocked in Store!`);
       setReceiveModalReq(null);
-      setReceiveForm({ challanNo: '', truckNo: '', supplier: '', receiver: 'Storekeeper' });
+      setReceiveForm({ challanNo: '', truckNo: '', supplier: '', receiver: '' });
       if (onNavigateToStore) {
         // Option to navigate
       }
@@ -583,7 +583,7 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
                         type="button"
                         onClick={() => {
                           setReceiveModalReq(req);
-                          setReceiveForm({ challanNo: `CH-${Date.now().toString().slice(-5)}`, truckNo: '', supplier: '', receiver: 'Site Storekeeper' });
+                          setReceiveForm({ challanNo: `CH-${Date.now().toString().slice(-5)}`, truckNo: '', supplier: '', receiver: '' });
                         }}
                         className="px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
                         title="Receive into Store Inventory (Challan) — automatically generates Inward stock entry in SM-01"

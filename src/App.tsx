@@ -131,6 +131,9 @@ import {
   createDefaultSectionAnalyzer,
   createDefaultRcColumnDesign,
   createDefaultStrutAndTie,
+  createDefaultContinuousBeam,
+  createDefaultPileCapacity,
+  createDefaultPipeHydraulics,
   createDefaultMasterMarketRates,
   createDefaultTestingLabState,
 } from './utils/storage';
@@ -783,20 +786,8 @@ export default function App() {
     appState.customUnits,
   ]);
 
-  // Fallbacks for newly integrated modules if undefined in legacy workspace
-  const defaultContinuousBeam = useMemo(() => ({
-    spanCount: 3 as const,
-    spans: [
-      { id: 's1', spanIndex: 0, lengthM: 6.0, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 25.0, pointLoadKn: 40.0, pointLoadPositionM: 3.0 },
-      { id: 's2', spanIndex: 1, lengthM: 7.5, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 30.0, pointLoadKn: 60.0, pointLoadPositionM: 3.75 },
-      { id: 's3', spanIndex: 2, lengthM: 5.5, momentOfInertiaCm4: 120000, elasticModulusGpa: 200, udlKnPerM: 20.0, pointLoadKn: 30.0, pointLoadPositionM: 2.75 },
-    ],
-    leftSupport: 'pin' as const,
-    rightSupport: 'pin' as const,
-    allowableStressMpa: 250,
-    sectionDepthMm: 600,
-    sectionWidthMm: 300,
-  }), []);
+  // Fallbacks for newly integrated modules if undefined in legacy workspace (Strict Zero-Baseline)
+  const defaultContinuousBeam = useMemo(() => createDefaultContinuousBeam(), []);
 
   const defaultFrameTruss2d = useMemo(() => createDefaultFrameTruss2D(), []);
 
@@ -806,35 +797,9 @@ export default function App() {
 
   const defaultStrutAndTie = useMemo(() => createDefaultStrutAndTie(), []);
 
-  const defaultPile = useMemo(() => ({
-    pileType: 'bored-cast-in-situ' as const,
-    diameterM: 0.6,
-    lengthM: 22.0,
-    groundwaterDepthM: 3.0,
-    appliedLoadKn: 1650,
-    factorOfSafety: 2.5,
-    layers: [
-      { id: 'l1', name: 'Soft Silty Clay (Overburden)', thicknessM: 6.0, soilType: 'clay' as const, cohesionKpa: 28, frictionAngleDeg: 0, unitWeightKnPerM3: 17.5 },
-      { id: 'l2', name: 'Medium Dense Silty Sand', thicknessM: 8.0, soilType: 'sand' as const, cohesionKpa: 0, frictionAngleDeg: 30, unitWeightKnPerM3: 18.5 },
-      { id: 'l3', name: 'Dense Bearing Sand & Gravel', thicknessM: 10.0, soilType: 'sand' as const, cohesionKpa: 0, frictionAngleDeg: 36, unitWeightKnPerM3: 20.0 },
-    ],
-    tipBearingCohesionKpa: 0,
-    tipBearingFrictionDeg: 36,
-    tipBearingUnitWeightKnPerM3: 20.0,
-  }), []);
+  const defaultPile = useMemo(() => createDefaultPileCapacity(), []);
 
-  const defaultPipe = useMemo(() => ({
-    pipeMaterial: 'pvc-hdpe' as const,
-    hazenWilliamsC: 150,
-    internalDiameterMm: 250,
-    lengthM: 180,
-    flowRateLps: 45,
-    inletElevationM: 25.0,
-    outletElevationM: 18.0,
-    inletPressureKpa: 300,
-    minorLossCoefficientK: 2.0,
-    waterTempC: 20,
-  }), []);
+  const defaultPipe = useMemo(() => createDefaultPipeHydraulics(), []);
 
   // --------------------------------------------------------------------------
   // LAZY ENVELOPE EVALUATION: Evaluate ONLY for the currently active module!
@@ -1749,8 +1714,8 @@ export default function App() {
 
   const handleTransferPipeToBoq = () => {
     const pipeData = activeWorkspace.pipe || defaultPipe;
-    const lengthM = pipeData.lengthM || 100;
-    const diaMm = pipeData.internalDiameterMm || 200;
+    const lengthM = pipeData.lengthM ?? 0;
+    const diaMm = pipeData.internalDiameterMm ?? 0;
     const matName = pipeData.pipeMaterial === 'pvc-hdpe' ? 'uPVC Pressure Pipe' : 'Ductile Iron Pipe';
     const dynamicRate = resolveDynamicRate(activeWorkspace, 'pipe', { pipeDiaMm: diaMm });
 
@@ -2030,7 +1995,7 @@ export default function App() {
       },
       surveying: {
         method: 'height-of-instrument',
-        benchmarkRL: 10,
+        benchmarkRL: 0,
         stations: [],
         degrees: 0,
         minutes: 0,
@@ -2310,7 +2275,7 @@ export default function App() {
       urgency: 'Urgent',
       items,
       status: 'Pending',
-      requestedBy: userProfile.fullName || activeWorkspace.engineerOfRecord || 'Design Engineer',
+      requestedBy: userProfile.fullName || activeWorkspace.engineerOfRecord || 'Not Set',
       notes: `Auto-generated procurement indent from ${sourceLabel}.`,
     });
 
@@ -2902,7 +2867,7 @@ export default function App() {
         inputs,
         evaluation,
         sampleRef: labState?.savedRecords?.[0]?.sampleRef || 'LAB-SMP-001',
-        locationGrid: labState?.savedRecords?.[0]?.locationGrid || activeWorkspace.siteLocation || 'Site Zone',
+        locationGrid: labState?.savedRecords?.[0]?.locationGrid || activeWorkspace.siteLocation || '________________________',
         remarks: '',
         workspace: activeWorkspace,
         userProfile,
@@ -2921,8 +2886,14 @@ export default function App() {
     const qrResult = activeReportQr || (await getOrGenerateReportQr());
     const docId = qrResult.documentId;
 
-    const tableEl = document.querySelector('.analytical-dense-table-container');
-    const diagramEl = document.querySelector('.analytical-diagram-container');
+    const captureRoot = document.getElementById('pb-print-capture-source');
+    const kpiEl = captureRoot?.querySelector('.print-capture-kpi-summary');
+    const tableEl =
+      captureRoot?.querySelector('.print-capture-table') ||
+      document.querySelector('.analytical-dense-table-container');
+    const diagramEl =
+      captureRoot?.querySelector('.print-capture-diagram') ||
+      document.querySelector('.analytical-diagram-container');
 
     printEl.innerHTML = `
       <div class="space-y-6 font-sans text-slate-900 bg-white p-6 max-w-5xl mx-auto leading-relaxed">
@@ -2932,7 +2903,7 @@ export default function App() {
             <div>
               <div class="text-2xl font-black font-sans tracking-tight text-blue-700">BD. CivilLab</div>
               <div class="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-600 mt-0.5">
-                CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS
+                CALCULATE SMARTER. BUILD BETTER. · CERTIFIED ANALYTICAL WORKBENCH
               </div>
               <div class="text-xs font-mono text-slate-500 mt-1">Official Engineering Submittal &amp; Verification Sheet</div>
             </div>
@@ -2956,15 +2927,24 @@ export default function App() {
         <div class="grid grid-cols-2 gap-4 p-3.5 bg-slate-50 border border-slate-300 rounded print-avoid-break text-xs font-mono">
           <div>
             <div class="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Project Identification</div>
-            <div class="font-bold text-sm text-slate-900 mt-0.5">${activeWorkspace.name} [${activeWorkspace.projectCode}]</div>
-            <div class="text-slate-600 mt-0.5">Location: ${activeWorkspace.siteLocation} · Currency: ${activeWorkspace.currency}</div>
+            <div class="font-bold text-sm text-slate-900 mt-0.5">${activeWorkspace.name || 'Untitled Project'} [${activeWorkspace.projectCode || 'PRJ-001'}]</div>
+            <div class="text-slate-600 mt-0.5">Location: ${activeWorkspace.siteLocation || '________________________'} · Currency: ${activeWorkspace.currency}</div>
           </div>
           <div class="text-right">
             <div class="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Certified Prepared By</div>
-            <div class="font-bold text-sm text-slate-900 mt-0.5">${userProfile.fullName || activeWorkspace.engineerOfRecord}</div>
-            <div class="text-slate-600 mt-0.5">${userProfile.organization || 'Structural & Civil Engineering Consultancy'} · Reg: ${userProfile.licenseNumber || 'PE-8801-BD'}</div>
+            <div class="font-bold text-sm text-slate-900 mt-0.5">${userProfile.fullName || activeWorkspace.engineerOfRecord || '________________________'}</div>
+            <div class="text-slate-600 mt-0.5">${userProfile.organization || '________________________'} · Reg: ${userProfile.licenseNumber || '________________________'}</div>
           </div>
         </div>
+
+        ${
+          kpiEl
+            ? `<div class="p-4 border border-slate-300 rounded bg-white print-avoid-break">
+                <div class="text-xs font-bold font-mono uppercase text-slate-600 mb-2 border-b pb-1">Executive KPI Output Summary &amp; Capacity Ratios</div>
+                ${kpiEl.innerHTML}
+              </div>`
+            : ''
+        }
 
         ${
           diagramEl
@@ -3020,20 +3000,20 @@ export default function App() {
             <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
               <div class="text-[9px] font-mono font-bold uppercase text-slate-500">1. Prepared By (Design)</div>
               <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
-              <div class="text-[11px] font-bold text-slate-900">${userProfile.fullName || activeWorkspace.engineerOfRecord}</div>
+              <div class="text-[11px] font-bold text-slate-900">${userProfile.fullName || activeWorkspace.engineerOfRecord || '________________________'}</div>
               <div class="text-[9.5px] font-mono text-slate-600">Design Engineer · Date: ${nowStr.split(',')[0]}</div>
             </div>
             <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
               <div class="text-[9px] font-mono font-bold uppercase text-slate-500">2. Checked By (QA / Peer Review)</div>
               <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
-              <div class="text-[11px] font-bold text-slate-900">Senior Structural Reviewer</div>
+              <div class="text-[11px] font-bold text-slate-900">________________________</div>
               <div class="text-[9.5px] font-mono text-slate-600">QA/QC Verification · Date: ____/____/20__</div>
             </div>
             <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
               <div class="text-[9px] font-mono font-bold uppercase text-slate-500">3. Approved By (EOR)</div>
               <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
-              <div class="text-[11px] font-bold text-slate-900">${userProfile.initials || 'BD'} STAMP &amp; SEAL</div>
-              <div class="text-[9.5px] font-mono text-slate-600">Reg: ${userProfile.licenseNumber || 'PE-8801-BD'} · Final Sign-Off</div>
+              <div class="text-[11px] font-bold text-slate-900">${userProfile.initials || 'EOR'} STAMP &amp; SEAL</div>
+              <div class="text-[9.5px] font-mono text-slate-600">Reg: ${userProfile.licenseNumber || '________________________'} · Final Sign-Off</div>
             </div>
           </div>
           <div class="flex items-center justify-between text-[10px] font-mono text-slate-600">
@@ -3547,7 +3527,7 @@ export default function App() {
         timestamp: now,
         title: `${activeWorkspace.projectCode} · RC Column ${colRes.widthB_Mm}×${colRes.depthH_Mm} (${colRes.designCode})`,
         notes: `${colRes.totalBarCount}-Ø${colRes.longitudinalBarDiaMm}, Pu=${colRes.axialLoadPu_Kn} kN, Bresler DCR=${(colRes.breslerContourDcr * 100).toFixed(1)}%`,
-        status: colRes.status,
+        status: colRes.status === 'zero_baseline' ? 'nominal' : colRes.status,
         keyMetrics: [
           { label: 'Section', value: `${colRes.widthB_Mm}×${colRes.depthH_Mm}`, unit: 'mm' },
           { label: 'φM_nx', value: colRes.xAxis.phiMnAtPuKnm.toFixed(1), unit: 'kN·m' },
@@ -3583,8 +3563,8 @@ export default function App() {
         workspaceId: activeWorkspace.id,
         moduleId: 'pile-capacity',
         timestamp: now,
-        title: `${activeWorkspace.projectCode} · Pile Capacity (D=${activeWorkspace.pile?.diameterM || 0.6}m, L=${activeWorkspace.pile?.lengthM || 22}m)`,
-        notes: `Q_ult=${pileRes.ultimateCapacityKn.toFixed(1)} kN, Q_all=${pileRes.allowableCapacityKn.toFixed(1)} kN (FS=${activeWorkspace.pile?.factorOfSafety || 2.5})`,
+        title: `${activeWorkspace.projectCode} · Pile Capacity (D=${activeWorkspace.pile?.diameterM ?? 0}m, L=${activeWorkspace.pile?.lengthM ?? 0}m)`,
+        notes: `Q_ult=${pileRes.ultimateCapacityKn.toFixed(1)} kN, Q_all=${pileRes.allowableCapacityKn.toFixed(1)} kN (FS=${activeWorkspace.pile?.factorOfSafety ?? 0})`,
         status: pileRes.status,
         keyMetrics: [
           { label: 'Q_allowable', value: pileRes.allowableCapacityKn.toFixed(1), unit: 'kN' },
@@ -3603,7 +3583,7 @@ export default function App() {
         moduleId: 'pipe-hydraulics',
         timestamp: now,
         title: `${activeWorkspace.projectCode} · Pipe Hydraulics (Q=${pipeRes.flowRateLps} L/s)`,
-        notes: `Hazen-Williams C=${activeWorkspace.pipe?.hazenWilliamsC || 150}, Head Loss=${pipeRes.totalHeadLossM.toFixed(2)} m, V=${pipeRes.velocityMps.toFixed(2)} m/s`,
+        notes: `Hazen-Williams C=${activeWorkspace.pipe?.hazenWilliamsC ?? 0}, Head Loss=${pipeRes.totalHeadLossM.toFixed(2)} m, V=${pipeRes.velocityMps.toFixed(2)} m/s`,
         status: pipeRes.status,
         keyMetrics: [
           { label: 'Discharge Q', value: pipeRes.flowRateLps.toFixed(1), unit: 'L/s' },
@@ -3672,10 +3652,10 @@ export default function App() {
     const created: CivilWorkspace = {
       ...activeWorkspace,
       id: generateUUID(),
-      name: data.name.trim(),
-      projectCode: data.code.trim() || `CIV-${Math.floor(100 + Math.random() * 900)}`,
-      siteLocation: data.site.trim() || 'Primary Field Sector',
-      engineerOfRecord: data.engineer.trim() || userProfile.fullName || 'Project Engineer, PE',
+      name: data.name.trim() || 'Untitled Project',
+      projectCode: data.code.trim() || `PRJ-${Math.floor(100 + Math.random() * 900)}`,
+      siteLocation: data.site.trim(),
+      engineerOfRecord: data.engineer.trim() || userProfile.fullName || '',
       currency: data.currency || userPreferences.defaultCurrency,
       createdAt: now,
       updatedAt: now,
@@ -3718,8 +3698,8 @@ export default function App() {
               ...ws,
               name: data.name.trim(),
               projectCode: data.code.trim() || ws.projectCode,
-              siteLocation: data.site.trim() || ws.siteLocation,
-              engineerOfRecord: data.engineer.trim() || ws.engineerOfRecord,
+              siteLocation: data.site.trim(),
+              engineerOfRecord: data.engineer.trim(),
               currency: data.currency,
               boq: { ...ws.boq, currency: data.currency },
               rateAnalysis: { ...ws.rateAnalysis, currency: data.currency },
@@ -3988,6 +3968,18 @@ export default function App() {
   }, [appState.calculationHistory, historyScope, activeWorkspace.id, historyFilter, historySearch]);
 
   const renderStatusBadge = () => {
+    if ((currentEnvelope.status as string) === 'zero_baseline') {
+      return (
+        <div
+          role="status"
+          aria-live="polite"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-xs font-mono font-bold text-amber-700 dark:text-amber-300"
+        >
+          <Info className="w-3.5 h-3.5 shrink-0" />
+          <span>0 Baseline Active — Enter dimensions or loads to compute</span>
+        </div>
+      );
+    }
     if (currentEnvelope.status === 'invalid') {
       return (
         <div role="status" aria-live="polite" className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--md-sys-color-error)]">
@@ -4018,8 +4010,8 @@ export default function App() {
 Project: ${activeWorkspace.name} (${activeWorkspace.projectCode})
 Module: ${MODULE_META[activeModule].label}
 Governing Code: ${MODULE_META[activeModule].codeStandard}
-Location: ${activeWorkspace.siteLocation}
-Engineer of Record: ${userProfile.fullName || activeWorkspace.engineerOfRecord}
+Location: ${activeWorkspace.siteLocation || 'Not Set'}
+Engineer of Record: ${userProfile.fullName || activeWorkspace.engineerOfRecord || 'Not Set'}
 Timestamp: ${new Date().toLocaleString()}
 Status: ${currentEnvelope.status.toUpperCase()}
 ${capStr ? `Governing Capacity Utilization: ${capStr}` : ''}
@@ -4154,7 +4146,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 </div>
                 <div className="text-right text-xs font-mono text-gray-700">
                   <div>Project: <strong>{activeWorkspace.name}</strong> [{activeWorkspace.projectCode}]</div>
-                  <div>Location: <strong>{activeWorkspace.siteLocation}</strong></div>
+                  <div>Location: <strong>{activeWorkspace.siteLocation || '________________________'}</strong></div>
                   <div>Module: <strong>{MODULE_META[activeModule].label}</strong></div>
                   <div>Code Standard: {MODULE_META[activeModule].codeStandard}</div>
                   <div>Date: {new Date().toLocaleDateString()}</div>
@@ -4162,7 +4154,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               </div>
               <div className="mt-4 pt-3 border-t border-gray-300 flex justify-between items-center text-xs font-mono">
                 <div>
-                  Engineer of Record: <strong>{userProfile.fullName || activeWorkspace.engineerOfRecord}</strong>
+                  Engineer of Record: <strong>{userProfile.fullName || activeWorkspace.engineerOfRecord || '________________________'}</strong>
                   {userProfile.licenseNumber && ` · PE Lic: ${userProfile.licenseNumber}`}
                   {userProfile.organization && ` · ${userProfile.organization}`}
                 </div>
@@ -4170,7 +4162,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   {userProfile.licenseNumber && (
                     <div className="mt-2 text-center w-56 border-t border-black pt-1">
                       <div className="text-[10px] font-bold text-black uppercase">
-                        {userProfile.initials || 'BD'} OFFICIAL CERTIFICATION STAMP
+                        {userProfile.initials || 'EOR'} OFFICIAL CERTIFICATION STAMP
                       </div>
                       <div className="text-[9px] text-gray-500">Engineer of Record Signature &amp; Date</div>
                     </div>
@@ -4275,11 +4267,11 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   </span>
                   <span className="text-[var(--md-sys-color-outline)]">·</span>
                   <span className="text-slate-600 dark:text-slate-400">
-                    Loc: {activeWorkspace.siteLocation}
+                    Loc: {activeWorkspace.siteLocation || 'Not Set'}
                   </span>
                   <span className="text-[var(--md-sys-color-outline)]">·</span>
                   <span className="text-slate-600 dark:text-slate-400">
-                    Eng: {userProfile.fullName || activeWorkspace.engineerOfRecord}
+                    Eng: {userProfile.fullName || activeWorkspace.engineerOfRecord || 'Not Set'}
                   </span>
                 </div>
                 <h1 className="text-lg md:text-xl font-bold font-sans tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2 mt-0.5">
@@ -4574,7 +4566,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                         ...ws,
                         surveying: {
                           method: 'height-of-instrument',
-                          benchmarkRL: 10,
+                          benchmarkRL: 0,
                           stations: [],
                           degrees: 0,
                           minutes: 0,
@@ -4682,8 +4674,78 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 />
               </motion.div>
             ) : (
+              <>
+              {/* Global Validation Issues & Inconsistency Alert Banner */}
+              {currentEnvelope.issues && currentEnvelope.issues.length > 0 && (
+                <div
+                  role="alert"
+                  className={`mx-4 md:mx-6 mt-4 rounded-xl border p-3.5 shadow-xs space-y-2 ${
+                    currentEnvelope.issues.some((i: ValidationIssue) => i.severity === 'error')
+                      ? 'border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/40 text-[var(--md-sys-color-error)]'
+                      : 'border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider">
+                      {currentEnvelope.issues.some((i: ValidationIssue) => i.severity === 'error') ? (
+                        <XCircle className="w-4 h-4 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                      )}
+                      <span>
+                        Validation Issues &amp; Inconsistency Alert ({currentEnvelope.issues.length})
+                      </span>
+                    </div>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {currentEnvelope.issues.map((issue: ValidationIssue, idx: number) => (
+                      <li
+                        key={`${issue.field}-${idx}`}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--md-sys-color-surface)]/80 px-3 py-1.5 text-xs border border-current/15"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {issue.severity === 'error' ? (
+                            <XCircle className="w-3.5 h-3.5 text-[var(--md-sys-color-error)] shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          )}
+                          <span className="font-mono font-bold text-[11px] uppercase opacity-80 shrink-0">
+                            {issue.field}:
+                          </span>
+                          <span className="text-[var(--md-sys-color-on-surface)] font-medium">
+                            {issue.message}
+                          </span>
+                        </div>
+                        {issue.field && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const targetEl =
+                                (document.getElementById(`unit-input-${issue.field}`) as HTMLElement | null) ||
+                                (document.querySelector(`[data-field="${issue.field}"]`) as HTMLElement | null);
+                              if (targetEl) {
+                                targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                setTimeout(() => {
+                                  const inputEl = targetEl.matches('input, select, textarea')
+                                    ? targetEl
+                                    : (targetEl.querySelector('input, select, textarea') as HTMLElement | null);
+                                  inputEl?.focus();
+                                }, 180);
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-[var(--md-sys-color-surface-container-high)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] transition-colors cursor-pointer shrink-0"
+                          >
+                            Focus Field
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Pane: Parameter Input Form with Smooth Unit Transition */}
+              {/* Left Pane: Parameter Input Form with Dedicated Input Header & Smooth Unit Transition */}
               <motion.section
                 key={`inputs-pane-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
                 initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
@@ -4691,6 +4753,40 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 transition={{ duration: 0.25 }}
                 className="lg:col-span-5 space-y-4"
               >
+                {/* Dedicated Input Pane Card Header */}
+                <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5 shadow-xs space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
+                        Input Parameters • ইনপুট প্যারামিটার
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      Zero Baseline Allowed
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleResetModuleToZero(activeModule)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-[var(--md-sys-color-surface)] hover:bg-rose-500/10 text-[var(--md-sys-color-on-surface)] hover:text-rose-600 dark:hover:text-rose-400 border border-[var(--md-sys-color-outline-variant)] hover:border-rose-500/40 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Clear all numeric fields for this module back to strict 0 baseline"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset to Zero</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLoadStandardPresetForModule(activeModule)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-[var(--md-sys-color-primary-container)]/50 hover:bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-primary)]/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Populate verified standard engineering preset for this module"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Load Standard Preset</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* MODULE: BOQ & QUANTITY TAKEOFF ESTIMATOR (Form State completely encapsulated) */}
                 {activeModule === 'boq-estimator' && (
                   <BoqEstimatorInputs
@@ -4876,15 +4972,15 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 )}
               </motion.section>
 
-              {/* Right Pane: Results, Engineering Diagrams & High-Density Tables */}
+              {/* Right Pane: Sticky Live Output Stage (Action Bar -> Executive KPIs & DCR -> CAD Diagram -> Tables & Steps) */}
               <motion.section
                 key={`results-pane-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
                 initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.25 }}
-                className="lg:col-span-7 space-y-4"
+                className="lg:col-span-7 lg:sticky lg:top-16 lg:self-start space-y-4"
               >
-                {/* CONSOLIDATED CALCULATION RESULTS ACTION BAR */}
+                {/* 1. CONSOLIDATED CALCULATION RESULTS ACTION BAR */}
                 <div className="calculation-results-action-bar rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
                   {/* Left: View Mode Segmented Control */}
                   <div className="flex items-center gap-2">
@@ -5094,131 +5190,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   </div>
                 </div>
 
-                {/* DEMAND-CAPACITY RATIO (DCR) & LIMIT-STATE GAUGES */}
-                {capacityGauges && capacityGauges.length > 0 && (
-                  <DcrGaugeSuite
-                    gauges={capacityGauges}
-                    moduleKey={activeModule}
-                  />
-                )}
-
-                {/* Interactive Analytical Engineering Diagram Container (Graphical & Both modes) */}
-                {(analyticalViewMode === 'graphical' || analyticalViewMode === 'both') && (
-                  <div className="analytical-diagram-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs overflow-hidden">
-                    <div className="flex items-center justify-between mb-3 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
-                      <div className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
-                        <SlidersHorizontal className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                        <span>Parametric CAD Analytical Visualizer</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold">
-                          {MODULE_META[activeModule].codeStandard}
-                        </span>
-                      </div>
-                    </div>
-
-                    {activeModule === 'boq-estimator' && currentEnvelope.result && (
-                      <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'rate-analysis' && currentEnvelope.result && (
-                      <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'concrete-materials' && currentEnvelope.result && (
-                      <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'rebar-bbs' && currentEnvelope.result && (
-                      <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'masonry-finishes' && currentEnvelope.result && (
-                      <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
-                      <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'beam-analysis' && currentEnvelope.result && (
-                      <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'bearing-capacity' && currentEnvelope.result && (
-                      <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'concrete-mix' && currentEnvelope.result && (
-                      <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'open-channel' && currentEnvelope.result && (
-                      <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'continuous-beam' && currentEnvelope.result && (
-                      <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
-                      <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'section-analyzer' && currentEnvelope.result && (
-                      <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'rc-column-design' && currentEnvelope.result && (
-                      <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'strut-and-tie' && currentEnvelope.result && (
-                      <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'pile-capacity' && currentEnvelope.result && (
-                      <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
-                      <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                  </div>
-                )}
-
-                {/* Analytical Dense Table Suite (Tabular & Both modes) */}
-                {(analyticalViewMode === 'tabular' || analyticalViewMode === 'both') && (
-                  <div className="analytical-dense-table-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--md-sys-color-outline-variant)] pb-3">
-                      <div>
-                        <h2 className="text-sm font-bold font-sans tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
-                          <Table className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
-                          <span>{MODULE_META[activeModule].label} · Calculation Schedule (A4 Print-Ready)</span>
-                        </h2>
-                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
-                          Governing Standard: <strong className="text-[var(--md-sys-color-primary)]">{MODULE_META[activeModule].codeStandard}</strong>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsTableCompact((prev) => !prev)}
-                          className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center gap-1.5 transition-colors cursor-pointer"
-                          title="Toggle compact table density"
-                        >
-                          <span>{isTableCompact ? 'Normal Density' : 'Compact Density'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <AnalyticalDenseTable
-                      activeModule={activeModule}
-                      activeWorkspace={activeWorkspace}
-                      currentEnvelope={currentEnvelope}
-                      isCompact={isTableCompact}
-                      searchQuery={denseTableSearch}
-                    />
-                  </div>
-                )}
-
-                {/* Step-by-Step Hand Calculation Engine & Verification Panel */}
-                {(analyticalViewMode === 'steps' ||
-                  (analyticalViewMode === 'both' &&
-                    Boolean((currentEnvelope as any).handCalculationSteps || (currentEnvelope as any).scopeAndLimits))) && (
-                  <StepByStepPanel
-                    moduleTitle={MODULE_META[activeModule].label}
-                    steps={(currentEnvelope as any).handCalculationSteps}
-                    scopeAndLimits={(currentEnvelope as any).scopeAndLimits}
-                  />
-                )}
-
-                {/* Dynamic Metrics Cards (Lazy Rendered based on Active Module) */}
+                {/* 2. EXECUTIVE KPI OUTPUT METRICS CARDS & DCR CAPACITY GAUGES FIRST */}
                 {activeModule === 'concrete-materials' && currentEnvelope.result && (
                   <ConcreteMaterialsMetrics
                     result={currentEnvelope.result as any}
@@ -5325,6 +5297,118 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   />
                 )}
 
+                {capacityGauges && capacityGauges.length > 0 && (
+                  <DcrGaugeSuite
+                    gauges={capacityGauges}
+                    moduleKey={activeModule}
+                  />
+                )}
+
+                {/* 3. Interactive Analytical Engineering Diagram Container (Graphical & Both modes) */}
+                {(analyticalViewMode === 'graphical' || analyticalViewMode === 'both') && (
+                  <div className="analytical-diagram-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs overflow-hidden">
+                    <div className="flex items-center justify-between mb-3 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
+                      <div className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
+                        <SlidersHorizontal className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                        <span>Parametric CAD Analytical Visualizer</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] font-bold">
+                          {MODULE_META[activeModule].codeStandard}
+                        </span>
+                      </div>
+                    </div>
+
+                    {activeModule === 'boq-estimator' && currentEnvelope.result && (
+                      <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'rate-analysis' && currentEnvelope.result && (
+                      <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'concrete-materials' && currentEnvelope.result && (
+                      <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'rebar-bbs' && currentEnvelope.result && (
+                      <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'masonry-finishes' && currentEnvelope.result && (
+                      <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
+                      <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'beam-analysis' && currentEnvelope.result && (
+                      <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'bearing-capacity' && currentEnvelope.result && (
+                      <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'concrete-mix' && currentEnvelope.result && (
+                      <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'open-channel' && currentEnvelope.result && (
+                      <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'continuous-beam' && currentEnvelope.result && (
+                      <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
+                      <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'section-analyzer' && currentEnvelope.result && (
+                      <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'rc-column-design' && currentEnvelope.result && (
+                      <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'strut-and-tie' && currentEnvelope.result && (
+                      <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'pile-capacity' && currentEnvelope.result && (
+                      <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                    {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
+                      <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Analytical Dense Table Suite, Domain Schedule Tables & Step-by-Step Derivations */}
+                {(analyticalViewMode === 'tabular' || analyticalViewMode === 'both') && (
+                  <div className="analytical-dense-table-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--md-sys-color-outline-variant)] pb-3">
+                      <div>
+                        <h2 className="text-sm font-bold font-sans tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
+                          <Table className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                          <span>{MODULE_META[activeModule].label} · Calculation Schedule (A4 Print-Ready)</span>
+                        </h2>
+                        <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                          Governing Standard: <strong className="text-[var(--md-sys-color-primary)]">{MODULE_META[activeModule].codeStandard}</strong>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsTableCompact((prev) => !prev)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Toggle compact table density"
+                        >
+                          <span>{isTableCompact ? 'Normal Density' : 'Compact Density'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <AnalyticalDenseTable
+                      activeModule={activeModule}
+                      activeWorkspace={activeWorkspace}
+                      currentEnvelope={currentEnvelope}
+                      isCompact={isTableCompact}
+                      searchQuery={denseTableSearch}
+                    />
+                  </div>
+                )}
+
                 {/* CONCRETE MIX DESIGN VOLUME BATCH TABLE */}
                 {activeModule === 'concrete-mix' && currentEnvelope.result && (
                   <ConcreteMixVolumeTable
@@ -5359,8 +5443,182 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     onApplyRateToBOQ={handleApplyRateToBOQ}
                   />
                 )}
+
+                {/* Step-by-Step Hand Calculation Engine & Verification Panel */}
+                {(analyticalViewMode === 'steps' ||
+                  (analyticalViewMode === 'both' &&
+                    Boolean((currentEnvelope as any).handCalculationSteps || (currentEnvelope as any).scopeAndLimits))) && (
+                  <StepByStepPanel
+                    moduleTitle={MODULE_META[activeModule].label}
+                    steps={(currentEnvelope as any).handCalculationSteps}
+                    scopeAndLimits={(currentEnvelope as any).scopeAndLimits}
+                  />
+                )}
               </motion.section>
             </div>
+
+            {/* Always-Rendered Hidden Print Capture Source so Quick Print & PDF capture KPIs, CAD diagram, and schedule table regardless of active analyticalViewMode */}
+            <div id="pb-print-capture-source" className="hidden" aria-hidden="true">
+              <div className="print-capture-kpi-summary space-y-3">
+                {activeModule === 'concrete-materials' && currentEnvelope.result && (
+                  <ConcreteMaterialsMetrics
+                    result={currentEnvelope.result as any}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'beam-analysis' && currentEnvelope.result && (
+                  <BeamAnalysisMetrics
+                    result={currentEnvelope.result as any}
+                    activeWorkspace={activeWorkspace}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'bearing-capacity' && currentEnvelope.result && (
+                  <BearingCapacityMetrics
+                    result={currentEnvelope.result as any}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'rebar-bbs' && currentEnvelope.result && (
+                  <RebarBbsMetrics
+                    result={currentEnvelope.result as any}
+                    activeWorkspace={activeWorkspace}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'masonry-finishes' && currentEnvelope.result && (
+                  <MasonryFinishesMetrics
+                    result={currentEnvelope.result as any}
+                    activeWorkspace={activeWorkspace}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
+                  <EarthworkAlignmentMetrics
+                    result={currentEnvelope.result as any}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'concrete-mix' && currentEnvelope.result && (
+                  <ConcreteMixMetrics
+                    result={currentEnvelope.result as any}
+                    activeWorkspace={activeWorkspace}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'open-channel' && currentEnvelope.result && (
+                  <OpenChannelMetrics
+                    result={currentEnvelope.result as any}
+                    customUnits={appState.customUnits}
+                    getOutputUnit={getOutputUnit}
+                    updateOutputUnit={updateOutputUnit}
+                  />
+                )}
+                {activeModule === 'continuous-beam' && currentEnvelope.result && (
+                  <ContinuousBeamMetrics result={currentEnvelope.result as any} />
+                )}
+                {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
+                  <FrameTruss2DMetrics result={currentEnvelope.result as any} />
+                )}
+                {activeModule === 'section-analyzer' && currentEnvelope.result && (
+                  <SectionAnalyzerMetrics result={currentEnvelope.result as any} activeWorkspace={activeWorkspace} />
+                )}
+                {activeModule === 'rc-column-design' && currentEnvelope.result && (
+                  <RcColumnMetrics result={currentEnvelope.result as any} activeWorkspace={activeWorkspace} />
+                )}
+                {activeModule === 'strut-and-tie' && currentEnvelope.result && (
+                  <StrutAndTieMetrics result={currentEnvelope.result as any} />
+                )}
+                {activeModule === 'pile-capacity' && currentEnvelope.result && (
+                  <PileCapacityMetrics result={currentEnvelope.result as any} />
+                )}
+                {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
+                  <PipeHydraulicsMetrics result={currentEnvelope.result as any} />
+                )}
+                {capacityGauges && capacityGauges.length > 0 && (
+                  <DcrGaugeSuite gauges={capacityGauges} moduleKey={activeModule} />
+                )}
+              </div>
+
+              <div className="print-capture-diagram">
+                {activeModule === 'boq-estimator' && currentEnvelope.result && (
+                  <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'rate-analysis' && currentEnvelope.result && (
+                  <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'concrete-materials' && currentEnvelope.result && (
+                  <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'rebar-bbs' && currentEnvelope.result && (
+                  <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'masonry-finishes' && currentEnvelope.result && (
+                  <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
+                  <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'beam-analysis' && currentEnvelope.result && (
+                  <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'bearing-capacity' && currentEnvelope.result && (
+                  <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'concrete-mix' && currentEnvelope.result && (
+                  <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'open-channel' && currentEnvelope.result && (
+                  <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'continuous-beam' && currentEnvelope.result && (
+                  <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
+                  <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'section-analyzer' && currentEnvelope.result && (
+                  <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'rc-column-design' && currentEnvelope.result && (
+                  <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'strut-and-tie' && currentEnvelope.result && (
+                  <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'pile-capacity' && currentEnvelope.result && (
+                  <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+                {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
+                  <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                )}
+              </div>
+
+              <div className="print-capture-table">
+                <AnalyticalDenseTable
+                  activeModule={activeModule}
+                  activeWorkspace={activeWorkspace}
+                  currentEnvelope={currentEnvelope}
+                  isCompact={true}
+                  searchQuery=""
+                />
+              </div>
+            </div>
+            </>
             )}
             </>
             )}

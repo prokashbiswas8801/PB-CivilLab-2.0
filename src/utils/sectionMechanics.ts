@@ -1051,6 +1051,127 @@ export function computeSectionMechanics(
   const E_Gpa = params.elasticModulusGpa || 0;
   const gammaM0 = params.gammaM0 || 0;
 
+  const hasAnyForce =
+    Math.abs(params.axialForceN_Kn || 0) > 0 ||
+    Math.abs(params.momentMy_Knm || 0) > 0 ||
+    Math.abs(params.momentMz_Knm || 0) > 0 ||
+    Math.abs(params.shearVy_Kn || 0) > 0 ||
+    Math.abs(params.shearVz_Kn || 0) > 0 ||
+    Math.abs(params.torsionT_Knm || 0) > 0;
+
+  const isZeroGeom =
+    params.shape === 'custom-polygon'
+      ? !params.polygonPointsMm || params.polygonPointsMm.length === 0
+      : params.shape === 'circular'
+        ? (params.depthH_Mm || 0) === 0
+        : (params.depthH_Mm || 0) === 0 && (params.widthB_Mm || 0) === 0;
+
+  const hasNegSec =
+    fyMpa < 0 ||
+    E_Gpa < 0 ||
+    gammaM0 < 0 ||
+    (params.depthH_Mm || 0) < 0 ||
+    (params.widthB_Mm || 0) < 0;
+
+  if ((isZeroGeom || (fyMpa === 0 && E_Gpa === 0)) && !hasAnyForce && !hasNegSec) {
+    return createEnvelope<SectionAnalyzerResult>(
+      {
+        shape: params.shape,
+        presetName: `${params.shape.replace('-', ' ').toUpperCase()} (Zero Baseline)`,
+        designCode: params.designCode,
+        fyMpa: 0,
+        fydMpa: 0,
+        elasticModulusGpa: 0,
+        gammaM0: gammaM0 || 1.0,
+        areaCm2: 0,
+        areaMm2: 0,
+        massKgPerM: 0,
+        centroidYMm: 0,
+        centroidZMm: 0,
+        yMinMm: 0,
+        yMaxMm: 0,
+        zMinMm: 0,
+        zMaxMm: 0,
+        depthMm: 0,
+        widthMm: 0,
+        iyCm4: 0,
+        izCm4: 0,
+        iyzCm4: 0,
+        ryMm: 0,
+        rzMm: 0,
+        welYTopCm3: 0,
+        welYBotCm3: 0,
+        welYMinCm3: 0,
+        welZMinCm3: 0,
+        wplYCm3: 0,
+        wplZCm3: 0,
+        shapeFactorY: 0,
+        shapeFactorZ: 0,
+        torsionConstantJCm4: 0,
+        numericalAreaErrorPct: 0,
+        numericalIyErrorPct: 0,
+        numericalWplYErrorPct: 0,
+        classification: {
+          sectionClass: 1,
+          classLabel: 'Class 1 (Plastic)',
+          aiscEquivalent: 'Compact',
+          epsilon: 1,
+          flangeSlenderness: 0,
+          flangeLimitClass1: 9,
+          flangeLimitClass2: 10,
+          flangeLimitClass3: 14,
+          webSlenderness: 0,
+          webLimitClass1: 72,
+          webLimitClass2: 83,
+          webLimitClass3: 124,
+          governingPart: 'Zero Baseline',
+          isPlasticAllowed: true,
+          plasticBlockedReason: null,
+        },
+        elasticNeutralAxisZMm: null,
+        plasticNeutralAxisZMm: 0,
+        plasticNeutralAxisFromBottomMm: 0,
+        nPlRdKn: 0,
+        mElYRdKnm: 0,
+        mElZRdKnm: 0,
+        mPlYRdKnm: 0,
+        mPlZRdKnm: 0,
+        mNyReducedRdKnm: 0,
+        vPlZRdKn: 0,
+        axialForceN_Kn: 0,
+        momentMy_Knm: 0,
+        momentMz_Knm: 0,
+        shearVy_Kn: 0,
+        shearVz_Kn: 0,
+        torsionT_Knm: 0,
+        sigmaAxialMpa: 0,
+        sigmaTopMpa: 0,
+        sigmaBotMpa: 0,
+        sigmaMaxTensionMpa: 0,
+        sigmaMaxCompressionMpa: 0,
+        sigmaAbsMaxMpa: 0,
+        tauMaxShearZMpa: 0,
+        tauMaxShearYMpa: 0,
+        tauTorsionMpa: 0,
+        tauTotalMaxMpa: 0,
+        vonMisesMaxMpa: 0,
+        elasticStressDcr: 0,
+        shearStressDcr: 0,
+        plasticInteractionDcr: null,
+        governingDcr: 0,
+        status: 'nominal',
+        outlinePolygons: [],
+        holePolygons: [],
+        stressProfile: [],
+        cornerStresses: [],
+        nmInteractionCurve: [],
+        myMzInteractionCurve: [],
+      },
+      issues,
+      { handCalculationSteps: [], scopeAndLimits, isZeroBaseline: true }
+    );
+  }
+
   if (fyMpa <= 0) {
     issues.push({ field: 'fyMpa', message: 'Yield strength f_y must be positive (> 0 MPa).', severity: 'error' });
   }

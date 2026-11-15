@@ -61,50 +61,50 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
 
   // Rainwater Harvesting State
   const [roofCatchmentAreaM2, setRoofCatchmentAreaM2] = useState<number>(
-    initialValues?.roofCatchmentAreaM2 ?? 220
+    initialValues?.roofCatchmentAreaM2 ?? 0
   );
   const [runoffCoefficient, setRunoffCoefficient] = useState<number>(
-    initialValues?.runoffCoefficient ?? 0.9
+    initialValues?.runoffCoefficient ?? 0
   );
   const [annualRainfallMm, setAnnualRainfallMm] = useState<number>(
-    initialValues?.annualRainfallMm ?? 2050
+    initialValues?.annualRainfallMm ?? 0
   );
   const [monsoonCaptureSharePct, setMonsoonCaptureSharePct] = useState<number>(
-    initialValues?.monsoonCaptureSharePct ?? 75
+    initialValues?.monsoonCaptureSharePct ?? 0
   );
-  const [drySpellDays, setDrySpellDays] = useState<number>(initialValues?.drySpellDays ?? 25);
+  const [drySpellDays, setDrySpellDays] = useState<number>(initialValues?.drySpellDays ?? 0);
   const [dailyRwhDemandLpd, setDailyRwhDemandLpd] = useState<number>(
-    initialValues?.dailyRwhDemandLpd ?? 900
+    initialValues?.dailyRwhDemandLpd ?? 0
   );
   const [cisternDepthM, setCisternDepthM] = useState<number>(
-    initialValues?.cisternDepthM ?? 2.0
+    initialValues?.cisternDepthM ?? 0
   );
   const [cisternLwRatio, setCisternLwRatio] = useState<number>(
-    initialValues?.cisternLwRatio ?? 1.5
+    initialValues?.cisternLwRatio ?? 0
   );
 
   // Habitable Room Daylight & Ventilation State
   const [roomName, setRoomName] = useState<string>(
-    initialValues?.roomName || 'Master Bedroom 01'
+    initialValues?.roomName || ''
   );
   const [roomOccupancyType, setRoomOccupancyType] = useState<
     'habitable' | 'kitchen' | 'utility'
   >(initialValues?.roomOccupancyType || 'habitable');
-  const [roomLengthM, setRoomLengthM] = useState<number>(initialValues?.roomLengthM ?? 4.2);
-  const [roomWidthM, setRoomWidthM] = useState<number>(initialValues?.roomWidthM ?? 3.4);
+  const [roomLengthM, setRoomLengthM] = useState<number>(initialValues?.roomLengthM ?? 0);
+  const [roomWidthM, setRoomWidthM] = useState<number>(initialValues?.roomWidthM ?? 0);
   const [ceilingHeightM, setCeilingHeightM] = useState<number>(
-    initialValues?.ceilingHeightM ?? 3.0
+    initialValues?.ceilingHeightM ?? 0
   );
-  const [windowCount, setWindowCount] = useState<number>(initialValues?.windowCount ?? 2);
-  const [windowWidthM, setWindowWidthM] = useState<number>(initialValues?.windowWidthM ?? 1.5);
+  const [windowCount, setWindowCount] = useState<number>(initialValues?.windowCount ?? 0);
+  const [windowWidthM, setWindowWidthM] = useState<number>(initialValues?.windowWidthM ?? 0);
   const [windowHeightM, setWindowHeightM] = useState<number>(
-    initialValues?.windowHeightM ?? 1.35
+    initialValues?.windowHeightM ?? 0
   );
   const [openableWindowPct, setOpenableWindowPct] = useState<number>(
-    initialValues?.openableWindowPct ?? 50
+    initialValues?.openableWindowPct ?? 0
   );
   const [ventilatorAreaM2, setVentilatorAreaM2] = useState<number>(
-    initialValues?.ventilatorAreaM2 ?? 0.25
+    initialValues?.ventilatorAreaM2 ?? 0
   );
 
   const onChangeRef = useRef(onChange);
@@ -210,7 +210,7 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
         {
           projectMeta: {
             projectName: 'Rainwater Harvesting (RWH) Cistern Sizing',
-            projectCode: 'ARC-RWH-2026',
+            projectCode: 'PRJ-001',
             date: new Date().toISOString().slice(0, 10),
             unitSystem: 'SI',
           },
@@ -218,7 +218,7 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
             moduleId: 'architecture-services-rwh',
             moduleTitle: 'RAINWATER HARVESTING CISTERN & CATCHMENT YIELD REPORT',
             standard: 'BNBC 2020 Part 8 §5.6',
-            status: rwhRes.overallCompliant ? 'SAFE' : 'WARNING',
+            status: roofCatchmentAreaM2 <= 0 ? 'ZERO BASELINE' : rwhRes.overallCompliant ? 'SAFE' : 'WARNING',
           },
           inputs: [
             { name: 'Roof Catchment Area', symbol: 'A_roof', value: roofCatchmentAreaM2, unit: 'm2' },
@@ -247,8 +247,8 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
       await generateEngineeringPDF(
         {
           projectMeta: {
-            projectName: `Habitable Space Check — ${dayRes.roomName}`,
-            projectCode: 'ARC-DAYLIGHT-2026',
+            projectName: `Habitable Space Check — ${dayRes.roomName || 'Not Set'}`,
+            projectCode: 'PRJ-001',
             date: new Date().toISOString().slice(0, 10),
             unitSystem: 'SI',
           },
@@ -256,7 +256,7 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
             moduleId: 'architecture-services-daylight',
             moduleTitle: 'BNBC 2020 DAYLIGHT, NATURAL VENTILATION & ERGONOMICS AUDIT',
             standard: 'BNBC 2020 Part 3 Chap 1 & 3',
-            status: dayRes.overallCompliant ? 'PASS' : 'WARNING',
+            status: roomLengthM <= 0 || roomWidthM <= 0 ? 'ZERO BASELINE' : dayRes.overallCompliant ? 'PASS' : 'WARNING',
           },
           inputs: [
             { name: 'Room Space Type', symbol: 'Type', value: dayRes.roomOccupancyType, unit: '-' },
@@ -417,9 +417,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   </label>
                   <input
                     type="number"
-                    min={10}
+                    min={0}
                     value={roofCatchmentAreaM2}
-                    onChange={(e) => setRoofCatchmentAreaM2(Math.max(10, Number(e.target.value)))}
+                    onChange={(e) => setRoofCatchmentAreaM2(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -430,11 +430,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="0.02"
-                    min={0.5}
+                    min={0}
                     max={0.98}
                     value={runoffCoefficient}
                     onChange={(e) =>
-                      setRunoffCoefficient(Math.min(0.98, Math.max(0.5, Number(e.target.value))))
+                      setRunoffCoefficient(Math.min(0.98, Math.max(0, Number(e.target.value) || 0)))
                     }
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
@@ -472,9 +472,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="50"
-                    min={200}
+                    min={0}
                     value={annualRainfallMm}
-                    onChange={(e) => setAnnualRainfallMm(Math.max(200, Number(e.target.value)))}
+                    onChange={(e) => setAnnualRainfallMm(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -485,11 +485,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="5"
-                    min={20}
+                    min={0}
                     max={100}
                     value={monsoonCaptureSharePct}
                     onChange={(e) =>
-                      setMonsoonCaptureSharePct(Math.min(100, Math.max(20, Number(e.target.value))))
+                      setMonsoonCaptureSharePct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
                     }
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
@@ -503,9 +503,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   </label>
                   <input
                     type="number"
-                    min={5}
+                    min={0}
                     value={drySpellDays}
-                    onChange={(e) => setDrySpellDays(Math.max(5, Number(e.target.value)))}
+                    onChange={(e) => setDrySpellDays(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -516,9 +516,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="50"
-                    min={50}
+                    min={0}
                     value={dailyRwhDemandLpd}
-                    onChange={(e) => setDailyRwhDemandLpd(Math.max(50, Number(e.target.value)))}
+                    onChange={(e) => setDailyRwhDemandLpd(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -532,9 +532,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="0.2"
-                    min={0.8}
+                    min={0}
                     value={cisternDepthM}
-                    onChange={(e) => setCisternDepthM(Math.max(0.8, Number(e.target.value)))}
+                    onChange={(e) => setCisternDepthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -545,9 +545,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="0.2"
-                    min={1.0}
+                    min={0}
                     value={cisternLwRatio}
-                    onChange={(e) => setCisternLwRatio(Math.max(1.0, Number(e.target.value)))}
+                    onChange={(e) => setCisternLwRatio(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -730,9 +730,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="0.1"
-                    min={1.0}
+                    min={0}
                     value={roomLengthM}
-                    onChange={(e) => setRoomLengthM(Math.max(1.0, Number(e.target.value)))}
+                    onChange={(e) => setRoomLengthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -743,9 +743,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="0.1"
-                    min={0.9}
+                    min={0}
                     value={roomWidthM}
-                    onChange={(e) => setRoomWidthM(Math.max(0.9, Number(e.target.value)))}
+                    onChange={(e) => setRoomWidthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -756,9 +756,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <input
                     type="number"
                     step="0.05"
-                    min={1.8}
+                    min={0}
                     value={ceilingHeightM}
-                    onChange={(e) => setCeilingHeightM(Math.max(1.8, Number(e.target.value)))}
+                    onChange={(e) => setCeilingHeightM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -779,7 +779,7 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                       type="number"
                       min={0}
                       value={windowCount}
-                      onChange={(e) => setWindowCount(Math.max(0, Math.round(Number(e.target.value))))}
+                      onChange={(e) => setWindowCount(Math.max(0, Math.round(Number(e.target.value) || 0)))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -790,9 +790,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                     <input
                       type="number"
                       step="0.1"
-                      min={0.3}
+                      min={0}
                       value={windowWidthM}
-                      onChange={(e) => setWindowWidthM(Math.max(0.3, Number(e.target.value)))}
+                      onChange={(e) => setWindowWidthM(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -803,9 +803,9 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                     <input
                       type="number"
                       step="0.05"
-                      min={0.3}
+                      min={0}
                       value={windowHeightM}
-                      onChange={(e) => setWindowHeightM(Math.max(0.3, Number(e.target.value)))}
+                      onChange={(e) => setWindowHeightM(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>

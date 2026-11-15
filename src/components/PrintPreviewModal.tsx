@@ -70,7 +70,7 @@ export interface PrintPreviewModalProps {
     codeStandard: string;
   };
   currentEnvelope: {
-    status: 'valid' | 'warning' | 'invalid';
+    status: 'valid' | 'warning' | 'invalid' | 'zero_baseline';
     result: any;
     issues?: any[];
   };
@@ -692,7 +692,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           CALCULATE SMARTER. BUILD BETTER.
                         </div>
                         <div className="text-[10px] font-mono text-slate-500 mt-0.5">
-                          Developed &amp; Designed by PROKASH BISWAS
+                          Certified Structural &amp; Civil Engineering Submittal
                         </div>
                       </div>
 
@@ -759,7 +759,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                             Location &amp; Work Discipline
                           </div>
                           <div className="font-semibold text-slate-800 font-sans mt-0.5">
-                            Site: {activeWorkspace.siteLocation}
+                            Site: {activeWorkspace.siteLocation || '________________________'}
                           </div>
                           <div className="text-blue-700 font-bold mt-0.5">
                             Module: {moduleMeta.label}
@@ -779,13 +779,13 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           Certified Prepared By / Engineer of Record
                         </div>
                         <div className="font-bold text-sm text-slate-900 font-sans mt-0.5">
-                          {userProfile.fullName || 'Project Engineer, PE'}
+                          {userProfile.fullName || '________________________'}
                         </div>
                         <div className="text-slate-700">
-                          {userProfile.designation} · {userProfile.organization}
+                          {userProfile.designation || '________________________'} · {userProfile.organization || '________________________'}
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          License ID: <strong>{userProfile.licenseNumber || 'PE-00000'}</strong>
+                          License ID: <strong>{userProfile.licenseNumber || '________________________'}</strong>
                           {userProfile.email && ` · Email: ${userProfile.email}`}
                           {userProfile.phone && ` · Tel: ${userProfile.phone}`}
                         </div>
@@ -797,7 +797,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                             CERTIFICATION SEAL
                           </div>
                           <div className="text-xs font-black text-blue-700">
-                            {userProfile.initials || (userProfile.fullName ? userProfile.fullName.slice(0, 2).toUpperCase() : 'PE')} STAMP
+                            {userProfile.initials || (userProfile.fullName ? userProfile.fullName.slice(0, 2).toUpperCase() : 'EOR')} STAMP
                           </div>
                         </div>
                       </div>
@@ -820,7 +820,9 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                                 ? 'bg-emerald-500'
                                 : currentEnvelope.status === 'warning'
                                   ? 'bg-amber-500'
-                                  : 'bg-rose-500'
+                                  : currentEnvelope.status === 'zero_baseline'
+                                    ? 'bg-slate-400'
+                                    : 'bg-rose-500'
                             }`}
                           />
                           <span>
@@ -828,7 +830,9 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                               ? 'VERIFIED & CONFORMANT'
                               : currentEnvelope.status === 'warning'
                                 ? 'WARNING / LIMIT STATE ADVISORY'
-                                : 'CRITICAL CAPACITY EXCEEDED'}
+                                : currentEnvelope.status === 'zero_baseline'
+                                  ? 'ZERO BASELINE (STANDBY)'
+                                  : 'CRITICAL CAPACITY EXCEEDED'}
                           </span>
                         </div>
                       </div>
@@ -953,9 +957,9 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           <div className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">
                             1. Prepared By (Design)
                           </div>
-                          <div className="font-bold text-slate-900 text-sm">{userProfile.fullName || 'Design Engineer, EIT/PE'}</div>
-                          <div className="text-slate-600 text-[11px]">{userProfile.designation || 'Lead Civil & Structural Modeler'}</div>
-                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Civil Design Division'}</div>
+                          <div className="font-bold text-slate-900 text-sm">{userProfile.fullName || '________________________'}</div>
+                          <div className="text-slate-600 text-[11px]">{userProfile.designation || '________________________'}</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || '________________________'}</div>
                           <div className="pt-3">
                             <div className="w-full border-b border-slate-400 mb-1"></div>
                             <div className="flex justify-between text-[9.5px] text-slate-500">
@@ -963,7 +967,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                               <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
                             </div>
                             <div className="text-[9.5px] text-slate-600 font-semibold mt-0.5">
-                              {userProfile.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: EIT/PE-49120'}
+                              {userProfile.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: ________________________'}
                             </div>
                           </div>
                         </div>
@@ -973,9 +977,9 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           <div className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">
                             2. Checked By (QA / Peer Review)
                           </div>
-                          <div className="font-bold text-slate-900 text-sm">Senior Structural QA Reviewer, PE/SE</div>
-                          <div className="text-slate-600 text-[11px]">Lead Quality Assurance Peer Review</div>
-                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Technical Verification Division'}</div>
+                          <div className="font-bold text-slate-900 text-sm">________________________</div>
+                          <div className="text-slate-600 text-[11px]">QA / Peer Reviewer</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || '________________________'}</div>
                           <div className="pt-3">
                             <div className="w-full border-b border-slate-400 mb-1"></div>
                             <div className="flex justify-between text-[9.5px] text-slate-500">
@@ -983,7 +987,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                               <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
                             </div>
                             <div className="text-[9.5px] text-slate-600 font-semibold mt-0.5">
-                              Lic: SE/PE-82941 (QA Verified)
+                              Lic: ________________________
                             </div>
                           </div>
                         </div>
@@ -994,10 +998,10 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                             3. Approved By (EOR)
                           </div>
                           <div className="font-bold text-slate-900 text-sm">
-                            {activeWorkspace.engineerOfRecord || userProfile.fullName || 'Principal Engineer of Record, PE'}
+                            {activeWorkspace.engineerOfRecord || userProfile.fullName || '________________________'}
                           </div>
-                          <div className="text-slate-600 text-[11px]">Engineer of Record (EOR) / Principal</div>
-                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Consulting Engineering Practice'}</div>
+                          <div className="text-slate-600 text-[11px]">Engineer of Record (EOR)</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || '________________________'}</div>
                           <div className="pt-3">
                             <div className="w-full border-b-2 border-slate-800 mb-1"></div>
                             <div className="flex justify-between text-[9.5px] text-slate-500">
@@ -1005,7 +1009,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                               <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
                             </div>
                             <div className="text-[9.5px] text-slate-900 font-bold mt-0.5">
-                              {userProfile.licenseNumber ? `EOR Lic: ${userProfile.licenseNumber}` : 'Official Registered PE Stamp'}
+                              {userProfile.licenseNumber ? `EOR Lic: ${userProfile.licenseNumber}` : 'Seal & Lic: ________________________'}
                             </div>
                           </div>
                         </div>
@@ -1019,7 +1023,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                   <footer className="pt-4 border-t border-slate-300 text-[10px] font-mono text-slate-500 space-y-1 print-avoid-break">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>© 2026 BD. CivilLab. All rights reserved.</div>
-                      <div>Created &amp; Developed by PROKASH BISWAS</div>
+                      <div>BD. CivilLab Engineering Computation Suite</div>
                       <div>Document Ref: {documentId}</div>
                     </div>
                     <div className="text-[9px] text-slate-400 leading-tight">
@@ -1458,25 +1462,25 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Number of Spans</td>
             <td className="p-2 text-center">N_span</td>
-            <td className="p-2 text-right">{ws.continuousBeam?.spanCount || 2}</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.spanCount ?? 0}</td>
             <td className="p-2 text-center">spans</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Span 1 Length</td>
             <td className="p-2 text-center">L_1</td>
-            <td className="p-2 text-right">{ws.continuousBeam?.spans?.[0]?.lengthM || 6.0}</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.spans?.[0]?.lengthM ?? 0}</td>
             <td className="p-2 text-center">m</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Span 2 Length</td>
             <td className="p-2 text-center">L_2</td>
-            <td className="p-2 text-right">{ws.continuousBeam?.spans?.[1]?.lengthM || 6.0}</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.spans?.[1]?.lengthM ?? 0}</td>
             <td className="p-2 text-center">m</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Allowable Bending Stress</td>
             <td className="p-2 text-center">f_all</td>
-            <td className="p-2 text-right">{ws.continuousBeam?.allowableStressMpa || 165}</td>
+            <td className="p-2 text-right">{ws.continuousBeam?.allowableStressMpa ?? 0}</td>
             <td className="p-2 text-center">MPa</td>
           </tr>
         </>
@@ -1487,7 +1491,7 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Nodes / Members Mesh</td>
             <td className="p-2 text-center">N / M</td>
-            <td className="p-2 text-right">{ws.frameTruss2d?.nodes?.length || 4} / {ws.frameTruss2d?.members?.length || 3}</td>
+            <td className="p-2 text-right">{ws.frameTruss2d?.nodes?.length ?? 0} / {ws.frameTruss2d?.members?.length ?? 0}</td>
             <td className="p-2 text-center">elements</td>
           </tr>
           <tr>
@@ -1499,7 +1503,7 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Allowable Combined Stress</td>
             <td className="p-2 text-center">σ_all</td>
-            <td className="p-2 text-right">{ws.frameTruss2d?.allowableStressMpa || 250}</td>
+            <td className="p-2 text-right">{ws.frameTruss2d?.allowableStressMpa ?? 0}</td>
             <td className="p-2 text-center">MPa</td>
           </tr>
         </>
@@ -1510,19 +1514,19 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Cross-Section Profile</td>
             <td className="p-2 text-center">Shape</td>
-            <td className="p-2 text-right">{ws.sectionAnalyzer?.presetId ? ws.sectionAnalyzer.presetId.toUpperCase() : (ws.sectionAnalyzer?.shape || 'IPE 300')}</td>
+            <td className="p-2 text-right">{ws.sectionAnalyzer?.presetId ? ws.sectionAnalyzer.presetId.toUpperCase() : (ws.sectionAnalyzer?.shape || 'Custom')}</td>
             <td className="p-2 text-center">{ws.sectionAnalyzer?.designCode || 'EC3'}</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Steel Yield Strength</td>
             <td className="p-2 text-center">f_y / γ_M0</td>
-            <td className="p-2 text-right">{ws.sectionAnalyzer?.fyMpa || 275} / {ws.sectionAnalyzer?.gammaM0 || 1.0}</td>
+            <td className="p-2 text-right">{ws.sectionAnalyzer?.fyMpa ?? 0} / {ws.sectionAnalyzer?.gammaM0 ?? 0}</td>
             <td className="p-2 text-center">MPa</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Axial Force &amp; Bending Moment</td>
             <td className="p-2 text-center">N / M_y</td>
-            <td className="p-2 text-right">{ws.sectionAnalyzer?.axialForceN_Kn ?? -420} / {ws.sectionAnalyzer?.momentMy_Knm ?? 115}</td>
+            <td className="p-2 text-right">{ws.sectionAnalyzer?.axialForceN_Kn ?? 0} / {ws.sectionAnalyzer?.momentMy_Knm ?? 0}</td>
             <td className="p-2 text-center">kN / kN·m</td>
           </tr>
         </>
@@ -1533,19 +1537,19 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Column Cross-Section &amp; Code</td>
             <td className="p-2 text-center">b × h</td>
-            <td className="p-2 text-right">{ws.rcColumn?.widthB_Mm ?? 400} × {ws.rcColumn?.depthH_Mm ?? 500}</td>
+            <td className="p-2 text-right">{ws.rcColumn?.widthB_Mm ?? 0} × {ws.rcColumn?.depthH_Mm ?? 0}</td>
             <td className="p-2 text-center">mm ({ws.rcColumn?.designCode || 'BNBC-2020'})</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Concrete &amp; Rebar Strength</td>
             <td className="p-2 text-center">f&apos;c / f_y</td>
-            <td className="p-2 text-right">{ws.rcColumn?.concreteFcMpa ?? 28} / {ws.rcColumn?.rebarFyMpa ?? 420}</td>
+            <td className="p-2 text-right">{ws.rcColumn?.concreteFcMpa ?? 0} / {ws.rcColumn?.rebarFyMpa ?? 0}</td>
             <td className="p-2 text-center">MPa</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Factored Axial &amp; Biaxial Moments</td>
             <td className="p-2 text-center">P_u / M_ux / M_uy</td>
-            <td className="p-2 text-right">{ws.rcColumn?.axialLoadPu_Kn ?? 1850} / {ws.rcColumn?.momentMux_Knm ?? 140} / {ws.rcColumn?.momentMuy_Knm ?? 65}</td>
+            <td className="p-2 text-right">{ws.rcColumn?.axialLoadPu_Kn ?? 0} / {ws.rcColumn?.momentMux_Knm ?? 0} / {ws.rcColumn?.momentMuy_Knm ?? 0}</td>
             <td className="p-2 text-center">kN / kN·m</td>
           </tr>
         </>
@@ -1556,13 +1560,13 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">D-Region Benchmark / Model</td>
             <td className="p-2 text-center">STM</td>
-            <td className="p-2 text-right">{ws.strutAndTie?.presetName || 'Deep Beam STM'}</td>
+            <td className="p-2 text-right">{ws.strutAndTie?.presetName || 'Custom STM'}</td>
             <td className="p-2 text-center">Partial Scope</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Thickness &amp; Materials</td>
             <td className="p-2 text-center">t / f&apos;c / f_y</td>
-            <td className="p-2 text-right">{ws.strutAndTie?.memberThicknessMm ?? 400} / {ws.strutAndTie?.concreteFcMpa ?? 28} / {ws.strutAndTie?.rebarFyMpa ?? 420}</td>
+            <td className="p-2 text-right">{ws.strutAndTie?.memberThicknessMm ?? 0} / {ws.strutAndTie?.concreteFcMpa ?? 0} / {ws.strutAndTie?.rebarFyMpa ?? 0}</td>
             <td className="p-2 text-center">mm / MPa</td>
           </tr>
         </>
@@ -1573,13 +1577,13 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Pile Shaft Diameter</td>
             <td className="p-2 text-center">D</td>
-            <td className="p-2 text-right">{ws.pile?.diameterM || 0.6}</td>
+            <td className="p-2 text-right">{ws.pile?.diameterM ?? 0}</td>
             <td className="p-2 text-center">m</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Pile Penetration Length</td>
             <td className="p-2 text-center">L</td>
-            <td className="p-2 text-right">{ws.pile?.lengthM || 20}</td>
+            <td className="p-2 text-right">{ws.pile?.lengthM ?? 0}</td>
             <td className="p-2 text-center">m</td>
           </tr>
           <tr>
@@ -1591,7 +1595,7 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Required Factor of Safety</td>
             <td className="p-2 text-center">FoS</td>
-            <td className="p-2 text-right">{ws.pile?.factorOfSafety || 2.5}</td>
+            <td className="p-2 text-right">{ws.pile?.factorOfSafety ?? 0}</td>
             <td className="p-2 text-center">ratio</td>
           </tr>
         </>
@@ -1602,25 +1606,25 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Pipe Internal Diameter</td>
             <td className="p-2 text-center">D</td>
-            <td className="p-2 text-right">{ws.pipe?.internalDiameterMm || 200}</td>
+            <td className="p-2 text-right">{ws.pipe?.internalDiameterMm ?? 0}</td>
             <td className="p-2 text-center">mm</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Total Conduit Length</td>
             <td className="p-2 text-center">L</td>
-            <td className="p-2 text-right">{ws.pipe?.lengthM || 100}</td>
+            <td className="p-2 text-right">{ws.pipe?.lengthM ?? 0}</td>
             <td className="p-2 text-center">m</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Volumetric Discharge Rate</td>
             <td className="p-2 text-center">Q</td>
-            <td className="p-2 text-right">{ws.pipe?.flowRateLps || 50}</td>
+            <td className="p-2 text-right">{ws.pipe?.flowRateLps ?? 0}</td>
             <td className="p-2 text-center">L/s</td>
           </tr>
           <tr>
             <td className="p-2 font-medium">Hazen-Williams Roughness</td>
             <td className="p-2 text-center">C</td>
-            <td className="p-2 text-right">{ws.pipe?.hazenWilliamsC || 140}</td>
+            <td className="p-2 text-right">{ws.pipe?.hazenWilliamsC ?? 0}</td>
             <td className="p-2 text-center">-</td>
           </tr>
         </>
@@ -1631,7 +1635,7 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Survey Datum Benchmark</td>
             <td className="p-2 text-center">BM</td>
-            <td className="p-2 text-right">100.000</td>
+            <td className="p-2 text-right">0.000</td>
             <td className="p-2 text-center">m</td>
           </tr>
           <tr>
@@ -1669,7 +1673,7 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Jobsite Location</td>
             <td className="p-2 text-center">Site</td>
-            <td className="p-2 text-right">{ws.siteLocation || 'Main Sector'}</td>
+            <td className="p-2 text-right">{ws.siteLocation || '________________________'}</td>
             <td className="p-2 text-center">-</td>
           </tr>
         </>

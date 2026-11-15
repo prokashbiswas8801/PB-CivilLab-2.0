@@ -57,12 +57,13 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
   };
 
   const renderStatusBadge = (st: string) => {
-    switch (st) {
+    const effectiveStatus = (status as string) === 'zero_baseline' ? 'zero_baseline' : st;
+    switch (effectiveStatus) {
       case 'zero_baseline':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/12 text-amber-700 dark:text-amber-300 border border-amber-500/30">
             <Info className="w-3 h-3 text-amber-500" />
-            <span>0 BASELINE ACTIVE</span>
+            <span>0 BASELINE</span>
           </span>
         );
       case 'valid':
@@ -92,7 +93,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20">
             <Info className="w-3 h-3" />
-            <span>{st.toUpperCase()}</span>
+            <span>{effectiveStatus.toUpperCase()}</span>
           </span>
         );
     }
@@ -113,10 +114,10 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
   return (
     <div className={`space-y-3 font-mono ${className}`}>
       {hasZeroBaseline && (
-        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-mono">
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-amber-500/35 bg-amber-500/8 text-amber-700 dark:text-amber-300 text-xs font-mono">
           <Info className="w-4 h-4 shrink-0 text-amber-500" />
           <div className="flex-1">
-            <span className="font-bold">[0 VALUE ACTIVE]</span> Baseline Standby: One or more parameters are currently zero. Enter structural dimensions or load standard preset to run full capacity simulation.
+            <span className="font-bold">0 Baseline Active</span> — Enter dimensions or loads to compute, or click &ldquo;Load Standard Preset&rdquo; to populate a reference example.
           </div>
         </div>
       )}

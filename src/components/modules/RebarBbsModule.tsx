@@ -126,8 +126,8 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
           <UnitInput
             label="Nominal Clear Cover"
             category="length"
-            siValue={(bbs.clearCoverMm || 20) * 0.001}
-            onChangeSI={(val) => updateBBS({ clearCoverMm: Math.max(10, Math.round(val * 1000)) })}
+            siValue={(bbs.clearCoverMm ?? 0) * 0.001}
+            onChangeSI={(val) => updateBBS({ clearCoverMm: Math.max(0, Math.round(val * 1000)) })}
             currentUnitId={getFieldUnit('rebar.cover', 'length', 'mm')}
             onUnitChange={(u) => updateFieldUnit('rebar.cover', u)}
             customUnits={customUnits}
@@ -139,7 +139,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               { label: '75 mm', valueSI: 0.075, title: 'Cast Directly Against Soil (Footing Base)' },
             ]}
             validationRule={{
-              minSI: 0.015,
+              minSI: 0,
               maxSI: 0.150,
               warningBelowSI: 0.020,
               warningHint: 'Clear cover < 20 mm is below code minimum for concrete exposed to weather or internal fire resistance.',
@@ -184,10 +184,11 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
           <div>
             <label className="block text-xs font-semibold mb-1">Lapping Standard (&gt; 12m)</label>
             <select
-              value={bbs.lappingFactorD || 50}
+              value={bbs.lappingFactorD ?? 0}
               onChange={(e) => updateBBS({ lappingFactorD: Number(e.target.value) })}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
             >
+              <option value="0">0d (Unset)</option>
               <option value="50">50d Tension Lap (BNBC / ACI Class B)</option>
               <option value="60">60d Severe / Seismic Splice Lap</option>
               <option value="40">40d Compression Lap (Columns only)</option>
@@ -215,7 +216,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 type="button"
                 onClick={() => updateBBS({ elementCount: qty })}
                 className={`px-2.5 py-1.5 text-[11px] font-mono rounded-lg border whitespace-nowrap shrink-0 cursor-pointer ${
-                  (bbs.elementCount || 1) === qty
+                  (bbs.elementCount ?? 0) === qty
                     ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent font-bold'
                     : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                 }`}
@@ -225,10 +226,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             ))}
             <input
               type="number"
-              min="1"
+              min="0"
               max="500"
-              value={bbs.elementCount || 1}
-              onChange={(e) => updateBBS({ elementCount: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
+              value={bbs.elementCount ?? 0}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                updateBBS({ elementCount: Math.max(0, Math.round(isNaN(raw) ? 0 : raw)) });
+              }}
               className="w-16 min-h-[36px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)] text-center"
               aria-label="Identical element batch quantity"
             />
@@ -246,7 +250,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Clear Span Length L"
               category="length"
-              siValue={bbs.beamLengthM || 5.0}
+              siValue={bbs.beamLengthM ?? 0}
               onChangeSI={(val) => updateBBS({ beamLengthM: val })}
               currentUnitId={getFieldUnit('rebar.beamSpan', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.beamSpan', u)}
@@ -258,7 +262,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 { label: '6.0 m (20 ft)', valueSI: 6.0, title: 'Long Span' },
               ]}
               validationRule={{
-                minSI: 0.5,
+                minSI: 0,
                 maxSI: 30.0,
                 warningBelowSI: 1.0,
                 warningHint: 'Beam span < 1.0 m is unusually short for typical structural spans.',
@@ -267,7 +271,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Beam Width b"
               category="length"
-              siValue={(bbs.beamWidthMm || 250) * 0.001}
+              siValue={(bbs.beamWidthMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ beamWidthMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.beamW', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.beamW', u)}
@@ -282,7 +286,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Beam Total Depth h"
               category="length"
-              siValue={(bbs.beamDepthMm || 500) * 0.001}
+              siValue={(bbs.beamDepthMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ beamDepthMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.beamD', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.beamD', u)}
@@ -300,7 +304,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Main Longitudinal Rebar Dia"
               category="length"
-              siValue={(bbs.beamMainBarDiaMm || 16) * 0.001}
+              siValue={(bbs.beamMainBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ beamMainBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.beamMainDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.beamMainDia', u)}
@@ -317,10 +321,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 <label className="block text-xs font-semibold mb-1">Bottom Bars (Tension)</label>
                 <input
                   type="number"
-                  min="2"
+                  min="0"
                   max="12"
-                  value={bbs.beamBotBarCount || 3}
-                  onChange={(e) => updateBBS({ beamBotBarCount: Math.max(1, Number(e.target.value) || 2) })}
+                  value={bbs.beamBotBarCount ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateBBS({ beamBotBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <div className="flex items-center gap-1 mt-1">
@@ -330,7 +337,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                       type="button"
                       onClick={() => updateBBS({ beamBotBarCount: cnt })}
                       className={`px-2 py-0.5 text-[10px] font-mono rounded border cursor-pointer ${
-                        (bbs.beamBotBarCount || 3) === cnt
+                        (bbs.beamBotBarCount ?? 0) === cnt
                           ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
                           : 'bg-[var(--md-sys-color-surface-container)]'
                       }`}
@@ -344,10 +351,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 <label className="block text-xs font-semibold mb-1">Top Bars (Hangers)</label>
                 <input
                   type="number"
-                  min="2"
+                  min="0"
                   max="10"
-                  value={bbs.beamTopBarCount || 2}
-                  onChange={(e) => updateBBS({ beamTopBarCount: Math.max(1, Number(e.target.value) || 2) })}
+                  value={bbs.beamTopBarCount ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateBBS({ beamTopBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <div className="flex items-center gap-1 mt-1">
@@ -357,7 +367,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                       type="button"
                       onClick={() => updateBBS({ beamTopBarCount: cnt })}
                       className={`px-2 py-0.5 text-[10px] font-mono rounded border cursor-pointer ${
-                        (bbs.beamTopBarCount || 2) === cnt
+                        (bbs.beamTopBarCount ?? 0) === cnt
                           ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
                           : 'bg-[var(--md-sys-color-surface-container)]'
                       }`}
@@ -374,7 +384,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Shear Stirrup Bar Dia"
               category="length"
-              siValue={(bbs.beamStirrupDiaMm || 8) * 0.001}
+              siValue={(bbs.beamStirrupDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ beamStirrupDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.beamStirrupDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.beamStirrupDia', u)}
@@ -389,7 +399,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Stirrup Spacing c/c"
               category="length"
-              siValue={(bbs.beamStirrupSpacingMm || 150) * 0.001}
+              siValue={(bbs.beamStirrupSpacingMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ beamStirrupSpacingMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.beamStirrupSpacing', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.beamStirrupSpacing', u)}
@@ -448,7 +458,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Slab Thickness h"
               category="length"
-              siValue={(bbs.slabThicknessMm || 150) * 0.001}
+              siValue={(bbs.slabThicknessMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ slabThicknessMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.slabThick', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.slabThick', u)}
@@ -468,7 +478,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Main Reinforcement Bar Dia (Short Span)"
               category="length"
-              siValue={bbs.mainBarDiaMm * 0.001}
+              siValue={(bbs.mainBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ mainBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.mainDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.mainDia', u)}
@@ -484,7 +494,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Main Bar Spacing c/c"
               category="length"
-              siValue={(bbs.mainBarSpacingMm || 150) * 0.001}
+              siValue={(bbs.mainBarSpacingMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ mainBarSpacingMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.mainSpacing', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.mainSpacing', u)}
@@ -497,10 +507,10 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 { label: '175 mm (7")', valueSI: 0.175, title: '7" Spacing' },
               ]}
               validationRule={{
-                minSI: 0.075,
+                minSI: 0,
                 maxSI: 0.450,
-                warningAboveSI: Math.min((bbs.slabThicknessMm || 150) * 3, 450) * 0.001,
-                warningHint: `Spacing exceeds code maximum: BNBC/ACI limits slab bar spacing to min(3h, 450mm) = ${Math.min((bbs.slabThicknessMm || 150) * 3, 450)} mm.`,
+                warningAboveSI: (bbs.slabThicknessMm ?? 0) > 0 ? Math.min((bbs.slabThicknessMm ?? 0) * 3, 450) * 0.001 : undefined,
+                warningHint: `Spacing exceeds code maximum: BNBC/ACI limits slab bar spacing to min(3h, 450mm) = ${Math.min((bbs.slabThicknessMm ?? 0) * 3, 450)} mm.`,
               }}
               standardRef="ACI 318 Sec 7.7.2.3"
             />
@@ -510,7 +520,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Distribution / Temperature Bar Dia"
               category="length"
-              siValue={(bbs.distBarDiaMm || 10) * 0.001}
+              siValue={(bbs.distBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ distBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.distDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.distDia', u)}
@@ -526,7 +536,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Distribution Bar Spacing c/c"
               category="length"
-              siValue={(bbs.distBarSpacingMm || 175) * 0.001}
+              siValue={(bbs.distBarSpacingMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ distBarSpacingMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.distSpacing', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.distSpacing', u)}
@@ -553,7 +563,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Column Length L"
               category="length"
-              siValue={(bbs.colLengthMm || 450) * 0.001}
+              siValue={(bbs.colLengthMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ colLengthMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.colL', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.colL', u)}
@@ -568,7 +578,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Column Width B"
               category="length"
-              siValue={(bbs.colWidthMm || 450) * 0.001}
+              siValue={(bbs.colWidthMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ colWidthMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.colW', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.colW', u)}
@@ -583,7 +593,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Storey Clear Height H"
               category="length"
-              siValue={bbs.colHeightM || 3.6}
+              siValue={bbs.colHeightM ?? 0}
               onChangeSI={(val) => updateBBS({ colHeightM: val })}
               currentUnitId={getFieldUnit('rebar.colH', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.colH', u)}
@@ -601,7 +611,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Longitudinal Main Bar Dia"
               category="length"
-              siValue={(bbs.colMainBarDiaMm || 20) * 0.001}
+              siValue={(bbs.colMainBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ colMainBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.colMainDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.colMainDia', u)}
@@ -619,11 +629,14 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               <label className="block text-xs font-semibold mb-1">Longitudinal Bar Count (Nos)</label>
               <input
                 type="number"
-                min="4"
+                min="0"
                 max="32"
                 step="2"
-                value={bbs.colMainBarCount || 8}
-                onChange={(e) => updateBBS({ colMainBarCount: Math.max(4, Number(e.target.value) || 4) })}
+                value={bbs.colMainBarCount ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updateBBS({ colMainBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <div className="flex items-center gap-1 mt-1 overflow-x-auto">
@@ -649,7 +662,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Lateral Tie / Stirrup Dia"
               category="length"
-              siValue={(bbs.tieBarDiaMm || 10) * 0.001}
+              siValue={(bbs.tieBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ tieBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.tieDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.tieDia', u)}
@@ -665,7 +678,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Tie Spacing c/c"
               category="length"
-              siValue={(bbs.tieSpacingMm || 150) * 0.001}
+              siValue={(bbs.tieSpacingMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ tieSpacingMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.tieSpacing', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.tieSpacing', u)}
@@ -692,7 +705,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Column Outer Diameter D"
               category="length"
-              siValue={(bbs.circColDiaMm || 500) * 0.001}
+              siValue={(bbs.circColDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ circColDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.circDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.circDia', u)}
@@ -707,7 +720,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Clear Height H"
               category="length"
-              siValue={bbs.circColHeightM || 3.6}
+              siValue={bbs.circColHeightM ?? 0}
               onChangeSI={(val) => updateBBS({ circColHeightM: val })}
               currentUnitId={getFieldUnit('rebar.circH', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.circH', u)}
@@ -724,7 +737,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Main Longitudinal Bar Dia"
               category="length"
-              siValue={(bbs.circMainBarDiaMm || 20) * 0.001}
+              siValue={(bbs.circMainBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ circMainBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.circMainDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.circMainDia', u)}
@@ -740,10 +753,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               <label className="block text-xs font-semibold mb-1">Bar Count (Min 6 for Circular)</label>
               <input
                 type="number"
-                min="6"
+                min="0"
                 max="32"
-                value={bbs.circMainBarCount || 8}
-                onChange={(e) => updateBBS({ circMainBarCount: Math.max(6, Number(e.target.value) || 6) })}
+                value={bbs.circMainBarCount ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updateBBS({ circMainBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
             </div>
@@ -753,7 +769,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Helical Spiral Bar Dia"
               category="length"
-              siValue={(bbs.spiralTieDiaMm || 10) * 0.001}
+              siValue={(bbs.spiralTieDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ spiralTieDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.spiralDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.spiralDia', u)}
@@ -768,7 +784,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Spiral Pitch / Lead c/c"
               category="length"
-              siValue={(bbs.spiralPitchMm || 75) * 0.001}
+              siValue={(bbs.spiralPitchMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ spiralPitchMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.spiralPitch', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.spiralPitch', u)}
@@ -795,7 +811,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Footing Length L"
               category="length"
-              siValue={bbs.footingLengthM || 2.5}
+              siValue={bbs.footingLengthM ?? 0}
               onChangeSI={(val) => updateBBS({ footingLengthM: val })}
               currentUnitId={getFieldUnit('rebar.footL', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.footL', u)}
@@ -810,7 +826,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Footing Width B"
               category="length"
-              siValue={bbs.footingWidthM || 2.5}
+              siValue={bbs.footingWidthM ?? 0}
               onChangeSI={(val) => updateBBS({ footingWidthM: val })}
               currentUnitId={getFieldUnit('rebar.footW', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.footW', u)}
@@ -825,7 +841,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Footing Depth / Thickness D"
               category="length"
-              siValue={(bbs.footingDepthMm || 600) * 0.001}
+              siValue={(bbs.footingDepthMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ footingDepthMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.footD', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.footD', u)}
@@ -844,7 +860,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Footing Mesh Bar Dia"
               category="length"
-              siValue={(bbs.footingBarDiaMm || 16) * 0.001}
+              siValue={(bbs.footingBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ footingBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.footDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.footDia', u)}
@@ -860,7 +876,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Mesh Spacing c/c (Both Ways)"
               category="length"
-              siValue={(bbs.footingBarSpacingMm || 150) * 0.001}
+              siValue={(bbs.footingBarSpacingMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ footingBarSpacingMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.footSpacing', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.footSpacing', u)}
@@ -888,7 +904,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Horizontal Going L"
               category="length"
-              siValue={bbs.stairGoingM || 3.0}
+              siValue={bbs.stairGoingM ?? 0}
               onChangeSI={(val) => updateBBS({ stairGoingM: val })}
               currentUnitId={getFieldUnit('rebar.stairGoing', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.stairGoing', u)}
@@ -902,7 +918,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Total Vertical Rise H"
               category="length"
-              siValue={bbs.stairTotalRiseM || 1.8}
+              siValue={bbs.stairTotalRiseM ?? 0}
               onChangeSI={(val) => updateBBS({ stairTotalRiseM: val })}
               currentUnitId={getFieldUnit('rebar.stairRise', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.stairRise', u)}
@@ -916,7 +932,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Waist Slab Thickness"
               category="length"
-              siValue={(bbs.waistSlabThicknessMm || 150) * 0.001}
+              siValue={(bbs.waistSlabThicknessMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ waistSlabThicknessMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.waistThick', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.waistThick', u)}
@@ -933,7 +949,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Main Inclined Bar Dia"
               category="length"
-              siValue={(bbs.stairMainBarDiaMm || 12) * 0.001}
+              siValue={(bbs.stairMainBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ stairMainBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.stairMainDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.stairMainDia', u)}
@@ -948,7 +964,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Main Bar Spacing c/c"
               category="length"
-              siValue={(bbs.stairMainBarSpacingMm || 150) * 0.001}
+              siValue={(bbs.stairMainBarSpacingMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ stairMainBarSpacingMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.stairMainSpacing', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.stairMainSpacing', u)}
@@ -973,7 +989,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Lintel Clear Span L"
               category="length"
-              siValue={bbs.lintelLengthM ?? 2.1}
+              siValue={bbs.lintelLengthM ?? 0}
               onChangeSI={(val) => updateBBS({ lintelLengthM: val })}
               currentUnitId={getFieldUnit('rebar.lintelL', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.lintelL', u)}
@@ -988,7 +1004,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Lintel Width b"
               category="length"
-              siValue={(bbs.lintelWidthMm ?? 250) * 0.001}
+              siValue={(bbs.lintelWidthMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ lintelWidthMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.lintelW', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.lintelW', u)}
@@ -1002,7 +1018,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Lintel Depth D"
               category="length"
-              siValue={(bbs.lintelDepthMm ?? 150) * 0.001}
+              siValue={(bbs.lintelDepthMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ lintelDepthMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.lintelD', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.lintelD', u)}
@@ -1019,7 +1035,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Lintel Main Rebar Dia"
               category="length"
-              siValue={(bbs.lintelMainBarDiaMm ?? 12) * 0.001}
+              siValue={(bbs.lintelMainBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ lintelMainBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.lintelMainDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.lintelMainDia', u)}
@@ -1035,10 +1051,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 <label className="block text-xs font-semibold mb-1">Bottom Rebar (Nos)</label>
                 <input
                   type="number"
-                  min="2"
+                  min="0"
                   max="6"
-                  value={bbs.lintelBotBarCount ?? 2}
-                  onChange={(e) => updateBBS({ lintelBotBarCount: Math.max(2, Number(e.target.value) || 2) })}
+                  value={bbs.lintelBotBarCount ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateBBS({ lintelBotBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1046,10 +1065,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 <label className="block text-xs font-semibold mb-1">Top Rebar (Nos)</label>
                 <input
                   type="number"
-                  min="2"
+                  min="0"
                   max="6"
-                  value={bbs.lintelTopBarCount ?? 2}
-                  onChange={(e) => updateBBS({ lintelTopBarCount: Math.max(2, Number(e.target.value) || 2) })}
+                  value={bbs.lintelTopBarCount ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updateBBS({ lintelTopBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1064,7 +1086,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               <UnitInput
                 label="Chajja Projection P"
                 category="length"
-                siValue={bbs.chajjaProjectionM ?? 0.6}
+                siValue={bbs.chajjaProjectionM ?? 0}
                 onChangeSI={(val) => updateBBS({ chajjaProjectionM: val })}
                 currentUnitId={getFieldUnit('rebar.chajjaP', 'length', 'm')}
                 onUnitChange={(u) => updateFieldUnit('rebar.chajjaP', u)}
@@ -1079,7 +1101,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               <UnitInput
                 label="Chajja Main Cantilever Bar Dia"
                 category="length"
-                siValue={(bbs.chajjaMainBarDiaMm ?? 10) * 0.001}
+                siValue={(bbs.chajjaMainBarDiaMm ?? 0) * 0.001}
                 onChangeSI={(val) => updateBBS({ chajjaMainBarDiaMm: Math.round(val * 1000) })}
                 currentUnitId={getFieldUnit('rebar.chajjaMainDia', 'length', 'mm')}
                 onUnitChange={(u) => updateFieldUnit('rebar.chajjaMainDia', u)}
@@ -1093,7 +1115,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               <UnitInput
                 label="Chajja Main Bar Spacing c/c"
                 category="length"
-                siValue={(bbs.chajjaMainBarSpacingMm ?? 150) * 0.001}
+                siValue={(bbs.chajjaMainBarSpacingMm ?? 0) * 0.001}
                 onChangeSI={(val) => updateBBS({ chajjaMainBarSpacingMm: Math.round(val * 1000) })}
                 currentUnitId={getFieldUnit('rebar.chajjaSpacing', 'length', 'mm')}
                 onUnitChange={(u) => updateFieldUnit('rebar.chajjaSpacing', u)}
@@ -1119,7 +1141,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Pile Diameter D"
               category="length"
-              siValue={(bbs.pileDiaMm ?? 500) * 0.001}
+              siValue={(bbs.pileDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ pileDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.pileDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.pileDia', u)}
@@ -1135,7 +1157,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Pile Depth / Length L"
               category="length"
-              siValue={bbs.pileLengthM ?? 18.0}
+              siValue={bbs.pileLengthM ?? 0}
               onChangeSI={(val) => updateBBS({ pileLengthM: val })}
               currentUnitId={getFieldUnit('rebar.pileL', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.pileL', u)}
@@ -1150,7 +1172,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Pile Head Embedment into Cap"
               category="length"
-              siValue={bbs.pileCutoffEmbedmentM ?? 0.75}
+              siValue={bbs.pileCutoffEmbedmentM ?? 0}
               onChangeSI={(val) => updateBBS({ pileCutoffEmbedmentM: val })}
               currentUnitId={getFieldUnit('rebar.pileCapEmbed', 'length', 'm')}
               onUnitChange={(u) => updateFieldUnit('rebar.pileCapEmbed', u)}
@@ -1168,7 +1190,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Longitudinal Main Bar Dia"
               category="length"
-              siValue={(bbs.pileMainBarDiaMm ?? 16) * 0.001}
+              siValue={(bbs.pileMainBarDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ pileMainBarDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.pileMainDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.pileMainDia', u)}
@@ -1184,10 +1206,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               <label className="block text-xs font-semibold mb-1">Longitudinal Bar Count</label>
               <input
                 type="number"
-                min="6"
+                min="0"
                 max="24"
-                value={bbs.pileMainBarCount ?? 7}
-                onChange={(e) => updateBBS({ pileMainBarCount: Math.max(6, Number(e.target.value) || 6) })}
+                value={bbs.pileMainBarCount ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updateBBS({ pileMainBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <div className="flex items-center gap-1 mt-1 overflow-x-auto">
@@ -1197,7 +1222,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                     type="button"
                     onClick={() => updateBBS({ pileMainBarCount: cnt })}
                     className={`px-2 py-0.5 text-[10px] font-mono rounded border cursor-pointer ${
-                      (bbs.pileMainBarCount ?? 7) === cnt
+                      (bbs.pileMainBarCount ?? 0) === cnt
                         ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-bold'
                         : 'bg-[var(--md-sys-color-surface-container)]'
                     }`}
@@ -1213,7 +1238,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Helical Spiral Tie Dia"
               category="length"
-              siValue={(bbs.pileSpiralDiaMm ?? 8) * 0.001}
+              siValue={(bbs.pileSpiralDiaMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ pileSpiralDiaMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.pileSpiralDia', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.pileSpiralDia', u)}
@@ -1227,7 +1252,7 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <UnitInput
               label="Helical Spiral Pitch"
               category="length"
-              siValue={(bbs.pileSpiralPitchMm ?? 150) * 0.001}
+              siValue={(bbs.pileSpiralPitchMm ?? 0) * 0.001}
               onChangeSI={(val) => updateBBS({ pileSpiralPitchMm: Math.round(val * 1000) })}
               currentUnitId={getFieldUnit('rebar.pileSpiralPitch', 'length', 'mm')}
               onUnitChange={(u) => updateFieldUnit('rebar.pileSpiralPitch', u)}
@@ -1348,11 +1373,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                   <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Qty</span>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     value={entry.count}
                     onChange={(e) => {
                       const next = [...(bbs.batchEntries || [])];
-                      next[idx] = { ...next[idx], count: Math.max(1, Number(e.target.value) || 1) };
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      next[idx] = { ...next[idx], count: Math.max(0, isNaN(raw) ? 0 : raw) };
                       updateBBS({ batchEntries: next });
                     }}
                     className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums bg-[var(--md-sys-color-surface)]"
@@ -1363,11 +1389,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                   <input
                     type="number"
                     step="0.2"
-                    min="0.2"
+                    min="0"
                     value={entry.spanLengthM}
                     onChange={(e) => {
                       const next = [...(bbs.batchEntries || [])];
-                      next[idx] = { ...next[idx], spanLengthM: Math.max(0.1, Number(e.target.value) || 0.5) };
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      next[idx] = { ...next[idx], spanLengthM: Math.max(0, isNaN(raw) ? 0 : raw) };
                       updateBBS({ batchEntries: next });
                     }}
                     className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums bg-[var(--md-sys-color-surface)]"
@@ -1439,8 +1466,16 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
     );
   }, [activeStockRows, showAllStandardDiameters]);
 
+  const isZeroBaseline = result.totalSteelWeightKg <= 0 && result.totalBarsLengthM <= 0;
+
   return (
     <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      {isZeroBaseline && (
+        <div className="px-3.5 py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs font-mono flex items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider">0 BASELINE STANDBY</span>
+          <span className="opacity-90">Enter element dimensions, bar diameters, and counts to compute cutting lengths &amp; 12m stock optimization.</span>
+        </div>
+      )}
       {/* >12m Mill-Length Lap Splice Advisory Alert */}
       {result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0 && (
         <div className="p-3 rounded-xl border border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/35 space-y-1.5">
@@ -1448,7 +1483,7 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
             <div className="flex items-center gap-2 text-xs font-bold text-[var(--md-sys-color-error)]">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>
-                Mill-Length Exceeded (&gt;12.0 m): Automatic {activeWorkspace.rebarBbs.lappingFactorD || 50}d Lap Splice Added
+                Mill-Length Exceeded (&gt;12.0 m): Automatic {activeWorkspace.rebarBbs.lappingFactorD ?? 0}d Lap Splice Added
               </span>
             </div>
             <span className="text-[11px] font-mono font-semibold text-[var(--md-sys-color-on-surface-variant)]">

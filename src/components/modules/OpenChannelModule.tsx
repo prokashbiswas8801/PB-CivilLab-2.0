@@ -51,8 +51,8 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
       channel: {
         ...ws.channel,
         shape,
-        sideSlopeZ: shape === 'rectangular' ? 0 : shape === 'circular' ? 0 : ws.channel.sideSlopeZ || 1.5,
-        diameterM: ws.channel.diameterM || 1.2,
+        sideSlopeZ: shape === 'rectangular' ? 0 : shape === 'circular' ? 0 : (ws.channel.sideSlopeZ ?? 0),
+        diameterM: ws.channel.diameterM ?? 0,
       },
     }));
   };
@@ -116,11 +116,11 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
           <UnitInput
             label="Internal Diameter (D)"
             category="length"
-            siValue={channel.diameterM || 1.2}
+            siValue={channel.diameterM ?? 0}
             onChangeSI={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                channel: { ...ws.channel, diameterM: Math.max(0.1, val) },
+                channel: { ...ws.channel, diameterM: Math.max(0, val) },
               }));
             }}
             currentUnitId={getFieldUnit('hyd.D', 'length', 'm')}
@@ -136,7 +136,7 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
             onChangeSI={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                channel: { ...ws.channel, bottomWidthM: Math.max(0.1, val) },
+                channel: { ...ws.channel, bottomWidthM: Math.max(0, val) },
               }));
             }}
             currentUnitId={getFieldUnit('hyd.b', 'length', 'm')}
@@ -153,7 +153,7 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
           onChangeSI={(val) => {
             updateActiveWorkspace((ws) => ({
               ...ws,
-              channel: { ...ws.channel, flowDepthM: Math.max(0.01, val) },
+              channel: { ...ws.channel, flowDepthM: Math.max(0, val) },
             }));
           }}
           currentUnitId={getFieldUnit('hyd.y', 'length', 'm')}
@@ -172,7 +172,7 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
           onChangeSI={(val) => {
             updateActiveWorkspace((ws) => ({
               ...ws,
-              channel: { ...ws.channel, bedSlope: Math.max(0.00001, val) },
+              channel: { ...ws.channel, bedSlope: Math.max(0, val) },
             }));
           }}
           currentUnitId={getFieldUnit('hyd.slope', 'slope', 'ratio')}
@@ -210,7 +210,7 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
           <UnitInput
             label="Freeboard Requirement"
             category="length"
-            siValue={channel.freeboardRequirementM || 0.3}
+            siValue={channel.freeboardRequirementM ?? 0}
             onChangeSI={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
@@ -231,11 +231,11 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
           <input
             type="number"
             step="0.001"
-            min="0.008"
-            max="0.08"
+            min="0"
+            max="0.1"
             value={channel.manningN}
             onChange={(e) => {
-              const val = Math.max(0.008, Math.min(0.08, Number(e.target.value) || 0.015));
+              const val = Math.max(0, Math.min(0.1, Number(e.target.value) || 0));
               updateActiveWorkspace((ws) => ({
                 ...ws,
                 channel: { ...ws.channel, manningN: val },
@@ -302,9 +302,9 @@ export const OpenChannelMetrics: React.FC<OpenChannelMetricsProps> = ({
   getOutputUnit,
   updateOutputUnit,
 }) => {
-  const isSupercritical = result.flowRegime === 'Supercritical';
-  const isCritical = result.flowRegime === 'Critical';
-  const isSubcritical = result.flowRegime === 'Subcritical';
+  const isZeroBaseline = (result as any).status === 'zero_baseline' || (result.flowAreaM2 === 0 && result.dischargeM3ps === 0);
+  const isSupercritical = !isZeroBaseline && result.flowRegime === 'Supercritical';
+  const isCritical = !isZeroBaseline && result.flowRegime === 'Critical';
 
   return (
     <div className="space-y-4 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
@@ -350,7 +350,9 @@ export const OpenChannelMetrics: React.FC<OpenChannelMetricsProps> = ({
         {/* Froude & Regime Status */}
         <div
           className={`p-3.5 rounded-xl border flex flex-col justify-between ${
-            isSupercritical
+            isZeroBaseline
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+              : isSupercritical
               ? 'bg-amber-500/10 border-amber-500/40 text-amber-900 dark:text-amber-200'
               : isCritical
               ? 'bg-purple-500/10 border-purple-500/40 text-purple-900 dark:text-purple-200'
@@ -365,14 +367,16 @@ export const OpenChannelMetrics: React.FC<OpenChannelMetricsProps> = ({
               </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  isSupercritical
+                  isZeroBaseline
+                    ? 'bg-amber-600 text-white'
+                    : isSupercritical
                     ? 'bg-amber-500 text-white'
                     : isCritical
                     ? 'bg-purple-500 text-white'
                     : 'bg-blue-600 text-white'
                 }`}
               >
-                {result.flowRegime}
+                {isZeroBaseline ? '0 Baseline' : result.flowRegime}
               </span>
             </div>
             <div className="text-2xl font-black font-mono mt-1">
@@ -380,7 +384,9 @@ export const OpenChannelMetrics: React.FC<OpenChannelMetricsProps> = ({
             </div>
           </div>
           <div className="text-[11px] opacity-85 mt-2">
-            {isSupercritical
+            {isZeroBaseline
+              ? '0 Baseline Active — Enter bed width/diameter, flow depth, slope & Manning n to solve flow.'
+              : isSupercritical
               ? 'Supercritical (Fr > 1.0): Rapid shooting flow with upstream control. Hydraulic jump risk downstream.'
               : isCritical
               ? 'Critical Flow (Fr ≈ 1.0): Flow operates at minimum specific energy with unstable surface ripples.'

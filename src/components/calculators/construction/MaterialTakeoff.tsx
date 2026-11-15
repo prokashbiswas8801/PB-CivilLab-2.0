@@ -35,22 +35,19 @@ export const MaterialTakeoff: React.FC = () => {
   // =========================================================================
   // TAB 1: BRICKWORK ESTIMATOR STATE
   // =========================================================================
-  const [wallLengthM, setWallLengthM] = useState<number>(15.0); // 15m wall run
-  const [wallHeightM, setWallHeightM] = useState<number>(3.0); // 3.0m story height
+  const [wallLengthM, setWallLengthM] = useState<number>(0);
+  const [wallHeightM, setWallHeightM] = useState<number>(0);
   const [wallThicknessType, setWallThicknessType] = useState<'125mm' | '250mm' | 'custom'>('125mm');
-  const [customThicknessMm, setCustomThicknessMm] = useState<number>(125);
+  const [customThicknessMm, setCustomThicknessMm] = useState<number>(0);
   const [mortarRatio, setMortarRatio] = useState<'1:4' | '1:5' | '1:6'>('1:5');
   const [brickStandard, setBrickStandard] = useState<'traditional' | 'modular'>('traditional');
-  const [brickWastagePercent, setBrickWastagePercent] = useState<number>(5.0); // 5%
-  const [mortarWastagePercent, setMortarWastagePercent] = useState<number>(10.0); // 10%
-  const [brickUnitPrice, setBrickUnitPrice] = useState<number>(12.0); // 12 BDT/INR or $0.15
-  const [cementBagPrice, setCementBagPrice] = useState<number>(520); // 520 / bag
-  const [sandCftPrice, setSandCftPrice] = useState<number>(45); // 45 / cft
+  const [brickWastagePercent, setBrickWastagePercent] = useState<number>(0);
+  const [mortarWastagePercent, setMortarWastagePercent] = useState<number>(0);
+  const [brickUnitPrice, setBrickUnitPrice] = useState<number>(0);
+  const [cementBagPrice, setCementBagPrice] = useState<number>(0);
+  const [sandCftPrice, setSandCftPrice] = useState<number>(0);
 
-  const [openings, setOpenings] = useState<OpeningDeduction[]>([
-    { id: 'op-1', name: 'Main Door (D1)', widthM: 1.0, heightM: 2.1, quantity: 2 },
-    { id: 'op-2', name: 'Window (W1)', widthM: 1.5, heightM: 1.2, quantity: 3 },
-  ]);
+  const [openings, setOpenings] = useState<OpeningDeduction[]>([]);
 
   const addOpening = () => {
     setOpenings((prev) => [
@@ -94,8 +91,8 @@ export const MaterialTakeoff: React.FC = () => {
     );
     const totalDeductionsVolumeM3 = totalDeductionsAreaM2 * thicknessM;
 
-    const netWallAreaM2 = Math.max(0.1, grossWallAreaM2 - totalDeductionsAreaM2);
-    const netVolumeM3 = Math.max(0.01, grossVolumeM3 - totalDeductionsVolumeM3);
+    const netWallAreaM2 = Math.max(0, grossWallAreaM2 - totalDeductionsAreaM2);
+    const netVolumeM3 = Math.max(0, grossVolumeM3 - totalDeductionsVolumeM3);
 
     // Brick Dimensions with / without mortar
     // Traditional Bengal/South-Asian: Nominal 250 x 125 x 75 mm (with 10mm mortar), Dry brick: 240 x 115 x 70 mm
@@ -179,7 +176,7 @@ export const MaterialTakeoff: React.FC = () => {
   // =========================================================================
   // TAB 2: PLASTERING & PAINTING STATE
   // =========================================================================
-  const [plasterAreaM2, setPlasterAreaM2] = useState<number>(120); // 120 m2
+  const [plasterAreaM2, setPlasterAreaM2] = useState<number>(0);
   const [plasterThicknessMm, setPlasterThicknessMm] = useState<number>(12); // 12mm internal
   const [plasterRatio, setPlasterRatio] = useState<'1:3' | '1:4' | '1:5' | '1:6'>('1:4');
   const [includePaint, setIncludePaint] = useState<boolean>(true);
@@ -241,28 +238,28 @@ export const MaterialTakeoff: React.FC = () => {
   // =========================================================================
   // TAB 3: FLOORING & TILES STATE
   // =========================================================================
-  const [roomLengthM, setRoomLengthM] = useState<number>(6.0); // 6m
-  const [roomWidthM, setRoomWidthM] = useState<number>(5.0); // 5m
+  const [roomLengthM, setRoomLengthM] = useState<number>(0);
+  const [roomWidthM, setRoomWidthM] = useState<number>(0);
   const [tileLengthMm, setTileLengthMm] = useState<number>(600); // 600mm
   const [tileWidthMm, setTileWidthMm] = useState<number>(600); // 600mm
-  const [skirtingHeightMm, setSkirtingHeightMm] = useState<number>(100); // 100mm (4")
-  const [skirtingDoorDeductionM, setSkirtingDoorDeductionM] = useState<number>(2.0); // 2m door openings
-  const [tileWastagePercent, setTileWastagePercent] = useState<number>(7.0); // 7%
+  const [skirtingHeightMm, setSkirtingHeightMm] = useState<number>(0);
+  const [skirtingDoorDeductionM, setSkirtingDoorDeductionM] = useState<number>(0);
+  const [tileWastagePercent, setTileWastagePercent] = useState<number>(0);
   const [tilesPerBox, setTilesPerBox] = useState<number>(4); // 4 tiles/box (standard for 600x600)
-  const [bedThicknessMm, setBedThicknessMm] = useState<number>(35); // 35mm mortar bed
+  const [bedThicknessMm, setBedThicknessMm] = useState<number>(0);
   const [bedRatio, setBedRatio] = useState<'1:4' | '1:6'>('1:4');
-  const [groutWidthMm, setGroutWidthMm] = useState<number>(3); // 3mm grout joints
+  const [groutWidthMm, setGroutWidthMm] = useState<number>(0);
 
   const tileCalc = useMemo(() => {
     const floorAreaM2 = roomLengthM * roomWidthM;
     const perimeterM = Math.max(0, 2 * (roomLengthM + roomWidthM) - skirtingDoorDeductionM);
-    const skirtingAreaM2 = perimeterM * (skirtingHeightMm / 1000);
+    const skirtingAreaM2 = floorAreaM2 > 0 ? perimeterM * (skirtingHeightMm / 1000) : 0;
     const totalTileAreaM2 = floorAreaM2 + skirtingAreaM2;
 
     const singleTileAreaM2 = (tileLengthMm / 1000) * (tileWidthMm / 1000);
-    const netTileCount = Math.ceil(totalTileAreaM2 / singleTileAreaM2);
+    const netTileCount = singleTileAreaM2 > 0 ? Math.ceil(totalTileAreaM2 / singleTileAreaM2) : 0;
     const grossTileCount = Math.ceil(netTileCount * (1 + tileWastagePercent / 100));
-    const boxesRequired = Math.ceil(grossTileCount / tilesPerBox);
+    const boxesRequired = tilesPerBox > 0 ? Math.ceil(grossTileCount / tilesPerBox) : 0;
 
     // Bed Mortar
     const wetBedVolM3 = floorAreaM2 * (bedThicknessMm / 1000);
@@ -304,17 +301,17 @@ export const MaterialTakeoff: React.FC = () => {
   // TAB 4: FORMWORK (SHUTTERING) & LABOR STATE
   // =========================================================================
   const [formElementType, setFormElementType] = useState<'slab' | 'beam' | 'column' | 'combined'>('combined');
-  const [slabSoffitAreaM2, setSlabSoffitAreaM2] = useState<number>(150); // 150 m2
-  const [beamLengthM, setBeamLengthM] = useState<number>(60); // 60m total beams
-  const [beamDepthMm, setBeamDepthMm] = useState<number>(450); // 450mm
-  const [beamWidthMm, setBeamWidthMm] = useState<number>(250); // 250mm
-  const [columnCount, setColumnCount] = useState<number>(12); // 12 columns
-  const [colSizeBMm, setColSizeBMm] = useState<number>(300); // 300mm
-  const [colSizeDMm, setColSizeDMm] = useState<number>(450); // 450mm
-  const [colHeightM, setColHeightM] = useState<number>(3.0); // 3m
-  const [propsSpacingM, setPropsSpacingM] = useState<number>(1.1); // 1.1m c/c grid
-  const [masonDailyWage, setMasonDailyWage] = useState<number>(900); // 900 / day
-  const [helperDailyWage, setHelperDailyWage] = useState<number>(600); // 600 / day
+  const [slabSoffitAreaM2, setSlabSoffitAreaM2] = useState<number>(0);
+  const [beamLengthM, setBeamLengthM] = useState<number>(0);
+  const [beamDepthMm, setBeamDepthMm] = useState<number>(0);
+  const [beamWidthMm, setBeamWidthMm] = useState<number>(0);
+  const [columnCount, setColumnCount] = useState<number>(0);
+  const [colSizeBMm, setColSizeBMm] = useState<number>(0);
+  const [colSizeDMm, setColSizeDMm] = useState<number>(0);
+  const [colHeightM, setColHeightM] = useState<number>(0);
+  const [propsSpacingM, setPropsSpacingM] = useState<number>(0);
+  const [masonDailyWage, setMasonDailyWage] = useState<number>(0);
+  const [helperDailyWage, setHelperDailyWage] = useState<number>(0);
 
   const formworkCalc = useMemo(() => {
     // 1. Shuttering Area Calculation
@@ -341,7 +338,7 @@ export const MaterialTakeoff: React.FC = () => {
     // 2. Props & Staging
     // Staging prop required per m2 of horizontal soffit (slab + beam bottoms)
     const horizSoffitArea = slabShutterArea + beamLengthM * (beamWidthMm / 1000);
-    const propsCount = Math.ceil(horizSoffitArea / (propsSpacingM * propsSpacingM));
+    const propsCount = propsSpacingM > 0 ? Math.ceil(horizSoffitArea / (propsSpacingM * propsSpacingM)) : 0;
 
     // Release oil: ~1 Liter covers 20 - 25 m2 of plywood/steel shuttering
     const shutterOilLiters = totalShutteringAreaM2 / 22;
@@ -354,7 +351,7 @@ export const MaterialTakeoff: React.FC = () => {
     const carpenterCost = carpenterManDays * masonDailyWage;
     const helperCost = helperManDays * helperDailyWage;
     const totalLaborCost = carpenterCost + helperCost;
-    const unitLaborCostPerM2 = totalLaborCost / Math.max(1, totalShutteringAreaM2);
+    const unitLaborCostPerM2 = totalShutteringAreaM2 > 0 ? totalLaborCost / totalShutteringAreaM2 : 0;
 
     return {
       slabShutterArea,
@@ -439,12 +436,12 @@ export const MaterialTakeoff: React.FC = () => {
     const pdfData = {
       projectMeta: {
         projectName: 'Construction Material Takeoff & Labor Productivity Assessment',
-        projectCode: 'BOQ-TAKEOFF-2026',
-        client: 'Site Quantity Surveying & Procurement Division',
-        location: 'Civil Construction Submittal',
+        projectCode: 'PRJ-001',
+        client: '',
+        location: '',
         date: new Date().toISOString().slice(0, 10),
         unitSystem: 'SI' as const,
-        engineerName: 'Prokash Biswas, PE',
+        engineerName: '',
       },
       moduleMeta: {
         moduleId: 'material-takeoff-boq',
@@ -571,7 +568,7 @@ export const MaterialTakeoff: React.FC = () => {
                     type="number"
                     step="0.5"
                     value={wallLengthM}
-                    onChange={(e) => setWallLengthM(Math.max(0.5, Number(e.target.value)))}
+                    onChange={(e) => setWallLengthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -588,7 +585,7 @@ export const MaterialTakeoff: React.FC = () => {
                     type="number"
                     step="0.2"
                     value={wallHeightM}
-                    onChange={(e) => setWallHeightM(Math.max(0.5, Number(e.target.value)))}
+                    onChange={(e) => setWallHeightM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -626,7 +623,7 @@ export const MaterialTakeoff: React.FC = () => {
                       type="number"
                       step="25"
                       value={customThicknessMm}
-                      onChange={(e) => setCustomThicknessMm(Math.max(75, Number(e.target.value)))}
+                      onChange={(e) => setCustomThicknessMm(Math.max(0, Number(e.target.value) || 0))}
                       className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                       placeholder="Thickness in mm"
                     />
@@ -796,7 +793,7 @@ export const MaterialTakeoff: React.FC = () => {
 
                 <div className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container)] flex items-center justify-between">
                   <span className="text-slate-500">Wet Mortar Volume (Voids):</span>
-                  <strong>{brickCalc.wetMortarM3.toFixed(3)} m³ (~{( (brickCalc.wetMortarM3 / brickCalc.netVolumeM3) * 100 ).toFixed(1)}% of brickwork)</strong>
+                  <strong>{brickCalc.wetMortarM3.toFixed(3)} m³ (~{(brickCalc.netVolumeM3 > 0 ? (brickCalc.wetMortarM3 / brickCalc.netVolumeM3) * 100 : 0).toFixed(1)}% of brickwork)</strong>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[var(--md-sys-color-surface-container)] flex items-center justify-between">
@@ -860,7 +857,7 @@ export const MaterialTakeoff: React.FC = () => {
                   <input
                     type="number"
                     value={plasterAreaM2}
-                    onChange={(e) => setPlasterAreaM2(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setPlasterAreaM2(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                   <span className="text-xs font-mono text-slate-500">m²</span>
@@ -1063,7 +1060,7 @@ export const MaterialTakeoff: React.FC = () => {
                     type="number"
                     step="0.5"
                     value={roomLengthM}
-                    onChange={(e) => setRoomLengthM(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setRoomLengthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1080,7 +1077,7 @@ export const MaterialTakeoff: React.FC = () => {
                     type="number"
                     step="0.5"
                     value={roomWidthM}
-                    onChange={(e) => setRoomWidthM(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setRoomWidthM(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1154,7 +1151,7 @@ export const MaterialTakeoff: React.FC = () => {
                     type="number"
                     step="5"
                     value={bedThicknessMm}
-                    onChange={(e) => setBedThicknessMm(Math.max(15, Number(e.target.value)))}
+                    onChange={(e) => setBedThicknessMm(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1166,7 +1163,7 @@ export const MaterialTakeoff: React.FC = () => {
                     type="number"
                     step="0.5"
                     value={groutWidthMm}
-                    onChange={(e) => setGroutWidthMm(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setGroutWidthMm(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1353,7 +1350,7 @@ export const MaterialTakeoff: React.FC = () => {
                   <input
                     type="number"
                     value={masonDailyWage}
-                    onChange={(e) => setMasonDailyWage(Math.max(100, Number(e.target.value)))}
+                    onChange={(e) => setMasonDailyWage(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1364,7 +1361,7 @@ export const MaterialTakeoff: React.FC = () => {
                   <input
                     type="number"
                     value={helperDailyWage}
-                    onChange={(e) => setHelperDailyWage(Math.max(100, Number(e.target.value)))}
+                    onChange={(e) => setHelperDailyWage(Math.max(0, Number(e.target.value) || 0))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>

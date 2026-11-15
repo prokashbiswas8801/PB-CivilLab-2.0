@@ -9,6 +9,7 @@ import {
 } from '../../types/civil';
 import { PipeHydraulicsResult } from '../../utils/calculations';
 import { HYDRAULIC_MATERIALS, STANDARD_COMMERCIAL_DIAMETERS_MM } from '../../utils/hydraulicsSolver';
+import { createDefaultPipeHydraulics } from '../../utils/storage';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
 import {
@@ -43,21 +44,7 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
   getFieldUnit = (_k, _c, fallback) => fallback,
   updateFieldUnit = () => {},
 }) => {
-  const pipe = activeWorkspace.pipe || {
-    serviceType: 'pressure',
-    pipeMaterial: 'pvc',
-    hazenWilliamsC: 150,
-    manningN: 0.009,
-    internalDiameterMm: 250,
-    lengthM: 180,
-    flowRateLps: 45,
-    inletElevationM: 25.0,
-    outletElevationM: 18.0,
-    inletPressureKpa: 300,
-    minorLossCoefficientK: 2.0,
-    waterTempC: 20,
-    stormFillingRatio: 0.8,
-  };
+  const pipe = activeWorkspace.pipe || createDefaultPipeHydraulics();
 
   const [activeTab, setActiveTab] = useState<'parameters' | 'materials' | 'sizing'>('parameters');
 
@@ -176,14 +163,15 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <input
               type="number"
               value={pipe.hazenWilliamsC}
-              onChange={(e) =>
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
                 updatePipe({
-                  hazenWilliamsC: Math.max(40, Math.min(165, Number(e.target.value) || 130)),
-                })
-              }
+                  hazenWilliamsC: Math.max(0, Math.min(165, isNaN(raw) ? 0 : raw)),
+                });
+              }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               step="5"
-              min="40"
+              min="0"
               max="165"
             />
           </div>
@@ -194,15 +182,16 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             </label>
             <input
               type="number"
-              value={pipe.manningN || 0.012}
-              onChange={(e) =>
+              value={pipe.manningN ?? 0}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
                 updatePipe({
-                  manningN: Math.max(0.008, Math.min(0.045, Number(e.target.value) || 0.012)),
-                })
-              }
+                  manningN: Math.max(0, Math.min(0.045, isNaN(raw) ? 0 : raw)),
+                });
+              }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               step="0.001"
-              min="0.008"
+              min="0"
               max="0.045"
             />
           </div>
@@ -213,15 +202,16 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             </label>
             <input
               type="number"
-              value={pipe.waterTempC || 20}
-              onChange={(e) =>
+              value={pipe.waterTempC ?? 0}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
                 updatePipe({
-                  waterTempC: Math.max(4, Math.min(60, Number(e.target.value) || 20)),
-                })
-              }
+                  waterTempC: Math.max(0, Math.min(60, isNaN(raw) ? 0 : raw)),
+                });
+              }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               step="1"
-              min="4"
+              min="0"
               max="60"
             />
           </div>
@@ -232,12 +222,13 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             </label>
             <input
               type="number"
-              value={pipe.minorLossCoefficientK ?? 1.5}
-              onChange={(e) =>
+              value={pipe.minorLossCoefficientK ?? 0}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
                 updatePipe({
-                  minorLossCoefficientK: Math.max(0, Number(e.target.value) || 0),
-                })
-              }
+                  minorLossCoefficientK: Math.max(0, isNaN(raw) ? 0 : raw),
+                });
+              }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               step="0.5"
               min="0"
@@ -306,8 +297,8 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
           />
           <div className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 flex justify-between">
             <span>Est. V: {currentVelocityMps.toFixed(2)} m/s</span>
-            <span className={currentVelocityMps < 0.6 ? 'text-amber-600' : currentVelocityMps > 3.0 ? 'text-red-600' : 'text-emerald-600'}>
-              {currentVelocityMps < 0.6 ? 'Low (Silt)' : currentVelocityMps > 3.0 ? 'High (Scour)' : 'Optimal'}
+            <span className={pipe.flowRateLps === 0 || pipe.internalDiameterMm === 0 ? 'text-amber-600' : currentVelocityMps < 0.6 ? 'text-amber-600' : currentVelocityMps > 3.0 ? 'text-red-600' : 'text-emerald-600'}>
+              {pipe.flowRateLps === 0 || pipe.internalDiameterMm === 0 ? '0 Baseline' : currentVelocityMps < 0.6 ? 'Low (Silt)' : currentVelocityMps > 3.0 ? 'High (Scour)' : 'Optimal'}
             </span>
           </div>
         </div>
@@ -347,14 +338,15 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <input
               type="number"
               step="0.05"
-              min="0.2"
+              min="0"
               max="1.0"
-              value={pipe.stormFillingRatio ?? 0.8}
-              onChange={(e) =>
+              value={pipe.stormFillingRatio ?? 0}
+              onChange={(e) => {
+                const raw = e.target.value === '' ? 0 : Number(e.target.value);
                 updatePipe({
-                  stormFillingRatio: Math.max(0.2, Math.min(1.0, Number(e.target.value) || 0.8)),
-                })
-              }
+                  stormFillingRatio: Math.max(0, Math.min(1.0, isNaN(raw) ? 0 : raw)),
+                });
+              }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
             />
             <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1">
@@ -365,7 +357,7 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
           <UnitInput
             label="Inlet Pressure (P₁)"
             category="pressure"
-            siValue={(pipe.inletPressureKpa || 250) * 1000}
+            siValue={(pipe.inletPressureKpa ?? 0) * 1000}
             onChangeSI={(val) => updatePipe({ inletPressureKpa: Math.max(0, val / 1000) })}
             currentUnitId={getFieldUnit('pipe.p1', 'pressure', 'kPa')}
             onUnitChange={(u) => updateFieldUnit('pipe.p1', u)}
@@ -395,10 +387,13 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
               <input
                 type="number"
                 step="5"
-                min="10"
+                min="0"
                 max="350"
-                value={pipe.tubewellDepthM ?? 60}
-                onChange={(e) => updatePipe({ tubewellDepthM: Math.max(0, Number(e.target.value)) })}
+                value={pipe.tubewellDepthM ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePipe({ tubewellDepthM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Borehole depth</span>
@@ -409,10 +404,13 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
               <input
                 type="number"
                 step="1"
-                min="1"
+                min="0"
                 max="100"
-                value={pipe.staticWaterLevelM ?? 25}
-                onChange={(e) => updatePipe({ staticWaterLevelM: Math.max(0, Number(e.target.value)) })}
+                value={pipe.staticWaterLevelM ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePipe({ staticWaterLevelM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Resting water table</span>
@@ -423,10 +421,13 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
               <input
                 type="number"
                 step="0.5"
-                min="0.5"
+                min="0"
                 max="50"
-                value={pipe.drawdownM ?? 6}
-                onChange={(e) => updatePipe({ drawdownM: Math.max(0, Number(e.target.value)) })}
+                value={pipe.drawdownM ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePipe({ drawdownM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Cone of depression</span>
@@ -439,8 +440,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 step="1"
                 min="0"
                 max="100"
-                value={pipe.deliveryHeadM ?? 20}
-                onChange={(e) => updatePipe({ deliveryHeadM: Math.max(0, Number(e.target.value)) })}
+                value={pipe.deliveryHeadM ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePipe({ deliveryHeadM: Math.max(0, isNaN(raw) ? 0 : raw) });
+                }}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Rooftop OHT elevation</span>
@@ -466,10 +470,13 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
               <input
                 type="number"
                 step="5"
-                min="40"
+                min="0"
                 max="95"
-                value={pipe.pumpEfficiencyPercent ?? 70}
-                onChange={(e) => updatePipe({ pumpEfficiencyPercent: Math.max(10, Math.min(95, Number(e.target.value))) })}
+                value={pipe.pumpEfficiencyPercent ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePipe({ pumpEfficiencyPercent: Math.max(0, Math.min(95, isNaN(raw) ? 0 : raw)) });
+                }}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Submersible bowl eff.</span>
@@ -480,10 +487,13 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
               <input
                 type="number"
                 step="5"
-                min="50"
+                min="0"
                 max="98"
-                value={pipe.motorEfficiencyPercent ?? 85}
-                onChange={(e) => updatePipe({ motorEfficiencyPercent: Math.max(10, Math.min(98, Number(e.target.value))) })}
+                value={pipe.motorEfficiencyPercent ?? 0}
+                onChange={(e) => {
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                  updatePipe({ motorEfficiencyPercent: Math.max(0, Math.min(98, isNaN(raw) ? 0 : raw)) });
+                }}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Wet stator motor eff.</span>
@@ -492,10 +502,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <div>
               <label className="block text-[11px] font-semibold mb-1">Riser DN (mm)</label>
               <select
-                value={pipe.internalDiameterMm || 50}
+                value={pipe.internalDiameterMm ?? 0}
                 onChange={(e) => updatePipe({ internalDiameterMm: Number(e.target.value) })}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               >
+                <option value="0">0 mm (Standby)</option>
                 <option value="40">DN 40 mm (1.5")</option>
                 <option value="50">DN 50 mm (2")</option>
                 <option value="65">DN 65 mm (2.5")</option>
@@ -527,8 +538,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                   type="number"
                   min="0"
                   max="100"
-                  value={pipe.fixtureWaterClosets ?? 6}
-                  onChange={(e) => updatePipe({ fixtureWaterClosets: Math.max(0, Number(e.target.value)) })}
+                  value={pipe.fixtureWaterClosets ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updatePipe({ fixtureWaterClosets: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">3 WSFU · 4 DFU</span>
@@ -542,8 +556,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                   type="number"
                   min="0"
                   max="100"
-                  value={pipe.fixtureWashBasins ?? 6}
-                  onChange={(e) => updatePipe({ fixtureWashBasins: Math.max(0, Number(e.target.value)) })}
+                  value={pipe.fixtureWashBasins ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updatePipe({ fixtureWashBasins: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">1.5 WSFU · 1 DFU</span>
@@ -557,8 +574,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                   type="number"
                   min="0"
                   max="100"
-                  value={pipe.fixtureShowers ?? 4}
-                  onChange={(e) => updatePipe({ fixtureShowers: Math.max(0, Number(e.target.value)) })}
+                  value={pipe.fixtureShowers ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updatePipe({ fixtureShowers: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">2 WSFU · 2 DFU</span>
@@ -572,8 +592,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                   type="number"
                   min="0"
                   max="100"
-                  value={pipe.fixtureKitchenSinks ?? 2}
-                  onChange={(e) => updatePipe({ fixtureKitchenSinks: Math.max(0, Number(e.target.value)) })}
+                  value={pipe.fixtureKitchenSinks ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updatePipe({ fixtureKitchenSinks: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">2 WSFU · 2 DFU</span>
@@ -587,8 +610,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                   type="number"
                   min="0"
                   max="100"
-                  value={pipe.fixtureFloorDrains ?? 4}
-                  onChange={(e) => updatePipe({ fixtureFloorDrains: Math.max(0, Number(e.target.value)) })}
+                  value={pipe.fixtureFloorDrains ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updatePipe({ fixtureFloorDrains: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <span className="text-[9px] text-amber-600">Strainer only (2 DFU)</span>
@@ -602,8 +628,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                   type="number"
                   min="0"
                   max="100"
-                  value={pipe.fixtureFloorTraps ?? 4}
-                  onChange={(e) => updatePipe({ fixtureFloorTraps: Math.max(0, Number(e.target.value)) })}
+                  value={pipe.fixtureFloorTraps ?? 0}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updatePipe({ fixtureFloorTraps: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <span className="text-[9px] text-emerald-600">Water Seal Trap (2 DFU)</span>
@@ -618,7 +647,10 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                   min="0"
                   max="100"
                   value={pipe.fixtureUrinals ?? 0}
-                  onChange={(e) => updatePipe({ fixtureUrinals: Math.max(0, Number(e.target.value)) })}
+                  onChange={(e) => {
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    updatePipe({ fixtureUrinals: Math.max(0, isNaN(raw) ? 0 : raw) });
+                  }}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">2 WSFU · 2 DFU</span>
@@ -661,7 +693,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
     if (!result.tubewellPlumbingAnalysis || !updateActiveWorkspace) return;
     const a = result.tubewellPlumbingAnalysis;
     const now = Date.now();
-    const newItems: TakeoffLineItem[] = [
+    const candidateItems: TakeoffLineItem[] = [
       {
         id: `plumb-pump-${now}`,
         itemNo: 'PL-01',
@@ -682,7 +714,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         description: `Heavy duty uPVC riser column & delivery pipe (${a.upvcClass}, DN ${result.internalDiameterMm} mm) with threaded joints`,
         category: 'plumbing',
         numberOfMembers: 1,
-        lengthM: result.lengthM || 60,
+        lengthM: result.lengthM ?? 0,
         widthM: 0,
         heightM: 0,
         deductionQty: 0,
@@ -695,7 +727,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         itemNo: 'PL-03',
         description: `European water closet (WC) suite with dual-flush ceramic cistern, plastic seat cover & CP angle stopcock`,
         category: 'plumbing',
-        numberOfMembers: a.fixtures.waterClosets || 1,
+        numberOfMembers: a.fixtures.waterClosets ?? 0,
         lengthM: 1,
         widthM: 0,
         heightM: 0,
@@ -709,7 +741,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         itemNo: 'PL-04',
         description: `Vitreous china wash basin with CP pillar tap, 32mm bottle trap & flexible braided connector`,
         category: 'plumbing',
-        numberOfMembers: a.fixtures.washBasins || 1,
+        numberOfMembers: a.fixtures.washBasins ?? 0,
         lengthM: 1,
         widthM: 0,
         heightM: 0,
@@ -723,7 +755,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         itemNo: 'PL-05',
         description: `Overhead shower rose with arm & concealed brass stopcock`,
         category: 'plumbing',
-        numberOfMembers: a.fixtures.showers || 1,
+        numberOfMembers: a.fixtures.showers ?? 0,
         lengthM: 1,
         widthM: 0,
         heightM: 0,
@@ -737,7 +769,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         itemNo: 'PL-06',
         description: `Stainless steel kitchen sink (single bowl) with CP swivel swan-neck bib cock & 40mm waste trap`,
         category: 'plumbing',
-        numberOfMembers: a.fixtures.kitchenSinks || 1,
+        numberOfMembers: a.fixtures.kitchenSinks ?? 0,
         lengthM: 1,
         widthM: 0,
         heightM: 0,
@@ -751,7 +783,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         itemNo: 'PL-07',
         description: `Floor Drain (FD): PVC/CI floor drain with removable stainless steel strainer grating (strainer type)`,
         category: 'plumbing',
-        numberOfMembers: a.fixtures.floorDrains || 1,
+        numberOfMembers: a.fixtures.floorDrains ?? 0,
         lengthM: 1,
         widthM: 0,
         heightM: 0,
@@ -765,7 +797,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         itemNo: 'PL-08',
         description: `Floor Trap (FT / Nahani Trap): Deep water-seal floor trap (min 50mm seal) with integrated mosquito barrier grating`,
         category: 'plumbing',
-        numberOfMembers: a.fixtures.floorTraps || 1,
+        numberOfMembers: a.fixtures.floorTraps ?? 0,
         lengthM: 1,
         widthM: 0,
         heightM: 0,
@@ -775,6 +807,7 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
         unitRate: 950,
       },
     ];
+    const newItems: TakeoffLineItem[] = candidateItems.filter((it) => it.numberOfMembers > 0 && it.lengthM > 0);
 
     updateActiveWorkspace((ws) => {
       const existingWithoutPlumb = (ws.boq.items || []).filter(item => !item.id.startsWith('plumb-'));
@@ -791,8 +824,19 @@ export const PipeHydraulicsMetrics: React.FC<PipeHydraulicsMetricsProps> = ({
     setTimeout(() => setSyncNotice(null), 3500);
   };
 
+  const isZeroBaseline =
+    (result.internalDiameterMm ?? 0) <= 0 ||
+    (result.lengthM ?? 0) <= 0 ||
+    (result.velocityMps === 0 && result.frictionHeadLossM === 0 && result.reynoldsNumber === 0 && !result.tubewellPlumbingAnalysis);
+
   return (
     <div className="space-y-4 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
+      {isZeroBaseline && (
+        <div className="px-3.5 py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs font-mono flex items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider">0 BASELINE STANDBY</span>
+          <span className="opacity-90">Enter pipe diameter, length, and design flow rate to compute EGL/HGL hydraulics.</span>
+        </div>
+      )}
       {/* Deep Tubewell, Submersible Pump & uPVC Plumbing Analysis Card (when in tubewell mode) */}
       {result.tubewellPlumbingAnalysis && (() => {
         const a = result.tubewellPlumbingAnalysis;
@@ -1098,6 +1142,16 @@ export const PipeEglHglProfilePlot: React.FC<{ result: PipeHydraulicsResult }> =
   const stations = result.profileStations;
   if (!stations || stations.length < 2) return null;
 
+  const hasFiniteData = stations.every(
+    (s) =>
+      Number.isFinite(s.distanceM) &&
+      Number.isFinite(s.invertElevationM) &&
+      Number.isFinite(s.crownElevationM) &&
+      Number.isFinite(s.hglElevationM) &&
+      Number.isFinite(s.eglElevationM)
+  );
+  if (!hasFiniteData) return null;
+
   const svgWidth = 600;
   const svgHeight = 230;
   const padLeft = 55;
@@ -1108,7 +1162,7 @@ export const PipeEglHglProfilePlot: React.FC<{ result: PipeHydraulicsResult }> =
   const plotW = svgWidth - padLeft - padRight;
   const plotH = svgHeight - padTop - padBottom;
 
-  const maxDist = stations[stations.length - 1].distanceM || 100;
+  const maxDist = Math.max(1, stations[stations.length - 1].distanceM || 100);
   const allZ = stations.flatMap((s) => [
     s.invertElevationM,
     s.crownElevationM,
@@ -1226,7 +1280,7 @@ export const PipeEglHglProfilePlot: React.FC<{ result: PipeHydraulicsResult }> =
 
           {/* Cavitation / Syphon Warning Flag */}
           {result.cavitationWarning && (
-            <g transform={`translate(${scaleX(maxDist * 0.5)}, ${scaleY(stations[2].crownElevationM) - 20})`}>
+            <g transform={`translate(${scaleX(maxDist * 0.5)}, ${scaleY(stations[Math.min(2, stations.length - 1)]?.crownElevationM ?? 0) - 20})`}>
               <rect x="-45" y="-12" width="90" height="18" rx="4" fill="#dc2626" opacity="0.95" />
               <text x="0" y="0" textAnchor="middle" fontSize="8" fill="#ffffff" fontWeight="bold">
                 ⚠ Negative HGL Syphon

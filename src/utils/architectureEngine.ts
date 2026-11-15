@@ -27,6 +27,7 @@ function createArchitectureEnvelope<T>(
   extras?: {
     handCalculationSteps?: CalculationStep[];
     scopeAndLimits?: ScopeAndLimitsMetadata;
+    isZeroBaseline?: boolean;
   }
 ): CalculationEnvelope<T> {
   const env = createEnvelope<T>(result, issues, extras);
@@ -322,18 +323,104 @@ export function computeArchitectureFarMgc(
   archContext?: Partial<ArchitectureParameters>
 ): CalculationEnvelope<ArchitectureFarResult> {
   const landUnit = rawParams.landUnit || 'katha';
-  const landAreaValue = Math.max(0.1, Number(rawParams.landAreaValue) || 5.0);
+  const rawLandVal = Number(rawParams.landAreaValue ?? 0);
   const customKathaSqFt = Math.max(300, Number(rawParams.customKathaSqFt) || 720);
   const occupancyType = mapLegacyOccupancy(
     rawParams.occupancy,
     rawParams.occupancyType || archContext?.occupancyType
   );
   const frontRoadWidthM = Math.max(
-    1.8,
-    Number(rawParams.frontRoadWidthM ?? archContext?.frontRoadWidthM ?? rawParams.roadWidthM) || 6.1
+    0,
+    Number(rawParams.frontRoadWidthM ?? archContext?.frontRoadWidthM ?? rawParams.roadWidthM ?? 0)
   );
   const roadSurrenderWidthM = Math.max(0, Math.min(6.0, Number(rawParams.roadSurrenderWidthM) || 0));
   const isCornerPlot = Boolean(rawParams.isCornerPlot);
+
+  if (rawLandVal === 0) {
+    return createArchitectureEnvelope<ArchitectureFarResult>(
+      {
+        landAreaInput: 0,
+        landUnit,
+        grossPlotAreaSqm: 0,
+        grossPlotAreaSqft: 0,
+        plotAreaKatha: 0,
+        plotAreaCategory: 'below-2-katha',
+        plotCategoryLabel: getPlotCategoryFromKatha(0).label,
+        surrenderedAreaSqm: 0,
+        netPlotAreaSqm: 0,
+        netPlotAreaSqft: 0,
+        frontageM: rawParams.frontageM || 0,
+        plotDepthM: rawParams.plotDepthM || 0,
+        effectivePlotDepthM: 0,
+        frontRoadWidthM,
+        effectiveRoadWidthM: frontRoadWidthM,
+        occupancyType,
+        occupancyLabel: getOccupancyLabel(occupancyType),
+        isCornerPlot,
+        baseAllowableFar: 0,
+        roadWideningBonusFar: 0,
+        effectiveAllowableFar: 0,
+        allowableMgcPercent: 0,
+        isOverrideActive: Boolean(rawParams.enableOverride),
+        mandatorySetbacks: { front: 0, rear: 0, side1: 0, side2: 0 },
+        providedSetbacks: rawParams.providedSetbacks || { front: 0, rear: 0, side1: 0, side2: 0 },
+        maxPermissibleGfaSqm: 0,
+        maxPermissibleGfaSqft: 0,
+        maxFootprintByMgcSqm: 0,
+        buildableWidthM: 0,
+        buildableDepthM: 0,
+        maxFootprintBySetbacksSqm: 0,
+        governedMaxFootprintSqm: 0,
+        governedMaxFootprintSqft: 0,
+        openSpaceSqm: 0,
+        openSpacePercent: 0,
+        recommendedStories: 0,
+        exactStoryRatio: 0,
+        proposedFloors: rawParams.proposedFloors || 0,
+        storyHeightM: rawParams.storyHeightM || 0,
+        buildingHeightM: 0,
+        isHighRise: false,
+        proposedGroundCoverageM2: rawParams.proposedGroundCoverageM2 || 0,
+        proposedGroundCoverageSqft: 0,
+        proposedTotalFloorAreaM2: rawParams.proposedTotalFloorAreaM2 || 0,
+        proposedTotalFloorAreaSqft: 0,
+        proposedFar: 0,
+        proposedMgcPercent: 0,
+        farDcr: 0,
+        mgcDcr: 0,
+        setbackChecks: {
+          frontPass: true,
+          rearPass: true,
+          side1Pass: true,
+          side2Pass: true,
+          allPass: true,
+          governingRatio: 0,
+          governingSideLabel: 'None',
+        },
+        farPass: true,
+        mgcPass: true,
+        basementCount: rawParams.basementCount || 0,
+        unitsCount: rawParams.unitsCount || 0,
+        avgUnitAreaSqm: rawParams.avgUnitAreaSqm || 0,
+        requiredCarBays: 0,
+        requiredMotoBays: 0,
+        providedCarBays: rawParams.providedCarParkingBays || 0,
+        requiredParkingNetSqm: 0,
+        rampAndDrivewayAllowanceSqm: 0,
+        requiredParkingGrossSqm: 0,
+        availableParkingAreaSqm: 0,
+        estimatedCarCapacity: 0,
+        parkingDcr: 0,
+        parkingPass: true,
+        overallCompliant: true,
+        dcrGauges: [],
+      },
+      [],
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
+
+  const landAreaValue = Math.max(0.1, rawLandVal);
 
   // 1. Area Normalization
   let grossPlotAreaSqm = 0;
@@ -1319,9 +1406,84 @@ export function computeStaircaseDesign(
   const occupancy: StairBuildingOccupancy =
     rawParams.buildingOccupancy || archContext?.buildingOccupancy || 'residential';
 
+  const rawFloorH = Number(
+    rawParams.floorHeightMm || (rawParams.floorToFloorHeightM ? rawParams.floorToFloorHeightM * 1000 : 0)
+  );
+  if (rawFloorH === 0) {
+    return createArchitectureEnvelope<StaircaseAnalysisResult>(
+      {
+        topology,
+        topologyLabel: getStairTopologyLabel(topology),
+        occupancy,
+        occupancyLabel: getStairOccupancyLabel(occupancy),
+        floorHeightMm: 0,
+        floorHeightM: 0,
+        totalRisers: 0,
+        risersPerFlight: [],
+        treadsPerFlight: [],
+        actualRiserMm: 0,
+        actualTreadMm: rawParams.treadWidthMm ?? rawParams.preferredTreadMm ?? 0,
+        goingLengthMm: 0,
+        totalGoingSumMm: 0,
+        flightWidthMm: rawParams.flightWidthMm ?? 0,
+        landingWidthMm: rawParams.landingWidthMm ?? 0,
+        wellGapMm: rawParams.wellGapMm ?? 0,
+        waistSlabMm: rawParams.waistSlabThicknessMm ?? rawParams.waistSlabMm ?? 0,
+        slabThicknessMm: rawParams.slabThicknessMm ?? 0,
+        handrailHeightMm: rawParams.handrailHeightMm ?? 0,
+        stairwellLengthMm: rawParams.stairwellLengthMm ?? 0,
+        stairwellWidthMm: rawParams.stairwellWidthMm ?? 0,
+        requiredStairwellLengthMm: 0,
+        requiredStairwellWidthMm: 0,
+        stairwellFitPass: true,
+        stairPitchDeg: 0,
+        maxAllowedPitchDeg: occupancy === 'residential' ? 38.0 : 33.0,
+        pitchStatus: 'OPTIMUM',
+        pitchPass: true,
+        blondelValue: 0,
+        blondelStatus: 'OPTIMUM',
+        blondelPass: true,
+        safetyIndex: 0,
+        safetyIndexPass: true,
+        comfortProduct: 0,
+        comfortProductPass: true,
+        estimatedHeadroomMm: 0,
+        headroomStatus: 'PASS',
+        headroomPass: true,
+        minClearFlightWidthMm: occupancy === 'residential' ? 1000 : 1500,
+        flightWidthPass: true,
+        landingDepthPass: true,
+        handrailPass: true,
+        maxRisersPerFlightLimit: occupancy === 'residential' ? 15 : 12,
+        flightRiserCountPass: true,
+        egressPass: true,
+        inclinedLengthsMm: [],
+        totalInclinedLengthMm: 0,
+        waistSlabDeadLoadKpa: 0,
+        stepsDeadLoadKpa: 0,
+        deadLoadKpa: 0,
+        liveLoadKpa: rawParams.liveLoadKpa ?? 0,
+        finishesLoadKpa: rawParams.finishesLoadKpa ?? 0,
+        factoredLoadKpa: 0,
+        waistConcreteM3: 0,
+        stepsConcreteM3: 0,
+        landingConcreteM3: 0,
+        totalConcreteM3: 0,
+        soffitFormworkM2: 0,
+        riserFormworkM2: 0,
+        edgeFormworkM2: 0,
+        totalFormworkM2: 0,
+        overallCompliant: true,
+        dcrGauges: [],
+      },
+      [],
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
+
   const floorHeightMm = Math.max(
     1800,
-    Math.min(6000, Number(rawParams.floorHeightMm || (rawParams.floorToFloorHeightM ? rawParams.floorToFloorHeightM * 1000 : 3000)))
+    Math.min(6000, rawFloorH)
   );
   const preferredRiserMm = Math.max(
     110,
@@ -1873,18 +2035,82 @@ export interface WaterReservoirResult {
 export function computeWaterReservoirDesign(
   params: WaterTankParameters
 ): CalculationEnvelope<WaterReservoirResult> {
-  const numFloors = Math.max(1, params.numFloors || 6);
-  const unitsPerFloor = Math.max(1, params.unitsPerFloor || 2);
-  const personsPerUnit = Math.max(1, params.personsPerUnit || 5);
-  const directOccupants = Math.max(1, params.directOccupants || 50);
+  const numFloors = Math.max(0, params.numFloors || 0);
+  const unitsPerFloor = Math.max(0, params.unitsPerFloor || 0);
+  const personsPerUnit = Math.max(0, params.personsPerUnit || 0);
+  const directOccupants = Math.max(0, params.directOccupants || 0);
   const floatingPopulation = Math.max(0, params.floatingPopulation || 0);
-  const lpcd = Math.max(15, params.lpcd || 135);
+  const lpcd = Math.max(0, params.lpcd || 0);
+
+  const rawTotalUsers =
+    params.calcMode === 'building'
+      ? numFloors * unitsPerFloor * personsPerUnit + floatingPopulation
+      : directOccupants + floatingPopulation;
+
+  if (rawTotalUsers === 0 || lpcd === 0) {
+    const presetZero = WATER_OCCUPANCY_PRESETS.find((p) => p.id === params.occupancyPreset);
+    return createArchitectureEnvelope<WaterReservoirResult>(
+      {
+        totalUsers: 0,
+        lpcd,
+        occupancyLabel: presetZero ? presetZero.label : `Custom (${lpcd} LPCD)`,
+        dailyDomesticL: 0,
+        fireReserveL: 0,
+        fireReserveMinutes: params.fireReserveMinutes ?? 0,
+        firePumpFlowLpm: params.firePumpFlowLpm ?? 0,
+        totalNetWaterL: 0,
+        totalNetWaterM3: 0,
+        ugwrSharePercent: params.ugwrSharePercent ?? 0,
+        ugwrDomesticL: 0,
+        ugwrTotalL: 0,
+        ugwrTotalM3: 0,
+        ugwrLengthM: 0,
+        ugwrWidthM: 0,
+        ugwrWaterDepthM: params.ugwrWaterDepthM || 0,
+        ugwrFreeboardM: 0,
+        ugwrTotalHeightM: 0,
+        ugwrConcreteM3: 0,
+        ugwrExcavationM3: 0,
+        ohtSharePercent: 0,
+        ohtTotalL: 0,
+        ohtTotalM3: 0,
+        ohtLengthM: 0,
+        ohtWidthM: 0,
+        ohtWaterDepthM: params.ohtWaterDepthM || 0,
+        ohtFreeboardM: 0,
+        ohtTotalHeightM: 0,
+        ohtConcreteM3: 0,
+        ohtWaterWeightKn: 0,
+        ohtRccShellWeightKn: 0,
+        ohtTotalDeadLoadKn: 0,
+        ohtTotalDeadLoadTonnes: 0,
+        ohtRoofSlabPressureKpa: 0,
+        pumpFillHours: params.pumpFillHours || 0,
+        pumpFlowLpm: 0,
+        pumpFlowM3Hr: 0,
+        pumpFlowGpm: 0,
+        staticHeadM: 0,
+        frictionHeadM: 0,
+        totalHeadM: params.totalHeadM || 0,
+        hydraulicPowerKw: 0,
+        shaftPowerKw: 0,
+        pumpHp: 0,
+        recommendedHp: 0,
+        recommendedKw: 0,
+        overallCompliant: true,
+        dcrGauges: [],
+      },
+      [],
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
+
   const storageDays = Math.max(0.5, params.storageDays || 1.0);
   const fireReserveMinutes = Math.max(15, params.fireReserveMinutes ?? 45);
   const firePumpFlowLpm = Math.max(0, params.firePumpFlowLpm ?? 225);
   const fireReserveL = params.fireReserveAutoMode
     ? Math.round(firePumpFlowLpm * fireReserveMinutes)
-    : Math.max(0, params.fireReserveL ?? 10000);
+    : Math.max(0, params.fireReserveL ?? 0);
   const ugwrSharePercent = Math.min(90, Math.max(10, params.ugwrSharePercent ?? 65));
   const ohtSharePercent = 100 - ugwrSharePercent;
   const ugwrWaterDepthM = Math.max(0.8, params.ugwrWaterDepthM || 2.0);
@@ -1897,10 +2123,7 @@ export function computeWaterReservoirDesign(
   const presetMatch = WATER_OCCUPANCY_PRESETS.find((p) => p.id === params.occupancyPreset);
   const occupancyLabel = presetMatch ? presetMatch.label : `Custom (${lpcd} LPCD)`;
 
-  const totalUsers =
-    params.calcMode === 'building'
-      ? numFloors * unitsPerFloor * personsPerUnit + floatingPopulation
-      : directOccupants + floatingPopulation;
+  const totalUsers = rawTotalUsers;
 
   const dailyDomesticL = totalUsers * lpcd * storageDays;
   const totalNetWaterL = dailyDomesticL + fireReserveL;
@@ -2201,8 +2424,56 @@ export interface SepticSoakPitResult {
 export function computeSepticSoakPitDesign(
   params: SepticTankParameters
 ): CalculationEnvelope<SepticSoakPitResult> {
-  const septicUsers = Math.max(5, params.septicUsers || 35);
-  const sewageRateLpcd = Math.max(30, params.sewageRateLpcd || 90);
+  if ((params.septicUsers || 0) === 0 || (params.sewageRateLpcd || 0) === 0) {
+    return createArchitectureEnvelope<SepticSoakPitResult>(
+      {
+        septicUsers: 0,
+        sewageRateLpcd: params.sewageRateLpcd || 0,
+        detentionHours: params.detentionHours || 0,
+        desludgingYears: params.desludgingYears || 0,
+        dailySewageL: 0,
+        dailySewageM3: 0,
+        liquidRetentionM3: 0,
+        sludgeVolumeM3: 0,
+        scumAllowanceM3: 0,
+        totalSepticVolumeM3: 0,
+        totalSepticVolumeL: 0,
+        tankLengthM: 0,
+        tankWidthM: 0,
+        septicDepthM: params.septicDepthM || 0,
+        freeboardM: 0,
+        totalTankHeightM: 0,
+        chamber1LengthM: 0,
+        chamber2LengthM: 0,
+        baffleSubmergenceMm: 0,
+        scumClearanceMm: 0,
+        lwRatioActual: 0,
+        lwRatioPass: true,
+        liquidDepthPass: true,
+        soilPercolationMinPer25mm: params.soilPercolationMinPer25mm ?? 0,
+        soilInfiltrationRateLpdM2: params.soilPercolationRate || 0,
+        soilSuitableForSoakPit: true,
+        requiredAbsorptionAreaM2: 0,
+        soakPitDiaM: params.soakPitDiaM || 0,
+        soakPitEffectiveDepthM: 0,
+        soakPitTotalDepthM: 0,
+        gravelEnvelopeOuterDiaM: 0,
+        septicExcavationM3: 0,
+        septicBrickworkM3: 0,
+        septicRccSlabM3: 0,
+        soakPitExcavationM3: 0,
+        soakPitBrickworkM3: 0,
+        soakPitGravelM3: 0,
+        overallCompliant: true,
+        dcrGauges: [],
+      },
+      [],
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
+
+  const septicUsers = Math.max(1, params.septicUsers);
+  const sewageRateLpcd = Math.max(30, params.sewageRateLpcd);
   const detentionHours = Math.max(12, params.detentionHours || 24);
   const desludgingYears = Math.max(1, params.desludgingYears || 2);
   const septicDepthM = Math.max(1.0, params.septicDepthM || 1.6);
@@ -2645,9 +2916,40 @@ export interface RainwaterHarvestingResult {
 export function computeRainwaterHarvestingDesign(
   params: RainwaterDaylightParameters
 ): CalculationEnvelope<RainwaterHarvestingResult> {
-  const roofCatchmentAreaM2 = Math.max(10, params.roofCatchmentAreaM2 || 220);
+  if ((params.roofCatchmentAreaM2 || 0) === 0 || (params.annualRainfallMm || 0) === 0) {
+    return createArchitectureEnvelope<RainwaterHarvestingResult>(
+      {
+        roofCatchmentAreaM2: params.roofCatchmentAreaM2 || 0,
+        runoffCoefficient: params.runoffCoefficient || 0,
+        annualRainfallMm: params.annualRainfallMm || 0,
+        monsoonCaptureSharePct: params.monsoonCaptureSharePct || 0,
+        firstFlushDivertedL: 0,
+        annualHarvestableL: 0,
+        annualHarvestableM3: 0,
+        monsoonHarvestableL: 0,
+        drySpellDays: params.drySpellDays || 0,
+        dailyRwhDemandLpd: params.dailyRwhDemandLpd || 0,
+        requiredDrySpellCisternL: 0,
+        recommendedCisternL: 0,
+        recommendedCisternM3: 0,
+        cisternLengthM: 0,
+        cisternWidthM: 0,
+        cisternWaterDepthM: params.cisternDepthM || 0,
+        cisternFreeboardM: 0,
+        cisternTotalHeightM: 0,
+        annualDemandL: 0,
+        demandCoveragePct: 0,
+        overallCompliant: true,
+        dcrGauges: [],
+      },
+      [],
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
+
+  const roofCatchmentAreaM2 = Math.max(1, params.roofCatchmentAreaM2);
   const runoffCoefficient = Math.min(0.98, Math.max(0.5, params.runoffCoefficient || 0.9));
-  const annualRainfallMm = Math.max(200, params.annualRainfallMm || 2050);
+  const annualRainfallMm = Math.max(50, params.annualRainfallMm);
   const monsoonCaptureSharePct = Math.min(100, Math.max(20, params.monsoonCaptureSharePct || 75));
   const drySpellDays = Math.max(5, params.drySpellDays || 25);
   const dailyRwhDemandLpd = Math.max(50, params.dailyRwhDemandLpd || 900);
@@ -2854,16 +3156,53 @@ export interface DaylightVentilationResult {
 export function computeDaylightVentilationDesign(
   params: RainwaterDaylightParameters
 ): CalculationEnvelope<DaylightVentilationResult> {
-  const roomName = params.roomName || 'Master Bedroom 01';
+  const roomName = params.roomName || '';
   const roomOccupancyType = params.roomOccupancyType || 'habitable';
-  const roomLengthM = Math.max(1.0, params.roomLengthM || 4.2);
-  const roomWidthM = Math.max(0.9, params.roomWidthM || 3.4);
+
+  if ((params.roomLengthM || 0) === 0 || (params.roomWidthM || 0) === 0) {
+    return createArchitectureEnvelope<DaylightVentilationResult>(
+      {
+        roomName,
+        roomOccupancyType,
+        roomLengthM: params.roomLengthM || 0,
+        roomWidthM: params.roomWidthM || 0,
+        minDimM: 0,
+        ceilingHeightM: params.ceilingHeightM || 0,
+        floorAreaM2: 0,
+        floorAreaSqft: 0,
+        totalGlazedWindowAreaM2: 0,
+        openableWindowAreaM2: 0,
+        ventilatorAreaM2: params.ventilatorAreaM2 ?? 0,
+        totalVentilationOpeningM2: 0,
+        daylightRatioPct: 0,
+        ventilationRatioPct: 0,
+        minRequiredAreaM2: roomOccupancyType === 'habitable' ? 9.5 : roomOccupancyType === 'kitchen' ? 5.0 : 2.8,
+        minRequiredWidthM: roomOccupancyType === 'habitable' ? 2.4 : roomOccupancyType === 'kitchen' ? 1.8 : 1.2,
+        minRequiredHeightM: roomOccupancyType === 'utility' ? 2.4 : 2.75,
+        minRequiredDaylightPct: roomOccupancyType === 'habitable' ? 10.0 : 8.0,
+        targetDaylightPct: roomOccupancyType === 'habitable' ? 15.0 : 12.0,
+        minRequiredVentilationPct: roomOccupancyType === 'habitable' ? 10.0 : 8.0,
+        areaPass: true,
+        widthPass: true,
+        heightPass: true,
+        daylightPass: true,
+        ventilationPass: true,
+        overallCompliant: true,
+        dcrGauges: [],
+      },
+      [],
+      { handCalculationSteps: [], isZeroBaseline: true }
+    );
+  }
+
+  const roomLengthM = Math.max(0.5, params.roomLengthM);
+  const roomWidthM = Math.max(0.5, params.roomWidthM);
   const ceilingHeightM = Math.max(1.8, params.ceilingHeightM || 3.0);
-  const windowCount = Math.max(0, Math.round(params.windowCount ?? 2));
-  const windowWidthM = Math.max(0.3, params.windowWidthM || 1.5);
-  const windowHeightM = Math.max(0.3, params.windowHeightM || 1.35);
-  const openableWindowPct = Math.min(100, Math.max(10, params.openableWindowPct ?? 50));
-  const ventilatorAreaM2 = Math.max(0, params.ventilatorAreaM2 ?? 0.25);
+  const windowCount = Math.max(0, Math.round(params.windowCount ?? 0));
+  const windowWidthM = Math.max(0, params.windowWidthM || 0);
+  const windowHeightM = Math.max(0, params.windowHeightM || 0);
+  const openableWindowPct = Math.min(100, Math.max(0, params.openableWindowPct ?? 0));
+  const ventilatorAreaM2 = Math.max(0, params.ventilatorAreaM2 ?? 0);
 
   const floorAreaM2 = Number((roomLengthM * roomWidthM).toFixed(2));
   const floorAreaSqft = Number((floorAreaM2 * SQFT_PER_SQM).toFixed(1));

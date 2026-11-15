@@ -175,6 +175,114 @@ export const DiagramFormulaHint: React.FC<{ className?: string }> = ({ className
   </div>
 );
 
+export const safeNum = (v: number | undefined | null, fallback = 0): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+
+export const safeDiv = (num: number, den: number, fallback = 0): number => {
+  if (!Number.isFinite(num) || !Number.isFinite(den) || Math.abs(den) < 1e-12) return fallback;
+  const out = num / den;
+  return Number.isFinite(out) ? out : fallback;
+};
+
+export const ZeroBaselineBlueprintSvg: React.FC<{
+  width: number;
+  height: number;
+  title: string;
+  subtitle: string;
+  callout?: string;
+  variant?: 'beam' | 'footing' | 'section' | 'truss' | 'pile' | 'channel' | 'bar';
+}> = ({ width, height, title, subtitle, callout = `0'-0" (0.00' / 0.00 m)`, variant = 'beam' }) => {
+  const cy = height / 2;
+  const cx = width / 2;
+  return (
+    <div className="relative w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img" aria-label={title}>
+        <defs>
+          <pattern id={`bp-grid-${variant}-${width}`} width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="var(--md-sys-color-outline-variant)" strokeWidth="0.6" strokeOpacity="0.4" />
+          </pattern>
+        </defs>
+        <rect x={8} y={8} width={width - 16} height={height - 16} rx={10} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="5 4" />
+        <rect x={8} y={8} width={width - 16} height={height - 16} rx={10} fill={`url(#bp-grid-${variant}-${width})`} opacity="0.65" />
+
+        {/* Subtle Blueprint Schematic Wireframe */}
+        <g opacity="0.28" stroke="var(--md-sys-color-primary)" fill="none" strokeWidth="1.5">
+          {variant === 'beam' && (
+            <>
+              <line x1={80} y1={cy - 18} x2={width - 80} y2={cy - 18} strokeWidth="2.5" />
+              <polygon points={`80,${cy - 16} 70,${cy} 90,${cy}`} />
+              <polygon points={`${width - 80},${cy - 16} ${width - 90},${cy} ${width - 70},${cy}`} />
+              <line x1={80} y1={cy + 14} x2={width - 80} y2={cy + 14} strokeDasharray="4 3" />
+            </>
+          )}
+          {variant === 'footing' && (
+            <>
+              <line x1={70} y1={cy - 34} x2={width - 70} y2={cy - 34} strokeDasharray="6 3" />
+              <rect x={cx - 16} y={cy - 54} width={32} height={46} />
+              <rect x={cx - 86} y={cy - 8} width={172} height={24} />
+              <path d={`M ${cx - 70} ${cy + 16} Q ${cx} ${cy + 75} ${cx + 70} ${cy + 16}`} strokeDasharray="3 3" />
+            </>
+          )}
+          {variant === 'section' && (
+            <>
+              <rect x={cx - 170} y={cy - 65} width={110} height={130} rx={3} />
+              <rect x={cx - 156} y={cy - 51} width={82} height={102} strokeDasharray="3 3" />
+              <rect x={cx - 15} y={cy - 65} width={185} height={130} rx={4} />
+              <path d={`M ${cx} ${cy + 45} L ${cx + 145} ${cy - 45}`} strokeDasharray="4 3" />
+            </>
+          )}
+          {variant === 'truss' && (
+            <>
+              <polyline points={`110,${cy + 45} ${cx},${cy - 55} ${width - 110},${cy + 45} 110,${cy + 45}`} />
+              <line x1={cx} y1={cy - 55} x2={cx} y2={cy + 45} strokeDasharray="4 3" />
+            </>
+          )}
+          {variant === 'pile' && (
+            <>
+              <line x1={70} y1={cy - 55} x2={width - 70} y2={cy - 55} />
+              <rect x={cx - 20} y={cy - 55} width={40} height={115} />
+            </>
+          )}
+          {variant === 'channel' && (
+            <>
+              <polyline points={`${cx - 140},${cy - 45} ${cx - 95},${cy + 35} ${cx + 95},${cy + 35} ${cx + 140},${cy - 45}`} strokeWidth="2.2" />
+              <line x1={cx - 115} y1={cy} x2={cx + 115} y2={cy} strokeDasharray="4 3" />
+            </>
+          )}
+          {variant === 'bar' && (
+            <>
+              <rect x={70} y={cy - 36} width={width - 140} height={28} rx={4} strokeDasharray="4 3" />
+              <rect x={70} y={cy + 6} width={(width - 180) / 3} height={54} rx={4} />
+              <rect x={70 + (width - 180) / 3 + 20} y={cy + 6} width={(width - 180) / 3} height={54} rx={4} />
+              <rect x={70 + ((width - 180) / 3 + 20) * 2} y={cy + 6} width={(width - 180) / 3} height={54} rx={4} />
+            </>
+          )}
+        </g>
+
+        {/* Watermark Pill */}
+        <g transform={`translate(${cx - 115}, 20)`}>
+          <rect x={0} y={0} width={230} height={20} rx={10} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline-variant)" />
+          <text x={115} y={13} textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+            AWAITING NON-ZERO PARAMETERS
+          </text>
+        </g>
+
+        {/* Center Zero Callout */}
+        <rect x={cx - 210} y={cy - 36} width={420} height={74} rx={8} fill="var(--md-sys-color-surface)" fillOpacity="0.92" stroke="var(--md-sys-color-outline-variant)" />
+        <text x={cx} y={cy - 12} textAnchor="middle" fontSize="12" fontWeight="800" fill="var(--md-sys-color-on-surface)">
+          {title}
+        </text>
+        <text x={cx} y={cy + 6} textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--md-sys-color-primary)">
+          {callout}
+        </text>
+        <text x={cx} y={cy + 24} textAnchor="middle" fontSize="9.5" fill="var(--md-sys-color-on-surface-variant)">
+          {subtitle}
+        </text>
+      </svg>
+    </div>
+  );
+};
+
 /* 1. Beam Diagram with Interactive Crosshair & Limit State Safety */
 export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnalysisResult; unitPreset?: UnitSystemPreset }> = ({
   params,
@@ -198,19 +306,17 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
   const padRight = 130; // Room for beam section vignette
   const plotW = width - padLeft - padRight;
 
-  if (params.spanLengthM <= 0) {
+  const fmtFtDec = (m: number) => `${(m / 0.3048).toFixed(2)}'`;
+  if (params.spanLengthM <= 0 || !Number.isFinite(params.spanLengthM)) {
     return (
-      <div className="relative w-full">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono">
-          <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-          <text x={width / 2} y={height / 2 - 12} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-            ZERO SPAN LENGTH (L = {fmtD(0)})
-          </text>
-          <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-            Enter a positive span length to compute structural reactions, shear, bending and deflection
-          </text>
-        </svg>
-      </div>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="beam"
+        title={`ZERO SPAN LENGTH BASELINE`}
+        callout={`L = 0'-0" (0.00' / 0.00 m)`}
+        subtitle="Enter a positive span length or load a preset to generate SFD, BMD & elastic curve"
+      />
     );
   }
 
@@ -684,19 +790,16 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
   const width = 680;
   const height = 340;
 
-  if (params.footingWidthM <= 0) {
+  if (params.footingWidthM <= 0 || !Number.isFinite(params.footingWidthM)) {
     return (
-      <div className="relative w-full">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono">
-          <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-          <text x={width / 2} y={height / 2 - 12} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-            ZERO FOOTING GEOMETRY (B = 0.00 m)
-          </text>
-          <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-            Enter footing width, length, and embedment depth to evaluate bearing capacity and settlement
-          </text>
-        </svg>
-      </div>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="footing"
+        title="ZERO FOOTING GEOMETRY BASELINE"
+        callout={`B = 0'-0" (0.00' / 0.00 m)`}
+        subtitle="Enter footing width, length, and embedment depth to evaluate bearing capacity"
+      />
     );
   }
 
@@ -932,12 +1035,12 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
             </div>
             <div className="h-3 w-full bg-[var(--md-sys-color-surface-container-highest)] rounded-full overflow-hidden flex">
               <div
-                style={{ width: `${Math.min(100, (result.immediateSettlementMm / result.permissibleSettlementMm) * 100)}%` }}
+                style={{ width: `${Math.min(100, safeDiv(result.immediateSettlementMm, Math.max(0.01, result.permissibleSettlementMm), 0) * 100)}%` }}
                 className="bg-sky-500 h-full"
                 title={`Immediate Se: ${result.immediateSettlementMm} mm`}
               />
               <div
-                style={{ width: `${Math.min(100, (result.consolidationSettlementMm / result.permissibleSettlementMm) * 100)}%` }}
+                style={{ width: `${Math.min(100, safeDiv(result.consolidationSettlementMm, Math.max(0.01, result.permissibleSettlementMm), 0) * 100)}%` }}
                 className="bg-purple-500 h-full"
                 title={`Consolidation Sc: ${result.consolidationSettlementMm} mm`}
               />
@@ -1286,7 +1389,7 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
                     Depth z = {hoverDepth.z.toFixed(2)}m (El -{(params.embedmentDepthM + hoverDepth.z).toFixed(2)}m)
                   </text>
                   <text x={8} y={25} fontSize="8" fill="var(--md-sys-color-on-surface)">
-                    Δσ_v = {hoverDepth.deltaSigma.toFixed(1)} kPa ({(hoverDepth.deltaSigma / result.appliedPressureKpa * 100).toFixed(0)}% q0)
+                    Δσ_v = {hoverDepth.deltaSigma.toFixed(1)} kPa ({(safeDiv(hoverDepth.deltaSigma, result.appliedPressureKpa, 0) * 100).toFixed(0)}% q0)
                   </text>
                   <text x={8} y={37} fontSize="7.5" fill="var(--md-sys-color-on-surface-variant)">
                     Total σ = {(hoverDepth.sigmaV0 + hoverDepth.deltaSigma).toFixed(1)} kPa (σ\'v0: {hoverDepth.sigmaV0.toFixed(1)})
@@ -1313,15 +1416,14 @@ export const ConcreteMixSvg: React.FC<{ params: ConcreteMixParameters; result: C
 
   if (total <= 0 || params.targetStrengthMpa <= 0) {
     return (
-      <svg viewBox="0 0 680 220" className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={660} height={200} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={340} y={100} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO CONCRETE MIX BASELINE (0 kg/m³)
-        </text>
-        <text x={340} y={122} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter target characteristic strength (f'c) or water-cement ratio to compute gravimetric batch proportions
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={680}
+        height={220}
+        variant="bar"
+        title="ZERO CONCRETE MIX BASELINE"
+        callout="f'c = 0.0 MPa · 0.0 kg/m³"
+        subtitle="Enter target strength (f'c) and water-cement ratio to compute ACI 211 proportions"
+      />
     );
   }
 
@@ -1467,15 +1569,14 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
 
   if ((isCircular && ((params.diameterM ?? 0) <= 0 && (result.diameterM || 0) <= 0)) || (!isCircular && params.bottomWidthM <= 0)) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO CHANNEL GEOMETRY (0.00 m)
-        </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter channel bed width or conduit diameter to calculate Manning discharge and normal depth
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="channel"
+        title="ZERO CHANNEL GEOMETRY BASELINE"
+        callout={`b / D = 0'-0" (0.00' / 0.00 m)`}
+        subtitle="Enter channel bed width or conduit diameter to solve Manning hydraulics"
+      />
     );
   }
 
@@ -1765,7 +1866,7 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
         </g>
 
         {/* Critical Depth Marker yc with Tooltip */}
-        {result.criticalDepthM && (
+        {(result.criticalDepthM ?? 0) > 0 && (
           <g
             {...bindHover({
               title: 'Critical Flow Depth (y_c)',
@@ -1892,15 +1993,14 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
 
   if (totalVol <= 0 || result.wetVolumeM3 <= 0) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO CONCRETE VOLUME (0.00 m³)
-        </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter concrete member volume or add batched RCC elements to compute bags, sand cft &amp; aggregate
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="bar"
+        title="ZERO CONCRETE VOLUME BASELINE"
+        callout="V_wet = 0.00 m³ (0.00 CFT)"
+        subtitle="Enter member concrete volume or add batched RCC elements to compute batch takeoff"
+      />
     );
   }
 
@@ -2063,15 +2163,14 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
 
   if (result.totalSteelWeightKg <= 0) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO REBAR SCHEDULE (0.00 kg)
-        </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Select element type ({currentType.toUpperCase()}) and configure bar diameters to generate cutting schedule
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="beam"
+        title={`ZERO REBAR SCHEDULE (${currentType.toUpperCase()})`}
+        callout={`L_cut = 0'-0" (0.00' / 0.00 m) · 0.0 kg`}
+        subtitle="Enter member dimensions and bar diameters to generate BBS cutting schedule"
+      />
     );
   }
 
@@ -2466,15 +2565,14 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
 
   if (params.wallLengthM <= 0 || params.wallHeightM <= 0) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO MASONRY WALL GEOMETRY ({fmtD(0)})
-        </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter wall length and height to compute net brick count, mortar volume and plastering area
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="section"
+        title="ZERO MASONRY WALL GEOMETRY"
+        callout={`L × H = 0'-0" × 0'-0" (0.00 m²)`}
+        subtitle="Enter wall length and height to calculate bricks, mortar, plaster & tiles"
+      />
     );
   }
 
@@ -2595,15 +2693,14 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
 
   if (result.bankVolumeM3 <= 0) {
     return (
-      <svg viewBox={`0 0 ${width} 230`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={210} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={105} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO EARTHWORK EXCAVATION (0.00 m³)
-        </text>
-        <text x={width / 2} y={127} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter excavation dimensions or alignment cross-sections to compute bank, loose and compacted volumes
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={230}
+        variant="channel"
+        title="ZERO EARTHWORK EXCAVATION BASELINE"
+        callout="V_bank = 0.00 m³ (0.00 CFT)"
+        subtitle="Enter pit/trench dimensions or alignment stations to compute bank & loose volumes"
+      />
     );
   }
 
@@ -2954,15 +3051,14 @@ export const BOQCostBreakdownDiagramSvg: React.FC<{
 
   if (result.grandTotalAmount <= 0 || result.totalItemCount === 0) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          EMPTY BILL OF QUANTITIES ({result.currency || 'BDT'} 0.00)
-        </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Add line items or synchronize from engineering modules to visualize capital distribution and trade costs
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="bar"
+        title="EMPTY BILL OF QUANTITIES"
+        callout={`${result.currency || 'BDT'} 0.00 (0 Line Items)`}
+        subtitle="Add BOQ items or load a standard project preset to visualize capital distribution"
+      />
     );
   }
 
@@ -3185,15 +3281,14 @@ export const RateAnalysisBreakdownDiagramSvg: React.FC<{
 
   if (result.unitRatePerM3 <= 0) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO UNIT RATE ANALYSIS ({result.workType?.toUpperCase() || 'RCC'})
-        </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter basic material prices and labor wages to compute composite unit rate per m³ and cft
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="bar"
+        title={`ZERO UNIT RATE ANALYSIS (${result.workType?.toUpperCase() || 'WORK'})`}
+        callout={`${result.currencySymbol || '৳'} 0.00 / m³`}
+        subtitle="Enter material prices & labor wages to compute composite PWD/CPWD unit rates"
+      />
     );
   }
 
@@ -3413,17 +3508,14 @@ export const ContinuousBeamDiagramSvg: React.FC<{
 
   if (result.totalLengthM <= 0 || params.spans.every((s) => s.lengthM <= 0)) {
     return (
-      <div className="space-y-2 select-none font-mono">
-        <svg viewBox={`0 0 ${width} 320`} className="w-full h-auto select-none font-mono">
-          <rect x={10} y={10} width={width - 20} height={300} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-          <text x={width / 2} y={145} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-            ZERO CONTINUOUS BEAM SPAN (0.00 m)
-          </text>
-          <text x={width / 2} y={170} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-            Enter span lengths to solve multi-span 3-moment Clapeyron equations and plot moment envelopes
-          </text>
-        </svg>
-      </div>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={320}
+        variant="beam"
+        title="ZERO CONTINUOUS BEAM SPAN"
+        callout={`L_total = 0'-0" (0.00' / 0.00 m)`}
+        subtitle="Enter multi-span lengths & loads to solve Clapeyron 3-moment continuity"
+      />
     );
   }
 
@@ -4352,17 +4444,14 @@ export const PileCapacityDiagramSvg: React.FC<{
 
   if (params.lengthM <= 0 || params.diameterM <= 0) {
     return (
-      <div className="space-y-2 select-none font-mono">
-        <svg viewBox={`0 0 ${width} 320`} className="w-full h-auto select-none font-mono">
-          <rect x={10} y={10} width={width - 20} height={300} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-          <text x={width / 2} y={145} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-            ZERO PILE GEOMETRY (L = 0.00m, D = 0.00m)
-          </text>
-          <text x={width / 2} y={170} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-            Enter pile length, diameter and stratigraphy layers to evaluate skin friction and end bearing
-          </text>
-        </svg>
-      </div>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={320}
+        variant="pile"
+        title="ZERO PILE GEOMETRY BASELINE"
+        callout={`D × L = 0'-0" × 0'-0" (0.00 m)`}
+        subtitle="Enter pile diameter, embedment length & borehole strata to evaluate axial capacity"
+      />
     );
   }
 
@@ -4594,27 +4683,27 @@ export const PileCapacityDiagramSvg: React.FC<{
 
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
-              <span>Settlement Utilization: {((result.totalSettlementMm / result.permissibleSettlementMm) * 100).toFixed(1)}%</span>
+              <span>Settlement Utilization: {(safeDiv(result.totalSettlementMm, Math.max(0.01, result.permissibleSettlementMm), 0) * 100).toFixed(1)}%</span>
               <span>Allowable Cap: {result.permissibleSettlementMm} mm</span>
             </div>
             <div className="h-3.5 w-full bg-[var(--md-sys-color-surface-container-highest)] rounded-full overflow-hidden flex">
               <div
-                style={{ width: `${Math.min(100, (result.settlementShaftMm / result.permissibleSettlementMm) * 100)}%` }}
+                style={{ width: `${Math.min(100, safeDiv(result.settlementShaftMm, Math.max(0.01, result.permissibleSettlementMm), 0) * 100)}%` }}
                 className="bg-sky-500 h-full"
                 title={`Shaft Elastic Ss: ${result.settlementShaftMm} mm`}
               />
               <div
-                style={{ width: `${Math.min(100, (result.settlementBaseMm / result.permissibleSettlementMm) * 100)}%` }}
+                style={{ width: `${Math.min(100, safeDiv(result.settlementBaseMm, Math.max(0.01, result.permissibleSettlementMm), 0) * 100)}%` }}
                 className="bg-purple-500 h-full"
                 title={`Base Punch Sb: ${result.settlementBaseMm} mm`}
               />
               <div
-                style={{ width: `${Math.min(100, (result.settlementInteractionMm / result.permissibleSettlementMm) * 100)}%` }}
+                style={{ width: `${Math.min(100, safeDiv(result.settlementInteractionMm, Math.max(0.01, result.permissibleSettlementMm), 0) * 100)}%` }}
                 className="bg-amber-500 h-full"
                 title={`Interaction Sbs: ${result.settlementInteractionMm} mm`}
               />
               <div
-                style={{ width: `${Math.min(100, (result.consolidationSettlementMm / result.permissibleSettlementMm) * 100)}%` }}
+                style={{ width: `${Math.min(100, safeDiv(result.consolidationSettlementMm, Math.max(0.01, result.permissibleSettlementMm), 0) * 100)}%` }}
                 className="bg-indigo-500 h-full"
                 title={`Consolidation Sc: ${result.consolidationSettlementMm} mm`}
               />
@@ -4916,15 +5005,14 @@ export const PipeHydraulicsDiagramSvg: React.FC<{
 
   if (params.internalDiameterMm <= 0 || params.lengthM <= 0) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
-        <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
-        <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO PIPELINE CONDUIT GEOMETRY (D = 0 mm)
-        </text>
-        <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Enter pipe diameter, length and flow rate to generate hydraulic grade line (HGL) and energy grade line (EGL)
-        </text>
-      </svg>
+      <ZeroBaselineBlueprintSvg
+        width={width}
+        height={height}
+        variant="channel"
+        title="ZERO PIPELINE CONDUIT GEOMETRY"
+        callout={`D = 0 mm · L = 0'-0" (0.00 m)`}
+        subtitle="Enter internal pipe diameter, length & flow rate to plot HGL and EGL"
+      />
     );
   }
 
@@ -5211,6 +5299,19 @@ export const FrameTruss2DDiagramSvg: React.FC<{
     result.nodalResults.forEach((nr) => map.set(nr.nodeId, nr));
     return map;
   }, [result.nodalResults]);
+
+  if (nodes.length === 0 || members.length === 0) {
+    return (
+      <ZeroBaselineBlueprintSvg
+        width={svgW}
+        height={340}
+        variant="truss"
+        title="ZERO 2D FRAME / TRUSS TOPOLOGY"
+        callout={`0 Nodes · 0 Members · L = 0'-0" (0.00 m)`}
+        subtitle="Add structural nodes & members or load a 2D Frame/Truss preset to assemble [K]"
+      />
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative space-y-2.5">
@@ -5704,8 +5805,8 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
   const secCenterYMid = (result.yMinMm + result.yMaxMm) / 2;
   const secCenterZMid = (result.zMinMm + result.zMaxMm) / 2;
 
-  const mapSecX = (yRel: number) => secCx + (yRel - secCenterYMid) * scaleSec;
-  const mapSecY = (zRel: number) => secCy - (zRel - secCenterZMid) * scaleSec; // +z up -> SVG y down
+  const mapSecX = (yRel: number) => secCx + safeNum(yRel - secCenterYMid, 0) * scaleSec;
+  const mapSecY = (zRel: number) => secCy - safeNum(zRel - secCenterZMid, 0) * scaleSec; // +z up -> SVG y down
 
   const zTopPx = mapSecY(result.zMaxMm);
   const zBotPx = mapSecY(result.zMinMm);
@@ -5727,7 +5828,7 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
     25
   );
   const mapSigmaX = (sigMpa: number) =>
-    sigmaCenterX + (sigMpa / maxSigmaScale) * (sigmaBox.w * 0.44);
+    sigmaCenterX + safeDiv(sigMpa, maxSigmaScale, 0) * (sigmaBox.w * 0.44);
 
   // Tau shear stress plot region
   const tauBox = panelMode === 'dual'
@@ -5735,7 +5836,7 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
     : { x: 492, y: 42, w: 135, h: 220 };
   const maxTauScale = Math.max(result.tauMaxShearZMpa * 1.2, 10);
   const mapTauX = (tauMpa: number) =>
-    tauBox.x + 8 + (tauMpa / maxTauScale) * (tauBox.w - 16);
+    tauBox.x + 8 + safeDiv(tauMpa, maxTauScale, 0) * (tauBox.w - 16);
 
   // Build sigma polygon path & tau polygon path synchronized with mapSecY(zRel)
   const elasticSigmaPts = [
@@ -5761,7 +5862,7 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
   const nmHalfH = chartBox.h * 0.44;
   const maxMRatioAxis = Math.max(
     1.18,
-    ...result.nmInteractionCurve.map((p) => p.mRatio),
+    ...result.nmInteractionCurve.map((p) => safeNum(p.mRatio, 0)),
     result.mPlYRdKnm > 1e-6 ? Math.abs(result.momentMy_Knm) / result.mPlYRdKnm + 0.12 : 1.18
   );
   const maxNRatioAxis = Math.max(
@@ -5769,8 +5870,8 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
     result.nPlRdKn > 1e-6 ? Math.abs(result.axialForceN_Kn) / result.nPlRdKn + 0.12 : 1.15
   );
 
-  const mapNmX = (mRatio: number) => nmCx + (Math.max(0, mRatio) / maxMRatioAxis) * nmPlotW;
-  const mapNmY = (nRatio: number) => nmCy - (nRatio / maxNRatioAxis) * nmHalfH;
+  const mapNmX = (mRatio: number) => nmCx + safeDiv(Math.max(0, mRatio), maxMRatioAxis, 0) * nmPlotW;
+  const mapNmY = (nRatio: number) => nmCy - safeDiv(nRatio, maxNRatioAxis, 0) * nmHalfH;
 
   const plasticNmPath = result.nmInteractionCurve
     .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapNmX(pt.mRatio).toFixed(1)} ${mapNmY(pt.nRatio).toFixed(1)}`)
@@ -5792,14 +5893,27 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
   const loadMyRatio = result.mNyReducedRdKnm > 1e-6 ? Math.abs(result.momentMy_Knm) / result.mNyReducedRdKnm : 0;
   const loadMzRatio = result.mPlZRdKnm > 1e-6 ? Math.abs(result.momentMz_Knm) / result.mPlZRdKnm : 0;
   const biaxMaxAxis = Math.max(1.2, loadMyRatio + 0.12, loadMzRatio + 0.12);
-  const mapBiaxX = (myR: number) => biaxOriginX + (myR / biaxMaxAxis) * biaxW;
-  const mapBiaxY = (mzR: number) => biaxOriginY - (mzR / biaxMaxAxis) * biaxH;
+  const mapBiaxX = (myR: number) => biaxOriginX + safeDiv(myR, biaxMaxAxis, 0) * biaxW;
+  const mapBiaxY = (mzR: number) => biaxOriginY - safeDiv(mzR, biaxMaxAxis, 0) * biaxH;
 
   const biaxPath =
     result.myMzInteractionCurve
       .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapBiaxX(pt.myRatio).toFixed(1)} ${mapBiaxY(pt.mzRatio).toFixed(1)}`)
       .join(' ') +
     ` L ${mapBiaxX(0).toFixed(1)} ${mapBiaxY(0).toFixed(1)} Z`;
+
+  if (result.areaCm2 <= 0 || result.widthMm <= 0 || result.depthMm <= 0 || result.stressProfile.length === 0) {
+    return (
+      <ZeroBaselineBlueprintSvg
+        width={svgWidth}
+        height={svgHeight}
+        variant="section"
+        title="ZERO CROSS-SECTION GEOMETRY BASELINE"
+        callout={`b × h = 0 × 0 mm (0.0 cm²)`}
+        subtitle="Enter cross-section dimensions or pick an I/H/Box profile to analyze σ, τ & N-M"
+      />
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative w-full space-y-2.5">
@@ -6303,9 +6417,22 @@ export const RcColumnDiagramSvg: React.FC<{
     result.axialLoadPu_Kn * 1.08
   );
 
-  const mapM = (m: number) => chartX + (Math.max(0, m) / maxM) * chartW;
+  if (params.widthB_Mm <= 0 || params.depthH_Mm <= 0 || curve.length === 0) {
+    return (
+      <ZeroBaselineBlueprintSvg
+        width={720}
+        height={355}
+        variant="section"
+        title="ZERO RC COLUMN GEOMETRY BASELINE"
+        callout={`b × h = 0 × 0 mm (0'-0" × 0'-0")`}
+        subtitle="Enter column dimensions, material grades & loads to compute P–M interaction curve"
+      />
+    );
+  }
+
+  const mapM = (m: number) => chartX + safeDiv(Math.max(0, m), maxM, 0) * chartW;
   const mapP = (p: number) =>
-    chartY + ((maxP - p) / Math.max(1, maxP - minP)) * chartH;
+    chartY + safeDiv(maxP - p, Math.max(1, maxP - minP), 0) * chartH;
 
   const nominalPath = curve
     .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${mapM(pt.mnKnm).toFixed(1)} ${mapP(pt.pnKn).toFixed(1)}`)
@@ -6653,6 +6780,22 @@ export const StrutAndTieDiagramSvg: React.FC<{
 }> = ({ params, result }) => {
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
 
+  const svgW = 720;
+  const svgH = 340;
+
+  if (result.nodeResults.length === 0 || params.memberThicknessMm <= 0) {
+    return (
+      <ZeroBaselineBlueprintSvg
+        width={svgW}
+        height={svgH}
+        variant="truss"
+        title="ZERO STRUT-AND-TIE (STM) MODEL"
+        callout="0 Nodes · 0 Struts/Ties · b = 0 mm"
+        subtitle="Add D-region truss nodes & struts/ties or load a Deep Beam / Corbel preset"
+      />
+    );
+  }
+
   const xs = result.nodeResults.map((n) => n.xM);
   const ys = result.nodeResults.map((n) => n.yM);
   const minX = Math.min(...xs);
@@ -6663,8 +6806,6 @@ export const StrutAndTieDiagramSvg: React.FC<{
   const spanX = Math.max(0.4, maxX - minX);
   const spanY = Math.max(0.4, maxY - minY);
 
-  const svgW = 720;
-  const svgH = 340;
   const padX = 90;
   const padTop = 58;
   const padBot = 65;

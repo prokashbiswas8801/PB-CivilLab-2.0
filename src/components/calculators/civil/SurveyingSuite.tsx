@@ -74,33 +74,27 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
     () => activeWorkspace?.surveying?.inputUnit || 'ft'
   );
   const [customKathaSqFt, setCustomKathaSqFt] = useState<number>(
-    () => activeWorkspace?.surveying?.customKathaSqFt || 720
+    () => activeWorkspace?.surveying?.customKathaSqFt ?? 720
   );
 
   // 3-Sided (Heron's Formula)
-  const [sideA, setSideA] = useState<number>(() => activeWorkspace?.surveying?.triSides?.a || 120);
-  const [sideB, setSideB] = useState<number>(() => activeWorkspace?.surveying?.triSides?.b || 150);
-  const [sideC, setSideC] = useState<number>(() => activeWorkspace?.surveying?.triSides?.c || 180);
+  const [sideA, setSideA] = useState<number>(() => activeWorkspace?.surveying?.triSides?.a ?? 0);
+  const [sideB, setSideB] = useState<number>(() => activeWorkspace?.surveying?.triSides?.b ?? 0);
+  const [sideC, setSideC] = useState<number>(() => activeWorkspace?.surveying?.triSides?.c ?? 0);
 
   // 4-Sided (Quadrilateral with diagonal)
   // Triangle 1: side 1, side 2, diagonal; Triangle 2: side 3, side 4, diagonal
-  const [quadSide1, setQuadSide1] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s1 || 85);
-  const [quadSide2, setQuadSide2] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s2 || 110);
-  const [quadSide3, setQuadSide3] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s3 || 90);
-  const [quadSide4, setQuadSide4] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s4 || 105);
-  const [quadDiagonal, setQuadDiagonal] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.diag || 140);
+  const [quadSide1, setQuadSide1] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s1 ?? 0);
+  const [quadSide2, setQuadSide2] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s2 ?? 0);
+  const [quadSide3, setQuadSide3] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s3 ?? 0);
+  const [quadSide4, setQuadSide4] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.s4 ?? 0);
+  const [quadDiagonal, setQuadDiagonal] = useState<number>(() => activeWorkspace?.surveying?.quadSides?.diag ?? 0);
 
   // Multi-point Coordinate Polygon (Shoelace Algorithm)
   const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>(() =>
-    activeWorkspace?.surveying?.polygonPoints && activeWorkspace.surveying.polygonPoints.length >= 3
+    activeWorkspace?.surveying?.polygonPoints && activeWorkspace.surveying.polygonPoints.length > 0
       ? activeWorkspace.surveying.polygonPoints
-      : [
-          { id: 'p1', x: 0, y: 0 },
-          { id: 'p2', x: 120, y: 15 },
-          { id: 'p3', x: 150, y: 110 },
-          { id: 'p4', x: 45, y: 130 },
-          { id: 'p5', x: 0, y: 80 },
-        ]
+      : []
   );
 
   // Compute area in input units squared (ft² or m²)
@@ -185,10 +179,10 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
   -------------------------------------------------------------------------- */
   const [levelingMethod, setLevelingMethod] = useState<'height-of-instrument' | 'rise-and-fall'>('height-of-instrument');
   const [initialBenchmarkRL, setInitialBenchmarkRL] = useState<number>(
-    () => (activeWorkspace?.surveying?.benchmarkRL && activeWorkspace.surveying.benchmarkRL > 0) ? activeWorkspace.surveying.benchmarkRL : 100.0
+    () => activeWorkspace?.surveying?.benchmarkRL ?? 0
   );
   const [formationRL, setFormationRL] = useState<number>(
-    () => activeWorkspace?.surveying?.formationRL || 99.50
+    () => activeWorkspace?.surveying?.formationRL ?? 0
   );
 
   const [levelingRows, setLevelingRows] = useState<LevelingRow[]>(() =>
@@ -205,14 +199,7 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
           reducedLevel: s.reducedLevel,
           remarks: s.remarks,
         }))
-      : [
-          { id: 'st-01', station: 'BM 1', backsight: 1.450, intermediateSight: undefined, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: undefined, reducedLevel: 100.0, remarks: 'Benchmark on culvert parapet' },
-          { id: 'st-02', station: 'CH 0+000', backsight: undefined, intermediateSight: 1.820, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.370, reducedLevel: 99.630, remarks: 'Centerline road start' },
-          { id: 'st-03', station: 'CH 0+020', backsight: undefined, intermediateSight: 2.150, foresight: undefined, heightOfInstrument: 101.450, rise: undefined, fall: 0.330, reducedLevel: 99.300, remarks: 'Natural ground' },
-          { id: 'st-04', station: 'CP 1', backsight: 2.380, intermediateSight: undefined, foresight: 2.890, heightOfInstrument: 100.940, rise: undefined, fall: 0.740, reducedLevel: 98.560, remarks: 'Change Point on peg' },
-          { id: 'st-05', station: 'CH 0+040', backsight: undefined, intermediateSight: 1.620, foresight: undefined, heightOfInstrument: 100.940, rise: 0.760, fall: undefined, reducedLevel: 99.320, remarks: 'Drain bed invert' },
-          { id: 'st-06', station: 'TBM 2', backsight: undefined, intermediateSight: undefined, foresight: 1.250, heightOfInstrument: 100.940, rise: 0.370, fall: undefined, reducedLevel: 99.690, remarks: 'Closing temporary BM' },
-        ]
+      : []
   );
 
   // Compute Leveling Table dynamically according to standard surveying physics
@@ -341,7 +328,7 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
     const avgCutDepth = cutCount > 0 ? totalCutDepth / cutCount : 0;
     const avgFillDepth = fillCount > 0 ? totalFillDepth / fillCount : 0;
 
-    const effectiveArea = areaSqM > 0 ? areaSqM : 100;
+    const effectiveArea = areaSqM > 0 ? areaSqM : 0;
     const totalCutM3 = Number((effectiveArea * (cutCount / rows.length) * avgCutDepth).toFixed(2));
     const totalFillM3 = Number((effectiveArea * (fillCount / rows.length) * avgFillDepth).toFixed(2));
     const netVolumeM3 = Number(Math.abs(totalCutM3 - totalFillM3).toFixed(2));
@@ -498,19 +485,19 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
 
     const pdfReportData = {
       projectMeta: {
-        projectName: 'Differential Leveling & Irregular Land Takeoff',
-        projectCode: 'SURVEY-CIVIL-2026',
-        client: 'Field Survey Bench Alignment',
-        location: 'Field Survey Bench Alignment',
+        projectName: activeWorkspace?.name || 'Differential Leveling & Irregular Land Takeoff',
+        projectCode: activeWorkspace?.projectCode || 'PRJ-001',
+        client: '',
+        location: activeWorkspace?.siteLocation || '',
         date: new Date().toISOString().slice(0, 10),
         unitSystem: 'SI' as const,
-        engineerName: 'Prokash Biswas, PE',
+        engineerName: activeWorkspace?.engineerOfRecord || '',
       },
       moduleMeta: {
         moduleId: 'surveying-suite',
         moduleTitle: 'SURVEYING FIELD LEVELING & LAND MEASUREMENT REPORT',
         standard: 'Survey of Bangladesh / IS 1492 / Surveying Standards',
-        status: computedLeveling.isArithmeticCheckPassed ? ('VERIFIED' as const) : ('WARNING' as const),
+        status: computedLeveling.rows.length === 0 && areaSqM === 0 ? ('ZERO BASELINE' as const) : computedLeveling.isArithmeticCheckPassed ? ('VERIFIED' as const) : ('WARNING' as const),
       },
       inputs: [
         { name: 'Initial Benchmark RL', symbol: 'BM_RL', value: computedLeveling.firstRL.toFixed(3), unit: 'm' },
@@ -571,9 +558,8 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
     setQuadDiagonal(0);
     setPolygonPoints([]);
     setInitialBenchmarkRL(0);
-    setLevelingRows([
-      { id: 'st-01', station: 'BM 1', backsight: 0, intermediateSight: undefined, foresight: undefined, heightOfInstrument: 0, rise: undefined, fall: undefined, reducedLevel: 0, remarks: 'Datum benchmark' },
-    ]);
+    setFormationRL(0);
+    setLevelingRows([]);
   };
 
   const handleLoadStandardPreset = () => {
@@ -1172,7 +1158,7 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                 type="number"
                 step="0.001"
                 value={initialBenchmarkRL}
-                onChange={(e) => setInitialBenchmarkRL(Number(e.target.value) || 100.0)}
+                onChange={(e) => setInitialBenchmarkRL(Number(e.target.value) || 0)}
                 className="w-24 px-2 py-1 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-right"
               />
               <span className="text-xs font-mono">m</span>
@@ -1382,6 +1368,13 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
             {/* SVG Ground line */}
             <div className="w-full h-36 bg-[var(--md-sys-color-surface-container-low)] rounded-xl border border-[var(--md-sys-color-outline-variant)] p-3 flex items-center justify-center">
               {(() => {
+                if (computedLeveling.rows.length === 0) {
+                  return (
+                    <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] text-center">
+                      Zero Baseline Active — Add stations or click Load Preset to plot longitudinal ground profile.
+                    </div>
+                  );
+                }
                 const rls = computedLeveling.rows.map((r) => r.reducedLevel);
                 const minRL = Math.min(...rls);
                 const maxRL = Math.max(...rls);

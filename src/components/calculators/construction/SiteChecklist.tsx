@@ -281,12 +281,12 @@ export const SiteChecklist: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | ItemStatus>('ALL');
 
   // Inspection Metadata
-  const [projectName, setProjectName] = useState('Metro Tower Structural Package');
-  const [pourLocation, setPourLocation] = useState('Level 4 Beam & Slab Casting Grid A-D');
-  const [inspectorName, setInspectorName] = useState('Prokash Biswas, PE');
-  const [contractorName, setContractorName] = useState('Apex Construction Consortium');
+  const [projectName, setProjectName] = useState('');
+  const [pourLocation, setPourLocation] = useState('');
+  const [inspectorName, setInspectorName] = useState('');
+  const [contractorName, setContractorName] = useState('');
   const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().slice(0, 10));
-  const [weatherCondition, setWeatherCondition] = useState('Sunny, 28°C / Dry');
+  const [weatherCondition, setWeatherCondition] = useState('');
   const [copied, setCopied] = useState(false);
 
   // Status updates

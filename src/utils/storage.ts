@@ -17,6 +17,9 @@ import {
   RcColumnParams,
   StrutAndTieParams,
   MasterMarketRates,
+  ContinuousBeamParameters,
+  PileCapacityParameters,
+  PipeHydraulicsParameters,
 } from '../types/civil';
 import { TestingLabWorkspaceState } from '../types/testingLab';
 import { persistToIndexedDB, clearIndexedDB, loadFromIndexedDB } from './indexedStorage';
@@ -196,125 +199,125 @@ export function createDefaultArchitectureParameters(): ArchitectureParameters {
   return {
     farMgc: {
       landUnit: 'katha',
-      landAreaValue: 5.0,
-      customKathaSqFt: 720,
+      landAreaValue: 0,
+      customKathaSqFt: 0,
       occupancy: 'residential',
       occupancyType: 'residential-a2',
       plotAreaCategory: '2-to-5-katha',
-      roadWidthM: 6.1,
-      frontRoadWidthM: 6.1,
-      frontageM: 14.46,
-      plotDepthM: 23.13,
+      roadWidthM: 0,
+      frontRoadWidthM: 0,
+      frontageM: 0,
+      plotDepthM: 0,
       isAutoDimension: true,
       isCornerPlot: false,
       roadSurrenderWidthM: 0,
-      proposedFloors: 6,
-      storyHeightM: 3.05,
-      proposedGroundCoverageM2: 195.0,
-      proposedTotalFloorAreaM2: 1050.0,
+      proposedFloors: 0,
+      storyHeightM: 0,
+      proposedGroundCoverageM2: 0,
+      proposedTotalFloorAreaM2: 0,
       basementCount: 0,
-      unitsCount: 10,
-      avgUnitAreaSqm: 105.0,
-      providedCarParkingBays: 5,
-      providedSetbacks: { front: 1.5, rear: 2.0, side1: 1.25, side2: 1.25 },
+      unitsCount: 0,
+      avgUnitAreaSqm: 0,
+      providedCarParkingBays: 0,
+      providedSetbacks: { front: 0, rear: 0, side1: 0, side2: 0 },
       enableOverride: false,
-      overrideFar: 3.5,
-      overrideMgc: 60,
-      overrideSetbacks: { front: 1.5, rear: 2.0, side1: 1.25, side2: 1.25 },
+      overrideFar: 0,
+      overrideMgc: 0,
+      overrideSetbacks: { front: 0, rear: 0, side1: 0, side2: 0 },
     },
     occupancyType: 'residential-a2',
     plotAreaCategory: '2-to-5-katha',
-    frontRoadWidthM: 6.1,
-    proposedFloors: 6,
-    proposedGroundCoverageM2: 195.0,
-    proposedTotalFloorAreaM2: 1050.0,
+    frontRoadWidthM: 0,
+    proposedFloors: 0,
+    proposedGroundCoverageM2: 0,
+    proposedTotalFloorAreaM2: 0,
     basementCount: 0,
-    unitsCount: 10,
-    avgUnitAreaSqm: 105.0,
+    unitsCount: 0,
+    avgUnitAreaSqm: 0,
     staircase: {
       stairType: 'dog-legged',
       stairTopology: 'dog-legged',
       buildingOccupancy: 'residential',
-      floorHeightMm: 3000,
-      floorToFloorHeightM: 3.0,
-      stairwellLengthMm: 4650,
-      stairwellWidthMm: 2450,
-      preferredRiserMm: 150,
-      riserHeightMm: 150,
-      preferredTreadMm: 275,
-      treadWidthMm: 275,
-      flightWidthMm: 1150,
-      waistSlabMm: 150,
-      waistSlabThicknessMm: 150,
-      slabThicknessMm: 150,
-      landingWidthMm: 1200,
-      wellGapMm: 150,
-      handrailHeightMm: 950,
-      nosingMm: 25,
-      liveLoadKpa: 3.0,
-      finishesLoadKpa: 1.0,
+      floorHeightMm: 0,
+      floorToFloorHeightM: 0,
+      stairwellLengthMm: 0,
+      stairwellWidthMm: 0,
+      preferredRiserMm: 0,
+      riserHeightMm: 0,
+      preferredTreadMm: 0,
+      treadWidthMm: 0,
+      flightWidthMm: 0,
+      waistSlabMm: 0,
+      waistSlabThicknessMm: 0,
+      slabThicknessMm: 0,
+      landingWidthMm: 0,
+      wellGapMm: 0,
+      handrailHeightMm: 0,
+      nosingMm: 0,
+      liveLoadKpa: 0,
+      finishesLoadKpa: 0,
     },
     stairTopology: 'dog-legged',
     buildingOccupancy: 'residential',
-    floorToFloorHeightM: 3.0,
-    riserHeightMm: 150,
-    treadWidthMm: 275,
-    flightWidthMm: 1150,
-    landingWidthMm: 1200,
-    waistSlabThicknessMm: 150,
-    wellGapMm: 150,
+    floorToFloorHeightM: 0,
+    riserHeightMm: 0,
+    treadWidthMm: 0,
+    flightWidthMm: 0,
+    landingWidthMm: 0,
+    waistSlabThicknessMm: 0,
+    wellGapMm: 0,
     waterTank: {
       calcMode: 'building',
       occupancyPreset: 'residential-135',
-      numFloors: 6,
-      unitsPerFloor: 2,
-      personsPerUnit: 5,
-      directOccupants: 50,
-      floatingPopulation: 5,
-      lpcd: 135,
-      storageDays: 1.0,
-      fireReserveL: 10000,
-      fireReserveMinutes: 45,
-      firePumpFlowLpm: 225,
+      numFloors: 0,
+      unitsPerFloor: 0,
+      personsPerUnit: 0,
+      directOccupants: 0,
+      floatingPopulation: 0,
+      lpcd: 0,
+      storageDays: 0,
+      fireReserveL: 0,
+      fireReserveMinutes: 0,
+      firePumpFlowLpm: 0,
       fireReserveAutoMode: false,
-      ugwrSharePercent: 65,
-      ugwrWaterDepthM: 2.0,
-      ugwrLwRatio: 1.5,
-      ohtWaterDepthM: 1.6,
-      ohtLwRatio: 1.3,
-      pumpFillHours: 2.0,
-      totalHeadM: 28,
+      ugwrSharePercent: 0,
+      ugwrWaterDepthM: 0,
+      ugwrLwRatio: 0,
+      ohtWaterDepthM: 0,
+      ohtLwRatio: 0,
+      pumpFillHours: 0,
+      totalHeadM: 0,
     },
     septicTank: {
-      septicUsers: 35,
-      sewageRateLpcd: 90,
-      detentionHours: 24,
-      desludgingYears: 2.0,
-      septicDepthM: 1.6,
-      septicLwRatio: 2.5,
-      soilPercolationRate: 30,
-      soilPercolationMinPer25mm: 18,
-      soakPitDiaM: 1.8,
+      septicUsers: 0,
+      sewageRateLpcd: 0,
+      detentionHours: 0,
+      desludgingYears: 0,
+      septicDepthM: 0,
+      septicLwRatio: 0,
+      soilPercolationRate: 0,
+      soilPercolationMinPer25mm: 0,
+      soakPitDiaM: 0,
     },
     rainwaterDaylight: {
-      roofCatchmentAreaM2: 220,
-      runoffCoefficient: 0.9,
-      annualRainfallMm: 2050,
-      monsoonCaptureSharePct: 75,
-      drySpellDays: 25,
-      dailyRwhDemandLpd: 900,
-      cisternDepthM: 2.0,
-      cisternLwRatio: 1.5,
-      roomName: 'Master Bedroom 01',
+      roofCatchmentAreaM2: 0,
+      runoffCoefficient: 0,
+      annualRainfallMm: 0,
+      monsoonCaptureSharePct: 0,
+      drySpellDays: 0,
+      dailyRwhDemandLpd: 0,
+      cisternDepthM: 0,
+      cisternLwRatio: 0,
+      roomName: '',
       roomOccupancyType: 'habitable',
-      roomLengthM: 4.2,
-      roomWidthM: 3.4,
-      ceilingHeightM: 3.0,
-      windowCount: 2,
-      windowWidthM: 1.5,
-      windowHeightM: 1.35,
-      openableWindowPct: 50,
-      ventilatorAreaM2: 0.25,
+      roomLengthM: 0,
+      roomWidthM: 0,
+      ceilingHeightM: 0,
+      windowCount: 0,
+      windowWidthM: 0,
+      windowHeightM: 0,
+      openableWindowPct: 0,
+      ventilatorAreaM2: 0,
     },
   };
 }
@@ -332,6 +335,21 @@ export function createDefaultTestingLabState(): TestingLabWorkspaceState {
 }
 
 export function createDefaultMasterMarketRates(): MasterMarketRates {
+  return {
+    cementBag50Kg: 0,
+    sylhetSandPerCft: 0,
+    localSandPerCft: 0,
+    stoneChips20mmPerCft: 0,
+    brickKhoaPerCft: 0,
+    firstClassBrickPer1000: 0,
+    rebar500WPerTon: 0,
+    headMasonDailyWage: 0,
+    helperDailyWage: 0,
+    barBenderDailyWage: 0,
+  };
+}
+
+export function createPwdDefaultMasterMarketRates(): MasterMarketRates {
   return {
     cementBag50Kg: 545,
     sylhetSandPerCft: 68,
@@ -351,10 +369,10 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
   return [
     {
       id: generateUUID(),
-      name: 'Primary Civil Engineering Project',
-      projectCode: 'CIV-2026-001',
-      siteLocation: 'Main Construction Sector',
-      engineerOfRecord: 'Project Engineer, PE',
+      name: 'Untitled Project',
+      projectCode: 'PRJ-001',
+      siteLocation: '',
+      engineerOfRecord: '',
       createdAt: now,
       updatedAt: now,
       activeModule: 'boq-estimator',
@@ -404,77 +422,98 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         uniformLoadKnPerM: 0,
         pointLoadKn: 0,
         pointLoadPositionM: 0,
-        elasticModulusGpa: 200,
+        elasticModulusGpa: 0,
         momentOfInertiaCm4: 0,
         supportCondition: 'simply-supported',
-        allowableStressMpa: 250,
+        allowableStressMpa: 0,
         sectionDepthMm: 0,
+        overhangLeftM: 0,
+        overhangRightM: 0,
+        endLoadKnPerM: 0,
+        deadLoadKnPerM: 0,
+        liveLoadKnPerM: 0,
         seismicZone: 'Zone 2 (Z=0.20)',
-        seismicImportanceI: 1.0,
-        responseReductionR: 5.0,
-        buildingSeismicWeightKn: 5000,
+        seismicImportanceI: 0,
+        responseReductionR: 0,
+        buildingSeismicWeightKn: 0,
         siteSoilClass: 'SC',
-        windDistrict: 'Dhaka',
-        basicWindSpeedMs: 65.7,
-        buildingHeightM: 20,
-        tributaryWidthM: 5,
+        windDistrict: '',
+        basicWindSpeedMs: 0,
+        buildingHeightM: 0,
+        tributaryWidthM: 0,
         windExposureCategory: 'B',
       },
       bearing: {
         footingShape: 'square',
         footingWidthM: 0,
+        footingLengthM: 0,
         embedmentDepthM: 0,
         soilCohesionKpa: 0,
         frictionAngleDeg: 0,
         unitWeightKnPerM3: 0,
         waterTableDepthM: 0,
-        factorOfSafety: 3.0,
+        factorOfSafety: 0,
         appliedColumnLoadKn: 0,
-        footingThicknessMm: 450,
-        colWidthMm: 300,
-        colDepthMm: 300,
-        fckMpa: 21,
-        fyMpa: 420,
-        clearCoverMm: 75,
+        footingThicknessMm: 0,
+        colWidthMm: 0,
+        colDepthMm: 0,
+        fckMpa: 0,
+        fyMpa: 0,
+        clearCoverMm: 0,
       },
       concrete: {
         targetStrengthMpa: 0,
         waterCementRatio: 0,
         slumpMm: 0,
-        maxAggregateSizeMm: 20,
-        cementSpecificGravity: 3.15,
-        fineAggSpecificGravity: 2.65,
-        coarseAggSpecificGravity: 2.7,
+        maxAggregateSizeMm: 0,
+        cementSpecificGravity: 0,
+        fineAggSpecificGravity: 0,
+        coarseAggSpecificGravity: 0,
         airEntrainmentPercent: 0,
         batchVolumeM3: 0,
+        dryVolumeFactor: 0,
+        sandFinenessModulus: 0,
+        coarseAggDryRoddedDensityKgPerM3: 0,
+        fineAggAbsorptionPercent: 0,
+        fineAggMoisturePercent: 0,
+        coarseAggAbsorptionPercent: 0,
+        coarseAggMoisturePercent: 0,
+        admixtureDosePercent: 0,
+        admixtureSpecificGravity: 0,
+        admixtureWaterReductionPercent: 0,
       },
       channel: {
         bottomWidthM: 0,
         sideSlopeZ: 0,
         flowDepthM: 0,
         bedSlope: 0,
-        manningN: 0.015,
+        manningN: 0,
         freeboardRequirementM: 0,
+        diameterM: 0,
+        channelLengthM: 0,
       },
       concreteMaterials: {
         code: 'BNBC-2020',
         wetVolumeM3: 0,
-        ratioCement: 1,
+        ratioCement: 0,
         ratioSand: 0,
         ratioAggregate: 0,
-        waterCementRatio: 0.45,
-        cementBagWeightKg: 50,
-        cementBulkDensityKgPerM3: 1440,
-        sandBulkDensityKgPerM3: 1600,
-        aggregateBulkDensityKgPerM3: 1520,
-        customDryFactor: 1.54,
+        waterCementRatio: 0,
+        cementBagWeightKg: 0,
+        cementBulkDensityKgPerM3: 0,
+        sandBulkDensityKgPerM3: 0,
+        aggregateBulkDensityKgPerM3: 0,
+        customDryFactor: 0,
         wastagePercent: 0,
+        members: [],
       },
       rebarBbs: {
         elementType: 'slab',
         clearCoverMm: 0,
-        rebarDensityKgPerM3: 7850,
+        rebarDensityKgPerM3: 0,
         hookAngle: '90',
+        elementCount: 0,
+        batchEntries: [],
         slabLengthM: 0,
         slabWidthM: 0,
         slabThicknessMm: 0,
@@ -482,6 +521,14 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         mainBarSpacingMm: 0,
         distBarDiaMm: 0,
         distBarSpacingMm: 0,
+        beamLengthM: 0,
+        beamWidthMm: 0,
+        beamDepthMm: 0,
+        beamMainBarDiaMm: 0,
+        beamTopBarCount: 0,
+        beamBotBarCount: 0,
+        beamStirrupDiaMm: 0,
+        beamStirrupSpacingMm: 0,
         colLengthMm: 0,
         colWidthMm: 0,
         colHeightM: 0,
@@ -510,51 +557,48 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         stairMainBarSpacingMm: 0,
         stairDistBarDiaMm: 0,
         stairDistBarSpacingMm: 0,
-        // Lapping & 12m Commercial Bar Stock
-        lappingFactorD: 50,
-        commercialBarStockLengthM: 12.0,
-        // Lintel & Chajja defaults
-        lintelLengthM: 2.1,
-        lintelWidthMm: 250,
-        lintelDepthMm: 150,
-        lintelMainBarDiaMm: 12,
-        lintelTopBarCount: 2,
-        lintelBotBarCount: 2,
-        lintelStirrupDiaMm: 8,
-        lintelStirrupSpacingMm: 150,
-        chajjaProjectionM: 0.6,
-        chajjaRootThicknessMm: 100,
-        chajjaTipThicknessMm: 75,
-        chajjaMainBarDiaMm: 10,
-        chajjaMainBarSpacingMm: 150,
-        chajjaDistBarDiaMm: 8,
-        chajjaDistBarSpacingMm: 200,
-        // Bored Pile Cage defaults
-        pileDiaMm: 500,
-        pileLengthM: 18.0,
-        pileMainBarDiaMm: 16,
-        pileMainBarCount: 7,
-        pileSpiralDiaMm: 8,
-        pileSpiralPitchMm: 150,
-        pileStiffenerBarDiaMm: 12,
-        pileStiffenerSpacingM: 2.0,
-        pileCutoffEmbedmentM: 0.75,
+        lappingFactorD: 0,
+        commercialBarStockLengthM: 0,
+        lintelLengthM: 0,
+        lintelWidthMm: 0,
+        lintelDepthMm: 0,
+        lintelMainBarDiaMm: 0,
+        lintelTopBarCount: 0,
+        lintelBotBarCount: 0,
+        lintelStirrupDiaMm: 0,
+        lintelStirrupSpacingMm: 0,
+        chajjaProjectionM: 0,
+        chajjaRootThicknessMm: 0,
+        chajjaTipThicknessMm: 0,
+        chajjaMainBarDiaMm: 0,
+        chajjaMainBarSpacingMm: 0,
+        chajjaDistBarDiaMm: 0,
+        chajjaDistBarSpacingMm: 0,
+        pileDiaMm: 0,
+        pileLengthM: 0,
+        pileMainBarDiaMm: 0,
+        pileMainBarCount: 0,
+        pileSpiralDiaMm: 0,
+        pileSpiralPitchMm: 0,
+        pileStiffenerBarDiaMm: 0,
+        pileStiffenerSpacingM: 0,
+        pileCutoffEmbedmentM: 0,
       },
       masonry: {
         wallLengthM: 0,
         wallHeightM: 0,
         wallThicknessM: 0,
-        brickLengthMm: 240,
-        brickWidthMm: 115,
-        brickHeightMm: 70,
-        mortarJointMm: 10,
-        mortarRatioCement: 1,
+        brickLengthMm: 0,
+        brickWidthMm: 0,
+        brickHeightMm: 0,
+        mortarJointMm: 0,
+        mortarRatioCement: 0,
         mortarRatioSand: 0,
         brickWastagePercent: 0,
         openings: [],
         plasterThicknessMm: 0,
         plasterSides: 0,
-        plasterRatioCement: 1,
+        plasterRatioCement: 0,
         plasterRatioSand: 0,
         floorLengthM: 0,
         floorWidthM: 0,
@@ -562,13 +606,13 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         tileWidthMm: 0,
         tilesPerBox: 0,
         tileWastagePercent: 0,
-        puttyCoats: 2,
-        puttyCoverageKgPerM2: 0.90,
-        primerCoverageM2PerL: 11.0,
-        paintCoats: 2,
-        paintCoverageM2PerL: 6.5,
-        paintWastagePercent: 5,
-        grillWeightKgPerSft: 1.40,
+        puttyCoats: 0,
+        puttyCoverageKgPerM2: 0,
+        primerCoverageM2PerL: 0,
+        paintCoats: 0,
+        paintCoverageM2PerL: 0,
+        paintWastagePercent: 0,
+        grillWeightKgPerSft: 0,
         includeGrillSchedule: true,
         includeThaiSchedule: true,
       },
@@ -593,74 +637,13 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         customShrinkagePercent: 0,
         chainageStations: [],
       },
-      continuousBeam: {
-        spanCount: 2,
-        spans: [
-          {
-            id: 'span-1',
-            spanIndex: 0,
-            lengthM: 0,
-            momentOfInertiaCm4: 0,
-            elasticModulusGpa: 200,
-            udlKnPerM: 0,
-            pointLoadKn: 0,
-            pointLoadPositionM: 0,
-          },
-          {
-            id: 'span-2',
-            spanIndex: 1,
-            lengthM: 0,
-            momentOfInertiaCm4: 0,
-            elasticModulusGpa: 200,
-            udlKnPerM: 0,
-            pointLoadKn: 0,
-            pointLoadPositionM: 0,
-          },
-        ],
-        leftSupport: 'pin',
-        rightSupport: 'pin',
-        allowableStressMpa: 250,
-        sectionDepthMm: 0,
-      },
-      pile: {
-        pileType: 'bored-cast-in-situ',
-        diameterM: 0,
-        lengthM: 0,
-        groundwaterDepthM: 0,
-        appliedLoadKn: 0,
-        factorOfSafety: 2.5,
-        layers: [],
-        tipBearingCohesionKpa: 0,
-        tipBearingFrictionDeg: 0,
-        tipBearingUnitWeightKnPerM3: 0,
-      },
-      pipe: {
-        serviceType: 'pressure',
-        pipeMaterial: 'pvc-hdpe',
-        hazenWilliamsC: 150,
-        internalDiameterMm: 0,
-        lengthM: 0,
-        flowRateLps: 0,
-        inletElevationM: 0,
-        outletElevationM: 0,
-        inletPressureKpa: 0,
-        minorLossCoefficientK: 0,
-        waterTempC: 20,
-        tubewellDepthM: 60,
-        staticWaterLevelM: 25,
-        drawdownM: 6,
-        deliveryHeadM: 20,
-        pumpEfficiencyPercent: 70,
-        motorEfficiencyPercent: 85,
-        upvcClass: 'Class C (9 bar)',
-        fixtureWaterClosets: 6,
-        fixtureWashBasins: 6,
-        fixtureShowers: 4,
-        fixtureKitchenSinks: 2,
-        fixtureFloorDrains: 4,
-        fixtureFloorTraps: 4,
-        fixtureUrinals: 0,
-      },
+      continuousBeam: createDefaultContinuousBeam(),
+      frameTruss2d: createDefaultFrameTruss2D(),
+      sectionAnalyzer: createDefaultSectionAnalyzer(),
+      rcColumn: createDefaultRcColumnDesign(),
+      strutAndTie: createDefaultStrutAndTie(),
+      pile: createDefaultPileCapacity(),
+      pipe: createDefaultPipeHydraulics(),
       surveying: {
         method: 'height-of-instrument',
         benchmarkRL: 0,
@@ -744,7 +727,7 @@ export function createDemoWorkspaces(): CivilWorkspace[] {
       name: 'Padma River Viaduct — Pier P14',
       projectCode: 'CIV-2026-P14',
       siteLocation: 'Sector 4 North Abutment',
-      engineerOfRecord: 'Project Engineer, PE',
+      engineerOfRecord: '',
       createdAt: now,
       updatedAt: now,
       boq: {
@@ -758,14 +741,16 @@ export function createDemoWorkspaces(): CivilWorkspace[] {
 export function createDefaultUserProfile(): UserProfile {
   return {
     fullName: '',
-    designation: 'Project Engineer, PE',
-    organization: 'Consulting Firm',
+    designation: '',
+    organization: '',
     role: 'structural-engineer',
     licenseNumber: '',
     email: '',
     phone: '',
+    address: '',
     initials: '',
-    bio: 'Civil & Structural Design Engineer specializing in reinforced concrete, geotechnical foundations, and infrastructure project cost engineering.',
+    bio: '',
+    signatureText: '',
   };
 }
 
@@ -1390,7 +1375,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       author: 'Structural Standards',
       payload: {
         targetModule: 'frame-truss-2d',
-        frameTruss2d: createDefaultFrameTruss2D(),
+        frameTruss2d: createPresetFrameTruss2D(),
       },
     },
     {
@@ -1405,7 +1390,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       author: 'Structural Standards',
       payload: {
         targetModule: 'section-analyzer',
-        sectionAnalyzer: createDefaultSectionAnalyzer(),
+        sectionAnalyzer: createPresetSectionAnalyzer(),
       },
     },
     {
@@ -1420,7 +1405,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       author: 'Structural Standards',
       payload: {
         targetModule: 'rc-column-design',
-        rcColumn: createDefaultRcColumnDesign(),
+        rcColumn: createPresetRcColumnDesign(),
       },
     },
     {
@@ -1435,7 +1420,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       author: 'Structural Standards',
       payload: {
         targetModule: 'strut-and-tie',
-        strutAndTie: createDefaultStrutAndTie(),
+        strutAndTie: createPresetStrutAndTie(),
       },
     },
   ];
@@ -1496,50 +1481,13 @@ export function getZeroBaselineForModule(moduleId: EngineeringModuleId): Partial
     case 'continuous-beam':
       return { continuousBeam: zeroWs.continuousBeam };
     case 'frame-truss-2d':
-      return {
-        frameTruss2d: {
-          ...createDefaultFrameTruss2D(),
-          presetName: 'Clean Zero-Load Baseline',
-          members: createDefaultFrameTruss2D().members.map((m) => ({
-            ...m,
-            udlKnPerM: 0,
-            pointLoadKn: 0,
-          })),
-          nodalLoads: [],
-          thermalDeltaC: 0,
-        },
-      };
+      return { frameTruss2d: createDefaultFrameTruss2D() };
     case 'section-analyzer':
-      return {
-        sectionAnalyzer: {
-          ...createDefaultSectionAnalyzer(),
-          axialForceN_Kn: 0,
-          momentMy_Knm: 0,
-          momentMz_Knm: 0,
-          shearVy_Kn: 0,
-          shearVz_Kn: 0,
-          torsionT_Knm: 0,
-        },
-      };
+      return { sectionAnalyzer: createDefaultSectionAnalyzer() };
     case 'rc-column-design':
-      return {
-        rcColumn: {
-          ...createDefaultRcColumnDesign(),
-          axialLoadPu_Kn: 0,
-          momentMux_Knm: 0,
-          momentMuy_Knm: 0,
-        },
-      };
-    case 'strut-and-tie': {
-      const baseStm = createDefaultStrutAndTie();
-      return {
-        strutAndTie: {
-          ...baseStm,
-          presetName: 'Clean Zero-Load STM Baseline',
-          nodalLoads: baseStm.nodalLoads.map((l) => ({ ...l, fxKn: 0, fyKn: 0 })),
-        },
-      };
-    }
+      return { rcColumn: createDefaultRcColumnDesign() };
+    case 'strut-and-tie':
+      return { strutAndTie: createDefaultStrutAndTie() };
     case 'pile-capacity':
       return { pile: zeroWs.pile };
     case 'pipe-hydraulics':
@@ -1553,7 +1501,98 @@ export function getZeroBaselineForModule(moduleId: EngineeringModuleId): Partial
   }
 }
 
+export function createDefaultContinuousBeam(): ContinuousBeamParameters {
+  return {
+    spanCount: 2,
+    spans: [
+      {
+        id: 'span-1',
+        spanIndex: 0,
+        lengthM: 0,
+        momentOfInertiaCm4: 0,
+        elasticModulusGpa: 0,
+        udlKnPerM: 0,
+        pointLoadKn: 0,
+        pointLoadPositionM: 0,
+      },
+      {
+        id: 'span-2',
+        spanIndex: 1,
+        lengthM: 0,
+        momentOfInertiaCm4: 0,
+        elasticModulusGpa: 0,
+        udlKnPerM: 0,
+        pointLoadKn: 0,
+        pointLoadPositionM: 0,
+      },
+    ],
+    leftSupport: 'pin',
+    rightSupport: 'pin',
+    allowableStressMpa: 0,
+    sectionDepthMm: 0,
+  };
+}
+
+export function createDefaultPileCapacity(): PileCapacityParameters {
+  return {
+    pileType: 'bored-cast-in-situ',
+    diameterM: 0,
+    lengthM: 0,
+    groundwaterDepthM: 0,
+    appliedLoadKn: 0,
+    factorOfSafety: 0,
+    layers: [],
+    tipBearingCohesionKpa: 0,
+    tipBearingFrictionDeg: 0,
+    tipBearingUnitWeightKnPerM3: 0,
+  };
+}
+
+export function createDefaultPipeHydraulics(): PipeHydraulicsParameters {
+  return {
+    serviceType: 'pressure',
+    pipeMaterial: 'pvc-hdpe',
+    hazenWilliamsC: 0,
+    internalDiameterMm: 0,
+    lengthM: 0,
+    flowRateLps: 0,
+    inletElevationM: 0,
+    outletElevationM: 0,
+    inletPressureKpa: 0,
+    minorLossCoefficientK: 0,
+    waterTempC: 0,
+    tubewellDepthM: 0,
+    staticWaterLevelM: 0,
+    drawdownM: 0,
+    deliveryHeadM: 0,
+    pumpEfficiencyPercent: 0,
+    motorEfficiencyPercent: 0,
+    upvcClass: 'Class C (9 bar)',
+    fixtureWaterClosets: 0,
+    fixtureWashBasins: 0,
+    fixtureShowers: 0,
+    fixtureKitchenSinks: 0,
+    fixtureFloorDrains: 0,
+    fixtureFloorTraps: 0,
+    fixtureUrinals: 0,
+  };
+}
+
 export function createDefaultFrameTruss2D(): FrameTruss2DParams {
+  return {
+    code: 'BNBC-2020',
+    presetName: 'Zero Baseline',
+    analysisMode: 'first-order-linear',
+    allowableStressMpa: 0,
+    sectionDepthMm: 0,
+    thermalDeltaC: 0,
+    nodes: [],
+    members: [],
+    nodalLoads: [],
+  };
+}
+
+export function createPresetFrameTruss2D(): FrameTruss2DParams {
   return {
     code: 'BNBC-2020',
     presetName: 'Portal Sway Frame',
@@ -1624,6 +1663,29 @@ export function createDefaultFrameTruss2D(): FrameTruss2DParams {
 export function createDefaultSectionAnalyzer(): SectionAnalyzerParams {
   return {
     shape: 'i-beam',
+    presetId: 'custom',
+    designCode: 'Eurocode-3',
+    depthH_Mm: 0,
+    widthB_Mm: 0,
+    webThicknessTw_Mm: 0,
+    flangeThicknessTf_Mm: 0,
+    wallThicknessT_Mm: 0,
+    polygonPointsMm: [],
+    fyMpa: 0,
+    elasticModulusGpa: 0,
+    gammaM0: 0,
+    axialForceN_Kn: 0,
+    momentMy_Knm: 0,
+    momentMz_Knm: 0,
+    shearVy_Kn: 0,
+    shearVz_Kn: 0,
+    torsionT_Knm: 0,
+  };
+}
+
+export function createPresetSectionAnalyzer(): SectionAnalyzerParams {
+  return {
+    shape: 'i-beam',
     presetId: 'ipe-300',
     designCode: 'Eurocode-3',
     depthH_Mm: 300,
@@ -1647,6 +1709,29 @@ export function createDefaultSectionAnalyzer(): SectionAnalyzerParams {
 export function createDefaultRcColumnDesign(): RcColumnParams {
   return {
     designCode: 'BNBC-2020',
+    widthB_Mm: 0,
+    depthH_Mm: 0,
+    clearCoverMm: 0,
+    unsupportedLengthLu_M: 0,
+    effectiveLengthFactorK: 0,
+    isBracedFrame: true,
+    concreteFcMpa: 0,
+    rebarFyMpa: 0,
+    longitudinalBarDiaMm: 0,
+    barsAlongWidthB: 0,
+    barsAlongDepthH: 0,
+    tieBarDiaMm: 0,
+    tieSpacingMm: 0,
+    axialLoadPu_Kn: 0,
+    momentMux_Knm: 0,
+    momentMuy_Knm: 0,
+    sustainedLoadRatioBetaDns: 0,
+  };
+}
+
+export function createPresetRcColumnDesign(): RcColumnParams {
+  return {
+    designCode: 'BNBC-2020',
     widthB_Mm: 400,
     depthH_Mm: 500,
     clearCoverMm: 40,
@@ -1668,6 +1753,20 @@ export function createDefaultRcColumnDesign(): RcColumnParams {
 }
 
 export function createDefaultStrutAndTie(): StrutAndTieParams {
+  return {
+    presetId: 'zero-baseline',
+    presetName: 'Zero Baseline',
+    code: 'BNBC-2020',
+    memberThicknessMm: 0,
+    concreteFcMpa: 0,
+    rebarFyMpa: 0,
+    nodes: [],
+    members: [],
+    nodalLoads: [],
+  };
+}
+
+export function createPresetStrutAndTie(): StrutAndTieParams {
   const first = STM_WORKED_EXAMPLES[0].params;
   return {
     ...first,
@@ -1900,7 +1999,7 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
                 ...(rawFar.overrideSetbacks || {}),
               },
               providedSetbacks: {
-                ...(defArch.farMgc.providedSetbacks || { front: 1.5, rear: 2.0, side1: 1.25, side2: 1.25 }),
+                ...(defArch.farMgc.providedSetbacks || { front: 0, rear: 0, side1: 0, side2: 0 }),
                 ...(rawFar.providedSetbacks || {}),
               },
             };
@@ -1935,7 +2034,7 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
               waistSlabThicknessMm: waistSlabMm,
               landingWidthMm: rawStair.landingWidthMm ?? ws.architecture.landingWidthMm ?? defArch.staircase.landingWidthMm,
               wellGapMm: rawStair.wellGapMm ?? ws.architecture.wellGapMm ?? defArch.staircase.wellGapMm,
-              handrailHeightMm: rawStair.handrailHeightMm ?? 950,
+              handrailHeightMm: rawStair.handrailHeightMm ?? 0,
             };
             return {
               farMgc: mergedFar,
@@ -2006,42 +2105,46 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
         fullName:
           typeof candidate.userProfile.fullName === 'string'
             ? candidate.userProfile.fullName.trim()
-            : (fallback.userProfile?.fullName || ''),
+            : '',
         designation:
-          typeof candidate.userProfile.designation === 'string' &&
-          candidate.userProfile.designation.trim().length > 0
+          typeof candidate.userProfile.designation === 'string'
             ? candidate.userProfile.designation.trim()
-            : fallback.userProfile?.designation || 'Project Engineer, PE',
+            : '',
         organization:
-          typeof candidate.userProfile.organization === 'string' &&
-          candidate.userProfile.organization.trim().length > 0
+          typeof candidate.userProfile.organization === 'string'
             ? candidate.userProfile.organization.trim()
-            : fallback.userProfile?.organization || 'Consulting Firm',
+            : '',
         role: candidate.userProfile.role || fallback.userProfile?.role || 'structural-engineer',
         licenseNumber:
           typeof candidate.userProfile.licenseNumber === 'string'
             ? candidate.userProfile.licenseNumber.trim()
-            : (fallback.userProfile?.licenseNumber || ''),
+            : '',
         email:
           typeof candidate.userProfile.email === 'string'
             ? candidate.userProfile.email.trim()
-            : (fallback.userProfile?.email || ''),
+            : '',
         phone:
           typeof candidate.userProfile.phone === 'string'
             ? candidate.userProfile.phone.trim()
-            : (fallback.userProfile?.phone || ''),
+            : '',
+        address:
+          typeof candidate.userProfile.address === 'string'
+            ? candidate.userProfile.address.trim()
+            : '',
         initials:
           typeof candidate.userProfile.initials === 'string'
             ? candidate.userProfile.initials.trim().toUpperCase()
-            : (fallback.userProfile?.initials || ''),
+            : '',
         bio:
-          typeof candidate.userProfile.bio === 'string' &&
-          candidate.userProfile.bio.trim().length > 0
+          typeof candidate.userProfile.bio === 'string'
             ? candidate.userProfile.bio.trim()
-            : fallback.userProfile?.bio ||
-              'Civil & Structural Design Engineer specializing in reinforced concrete, geotechnical foundations, and infrastructure project cost engineering.',
+            : '',
+        signatureText:
+          typeof candidate.userProfile.signatureText === 'string'
+            ? candidate.userProfile.signatureText.trim()
+            : '',
       }
-    : (fallback.userProfile || createDefaultUserProfile());
+    : createDefaultUserProfile();
 
   const validUserPreferences: UserCustomPreferences = candidate.userPreferences
     ? {
@@ -2294,7 +2397,6 @@ export function exportProjectWorkspacePackage(
     exportType: 'single-workspace',
     brand: 'BD. CivilLab',
     tagline: 'CALCULATE SMARTER. BUILD BETTER.',
-    creator: 'PROKASH BISWAS',
     exportedAt: new Date().toISOString(),
     workspace,
     history: wsHistory,
@@ -2316,10 +2418,10 @@ export function parseAndValidateProjectWorkspacePackage(
         ...fallback,
         ...candidateWs,
         id: typeof candidateWs.id === 'string' && candidateWs.id.length >= 8 ? candidateWs.id : generateUUID(),
-        name: candidateWs.name || 'Imported Civil Project',
+        name: candidateWs.name || 'Untitled Project',
         projectCode: candidateWs.projectCode || `IMP-${Math.floor(100 + Math.random() * 900)}`,
-        siteLocation: candidateWs.siteLocation || 'Imported Jobsite',
-        engineerOfRecord: candidateWs.engineerOfRecord || 'Consulting Engineer',
+        siteLocation: candidateWs.siteLocation || '',
+        engineerOfRecord: candidateWs.engineerOfRecord || '',
         currency: candidateWs.currency || fallback.currency || 'BDT',
         updatedAt: new Date().toISOString(),
         boq: {
@@ -2361,10 +2463,10 @@ export function parseAndValidateProjectWorkspacePackage(
         ...fallback,
         ...candidateWs,
         id: typeof candidateWs.id === 'string' && candidateWs.id.length >= 8 ? candidateWs.id : generateUUID(),
-        name: candidateWs.name || 'Imported Civil Project',
+        name: candidateWs.name || 'Untitled Project',
         projectCode: candidateWs.projectCode || `IMP-${Math.floor(100 + Math.random() * 900)}`,
-        siteLocation: candidateWs.siteLocation || 'Imported Jobsite',
-        engineerOfRecord: candidateWs.engineerOfRecord || 'Consulting Engineer',
+        siteLocation: candidateWs.siteLocation || '',
+        engineerOfRecord: candidateWs.engineerOfRecord || '',
         currency: candidateWs.currency || fallback.currency || 'BDT',
         updatedAt: new Date().toISOString(),
         boq: {

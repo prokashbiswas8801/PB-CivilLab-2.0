@@ -50,6 +50,8 @@ export interface UnitInputProps {
   currentUnitId: string;
   onUnitChange: (newUnitId: string) => void;
   fieldKey?: string;
+  fieldId?: string;
+  externalIssue?: { severity: 'warning' | 'error' | 'info'; message: string } | null;
   step?: number | string;
   min?: number;
   max?: number;
@@ -71,9 +73,9 @@ export interface UnitInputProps {
 
 function clampSIValue(val: number, min?: number, max?: number): number {
   let out = isNaN(val) || !isFinite(val) ? 0 : val;
+  if (out === 0) return 0; // Unrestricted Zero Baseline: never auto-snap 0 up to a non-zero min
   if (min === undefined || min >= 0) {
-    const floor = min !== undefined ? Math.max(0, min) : 0;
-    if (out < floor) out = floor;
+    if (out < 0) out = 0;
   } else if (out < min) {
     out = min;
   }
@@ -130,6 +132,8 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   currentUnitId,
   onUnitChange,
   fieldKey,
+  fieldId,
+  externalIssue,
   min,
   max,
   disabled = false,
@@ -147,7 +151,8 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   showCounterpartToggle = true,
 }) => {
   const reactId = useId();
-  const inputId = fieldKey ? `unit-input-${fieldKey}` : `unit-input-${reactId}`;
+  const effectiveFieldKey = fieldId || fieldKey;
+  const inputId = effectiveFieldKey ? `unit-input-${effectiveFieldKey}` : `unit-input-${reactId}`;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -604,8 +609,15 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       draftText.trim() === `0'-0"` ||
       draftText.trim() === '');
 
-  // Real-Time Validation Assessment
+  // Real-Time Validation Assessment (merges local rule + external envelope issue)
   const validationResult = useMemo(() => {
+    if (externalIssue && (externalIssue.severity === 'error' || externalIssue.severity === 'warning')) {
+      return {
+        status: externalIssue.severity,
+        hint: externalIssue.message,
+      };
+    }
+
     if (customValidation) {
       const customRes = customValidation(siValue);
       if (customRes) return customRes;
@@ -639,7 +651,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     }
 
     return null;
-  }, [siValue, validationRule, customValidation]);
+  }, [externalIssue, siValue, validationRule, customValidation]);
 
   return (
     <div className={`space-y-1.5 ${className}`}>
@@ -650,15 +662,29 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             {label}
           </label>
 
-          {/* Explicit 0 Value Active Badge */}
-          {isZeroActive && (
+          {/* Status Indicator Badge: Error, Warning Pulse, or Calm 0 Baseline Standby */}
+          {validationResult?.status === 'error' ? (
             <span
-              className="px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 shrink-0 select-none animate-fadeIn"
-              title="Parameter is currently set to zero (clean baseline or zeroed value)"
+              className="px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-error)] border border-[var(--md-sys-color-error)]/50 shrink-0 select-none"
+              title={validationResult.hint}
             >
-              0 VALUE ACTIVE
+              INVALID INPUT
             </span>
-          )}
+          ) : validationResult?.status === 'warning' ? (
+            <span
+              className="px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/50 shrink-0 select-none animate-pulse"
+              title={validationResult.hint}
+            >
+              ADVISORY
+            </span>
+          ) : isZeroActive ? (
+            <span
+              className="px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/12 text-amber-700 dark:text-amber-400 border border-amber-500/30 shrink-0 select-none"
+              title="0 Baseline Active — Enter dimensions or loads to compute"
+            >
+              0 BASELINE
+            </span>
+          ) : null}
 
           {/* Interactive Engineering Guidance Tooltip Button */}
           {resolvedTooltip && (
@@ -752,13 +778,13 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       <div
         className={`relative flex items-center rounded-full overflow-hidden border bg-[var(--md-sys-color-surface)] shadow-xs transition-all duration-300 focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)] ${
           validationResult?.status === 'error'
-            ? 'border-[var(--md-sys-color-error)] ring-2 ring-[var(--md-sys-color-error)]/40'
+            ? 'border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/15 ring-2 ring-[var(--md-sys-color-error)]/30 animate-input-shake'
+            : validationResult?.status === 'warning'
+            ? 'border-amber-500 ring-2 ring-amber-500/20'
             : bdSiteErrorGuard
             ? 'border-amber-500 ring-1 ring-amber-500/40'
             : isZeroActive
-            ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
-            : validationResult?.status === 'warning'
-            ? 'border-amber-500 ring-2 ring-amber-500/40'
+            ? 'border-amber-500/45 bg-amber-500/[0.03]'
             : isUnitFading
             ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)]/40 shadow-xs'
             : 'border-[var(--md-sys-color-outline)]'

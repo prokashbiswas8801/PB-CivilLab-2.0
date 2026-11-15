@@ -88,10 +88,10 @@ export const NewWorkspaceModal: React.FC<NewWorkspaceModalProps> = ({
     e.preventDefault();
     if (onCreateWorkspace) {
       onCreateWorkspace({
-        name: name.trim() || 'Untitled Civil Project',
+        name: name.trim() || 'Untitled Project',
         code: code.trim() || `BDCL-${new Date().getFullYear()}-001`,
-        site: site.trim() || 'General Jobsite',
-        engineer: engineer.trim() || 'Project Engineer, PE',
+        site: site.trim(),
+        engineer: engineer.trim(),
         currency,
         template,
       });
@@ -170,7 +170,7 @@ export const NewWorkspaceModal: React.FC<NewWorkspaceModalProps> = ({
                 <label className="block text-xs font-semibold mb-1">Engineer of Record (EOR)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Project Engineer, PE"
+                  placeholder="e.g. Engineer Name, PE"
                   value={engineer}
                   onChange={(e) => setEngineer(e.target.value)}
                   className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"

@@ -160,13 +160,13 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_USER_PROFILE: CivilUserProfile = {
-  name: 'Prokash Biswas',
-  title: 'Principal Civil & Structural Engineer',
-  organization: 'BD. Civil Engineering Consultancy',
-  licenseNo: 'PE-8801-BD',
-  email: 'prokashbiswas8801@gmail.com',
-  phone: '+880 1712-345678',
-  location: 'Dhaka, Bangladesh',
+  name: '',
+  title: '',
+  organization: '',
+  licenseNo: '',
+  email: '',
+  phone: '',
+  location: '',
   defaultUnitSystem: 'SI',
   defaultDesignCode: 'BNBC 2020',
   theme: 'obsidian-gold',
@@ -176,19 +176,10 @@ const DEFAULT_USER_PROFILE: CivilUserProfile = {
   projects: [
     {
       id: 'proj-001',
-      name: 'Padma Bridge River Viaduct & Pier Caps',
-      code: 'BDCL-2026-VIAD',
-      clientName: 'Bangladesh Bridge Authority (BBA)',
-      location: 'Mawa-Janjira Sector, Bangladesh',
-      currency: 'BDT',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'proj-002',
-      name: 'High-Rise Commercial Mat & Bored Piles',
-      code: 'BDCL-2026-MAT',
-      clientName: 'Eastern Housing & Commercial Ltd.',
-      location: 'Chittagong Port City, Bangladesh',
+      name: 'Untitled Project',
+      code: 'PRJ-001',
+      clientName: '',
+      location: '',
       currency: 'BDT',
       createdAt: new Date().toISOString(),
     },
@@ -207,8 +198,8 @@ const DEFAULT_PDF_PRESET: CivilPdfPreset = {
   includeSignatureBlock: true,
   showProjectMetadata: true,
   customHeaderTitle: 'Official Structural & Geotechnical Submittal Sheet',
-  companySubtitle: 'BD. Civil Engineering Consultancy · Verified Engineering Calculations',
-  signatoryName: 'Prokash Biswas, PE',
+  companySubtitle: '',
+  signatoryName: '',
 };
 
 const DEFAULT_PINNED_TOOLS: string[] = [

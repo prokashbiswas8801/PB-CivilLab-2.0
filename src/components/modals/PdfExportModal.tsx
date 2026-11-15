@@ -71,8 +71,8 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
       setModalPreset({ ...pdfPreset });
       setCustomReportTitle(pdfPreset.customHeaderTitle || `${moduleLabel || activeModule} Certified Submittal`);
       setCustomProjectName(activeWorkspace.name);
-      setCustomClientName(userProfile.projects.find((p) => p.name === activeWorkspace.name)?.clientName || activeWorkspace.engineerOfRecord || 'Client Submittal');
-      setCustomSignatory(pdfPreset.signatoryName || userProfile.name || 'Prokash Biswas, PE');
+      setCustomClientName(userProfile.projects.find((p) => p.name === activeWorkspace.name)?.clientName || activeWorkspace.engineerOfRecord || '');
+      setCustomSignatory(pdfPreset.signatoryName || userProfile.name || '');
     }
   }, [isOpen, pdfPreset, activeWorkspace, moduleLabel, activeModule, userProfile]);
 
@@ -118,14 +118,14 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           remarks: '',
           workspace: activeWorkspace,
           userProfile: {
-            fullName: customSignatory || userProfile.name || activeWorkspace.engineerOfRecord,
-            designation: userProfile.title || 'Resident Civil Engineer',
-            organization: userProfile.organization || 'BD. Civil Engineering Consultancy',
+            fullName: customSignatory || userProfile.name || activeWorkspace.engineerOfRecord || '',
+            designation: userProfile.title || '',
+            organization: userProfile.organization || '',
             role: 'structural-engineer',
-            licenseNumber: userProfile.licenseNo,
-            email: userProfile.email,
-            phone: userProfile.phone,
-            initials: (userProfile.name || 'PB')
+            licenseNumber: userProfile.licenseNo || '',
+            email: userProfile.email || '',
+            phone: userProfile.phone || '',
+            initials: (customSignatory || userProfile.name || activeWorkspace.engineerOfRecord || 'EOR')
               .split(/\s+/)
               .map((w) => w[0])
               .join('')
@@ -189,7 +189,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(100, 116, 139);
-        doc.text(modalPreset.companySubtitle || userProfile.organization || 'BD. Civil Engineering Consultancy', margin, yPos);
+        doc.text(modalPreset.companySubtitle || userProfile.organization || 'Verified Engineering Submittal', margin, yPos);
 
         yPos += 3;
         doc.setDrawColor(203, 213, 225);
@@ -208,14 +208,14 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8.5);
         doc.setTextColor(30, 41, 59);
-        doc.text(`PROJECT: ${customProjectName}`, margin + 4, yPos + 6);
-        doc.text(`CODE: ${activeWorkspace.projectCode}`, margin + contentWidth - 45, yPos + 6);
+        doc.text(`PROJECT: ${customProjectName || 'Untitled Project'}`, margin + 4, yPos + 6);
+        doc.text(`CODE: ${activeWorkspace.projectCode || 'PRJ-001'}`, margin + contentWidth - 45, yPos + 6);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(71, 85, 105);
-        doc.text(`CLIENT: ${customClientName}`, margin + 4, yPos + 12);
-        doc.text(`LOCATION: ${activeWorkspace.siteLocation}`, margin + 4, yPos + 17);
+        doc.text(`CLIENT: ${customClientName || '________________________'}`, margin + 4, yPos + 12);
+        doc.text(`LOCATION: ${activeWorkspace.siteLocation || '________________________'}`, margin + 4, yPos + 17);
         doc.text(`DATE: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`, margin + contentWidth - 45, yPos + 12);
 
         yPos += 26;
@@ -231,7 +231,15 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
-      doc.text(`Governing Standard: ${codeStandard || 'BNBC 2020 / ACI 318'} · Status: VERIFIED NOMINAL`, margin, yPos);
+      const envStatusLabel =
+        envelope.status === 'zero_baseline'
+          ? 'ZERO BASELINE (STANDBY)'
+          : envelope.status === 'warning'
+            ? 'WARNING / ADVISORY'
+            : envelope.status === 'invalid'
+              ? 'LIMIT STATE EXCEEDED'
+              : 'VERIFIED NOMINAL';
+      doc.text(`Governing Standard: ${codeStandard || 'BNBC 2020 / ACI 318'} · Status: ${envStatusLabel}`, margin, yPos);
       yPos += 7;
 
       setExportProgress({ stage: 'Rendering Analytical Result Matrices...', percent: 65 });
@@ -332,13 +340,13 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8);
         doc.setTextColor(15, 23, 42);
-        doc.text(customSignatory, sigX, bottomY + 18);
+        doc.text(customSignatory || '________________________', sigX, bottomY + 18);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
         doc.setTextColor(100, 116, 139);
-        doc.text(userProfile.title || 'Sub-Assistant Civil Engineer', sigX, bottomY + 22);
-        doc.text(`Reg: ${userProfile.licenseNo || 'PE-8801-BD'}`, sigX, bottomY + 26);
+        doc.text(userProfile.title || '________________________', sigX, bottomY + 22);
+        doc.text(`Reg: ${userProfile.licenseNo || '________________________'}`, sigX, bottomY + 26);
       }
 
       // 8. Footer
@@ -346,7 +354,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
         doc.setTextColor(148, 163, 184);
-        doc.text('Generated by BD. CivilLab · Client-Side Verified Engine · Created by Prokash Biswas', margin, pageHeight - margin + 2);
+        doc.text('Generated by BD. CivilLab · Client-Side Verified Engineering Engine', margin, pageHeight - margin + 2);
         doc.text(`Page 1 of 1 · ${modalPreset.paperSize.toUpperCase()} · ${orientation.toUpperCase()}`, margin + contentWidth - 45, pageHeight - margin + 2);
       }
 

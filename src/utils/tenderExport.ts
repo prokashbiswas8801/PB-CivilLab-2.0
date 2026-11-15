@@ -34,10 +34,10 @@ export function exportTenderBoqCsv(
 
   // Title Block
   lines.push(`"BD. CIVILLAB - OFFICIAL TENDER BILL OF QUANTITIES (BOQ)"`);
-  lines.push(`"Project Name:","${workspace.name}"`);
-  lines.push(`"Project Code:","${workspace.projectCode}"`);
-  lines.push(`"Site Location:","${workspace.siteLocation}"`);
-  lines.push(`"Engineer of Record:","${workspace.engineerOfRecord}"`);
+  lines.push(`"Project Name:","${workspace.name || 'Untitled Project'}"`);
+  lines.push(`"Project Code:","${workspace.projectCode || 'PRJ-001'}"`);
+  lines.push(`"Site Location:","${workspace.siteLocation || ''}"`);
+  lines.push(`"Engineer of Record:","${workspace.engineerOfRecord || ''}"`);
   lines.push(`"Governing Code:","${workspace.governingCode}"`);
   lines.push(`"Currency:","${currency} (${currencySym})"`);
   lines.push(`"Date of Submittal:","${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}"`);
@@ -103,7 +103,7 @@ export function exportTenderBoqCsv(
     lines.push(`"RECOMMENDED BIDDER:","${bidReport.recommendedVendorName}","NET SAVINGS:","${currencySym} ${bidReport.netSavingsAgainstEstimateBdt.toFixed(2)} (${bidReport.netSavingsPercent}%)"`);
   }
 
-  const csvContent = lines.join('\r\n');
+  const csvContent = '\uFEFF' + lines.join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -206,7 +206,7 @@ export async function exportTenderBoqPdf({
 
   // Build verified report record & persist in registry
   const envelope = {
-    status: 'valid' as const,
+    status: boqResult.items.length === 0 ? ('zero_baseline' as const) : ('valid' as const),
     issues: [],
     result: boqResult,
   };
@@ -268,7 +268,7 @@ export async function exportTenderBoqPdf({
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.text(`Project: ${workspace.name} [${workspace.projectCode}] · Site: ${workspace.siteLocation}`, textX, cursorY + 19);
+  doc.text(`Project: ${workspace.name || 'Untitled Project'} [${workspace.projectCode || 'PRJ-001'}] · Site: ${workspace.siteLocation || '________________________'}`, textX, cursorY + 19);
 
   doc.setFontSize(7.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
@@ -443,7 +443,7 @@ export async function exportTenderBoqPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text(userProfile?.fullName || 'Project QS / Cost Estimator', col1X + 3, sigBoxY + 10);
+  doc.text(userProfile?.fullName || '________________________', col1X + 3, sigBoxY + 10);
   doc.setFontSize(5.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.text(`Signature: ________________  Date: ${dateStr}`, col1X + 3, sigBoxY + 19);
@@ -456,7 +456,7 @@ export async function exportTenderBoqPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text('Lead Civil Contracts Engineer', col2X + 3, sigBoxY + 10);
+  doc.text('________________________', col2X + 3, sigBoxY + 10);
   doc.setFontSize(5.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.text(`Signature: ________________  Date: ${dateStr}`, col2X + 3, sigBoxY + 19);
@@ -469,7 +469,7 @@ export async function exportTenderBoqPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text(workspace.engineerOfRecord || userProfile?.fullName || 'Licensed Professional Engineer', col3X + 3, sigBoxY + 10);
+  doc.text(workspace.engineerOfRecord || userProfile?.fullName || '________________________', col3X + 3, sigBoxY + 10);
   doc.setFontSize(5.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.text(`Seal & Sign: _____________  Date: ${dateStr}`, col3X + 3, sigBoxY + 19);

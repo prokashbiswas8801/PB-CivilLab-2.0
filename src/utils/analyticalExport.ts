@@ -636,6 +636,17 @@ export function getCapacityUtilization(
   const result = envelope.result;
   if (!result) return null;
 
+  if (envelope.status === 'zero_baseline') {
+    return {
+      metricLabel: 'Standby Capacity Limit-State Check',
+      formattedValue: '0.0%',
+      percentage: 0,
+      status: 'safe',
+      description: '0 Baseline Active — Enter positive engineering parameters or load a preset to compute DCR.',
+      referenceLimit: 'Awaiting non-zero parameters',
+    };
+  }
+
   switch (moduleId) {
     case 'beam-analysis': {
       const beamRes = result as BeamAnalysisResult;
@@ -882,6 +893,19 @@ export function getAllCapacityUtilizations(
 ): CapacityUtilizationInfo[] {
   const result = envelope.result;
   if (!result) return [];
+
+  if (envelope.status === 'zero_baseline') {
+    return [
+      {
+        metricLabel: 'Standby Capacity Limit-State Check',
+        formattedValue: '0.0%',
+        percentage: 0,
+        status: 'safe',
+        description: '0 Baseline Active — Enter positive engineering parameters or load a preset to compute DCR.',
+        referenceLimit: 'Awaiting non-zero parameters',
+      },
+    ];
+  }
 
   const gauges: CapacityUtilizationInfo[] = [];
 
@@ -1429,10 +1453,14 @@ export function exportAnalyticalScheduleCsv(
   lines.push(`"Project Code:","${workspace.projectCode}"`);
   lines.push(`"Discipline / Module:","${moduleId.toUpperCase()}"`);
   lines.push(`"Currency:","${workspace.currency}"`);
-  lines.push(`"Site Location:","${(workspace.siteLocation || 'Jobsite').replace(/"/g, '""')}"`);
-  if (userProfile?.fullName) {
-    lines.push(`"Engineer of Record:","${userProfile.fullName.replace(/"/g, '""')} (${userProfile.designation || 'PE'})"`);
-    lines.push(`"License / Organization:","${(userProfile.licenseNumber || 'PE-00000')} · ${(userProfile.organization || 'Civil Engineering').replace(/"/g, '""')}"`);
+  lines.push(`"Site Location:","${(workspace.siteLocation || 'Not Set').replace(/"/g, '""')}"`);
+  const eorName = (userProfile?.fullName || workspace.engineerOfRecord || '').trim();
+  if (eorName) {
+    lines.push(`"Engineer of Record:","${eorName.replace(/"/g, '""')}${userProfile?.designation ? ` (${userProfile.designation})` : ''}"`);
+    lines.push(`"License / Organization:","${userProfile?.licenseNumber || 'Not Set'} · ${(userProfile?.organization || 'Not Set').replace(/"/g, '""')}"`);
+  } else {
+    lines.push(`"Engineer of Record:","Not Set"`);
+    lines.push(`"License / Organization:","Not Set"`);
   }
   lines.push(`"Export Timestamp:","${dateStr} ${timeStr}"`);
   lines.push(`"Analytical Status:","${envelope.status.toUpperCase()}"`);
@@ -1671,21 +1699,89 @@ export function exportAnalyticalScheduleCsv(
       break;
     }
 
+    case 'rate-analysis': {
+      const r = result as any;
+      lines.push(`"RATE ANALYSIS COMPONENT","QUANTITY","UNIT","INDEXED UNIT RATE (${workspace.currency})","COST (${workspace.currency})"`);
+      (r.materials || []).forEach((m: any) => {
+        lines.push(`"${String(m.name || '').replace(/"/g, '""')}",${Number(m.quantity || 0).toFixed(3)},"${m.unit || ''}",${Number(m.indexedUnitPrice ?? m.unitPrice ?? 0).toFixed(2)},${Number(m.totalCost || 0).toFixed(2)}`);
+      });
+      lines.push(`"Total Materials Cost (incl. Wastage)","—","—","—",${Number(r.materialsCost || 0).toFixed(2)}`);
+      lines.push(`"Total Labor Cost","—","—","—",${Number(r.laborCost || 0).toFixed(2)}`);
+      lines.push(`"Equipment & Overhead","—","—","—",${Number((r.equipmentCost || 0) + (r.waterAndOverheadCost || 0) + (r.contractorProfit || 0)).toFixed(2)}`);
+      lines.push(`"Composite Unit Rate (per m3 / unit)","1.0","${r.basisUnitLabel || 'm3'}","—",${Number(r.unitRatePerM3 || 0).toFixed(2)}`);
+      lines.push(`"Composite Unit Rate (per CFT)","1.0","cft","—",${Number(r.unitRatePerCft || 0).toFixed(2)}`);
+      break;
+    }
+
+    case 'masonry-finishes': {
+      const r = result as any;
+      lines.push(`"MASONRY & FINISHES PARAMETER","VALUE","UNIT"`);
+      lines.push(`"Net Wall Area",${Number(r.netWallAreaM2 || 0).toFixed(3)},"m2"`);
+      lines.push(`"Net Wall Volume",${Number(r.netWallVolumeM3 || 0).toFixed(3)},"m3"`);
+      lines.push(`"Total Bricks (incl. Wastage)",${Number(r.bricksWithWastageCount || 0).toFixed(0)},"Nos"`);
+      lines.push(`"Mortar Cement",${Number(r.mortarCementBags50Kg || 0).toFixed(2)},"bags (50kg)"`);
+      lines.push(`"Mortar Sand",${Number(r.mortarSandCft || 0).toFixed(2)},"cft"`);
+      lines.push(`"Plaster Area",${Number(r.plasterAreaM2 || 0).toFixed(2)},"m2"`);
+      lines.push(`"Plaster Cement",${Number(r.plasterCementBags50Kg || 0).toFixed(2)},"bags (50kg)"`);
+      lines.push(`"Floor Tile Boxes",${Number(r.tileBoxesCount || 0).toFixed(0)},"boxes"`);
+      lines.push(`"Paint Required",${Number(r.paintLiters || 0).toFixed(2)},"Liters"`);
+      break;
+    }
+
+    case 'earthwork-alignment': {
+      const r = result as any;
+      lines.push(`"EARTHWORK & ALIGNMENT PARAMETER","VALUE","UNIT"`);
+      lines.push(`"Calculation Mode","${r.calculationType || '—'}","—"`);
+      lines.push(`"Bank Excavation Volume",${Number(r.bankVolumeM3 || 0).toFixed(3)},"m3"`);
+      lines.push(`"Loose Haulage Volume",${Number(r.looseVolumeM3 || 0).toFixed(3)},"m3"`);
+      lines.push(`"Compacted Fill Volume",${Number(r.compactedVolumeM3 || 0).toFixed(3)},"m3"`);
+      lines.push(`"Total Haul Truck Trips",${Number(r.haulTruckTripsCount10M3 || 0).toFixed(0)},"trips"`);
+      break;
+    }
+
+    case 'pile-capacity': {
+      const r = result as PileCapacityResult;
+      lines.push(`"PILE FOUNDATION PARAMETER","VALUE","UNIT"`);
+      lines.push(`"Pile Diameter D",${Number(workspace.pile?.diameterM || 0).toFixed(3)},"m"`);
+      lines.push(`"Embedment Length L",${Number(workspace.pile?.lengthM || 0).toFixed(2)},"m"`);
+      lines.push(`"Ultimate Shaft Friction Qs",${Number(r.skinFrictionKn || 0).toFixed(2)},"kN"`);
+      lines.push(`"Ultimate Base Bearing Qp",${Number(r.endBearingKn || 0).toFixed(2)},"kN"`);
+      lines.push(`"Ultimate Capacity Qult",${Number(r.ultimateCapacityKn || 0).toFixed(2)},"kN"`);
+      lines.push(`"Allowable Capacity Qall",${Number(r.allowableCapacityKn || 0).toFixed(2)},"kN"`);
+      lines.push(`"Applied Load P",${Number(r.appliedLoadKn || 0).toFixed(2)},"kN"`);
+      lines.push(`"Elastic Settlement",${Number(r.elasticSettlementMm || 0).toFixed(2)},"mm"`);
+      lines.push(`"Axial Utilization Ratio DCR",${((r.utilizationRatio || 0) * 100).toFixed(1)},"%"`);
+      break;
+    }
+
+    case 'pipe-hydraulics': {
+      const r = result as PipeHydraulicsResult;
+      lines.push(`"PIPE HYDRAULICS PARAMETER","VALUE","UNIT"`);
+      lines.push(`"Flow Rate Q",${Number(r.flowRateLps || 0).toFixed(2)},"L/s"`);
+      lines.push(`"Flow Velocity V",${Number(r.velocityMps || 0).toFixed(3)},"m/s"`);
+      lines.push(`"Friction Head Loss hf",${Number(r.frictionHeadLossM || 0).toFixed(3)},"m"`);
+      lines.push(`"Minor Head Loss hm",${Number(r.minorHeadLossM || 0).toFixed(3)},"m"`);
+      lines.push(`"Total Head Loss HL",${Number(r.totalHeadLossM || 0).toFixed(3)},"m"`);
+      lines.push(`"Outlet Residual Pressure",${Number(r.outletPressureKpa || 0).toFixed(2)},"kPa"`);
+      lines.push(`"Reynolds Number Re",${Number(r.reynoldsNumber || 0).toFixed(0)},"—"`);
+      break;
+    }
+
     default: {
       // Generic envelope dump
       lines.push(`"PROPERTY","VALUE"`);
       Object.entries(result).forEach(([k, v]) => {
-        if (typeof v !== 'object' && v !== null) {
-          lines.push(`"${k}","${v}"`);
+        if (typeof v !== 'object' && v !== null && v !== undefined) {
+          lines.push(`"${k}","${String(v).replace(/"/g, '""')}"`);
         }
       });
       break;
     }
   }
 
-  // Create and trigger CSV Blob download
+  // Create and trigger CSV Blob download with UTF-8 BOM for Excel & Bengali Nikosh compatibility
   const csvContent = lines.join('\r\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

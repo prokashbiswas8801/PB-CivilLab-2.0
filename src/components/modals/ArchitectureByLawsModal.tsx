@@ -229,9 +229,9 @@ export const ArchitectureByLawsModal: React.FC<ArchitectureByLawsModalProps> = (
     const svgElements = collectActiveCadSvgs();
     const defaults = createDefaultArchitectureParameters();
     const baseMeta = {
-      projectName: projectName || 'Building Development Project',
-      projectCode: projectCode || 'ARC-01',
-      siteLocation: siteLocation || 'Dhaka / Municipal Jurisdiction',
+      projectName: projectName || 'Untitled Project',
+      projectCode: projectCode || 'PRJ-001',
+      siteLocation: siteLocation || '',
       userProfile,
       brandLogoSrc: BRAND_LOGO_SRC,
       svgElements,

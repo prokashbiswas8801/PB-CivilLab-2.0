@@ -79,8 +79,8 @@ export const CubeTestModule: React.FC<CubeTestModuleProps> = ({ activeWorkspace:
   const [castingDate, setCastingDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [structuralElement, setStructuralElement] = useState('');
   const [concreteGrade, setConcreteGrade] = useState<ConcreteGrade>('M25');
-  const [slumpMm, setSlumpMm] = useState<number | ''>(100);
-  const [labName, setLabName] = useState('Central Site Quality Testing Lab');
+  const [slumpMm, setSlumpMm] = useState<number | ''>('');
+  const [labName, setLabName] = useState('');
   const [remarks, setRemarks] = useState('');
 
   // Form State for Recording Test Results

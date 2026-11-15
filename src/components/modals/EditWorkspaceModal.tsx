@@ -81,10 +81,10 @@ export const EditWorkspaceModal: React.FC<EditWorkspaceModalProps> = ({
     if (onSaveWorkspace) {
       onSaveWorkspace({
         id: workspace?.id,
-        name: name.trim() || 'Untitled Civil Project',
-        code: code.trim() || 'CIV-PROJ',
-        site: site.trim() || 'General Jobsite',
-        engineer: engineer.trim() || 'Project Engineer, PE',
+        name: name.trim() || 'Untitled Project',
+        code: code.trim() || 'PRJ-001',
+        site: site.trim(),
+        engineer: engineer.trim(),
         currency,
       });
       onClose();

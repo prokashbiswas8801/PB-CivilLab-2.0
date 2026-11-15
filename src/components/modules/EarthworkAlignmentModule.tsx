@@ -203,7 +203,7 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
               { label: '4.0 m (13 ft)', valueSI: 4.0, title: 'Deep Basement / Underground Tank' },
             ]}
             validationRule={{
-              minSI: 0.2,
+              minSI: 0,
               maxSI: 25.0,
               warningAboveSI: 1.5,
               warningHint: 'Safety Warning: Excavations deeper than 1.5m (5 ft) require shoring, sheet piling, or safe slope angle under OSHA & BNBC 2020 Part 7.',
@@ -296,7 +296,7 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
               { label: '3.0 m (10 ft)', valueSI: 3.0, title: 'Deep Trunk Sewer' },
             ]}
             validationRule={{
-              minSI: 0.2,
+              minSI: 0,
               maxSI: 15.0,
               warningAboveSI: 1.5,
               warningHint: 'Trench safety alert: Depths > 1.5m mandate trench boxes, hydraulic shoring, or stepped benching.',
@@ -654,7 +654,7 @@ export const EarthworkAlignmentMetrics: React.FC<EarthworkAlignmentMetricsProps>
             {result.haulTruckTripsCount10M3} <span className="text-xs font-normal">loads</span>
           </div>
           <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1">
-            Basis: {result.haulTruckCapacityM3 || 10} m³ tipper truck
+            Basis: {result.haulTruckCapacityM3 ?? 0} m³ tipper truck
           </div>
         </div>
       </div>

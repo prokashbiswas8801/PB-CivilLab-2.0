@@ -160,7 +160,7 @@ export async function exportCertifiedEngineeringPdf({
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
-  doc.text('CALCULATE SMARTER. BUILD BETTER. · DEVELOPED BY PROKASH BISWAS', textX, cursorY + 13);
+  doc.text('CALCULATE SMARTER. BUILD BETTER. · VERIFIED ENGINEERING COMPUTATION', textX, cursorY + 13);
 
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
   doc.setFont('helvetica', 'normal');
@@ -220,14 +220,14 @@ export async function exportCertifiedEngineeringPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Site: ${workspace.siteLocation} · Currency: ${workspace.currency}`, margin + 4, cursorY + 15);
+  doc.text(`Site: ${workspace.siteLocation || '________________________'} · Currency: ${workspace.currency}`, margin + 4, cursorY + 15);
   doc.text(`Timestamp: ${dateStr} ${timeStr}`, margin + 4, cursorY + 20);
 
   // Column 2: Engineer of Record Details
-  const eorName = userProfile?.fullName || workspace.engineerOfRecord || 'Design Engineer, PE';
-  const eorDesig = userProfile?.designation || 'Senior Structural / Civil Engineer';
-  const eorOrg = userProfile?.organization || 'Civil Consulting Engineering Group';
-  const eorLic = userProfile?.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Licensed Professional Engineer';
+  const eorName = userProfile?.fullName || workspace.engineerOfRecord || '________________________';
+  const eorDesig = userProfile?.designation || '________________________';
+  const eorOrg = userProfile?.organization || '________________________';
+  const eorLic = userProfile?.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: ________________________';
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
@@ -348,17 +348,18 @@ export async function exportCertifiedEngineeringPdf({
     cursorY += 4;
 
     const boxH = 18;
-    const isSafe = capacityInfo.status === 'safe';
-    const isWarning = capacityInfo.status === 'warning';
+    const isZeroBaseline = envelope.status === 'zero_baseline';
+    const isSafe = capacityInfo.status === 'safe' && !isZeroBaseline;
+    const isWarning = capacityInfo.status === 'warning' && !isZeroBaseline;
 
-    doc.setFillColor(isSafe ? 240 : isWarning ? 254 : 255, isSafe ? 253 : isWarning ? 243 : 241, isSafe ? 244 : isWarning ? 199 : 242);
-    doc.setDrawColor(isSafe ? 16 : isWarning ? 245 : 225, isSafe ? 185 : isWarning ? 158 : 29, isSafe ? 129 : isWarning ? 11 : 72);
+    doc.setFillColor(isZeroBaseline ? 248 : isSafe ? 240 : isWarning ? 254 : 255, isZeroBaseline ? 250 : isSafe ? 253 : isWarning ? 243 : 241, isZeroBaseline ? 252 : isSafe ? 244 : isWarning ? 199 : 242);
+    doc.setDrawColor(isZeroBaseline ? 148 : isSafe ? 16 : isWarning ? 245 : 225, isZeroBaseline ? 163 : isSafe ? 185 : isWarning ? 158 : 29, isZeroBaseline ? 184 : isSafe ? 129 : isWarning ? 11 : 72);
     doc.rect(margin, cursorY, contentWidth, boxH, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
-    doc.setTextColor(isSafe ? 4 : isWarning ? 180 : 190, isSafe ? 120 : isWarning ? 83 : 18, isSafe ? 87 : isWarning ? 9 : 60);
-    doc.text(`${capacityInfo.metricLabel}: ${capacityInfo.formattedValue}`, margin + 4, cursorY + 6);
+    doc.setTextColor(isZeroBaseline ? 71 : isSafe ? 4 : isWarning ? 180 : 190, isZeroBaseline ? 85 : isSafe ? 120 : isWarning ? 83 : 18, isZeroBaseline ? 105 : isSafe ? 87 : isWarning ? 9 : 60);
+    doc.text(`${capacityInfo.metricLabel}: ${isZeroBaseline ? '0.0% (ZERO BASELINE)' : capacityInfo.formattedValue}`, margin + 4, cursorY + 6);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
@@ -446,17 +447,17 @@ export async function exportCertifiedEngineeringPdf({
   doc.line(col3X, sigBoxY + 4.5, col3X, sigBoxY + sigBoxHeight);
 
   // Engineer credentials
-  const prepName = userProfile?.fullName || 'Structural Design Engineer, EIT/PE';
-  const prepDesig = userProfile?.designation || 'Lead Civil & Structural Modeler';
-  const prepLic = userProfile?.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: EIT/PE-49120';
+  const prepName = userProfile?.fullName || '________________________';
+  const prepDesig = userProfile?.designation || '________________________';
+  const prepLic = userProfile?.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: ________________________';
 
-  const checkName = (userProfile as any)?.checkerName || 'Senior Structural QA Reviewer, PE/SE';
-  const checkDesig = 'Lead QA/QC Structural Peer Reviewer';
-  const checkLic = 'Lic: SE/PE-82941 (QA Verified)';
+  const checkName = (userProfile as any)?.checkerName || '________________________';
+  const checkDesig = 'QA / Peer Reviewer';
+  const checkLic = 'Lic: ________________________';
 
-  const appName = workspace.engineerOfRecord || userProfile?.fullName || 'Principal Engineer of Record, PE';
-  const appDesig = 'Engineer of Record (EOR) / Principal';
-  const appLic = userProfile?.licenseNumber ? `EOR Lic: ${userProfile.licenseNumber}` : 'Official PE Registered Seal';
+  const appName = workspace.engineerOfRecord || userProfile?.fullName || '________________________';
+  const appDesig = 'Engineer of Record (EOR)';
+  const appLic = userProfile?.licenseNumber ? `EOR Lic: ${userProfile.licenseNumber}` : 'Seal & Lic: ___________________';
 
   const sigLineY = sigBoxY + sigBoxHeight - 6.5;
 
@@ -557,127 +558,127 @@ function extractModuleInputs(
     case 'boq-estimator':
       return [
         { label: 'Active Workspace Currency', value: workspace.boq?.currency || workspace.currency },
-        { label: 'Contingency Rate', value: `${workspace.boq?.contingencyPercent || 3}%` },
-        { label: 'Contractor Overhead & Profit', value: `${workspace.boq?.contractorOverheadPercent || 10}%` },
-        { label: 'VAT / Tax Rate', value: `${workspace.boq?.vatTaxPercent || 7.5}%` },
-        { label: 'Total Schedule Items', value: workspace.boq?.items?.length || 0, unit: 'items' },
+        { label: 'Contingency Rate', value: `${workspace.boq?.contingencyPercent ?? 0}%` },
+        { label: 'Contractor Overhead & Profit', value: `${workspace.boq?.contractorOverheadPercent ?? 0}%` },
+        { label: 'VAT / Tax Rate', value: `${workspace.boq?.vatTaxPercent ?? 0}%` },
+        { label: 'Total Schedule Items', value: workspace.boq?.items?.length ?? 0, unit: 'items' },
       ];
 
     case 'rate-analysis':
       return [
         { label: 'Work Classification', value: (workspace.rateAnalysis?.workType || 'rcc-1-1.5-3').toUpperCase() },
-        { label: 'Basis Batch Volume', value: workspace.rateAnalysis?.basisVolumeM3 || 1.0, unit: 'm³' },
-        { label: 'Cement Price', value: `${workspace.rateAnalysis?.currency || 'BDT'} ${workspace.rateAnalysis?.cementPricePerBag || 520}/bag` },
-        { label: 'Sand Price', value: `${workspace.rateAnalysis?.currency || 'BDT'} ${workspace.rateAnalysis?.sandPricePerM3 || 1800}/m³` },
-        { label: 'Contractor Profit Margin', value: `${workspace.rateAnalysis?.contractorProfitPercent || 15}%` },
+        { label: 'Basis Batch Volume', value: workspace.rateAnalysis?.basisVolumeM3 ?? 0, unit: 'm³' },
+        { label: 'Cement Price', value: `${workspace.rateAnalysis?.currency || 'BDT'} ${workspace.rateAnalysis?.cementPricePerBag ?? 0}/bag` },
+        { label: 'Sand Price', value: `${workspace.rateAnalysis?.currency || 'BDT'} ${workspace.rateAnalysis?.sandPricePerM3 ?? 0}/m³` },
+        { label: 'Contractor Profit Margin', value: `${workspace.rateAnalysis?.contractorProfitPercent ?? 0}%` },
       ];
 
     case 'concrete-materials':
       return [
-        { label: 'Target Wet Volume V_wet', value: workspace.concreteMaterials?.wetVolumeM3 || 10.0, unit: 'm³' },
-        { label: 'Volumetric Proportion C:S:A', value: `1 : ${workspace.concreteMaterials?.ratioSand || 1.5} : ${workspace.concreteMaterials?.ratioAggregate || 3.0}` },
-        { label: 'Dry Volume Expansion Factor', value: workspace.concreteMaterials?.customDryFactor || 1.54, unit: '—' },
-        { label: 'Cement Bag Net Weight', value: workspace.concreteMaterials?.cementBagWeightKg || 50, unit: 'kg' },
-        { label: 'Field Wastage Factor', value: `${workspace.concreteMaterials?.wastagePercent || 2.0}%` },
+        { label: 'Target Wet Volume V_wet', value: workspace.concreteMaterials?.wetVolumeM3 ?? 0, unit: 'm³' },
+        { label: 'Volumetric Proportion C:S:A', value: `1 : ${workspace.concreteMaterials?.ratioSand ?? 0} : ${workspace.concreteMaterials?.ratioAggregate ?? 0}` },
+        { label: 'Dry Volume Expansion Factor', value: workspace.concreteMaterials?.customDryFactor ?? 0, unit: '—' },
+        { label: 'Cement Bag Net Weight', value: workspace.concreteMaterials?.cementBagWeightKg ?? 0, unit: 'kg' },
+        { label: 'Field Wastage Factor', value: `${workspace.concreteMaterials?.wastagePercent ?? 0}%` },
       ];
 
     case 'rebar-bbs':
       return [
         { label: 'Structural Member Type', value: (workspace.rebarBbs?.elementType || 'slab').toUpperCase() },
-        { label: 'Member Clear Span L', value: workspace.rebarBbs?.slabLengthM || 6.0, unit: 'm' },
-        { label: 'Clear Concrete Cover c_nom', value: workspace.rebarBbs?.clearCoverMm || 25, unit: 'mm' },
-        { label: 'Main Longitudinal Bar', value: `T${workspace.rebarBbs?.mainBarDiaMm || 16} @ ${workspace.rebarBbs?.mainBarSpacingMm || 150}mm c/c` },
-        { label: 'Steel Density ρ_s', value: workspace.rebarBbs?.rebarDensityKgPerM3 || 7850, unit: 'kg/m³' },
+        { label: 'Member Clear Span L', value: workspace.rebarBbs?.slabLengthM ?? 0, unit: 'm' },
+        { label: 'Clear Concrete Cover c_nom', value: workspace.rebarBbs?.clearCoverMm ?? 0, unit: 'mm' },
+        { label: 'Main Longitudinal Bar', value: `T${workspace.rebarBbs?.mainBarDiaMm ?? 0} @ ${workspace.rebarBbs?.mainBarSpacingMm ?? 0}mm c/c` },
+        { label: 'Steel Density ρ_s', value: workspace.rebarBbs?.rebarDensityKgPerM3 ?? 0, unit: 'kg/m³' },
       ];
 
     case 'masonry-finishes':
       return [
-        { label: 'Wall Geometry (L×H×t)', value: `${workspace.masonry?.wallLengthM || 10}m × ${workspace.masonry?.wallHeightM || 3}m × ${workspace.masonry?.wallThicknessM || 0.25}m` },
-        { label: 'Brick Dimensions (L×W×H)', value: `${workspace.masonry?.brickLengthMm || 240}×${workspace.masonry?.brickWidthMm || 115}×${workspace.masonry?.brickHeightMm || 70} mm` },
-        { label: 'Mortar Proportion C:S', value: `1 : ${workspace.masonry?.mortarRatioSand || 4}` },
-        { label: 'Wall Plaster Thickness', value: workspace.masonry?.plasterThicknessMm || 12, unit: 'mm' },
-        { label: 'Brick Wastage Allowance', value: `${workspace.masonry?.brickWastagePercent || 5}%` },
+        { label: 'Wall Geometry (L×H×t)', value: `${workspace.masonry?.wallLengthM ?? 0}m × ${workspace.masonry?.wallHeightM ?? 0}m × ${workspace.masonry?.wallThicknessM ?? 0}m` },
+        { label: 'Brick Dimensions (L×W×H)', value: `${workspace.masonry?.brickLengthMm ?? 0}×${workspace.masonry?.brickWidthMm ?? 0}×${workspace.masonry?.brickHeightMm ?? 0} mm` },
+        { label: 'Mortar Proportion C:S', value: `1 : ${workspace.masonry?.mortarRatioSand ?? 0}` },
+        { label: 'Wall Plaster Thickness', value: workspace.masonry?.plasterThicknessMm ?? 0, unit: 'mm' },
+        { label: 'Brick Wastage Allowance', value: `${workspace.masonry?.brickWastagePercent ?? 0}%` },
       ];
 
     case 'earthwork-alignment':
       return [
         { label: 'Calculation Geometry', value: (workspace.earthwork?.calculationType || 'pit-excavation').toUpperCase() },
         { label: 'Soil Stratum Condition', value: (workspace.earthwork?.soilType || 'common-earth').toUpperCase() },
-        { label: 'Plan Dimensions (Top)', value: `${workspace.earthwork?.pitTopLengthM || 12}m × ${workspace.earthwork?.pitTopWidthM || 8}m` },
-        { label: 'Excavation Depth', value: workspace.earthwork?.pitDepthM || 2.5, unit: 'm' },
-        { label: 'Side Slope Ratio', value: `1:${workspace.earthwork?.pitSideSlopeH || 1.0}` },
+        { label: 'Plan Dimensions (Top)', value: `${workspace.earthwork?.pitTopLengthM ?? 0}m × ${workspace.earthwork?.pitTopWidthM ?? 0}m` },
+        { label: 'Excavation Depth', value: workspace.earthwork?.pitDepthM ?? 0, unit: 'm' },
+        { label: 'Side Slope Ratio', value: `1:${workspace.earthwork?.pitSideSlopeH ?? 0}` },
       ];
 
     case 'unit-converter':
       return [
         { label: 'Dimensional Category', value: (workspace.converter?.category || 'length').toUpperCase() },
-        { label: 'Input Magnitude', value: workspace.converter?.inputValue || 100 },
+        { label: 'Input Magnitude', value: workspace.converter?.inputValue ?? 0 },
         { label: 'Source Unit', value: workspace.converter?.fromUnit || 'm' },
         { label: 'Target Output Unit', value: workspace.converter?.toUnit || 'ft' },
       ];
 
     case 'continuous-beam':
       return [
-        { label: 'Span Count', value: workspace.continuousBeam?.spanCount || 3, unit: 'spans' },
+        { label: 'Span Count', value: workspace.continuousBeam?.spanCount ?? 0, unit: 'spans' },
         { label: 'Left Support Type', value: workspace.continuousBeam?.leftSupport === 'fixed' ? 'Fixed Support' : 'Pinned/Roller' },
         { label: 'Right Support Type', value: workspace.continuousBeam?.rightSupport === 'fixed' ? 'Fixed Support' : 'Pinned/Roller' },
         { label: 'Total Continuous Length', value: (workspace.continuousBeam?.spans || []).reduce((acc, s) => acc + s.lengthM, 0), unit: 'm' },
-        { label: 'Allowable Bending Stress', value: workspace.continuousBeam?.allowableStressMpa || 250, unit: 'MPa' },
-        { label: 'Overall Section Depth', value: workspace.continuousBeam?.sectionDepthMm || 600, unit: 'mm' },
+        { label: 'Allowable Bending Stress', value: workspace.continuousBeam?.allowableStressMpa ?? 0, unit: 'MPa' },
+        { label: 'Overall Section Depth', value: workspace.continuousBeam?.sectionDepthMm ?? 0, unit: 'mm' },
       ];
 
     case 'frame-truss-2d':
       return [
-        { label: 'Structural Mesh Size', value: `${workspace.frameTruss2d?.nodes?.length || 4} Nodes / ${workspace.frameTruss2d?.members?.length || 3} Members` },
+        { label: 'Structural Mesh Size', value: `${workspace.frameTruss2d?.nodes?.length ?? 0} Nodes / ${workspace.frameTruss2d?.members?.length ?? 0} Members` },
         { label: 'Analysis Mode', value: workspace.frameTruss2d?.analysisMode === 'second-order-p-delta' ? 'Second-Order P-Delta [K_E + K_G]' : 'First-Order Linear [K_E]' },
-        { label: 'Allowable Combined Stress', value: workspace.frameTruss2d?.allowableStressMpa || 250, unit: 'MPa' },
+        { label: 'Allowable Combined Stress', value: workspace.frameTruss2d?.allowableStressMpa ?? 0, unit: 'MPa' },
         { label: 'Template / Configuration', value: workspace.frameTruss2d?.presetName || 'Custom 2D Mesh' },
       ];
 
     case 'section-analyzer':
       return [
-        { label: 'Cross-Section Shape / Profile', value: workspace.sectionAnalyzer?.presetId ? workspace.sectionAnalyzer.presetId.toUpperCase() : (workspace.sectionAnalyzer?.shape || 'IPE 300') },
-        { label: 'Steel Yield Strength f_y', value: workspace.sectionAnalyzer?.fyMpa || 275, unit: 'MPa' },
+        { label: 'Cross-Section Shape / Profile', value: workspace.sectionAnalyzer?.presetId ? workspace.sectionAnalyzer.presetId.toUpperCase() : (workspace.sectionAnalyzer?.shape || 'Custom') },
+        { label: 'Steel Yield Strength f_y', value: workspace.sectionAnalyzer?.fyMpa ?? 0, unit: 'MPa' },
         { label: 'Design Code Classification', value: workspace.sectionAnalyzer?.designCode || 'EC3' },
-        { label: 'Axial Force N / Major Moment M_y', value: `${workspace.sectionAnalyzer?.axialForceN_Kn ?? -420} kN / ${workspace.sectionAnalyzer?.momentMy_Knm ?? 115} kN·m` },
-        { label: 'Minor Moment M_z / Vertical Shear V_z', value: `${workspace.sectionAnalyzer?.momentMz_Knm ?? 14} kN·m / ${workspace.sectionAnalyzer?.shearVz_Kn ?? 85} kN` },
+        { label: 'Axial Force N / Major Moment M_y', value: `${workspace.sectionAnalyzer?.axialForceN_Kn ?? 0} kN / ${workspace.sectionAnalyzer?.momentMy_Knm ?? 0} kN·m` },
+        { label: 'Minor Moment M_z / Vertical Shear V_z', value: `${workspace.sectionAnalyzer?.momentMz_Knm ?? 0} kN·m / ${workspace.sectionAnalyzer?.shearVz_Kn ?? 0} kN` },
       ];
 
     case 'rc-column-design':
       return [
-        { label: 'Column Cross-Section (b × h)', value: `${workspace.rcColumn?.widthB_Mm ?? 400} × ${workspace.rcColumn?.depthH_Mm ?? 500}`, unit: 'mm' },
+        { label: 'Column Cross-Section (b × h)', value: `${workspace.rcColumn?.widthB_Mm ?? 0} × ${workspace.rcColumn?.depthH_Mm ?? 0}`, unit: 'mm' },
         { label: 'Design Code Standard', value: workspace.rcColumn?.designCode || 'BNBC-2020' },
-        { label: 'Concrete f\'c / Rebar f_y', value: `${workspace.rcColumn?.concreteFcMpa ?? 28} / ${workspace.rcColumn?.rebarFyMpa ?? 420}`, unit: 'MPa' },
-        { label: 'Unsupported Length L_u / k', value: `${workspace.rcColumn?.unsupportedLengthLu_M ?? 3.4} m / k = ${workspace.rcColumn?.effectiveLengthFactorK ?? 0.85}` },
-        { label: 'Factored Actions (P_u / M_ux / M_uy)', value: `${workspace.rcColumn?.axialLoadPu_Kn ?? 1850} kN / ${workspace.rcColumn?.momentMux_Knm ?? 140} / ${workspace.rcColumn?.momentMuy_Knm ?? 65} kN·m` },
+        { label: 'Concrete f\'c / Rebar f_y', value: `${workspace.rcColumn?.concreteFcMpa ?? 0} / ${workspace.rcColumn?.rebarFyMpa ?? 0}`, unit: 'MPa' },
+        { label: 'Unsupported Length L_u / k', value: `${workspace.rcColumn?.unsupportedLengthLu_M ?? 0} m / k = ${workspace.rcColumn?.effectiveLengthFactorK ?? 0}` },
+        { label: 'Factored Actions (P_u / M_ux / M_uy)', value: `${workspace.rcColumn?.axialLoadPu_Kn ?? 0} kN / ${workspace.rcColumn?.momentMux_Knm ?? 0} / ${workspace.rcColumn?.momentMuy_Knm ?? 0} kN·m` },
       ];
 
     case 'strut-and-tie':
       return [
-        { label: 'STM D-Region Template', value: workspace.strutAndTie?.presetName || 'Deep Beam under Single Point Load' },
-        { label: 'Member Thickness / f\'c / f_y', value: `${workspace.strutAndTie?.memberThicknessMm ?? 400} mm / ${workspace.strutAndTie?.concreteFcMpa ?? 28} / ${workspace.strutAndTie?.rebarFyMpa ?? 420} MPa` },
-        { label: 'Truss Topology', value: `${workspace.strutAndTie?.nodes?.length ?? 3} Nodes / ${workspace.strutAndTie?.members?.length ?? 3} Elements` },
+        { label: 'STM D-Region Template', value: workspace.strutAndTie?.presetName || 'Custom STM' },
+        { label: 'Member Thickness / f\'c / f_y', value: `${workspace.strutAndTie?.memberThicknessMm ?? 0} mm / ${workspace.strutAndTie?.concreteFcMpa ?? 0} / ${workspace.strutAndTie?.rebarFyMpa ?? 0} MPa` },
+        { label: 'Truss Topology', value: `${workspace.strutAndTie?.nodes?.length ?? 0} Nodes / ${workspace.strutAndTie?.members?.length ?? 0} Elements` },
         { label: 'Scope Status', value: 'Partial (Truss Equilibrium & Member Forces)' },
       ];
 
     case 'pile-capacity':
       return [
         { label: 'Pile Type', value: workspace.pile?.pileType === 'bored-cast-in-situ' ? 'Bored Cast-in-Situ (BCIS)' : 'Driven Precast Pile' },
-        { label: 'Pile Diameter D', value: workspace.pile?.diameterM || 0.6, unit: 'm' },
-        { label: 'Embedment Depth L', value: workspace.pile?.lengthM || 22.0, unit: 'm' },
-        { label: 'Design Axial Load P', value: workspace.pile?.appliedLoadKn || 1650, unit: 'kN' },
-        { label: 'Groundwater Table Dw', value: workspace.pile?.groundwaterDepthM || 3.0, unit: 'm' },
-        { label: 'Factor of Safety FS', value: workspace.pile?.factorOfSafety || 2.5, unit: '—' },
+        { label: 'Pile Diameter D', value: workspace.pile?.diameterM ?? 0, unit: 'm' },
+        { label: 'Embedment Depth L', value: workspace.pile?.lengthM ?? 0, unit: 'm' },
+        { label: 'Design Axial Load P', value: workspace.pile?.appliedLoadKn ?? 0, unit: 'kN' },
+        { label: 'Groundwater Table Dw', value: workspace.pile?.groundwaterDepthM ?? 0, unit: 'm' },
+        { label: 'Factor of Safety FS', value: workspace.pile?.factorOfSafety ?? 0, unit: '—' },
       ];
 
     case 'pipe-hydraulics':
       return [
         { label: 'Pipe Material', value: (workspace.pipe?.pipeMaterial || 'pvc-hdpe').toUpperCase() },
-        { label: 'Hazen-Williams Roughness C', value: workspace.pipe?.hazenWilliamsC || 150, unit: '—' },
-        { label: 'Internal Diameter D', value: workspace.pipe?.internalDiameterMm || 250, unit: 'mm' },
-        { label: 'Pipe Length L', value: workspace.pipe?.lengthM || 180, unit: 'm' },
-        { label: 'Design Flow Rate Q', value: workspace.pipe?.flowRateLps || 45, unit: 'L/s' },
-        { label: 'Static Elevation Drop Δz', value: (workspace.pipe?.inletElevationM || 25) - (workspace.pipe?.outletElevationM || 18), unit: 'm' },
+        { label: 'Hazen-Williams Roughness C', value: workspace.pipe?.hazenWilliamsC ?? 0, unit: '—' },
+        { label: 'Internal Diameter D', value: workspace.pipe?.internalDiameterMm ?? 0, unit: 'mm' },
+        { label: 'Pipe Length L', value: workspace.pipe?.lengthM ?? 0, unit: 'm' },
+        { label: 'Design Flow Rate Q', value: workspace.pipe?.flowRateLps ?? 0, unit: 'L/s' },
+        { label: 'Static Elevation Drop Δz', value: (workspace.pipe?.inletElevationM ?? 0) - (workspace.pipe?.outletElevationM ?? 0), unit: 'm' },
       ];
 
     case 'beam-analysis':
@@ -886,11 +887,11 @@ function extractModuleOutputs(
 
     case 'concrete-mix':
       return [
-        { label: "Target Compressive Strength f'c", value: result.targetStrengthMpa || workspace?.concrete.targetStrengthMpa || 25, unit: 'MPa', status: 'pass' },
-        { label: 'Design Water-Cement Ratio', value: result.waterCementRatio || workspace?.concrete.waterCementRatio || 0.45, unit: '—', status: 'pass' },
-        { label: 'Portland Cement Batch Mass', value: (result.cementKgPerM3 || result.batchCementKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
-        { label: 'Fine Aggregate Batch Mass', value: (result.fineAggKgPerM3 || result.batchFineAggKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
-        { label: 'Coarse Aggregate Batch Mass', value: (result.coarseAggKgPerM3 || result.batchCoarseAggKg || 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
+        { label: "Target Compressive Strength f'c", value: result.targetStrengthMpa ?? workspace?.concrete.targetStrengthMpa ?? 0, unit: 'MPa', status: 'pass' },
+        { label: 'Design Water-Cement Ratio', value: result.waterCementRatio ?? workspace?.concrete.waterCementRatio ?? 0, unit: '—', status: 'pass' },
+        { label: 'Portland Cement Batch Mass', value: (result.cementKgPerM3 ?? result.batchCementKg ?? 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
+        { label: 'Fine Aggregate Batch Mass', value: (result.fineAggKgPerM3 ?? result.batchFineAggKg ?? 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
+        { label: 'Coarse Aggregate Batch Mass', value: (result.coarseAggKgPerM3 ?? result.batchCoarseAggKg ?? 0).toFixed(1), unit: 'kg/m³', status: 'pass' },
       ];
 
     default:

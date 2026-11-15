@@ -71,14 +71,14 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
     ? { status: 'warning' as const, hint: 'W/C < 0.35 has low workability; superplasticizers / high-range water reducers mandatory.' }
     : null;
 
-  const faMoisture = activeWorkspace.concrete.fineAggMoisturePercent ?? 4.0;
-  const faAbsorption = activeWorkspace.concrete.fineAggAbsorptionPercent ?? 1.2;
-  const caMoisture = activeWorkspace.concrete.coarseAggMoisturePercent ?? 2.0;
-  const caAbsorption = activeWorkspace.concrete.coarseAggAbsorptionPercent ?? 0.8;
-  const sandFM = activeWorkspace.concrete.sandFinenessModulus ?? 2.70;
-  const coarseDRUW = activeWorkspace.concrete.coarseAggDryRoddedDensityKgPerM3 ?? 1600;
-  const admixDose = activeWorkspace.concrete.admixtureDosePercent ?? 1.0;
-  const waterReduction = activeWorkspace.concrete.admixtureWaterReductionPercent ?? 15;
+  const faMoisture = activeWorkspace.concrete.fineAggMoisturePercent ?? 0;
+  const faAbsorption = activeWorkspace.concrete.fineAggAbsorptionPercent ?? 0;
+  const caMoisture = activeWorkspace.concrete.coarseAggMoisturePercent ?? 0;
+  const caAbsorption = activeWorkspace.concrete.coarseAggAbsorptionPercent ?? 0;
+  const sandFM = activeWorkspace.concrete.sandFinenessModulus ?? 0;
+  const coarseDRUW = activeWorkspace.concrete.coarseAggDryRoddedDensityKgPerM3 ?? 0;
+  const admixDose = activeWorkspace.concrete.admixtureDosePercent ?? 0;
+  const waterReduction = activeWorkspace.concrete.admixtureWaterReductionPercent ?? 0;
 
   return (
     <div className="space-y-4">
@@ -338,7 +338,7 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
         <UnitInput
           label="Max Aggregate Size (Dmax)"
           category="length"
-          siValue={(activeWorkspace.concrete.maxAggregateSizeMm || 20) * 0.001}
+          siValue={(activeWorkspace.concrete.maxAggregateSizeMm ?? 0) * 0.001}
           onChangeSI={(val) => {
             updateActiveWorkspace((ws) => ({
               ...ws,
@@ -393,14 +393,14 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
               <input
                 type="number"
                 step="0.01"
-                min="2.8"
-                max="3.3"
-                value={activeWorkspace.concrete.cementSpecificGravity || 3.15}
+                min="0"
+                max="3.5"
+                value={activeWorkspace.concrete.cementSpecificGravity ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    concrete: { ...ws.concrete, cementSpecificGravity: val },
+                    concrete: { ...ws.concrete, cementSpecificGravity: isNaN(raw) ? 0 : Math.max(0, raw) },
                   }));
                 }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -415,14 +415,14 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
               <input
                 type="number"
                 step="0.05"
-                min="2.0"
-                max="3.4"
+                min="0"
+                max="3.6"
                 value={sandFM}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    concrete: { ...ws.concrete, sandFinenessModulus: val },
+                    concrete: { ...ws.concrete, sandFinenessModulus: isNaN(raw) ? 0 : Math.max(0, raw) },
                   }));
                 }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -437,14 +437,14 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
               <input
                 type="number"
                 step="0.01"
-                min="2.3"
-                max="2.9"
-                value={activeWorkspace.concrete.fineAggSpecificGravity || 2.60}
+                min="0"
+                max="3.0"
+                value={activeWorkspace.concrete.fineAggSpecificGravity ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    concrete: { ...ws.concrete, fineAggSpecificGravity: val },
+                    concrete: { ...ws.concrete, fineAggSpecificGravity: isNaN(raw) ? 0 : Math.max(0, raw) },
                   }));
                 }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -459,14 +459,14 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
               <input
                 type="number"
                 step="0.01"
-                min="2.3"
-                max="3.0"
-                value={activeWorkspace.concrete.coarseAggSpecificGravity || 2.65}
+                min="0"
+                max="3.2"
+                value={activeWorkspace.concrete.coarseAggSpecificGravity ?? 0}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
+                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    concrete: { ...ws.concrete, coarseAggSpecificGravity: val },
+                    concrete: { ...ws.concrete, coarseAggSpecificGravity: isNaN(raw) ? 0 : Math.max(0, raw) },
                   }));
                 }}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -490,13 +490,13 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
-                  max="10"
+                  max="15"
                   value={faMoisture}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      concrete: { ...ws.concrete, fineAggMoisturePercent: val },
+                      concrete: { ...ws.concrete, fineAggMoisturePercent: isNaN(raw) ? 0 : Math.max(0, raw) },
                     }));
                   }}
                   className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -512,13 +512,13 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
-                  max="5"
+                  max="10"
                   value={faAbsorption}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      concrete: { ...ws.concrete, fineAggAbsorptionPercent: val },
+                      concrete: { ...ws.concrete, fineAggAbsorptionPercent: isNaN(raw) ? 0 : Math.max(0, raw) },
                     }));
                   }}
                   className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -534,13 +534,13 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
-                  max="6"
+                  max="15"
                   value={caMoisture}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      concrete: { ...ws.concrete, coarseAggMoisturePercent: val },
+                      concrete: { ...ws.concrete, coarseAggMoisturePercent: isNaN(raw) ? 0 : Math.max(0, raw) },
                     }));
                   }}
                   className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -556,13 +556,13 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
-                  max="4"
+                  max="15"
                   value={caAbsorption}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      concrete: { ...ws.concrete, coarseAggAbsorptionPercent: val },
+                      concrete: { ...ws.concrete, coarseAggAbsorptionPercent: isNaN(raw) ? 0 : Math.max(0, raw) },
                     }));
                   }}
                   className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -590,10 +590,10 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                   max="3.0"
                   value={admixDose}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      concrete: { ...ws.concrete, admixtureDosePercent: val },
+                      concrete: { ...ws.concrete, admixtureDosePercent: isNaN(raw) ? 0 : Math.max(0, raw) },
                     }));
                   }}
                   className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -612,10 +612,10 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                   max="35"
                   value={waterReduction}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      concrete: { ...ws.concrete, admixtureWaterReductionPercent: val },
+                      concrete: { ...ws.concrete, admixtureWaterReductionPercent: isNaN(raw) ? 0 : Math.max(0, raw) },
                     }));
                   }}
                   className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -630,14 +630,14 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                 <input
                   type="number"
                   step="25"
-                  min="1300"
-                  max="1900"
+                  min="0"
+                  max="2200"
                   value={coarseDRUW}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      concrete: { ...ws.concrete, coarseAggDryRoddedDensityKgPerM3: val },
+                      concrete: { ...ws.concrete, coarseAggDryRoddedDensityKgPerM3: isNaN(raw) ? 0 : Math.max(0, raw) },
                     }));
                   }}
                   className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
@@ -682,8 +682,19 @@ export const ConcreteMixMetrics: React.FC<ConcreteMixMetricsProps> = ({
   updateOutputUnit,
   onSyncToBoq,
 }) => {
+  const isZeroBaseline =
+    (activeWorkspace.concrete.targetStrengthMpa ?? 0) <= 0 ||
+    (activeWorkspace.concrete.waterCementRatio ?? 0) <= 0 ||
+    (result.batchVolumeM3 ?? 0) <= 0;
+
   return (
     <div className="space-y-4">
+      {isZeroBaseline && (
+        <div className="px-3.5 py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs font-mono flex items-center justify-between gap-2 mt-4">
+          <span className="font-bold uppercase tracking-wider">0 BASELINE STANDBY</span>
+          <span className="opacity-90">Enter target strength f&apos;c, w/c ratio, and batch volume to proportion ACI 211.1 mix.</span>
+        </div>
+      )}
       {/* 4 Primary Output Gauges */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
         <UnitValueDisplay
@@ -728,7 +739,7 @@ export const ConcreteMixMetrics: React.FC<ConcreteMixMetricsProps> = ({
       {/* Yield & Fresh Concrete Quality Snapshot */}
       <div className="p-3.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          <div className={`w-2.5 h-2.5 rounded-full ${isZeroBaseline ? 'bg-amber-500' : 'bg-emerald-500'}`} />
           <span className="font-semibold text-[var(--md-sys-color-on-surface)]">
             Fresh Unit Weight: {result.freshConcreteUnitWeightKgPerM3.toFixed(1)} kg/m³
           </span>
@@ -738,7 +749,7 @@ export const ConcreteMixMetrics: React.FC<ConcreteMixMetricsProps> = ({
           </span>
           <span className="text-[var(--md-sys-color-on-surface-variant)]">·</span>
           <span className="text-[var(--md-sys-color-on-surface-variant)]">
-            Relative Yield: {result.relativeYield ? result.relativeYield.toFixed(3) : '1.000'}
+            Relative Yield: {isZeroBaseline ? '0.000' : (result.relativeYield ? result.relativeYield.toFixed(3) : '0.000')}
           </span>
         </div>
 
@@ -769,7 +780,7 @@ export const ConcreteMixVolumeTable: React.FC<ConcreteMixVolumeTableProps> = ({
   onSyncToBoq,
 }) => {
   const items = result.items || [];
-  const V = result.batchVolumeM3 || 1.0;
+  const V = result.batchVolumeM3 ?? 0;
 
   return (
     <div className="bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl p-5 space-y-5">
@@ -881,9 +892,9 @@ export const ConcreteMixVolumeTable: React.FC<ConcreteMixVolumeTableProps> = ({
                 Total Absolute Solid Volume:
               </td>
               <td className="py-2.5 px-2 text-right text-[var(--md-sys-color-primary)] font-bold">
-                {result.totalSolidVolumeM3 ? result.totalSolidVolumeM3.toFixed(4) : '1.0000'} m³
+                {result.totalSolidVolumeM3 ? result.totalSolidVolumeM3.toFixed(4) : '0.0000'} m³
               </td>
-              <td className="py-2.5 px-2 text-right">100.0%</td>
+              <td className="py-2.5 px-2 text-right">{result.totalSolidVolumeM3 ? '100.0%' : '0.0%'}</td>
               <td className="py-2.5 px-2 text-right">{result.totalDensityKgPerM3.toLocaleString()}</td>
               <td className="py-2.5 px-2 text-right text-emerald-700 dark:text-emerald-400">
                 {result.freshConcreteUnitWeightKgPerM3.toLocaleString()}

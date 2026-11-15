@@ -13,7 +13,7 @@ import {
   MasterMarketRates,
 } from '../../types/civil';
 import { getCurrencySymbol } from '../../utils/calculations';
-import { createDefaultMasterMarketRates } from '../../utils/storage';
+import { createDefaultMasterMarketRates, createPwdDefaultMasterMarketRates } from '../../utils/storage';
 import { syncMasterMarketRatesToWorkspace } from '../../utils/rateResolver';
 
 export interface MasterMarketRatesPanelProps {
@@ -71,12 +71,12 @@ export const MasterMarketRatesPanel: React.FC<MasterMarketRatesPanelProps> = ({
   };
 
   const handleResetDefaults = () => {
-    const defaults = createDefaultMasterMarketRates();
+    const defaults = createPwdDefaultMasterMarketRates();
     updateActiveWorkspace((ws) => ({
       ...ws,
       marketRates: defaults,
     }));
-    setSyncNotice('Reset market index to PWD 2025 baseline rates (click Sync to propagate).');
+    setSyncNotice('Loaded PWD baseline market rates (click Sync to propagate).');
   };
 
   const handleSyncToAnalysisAndBoq = () => {
