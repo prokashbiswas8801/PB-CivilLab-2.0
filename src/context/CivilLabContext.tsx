@@ -79,6 +79,20 @@ export interface SavedHistoryItem {
   tags?: string[];
 }
 
+export interface PendingNcrDraft {
+  ncrNo?: string;
+  titleEn: string;
+  titleBn: string;
+  issuedTo?: string;
+  locationGrid: string;
+  severity: 'Minor' | 'Major' | 'Critical / Safety Hazard';
+  defectDescription: string;
+  governingCode: string;
+  rectificationActionRequired: string;
+  testCode: string;
+  verdict: 'FAIL' | 'WARNING';
+}
+
 export interface CivilLabContextType {
   // Navigation & Calculator State
   activePage: ActivePage;
@@ -121,6 +135,10 @@ export interface CivilLabContextType {
   // PDF Export Preset
   pdfPreset: CivilPdfPreset;
   updatePdfPreset: (partial: Partial<CivilPdfPreset>) => void;
+
+  // Transient NCR / Rejection Notice Draft (Cross-Module from Testing Lab -> Office Docs)
+  pendingNcrDraft: PendingNcrDraft | null;
+  setPendingNcrDraft: React.Dispatch<React.SetStateAction<PendingNcrDraft | null>>;
 }
 
 // ============================================================================
@@ -549,6 +567,9 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPdfPreset((prev) => ({ ...prev, ...partial }));
   }, []);
 
+  // 8. Transient NCR Draft State
+  const [pendingNcrDraft, setPendingNcrDraft] = useState<PendingNcrDraft | null>(null);
+
   const contextValue = useMemo<CivilLabContextType>(
     () => ({
       activePage,
@@ -579,6 +600,8 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       selectActiveProject,
       pdfPreset,
       updatePdfPreset,
+      pendingNcrDraft,
+      setPendingNcrDraft,
     }),
     [
       activePage,
@@ -608,6 +631,7 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       selectActiveProject,
       pdfPreset,
       updatePdfPreset,
+      pendingNcrDraft,
     ]
   );
 

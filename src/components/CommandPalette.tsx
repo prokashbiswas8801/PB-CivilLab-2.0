@@ -33,13 +33,14 @@ export interface CommandPaletteItem {
   keywords: string[];
   shortcut?: string;
   moduleId?: EngineeringModuleId;
+  subAction?: string;
   action?: () => void;
 }
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectModule: (moduleId: EngineeringModuleId) => void;
+  onSelectModule: (moduleId: EngineeringModuleId, subAction?: string) => void;
   recentQueries: string[];
   onAddRecentQuery: (query: string) => void;
   onOpenProfile?: () => void;
@@ -377,6 +378,97 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         description: 'Bilingual A4 Gate Pass, Work Order, RA Bill Forwarding Letter, NCR Notice, and Handover Certificate generator',
         keywords: ['sm-10', 'erp-10', 'office docs', 'letter', 'gate pass', 'work order', 'ncr', 'handover', 'অফিসিয়াল চিঠি', 'গেট পাস'],
         moduleId: 'office-docs',
+      },
+
+      // Testing Lab & Field QA/QC (LAB-00 to LAB-09)
+      {
+        id: 'mod-testing-lab-qaqc',
+        title: 'LAB-00: Testing Lab & Field QA/QC Suite (নির্মাণ পরীক্ষণ ও মান যাচাই)',
+        category: 'Calculators',
+        description: '27 bilingual (বাংলা + English) material & field tests across 9 domains with live calculators, acceptance limits, and QR A4 lab certificates',
+        keywords: ['lab-00', 'testing lab', 'qa/qc', 'qaqc', 'material test', 'certificate', 'নির্মাণ পরীক্ষণ', 'মান যাচাই', 'ল্যাব টেস্ট'],
+        moduleId: 'testing-lab-qaqc',
+      },
+      {
+        id: 'mod-lab-cement',
+        title: 'LAB-01: Cement Quality Tests (সিমেন্ট পরীক্ষা — Vicat & Soundness)',
+        category: 'Calculators',
+        description: 'Field adulteration, normal consistency, initial/final setting time, 90µm fineness & Le Chatelier soundness',
+        keywords: ['lab-01', 'cement', 'vicat', 'setting time', 'consistency', 'soundness', 'সিমেন্ট পরীক্ষা', 'ভিকাট'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'cement',
+      },
+      {
+        id: 'mod-lab-aggregate',
+        title: 'LAB-02: Sand & Aggregate Tests (বালি ও পাথর — FM, Silt & LAA)',
+        category: 'Calculators',
+        description: 'Fine aggregate Fineness Modulus (FM), jar silt percentage & Los Angeles Abrasion (LAA)',
+        keywords: ['lab-02', 'sand', 'fm', 'fineness modulus', 'silt', 'los angeles', 'abrasion', 'বালি', 'এফএম', 'পলি', 'পাথর'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'aggregate',
+      },
+      {
+        id: 'mod-lab-brick',
+        title: 'LAB-03: Brick & Block Tests (ইট ও ব্লক — Crushing & Absorption)',
+        category: 'Calculators',
+        description: 'Compressive strength, 24h water absorption %, and field drop/ringing/efflorescence checks',
+        keywords: ['lab-03', 'brick', 'block', 'water absorption', 'efflorescence', 'ইট পরীক্ষা', 'পানি শোষণ'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'brick-block',
+      },
+      {
+        id: 'mod-lab-concrete',
+        title: 'LAB-04: Fresh, Hardened Concrete & NDT (স্লাম্প, সিলিন্ডার ও এনডিটি)',
+        category: 'Calculators',
+        description: 'Slump cone, 7/28-day cylinder/cube ACI 318 compliance & Rebound Hammer / UPV NDT assessment',
+        keywords: ['lab-04', 'slump', 'cylinder', 'cube', 'rebound hammer', 'upv', 'ndt', 'স্লাম্প', 'কনক্রিট', 'হ্যামার টেস্ট'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'concrete-ndt',
+      },
+      {
+        id: 'mod-lab-rebar',
+        title: 'LAB-05: Reinforcing Steel (Rebar) Tests (রড পরীক্ষা — Yield, Weight & Bend)',
+        category: 'Calculators',
+        description: 'UTM tensile yield, UTS/Yield seismic ratio, unit weight tolerance & 180°/157.5° bend-rebend audit',
+        keywords: ['lab-05', 'rebar', 'tensile', 'yield', 'unit weight', 'bend', 'rebend', 'রড পরীক্ষা', 'টান পরীক্ষা'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'rebar-steel',
+      },
+      {
+        id: 'mod-lab-soil',
+        title: 'LAB-06: Soil, Compaction & Pile Tests (মাটি ও পাইল — FDD, DCP & PIT)',
+        category: 'Calculators',
+        description: 'Sand replacement FDD vs Proctor MDD compaction %, DCP-CBR correlation & Static Pile / PIT velocity',
+        keywords: ['lab-06', 'soil', 'fdd', 'proctor', 'compaction', 'dcp', 'cbr', 'pile load', 'pit', 'মাটি পরীক্ষা', 'পাইল'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'soil-pile',
+      },
+      {
+        id: 'mod-lab-highway',
+        title: 'LAB-07: Highway, Sub-base & Bitumen Tests (সড়ক ও বিটুমিন পরীক্ষা)',
+        category: 'Calculators',
+        description: 'Bitumen penetration & softening point, Marshall Stability/Flow & asphalt core relative compaction',
+        keywords: ['lab-07', 'bitumen', 'penetration', 'marshall', 'core compaction', 'বিটুমিন', 'মার্শাল', 'রাস্তা'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'highway-bitumen',
+      },
+      {
+        id: 'mod-lab-water',
+        title: 'LAB-08: Water, Admixture & Plumbing Tests (পানি ও লিকেজ পরীক্ষা)',
+        category: 'Calculators',
+        description: 'Mixing water pH/TDS/chloride suitability, pipe hydrostatic pressure test & 48h ponding leakage audit',
+        keywords: ['lab-08', 'water', 'ph', 'tds', 'hydrostatic', 'ponding', 'leakage', 'পানি পরীক্ষা', 'লিকেজ'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'water-plumbing',
+      },
+      {
+        id: 'mod-lab-checklists',
+        title: 'LAB-09: Field QA/QC Checklists (সাইট চেকলিস্ট — Pre-Pour & Masonry)',
+        category: 'Calculators',
+        description: 'Interactive PASS/FAIL/N/A site inspection checklists for Pre-Pour RCC, Masonry/Plaster & Excavation',
+        keywords: ['lab-09', 'checklist', 'pre-pour', 'formwork', 'masonry', 'excavation', 'চেকলিস্ট', 'ঢালাই'],
+        moduleId: 'testing-lab-qaqc',
+        subAction: 'site-checklists',
       },
 
       // Units & Quick Conversions
@@ -808,7 +900,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (item.action) {
       item.action();
     } else if (item.moduleId) {
-      onSelectModule(item.moduleId);
+      onSelectModule(item.moduleId, item.subAction);
     }
     onClose();
   };

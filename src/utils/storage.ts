@@ -18,6 +18,7 @@ import {
   StrutAndTieParams,
   MasterMarketRates,
 } from '../types/civil';
+import { TestingLabWorkspaceState } from '../types/testingLab';
 import { persistToIndexedDB, clearIndexedDB, loadFromIndexedDB } from './indexedStorage';
 import { createDefaultCustomPolygon } from './sectionMechanics';
 import { STM_WORKED_EXAMPLES } from './strutAndTieEngine';
@@ -315,6 +316,18 @@ export function createDefaultArchitectureParameters(): ArchitectureParameters {
       openableWindowPct: 50,
       ventilatorAreaM2: 0.25,
     },
+  };
+}
+
+export function createDefaultTestingLabState(): TestingLabWorkspaceState {
+  return {
+    activeDomainId: 'cement',
+    activeTestId: 'cem-field-lumps',
+    languageMode: 'dual',
+    draftInputsByTestId: {},
+    draftChecklistsByTestId: {},
+    savedRecords: [],
+    checklistLogs: [],
   };
 }
 
@@ -670,6 +683,7 @@ export function createDefaultWorkspaces(): CivilWorkspace[] {
         outputUnits: {},
       },
       architecture: createDefaultArchitectureParameters(),
+      testingLab: createDefaultTestingLabState(),
     },
   ];
 }
@@ -1532,6 +1546,8 @@ export function getZeroBaselineForModule(moduleId: EngineeringModuleId): Partial
       return { pipe: zeroWs.pipe };
     case 'surveying-suite':
       return { surveying: zeroWs.surveying };
+    case 'testing-lab-qaqc':
+      return { testingLab: createDefaultTestingLabState() };
     default:
       return {};
   }
@@ -1948,6 +1964,29 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
                 ...(fallback.workspaces[0].architecture?.rainwaterDaylight || defArch.rainwaterDaylight!),
                 ...(ws.architecture.rainwaterDaylight || {}),
               },
+            };
+          })(),
+          testingLab: (() => {
+            const defLab = createDefaultTestingLabState();
+            const rawLab = ws.testingLab;
+            if (!rawLab) return defLab;
+            return {
+              activeDomainId: rawLab.activeDomainId || defLab.activeDomainId,
+              activeTestId: rawLab.activeTestId || defLab.activeTestId,
+              languageMode:
+                rawLab.languageMode === 'bn' || rawLab.languageMode === 'en' || rawLab.languageMode === 'dual'
+                  ? rawLab.languageMode
+                  : 'dual',
+              draftInputsByTestId:
+                rawLab.draftInputsByTestId && typeof rawLab.draftInputsByTestId === 'object'
+                  ? rawLab.draftInputsByTestId
+                  : {},
+              draftChecklistsByTestId:
+                rawLab.draftChecklistsByTestId && typeof rawLab.draftChecklistsByTestId === 'object'
+                  ? rawLab.draftChecklistsByTestId
+                  : {},
+              savedRecords: Array.isArray(rawLab.savedRecords) ? rawLab.savedRecords : [],
+              checklistLogs: Array.isArray(rawLab.checklistLogs) ? rawLab.checklistLogs : [],
             };
           })(),
         }))

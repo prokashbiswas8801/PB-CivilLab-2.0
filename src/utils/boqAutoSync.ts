@@ -1,5 +1,6 @@
 import {
   CivilWorkspace,
+  SurveyingParameters,
   TakeoffLineItem,
 } from '../types/civil';
 import {
@@ -8,6 +9,7 @@ import {
   ConcreteMixResult,
   MasonryResult,
   PileCapacityResult,
+  EarthworkResult,
 } from './calculations';
 
 export interface AutoSyncResult {
@@ -665,6 +667,114 @@ export function syncSurveyingEarthworkToBoq(
 }
 
 /**
+ * Synchronizes Earthwork & Road Alignment cut/fill volumes directly into the BOQ Substructure Schedule
+ * using actual trench/pit/corridor geometry and dynamically resolved earthwork rates.
+ */
+export function syncEarthworkToBoq(
+  workspace: CivilWorkspace,
+  earthworkEnvelope: CalculationEnvelope<EarthworkResult>
+): AutoSyncResult {
+  const result = earthworkEnvelope.result;
+  if (!result || result.bankVolumeM3 <= 0) {
+    return {
+      updatedWorkspace: workspace,
+      syncedItemsCount: 0,
+      syncedItemDescriptions: [],
+      message: 'No Earthwork cut/fill volume available to synchronize.',
+    };
+  }
+
+  const ew = workspace.earthwork;
+  const earthworkRate = resolveDynamicRate(workspace, 'earthwork', { fallbackRate: 245 });
+  const bankVol = Number(result.bankVolumeM3.toFixed(2));
+
+  let lengthM = bankVol;
+  let widthM = 1;
+  let heightM = 1;
+  let descLabel = 'Prismoidal Corridor / Multi-Station Alignment';
+
+  if (ew.calculationType === 'pit-excavation' && ew.pitTopLengthM > 0 && ew.pitTopWidthM > 0 && ew.pitDepthM > 0) {
+    lengthM = Number(ew.pitTopLengthM.toFixed(3));
+    widthM = Number(ew.pitTopWidthM.toFixed(3));
+    heightM = Number((bankVol / (lengthM * widthM)).toFixed(3));
+    descLabel = `Foundation Pit Excavation (${ew.pitTopLengthM}m × ${ew.pitTopWidthM}m × ${ew.pitDepthM}m depth, sloped ${ew.pitSideSlopeH}:1)`;
+  } else if (ew.calculationType === 'trapezoidal-trench' && ew.trenchLengthM > 0 && ew.trenchDepthM > 0) {
+    lengthM = Number(ew.trenchLengthM.toFixed(3));
+    const avgW = ew.trenchBottomWidthM + ew.trenchSideSlopeH * ew.trenchDepthM;
+    widthM = Number(Math.max(0.1, avgW).toFixed(3));
+    heightM = Number((bankVol / (lengthM * widthM)).toFixed(3));
+    descLabel = `Trapezoidal Utility Trench (${ew.trenchLengthM}m run × ${avgW.toFixed(2)}m avg width × ${ew.trenchDepthM}m depth)`;
+  } else {
+    const corrLen = Math.max(1, result.totalAlignmentLengthM || ew.roadLengthM || 1);
+    const avgSectionArea = bankVol / corrLen;
+    const formW = Math.max(1, ew.formationWidthM || 1);
+    lengthM = Number(corrLen.toFixed(3));
+    widthM = Number(formW.toFixed(3));
+    heightM = Number((avgSectionArea / formW).toFixed(3));
+    descLabel = `Road / Alignment Earthwork (${corrLen.toFixed(1)}m alignment, soil: ${result.soilClassification})`;
+  }
+
+  const description = `${descLabel} — Auto-Synced from Earthwork`;
+  const existingItems = [...workspace.boq.items];
+  const existingIndex = existingItems.findIndex(
+    (it) => it.description.includes('Auto-Synced from Earthwork') || it.id.startsWith('sync-ew-')
+  );
+
+  let updatedItems: TakeoffLineItem[];
+  if (existingIndex >= 0) {
+    updatedItems = existingItems.map((it, idx) =>
+      idx === existingIndex
+        ? {
+            ...it,
+            description,
+            category: 'substructure',
+            unit: 'm3',
+            numberOfMembers: 1,
+            lengthM,
+            widthM,
+            heightM,
+            deductionQty: 0,
+            wastagePercent: 0,
+            unitRate: it.unitRate > 0 ? it.unitRate : earthworkRate,
+          }
+        : it
+    );
+  } else {
+    const newItem: TakeoffLineItem = {
+      id: `sync-ew-${Date.now()}`,
+      itemNo: `EW-${existingItems.length + 1}`,
+      description,
+      category: 'substructure',
+      numberOfMembers: 1,
+      lengthM,
+      widthM,
+      heightM,
+      deductionQty: 0,
+      unit: 'm3',
+      wastagePercent: 0,
+      unitRate: earthworkRate,
+    };
+    updatedItems = [...existingItems, newItem];
+  }
+
+  const updatedWorkspace: CivilWorkspace = {
+    ...workspace,
+    boq: {
+      ...workspace.boq,
+      items: updatedItems,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  return {
+    updatedWorkspace,
+    syncedItemsCount: 1,
+    syncedItemDescriptions: [`Earthwork Bank Volume: ${bankVol} m³ @ ${earthworkRate} BDT`],
+    message: `Successfully synchronized ${bankVol} m³ of Earthwork into BOQ Substructure Schedule.`,
+  };
+}
+
+/**
  * Universal one-click multi-module synchronization directly into the BOQ Estimator takeoff schedule.
  */
 export function syncAllModulesToBoq(
@@ -672,7 +782,9 @@ export function syncAllModulesToBoq(
   bbsEnvelope?: CalculationEnvelope<RebarBBSResult>,
   mixEnvelope?: CalculationEnvelope<ConcreteMixResult>,
   masonryEnvelope?: CalculationEnvelope<MasonryResult>,
-  pileEnvelope?: CalculationEnvelope<PileCapacityResult>
+  pileEnvelope?: CalculationEnvelope<PileCapacityResult>,
+  earthworkEnvelope?: CalculationEnvelope<EarthworkResult>,
+  surveyingParams?: SurveyingParameters
 ): AutoSyncResult {
   let ws = workspace;
   const allSyncedDescriptions: string[] = [];
@@ -704,6 +816,28 @@ export function syncAllModulesToBoq(
     ws = pileRes.updatedWorkspace;
     totalCount += pileRes.syncedItemsCount;
     allSyncedDescriptions.push(...pileRes.syncedItemDescriptions);
+  }
+
+  if (earthworkEnvelope?.result && earthworkEnvelope.result.bankVolumeM3 > 0) {
+    const ewRes = syncEarthworkToBoq(ws, earthworkEnvelope);
+    ws = ewRes.updatedWorkspace;
+    totalCount += ewRes.syncedItemsCount;
+    allSyncedDescriptions.push(...ewRes.syncedItemDescriptions);
+  }
+
+  const activeSurveying = surveyingParams || ws.surveying;
+  if (
+    activeSurveying &&
+    ((activeSurveying.computedAreaSqM || 0) > 0 || (activeSurveying.computedExcavationVolumeM3 || 0) > 0)
+  ) {
+    const survRes = syncSurveyingEarthworkToBoq(ws, {
+      landAreaSqM: activeSurveying.computedAreaSqM || 0,
+      excavationVolumeM3: activeSurveying.computedExcavationVolumeM3 || 0,
+      formationRL: activeSurveying.formationRL,
+    });
+    ws = survRes.updatedWorkspace;
+    totalCount += survRes.syncedItemsCount;
+    allSyncedDescriptions.push(...survRes.syncedItemDescriptions);
   }
 
   return {

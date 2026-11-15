@@ -10,11 +10,13 @@ export type ToolDiscipline =
   | 'Architecture & By-Laws'
   | 'CAD & Utilities'
   | 'Site QC & Field'
-  | 'Site Management & ERP';
+  | 'Site Management & ERP'
+  | 'Testing Lab & Field QA/QC';
 
 export interface ToolRegistryEntry {
   id: string;
   moduleId?: EngineeringModuleId;
+  subAction?: string;
   title: string;
   shortLabel: string;
   shortCode: string; // e.g. STR-01, GEO-02, ARC-01
@@ -513,6 +515,137 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     standardUsed: 'BNBC-2020 / FIDIC Civil Contract & PWD Administration',
     description: 'Bilingual (English & Bengali) formal A4 letter generator for Material Gate Passes, Work Orders, RA Bill Forwarding Letters, Non-Conformance Notices (NCR), and Handover Certificates.',
   },
+
+  // 12. TESTING LAB & FIELD QA/QC (LAB-00 to LAB-09)
+  {
+    id: 'testing-lab-qaqc',
+    moduleId: 'testing-lab-qaqc',
+    title: 'Testing Lab & Field QA/QC Suite (নির্মাণ পরীক্ষণ ও মান যাচাই)',
+    shortLabel: 'Testing Lab & Field QA/QC',
+    shortCode: 'LAB-00',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: 'Complete Bilingual Lab Hub',
+    keywords: ['testing lab', 'qaqc', 'qa/qc', 'material test', 'lab test', 'field test', 'certificate', 'bnbc', 'pwd', 'lged', 'rhd', 'astm', 'bds', 'নির্মাণ পরীক্ষণ', 'মান যাচাই', 'ল্যাব টেস্ট', 'lab-00'],
+    standardUsed: 'BNBC-2020 / PWD / LGED / RHD / ASTM / BDS / BS EN',
+    description: '46 interactive bilingual (বাংলা + English) civil engineering laboratory and instant field QA/QC procedures with live formula solvers, acceptance verdicts, remedial actions, and QR-verified A4 certificates.',
+  },
+  {
+    id: 'testing-lab-cement',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'cement',
+    title: 'Cement Quality Tests — Field, Consistency, Setting Time & Soundness (সিমেন্ট পরীক্ষা)',
+    shortLabel: 'Cement Quality Tests',
+    shortCode: 'LAB-01',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '1. Cement Quality',
+    keywords: ['cement', 'vicat', 'setting time', 'consistency', 'le chatelier', 'soundness', 'fineness', 'blaine', 'adulteration', 'সিমেন্ট পরীক্ষা', 'ভিকাট', 'জমাট বাঁধার সময়', 'lab-01'],
+    standardUsed: 'BDS EN 197-1 / ASTM C150 / ASTM C187 / C191 / IS 4031',
+    description: 'Field adulteration checks, Vicat normal consistency & initial/final setting time, 90µm sieve fineness, and Le Chatelier soundness expansion solver.',
+  },
+  {
+    id: 'testing-lab-aggregate',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'aggregate',
+    title: 'Sand & Aggregate Tests — FM, Silt Content & Los Angeles Abrasion (বালি ও পাথর/খোয়া পরীক্ষা)',
+    shortLabel: 'Sand & Aggregate Tests',
+    shortCode: 'LAB-02',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '2. Sand & Coarse Aggregate',
+    keywords: ['sand', 'fm', 'fineness modulus', 'silt', 'clay', 'aggregate', 'los angeles', 'abrasion', 'aiv', 'flakiness', 'sylhet sand', 'বালি', 'এফএম', 'পলি', 'পাথর', 'খোয়া', 'lab-02'],
+    standardUsed: 'ASTM C136 / ASTM C117 / ASTM C131 / PWD / LGED',
+    description: 'Fine aggregate Fineness Modulus (FM) sieve analysis, jar silt/clay percentage check, and coarse aggregate Los Angeles Abrasion (LAA) & Impact Value solver.',
+  },
+  {
+    id: 'testing-lab-brick',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'brick-block',
+    title: 'Brick & Concrete Block Tests — Crushing, Absorption & Efflorescence (ইট ও ব্লক পরীক্ষা)',
+    shortLabel: 'Brick & Block Tests',
+    shortCode: 'LAB-03',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '3. Masonry Units',
+    keywords: ['brick', 'block', 'compressive strength', 'water absorption', 'efflorescence', 'drop test', 'frog', 'first class brick', 'ইট পরীক্ষা', 'ব্লক', 'পানি শোষণ', 'লবণাক্ততা', 'lab-03'],
+    standardUsed: 'BDS 208 / PWD / ASTM C67 / IS 3495',
+    description: '1st class brick & hollow block compressive strength, 24-hour water absorption percentage, and field drop/ringing/efflorescence assessment.',
+  },
+  {
+    id: 'testing-lab-concrete',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'concrete-ndt',
+    title: 'Fresh, Hardened Concrete & NDT — Slump, Cylinder & Rebound Hammer/UPV (কনক্রিট ও এনডিটি)',
+    shortLabel: 'Concrete & NDT Tests',
+    shortCode: 'LAB-04',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '4. Concrete & NDT',
+    keywords: ['slump', 'concrete', 'cylinder', 'cube', 'compressive strength', 'rebound hammer', 'schmidt', 'upv', 'ultrasonic', 'ndt', 'স্লাম্প', 'সিলিন্ডার', 'কনক্রিট', 'হ্যামার টেস্ট', 'lab-04'],
+    standardUsed: 'ASTM C143 / ASTM C39 / ASTM C805 / ASTM C597 / BNBC-2020',
+    description: 'Fresh concrete slump cone workability, 7/28-day cylinder/cube ACI 318 / BNBC compliance evaluation, and Rebound Hammer + UPV combined NDT assessment.',
+  },
+  {
+    id: 'testing-lab-rebar',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'rebar-steel',
+    title: 'Reinforcing Steel (Rebar) Tests — Tensile, Unit Weight & Bend/Rebend (রড বা রিবার পরীক্ষা)',
+    shortLabel: 'Rebar & Steel Tests',
+    shortCode: 'LAB-05',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '5. Reinforcing Steel',
+    keywords: ['rebar', 'steel', 'tensile', 'yield', 'uts', 'elongation', 'unit weight', 'bend', 'rebend', '500w', 'bds iso 6935', 'রড পরীক্ষা', 'টান পরীক্ষা', 'ওজন', 'lab-05'],
+    standardUsed: 'BDS ISO 6935-2 / ASTM A615 / A706 / BNBC-2020',
+    description: 'UTM yield strength, UTS/Yield seismic ratio (>=1.25), elongation %, actual-vs-theoretical unit weight tolerance, and 180°/157.5° bend-rebend crack audit.',
+  },
+  {
+    id: 'testing-lab-soil',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'soil-pile',
+    title: 'Soil, Compaction & Pile Integrity Tests — SPT, Atterberg, FDD, Bentonite & PIT (মাটি ও পাইল পরীক্ষা)',
+    shortLabel: 'Soil & Pile QA/QC',
+    shortCode: 'LAB-06',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '6. Geotech & Deep Foundations',
+    keywords: ['soil', 'spt', 'n-value', 'n60', 'atterberg', 'liquid limit', 'plasticity index', 'fdd', 'sand replacement', 'proctor', 'mdd', 'omc', 'compaction', 'bentonite', 'slurry', 'marsh funnel', 'pile load', 'davisson', 'pit', 'integrity', 'মাটি পরীক্ষা', 'কমপ্যাকশন', 'পাইল লোড', 'এসপিটি', 'বেনটোনাইট', 'lab-06'],
+    standardUsed: 'ASTM D1586 / D4318 / D1556 / D1143 / D5882 / BNBC-2020',
+    description: 'SPT N60/(N1)60 corrections, Atterberg LL/PL/PI swelling, Sand Replacement FDD vs MDD compaction %, Bentonite slurry Mud Balance & Marsh Funnel checks, and Davisson Static Pile Load + PIT integrity evaluation.',
+  },
+  {
+    id: 'testing-lab-highway',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'highway-bitumen',
+    title: 'Highway, CBR & Bitumen Tests — Soaked CBR, DCP, 60/70-80/100, Marshall Extraction & Core (সড়ক ও বিটুমিন)',
+    shortLabel: 'Highway & Bitumen Tests',
+    shortCode: 'LAB-07',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '7. Highway & Pavement',
+    keywords: ['cbr', 'soaked cbr', 'dcp', 'bitumen', 'asphalt', 'penetration', 'softening point', 'ductility', 'flash point', 'marshall', 'extraction', 'stability', 'flow', 'core cutting', 'road', 'rhd', 'lged', 'বিটুমিন', 'সিবিআর', 'মার্শাল', 'রাস্তা', 'কোর কাটিং', 'lab-07'],
+    standardUsed: 'RHD / LGED / ASTM D1883 / D6951 / D5 / D6927 / D2172 / D2726',
+    description: '4-day soaked CBR across Subgrade/ISG/Sub-base/Base, ASTM D6951 DCP-to-CBR solver, 60/70 vs 80/100 Bitumen Penetration/Softening/Ductility/Flash, Marshall Stability + Centrifuge Bitumen Extraction, and asphalt core compaction.',
+  },
+  {
+    id: 'testing-lab-water',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'water-plumbing',
+    title: 'Water, Plumbing & Ponding Tests — pH/TDS/Cl⁻, Hydrostatic, Sanitary Slope/Ball & 72h Ponding (পানি ও প্লাম্বিং)',
+    shortLabel: 'Water & Leakage Tests',
+    shortCode: 'LAB-08',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '8. Water & MEP Waterproofing',
+    keywords: ['water', 'ph', 'tds', 'chloride', 'sulfate', 'hydrostatic', 'pipe pressure', 'sanitary slope', 'ball test', 'ponding', 'waterproofing', 'ugwr', 'oht', 'toilet', 'roof', 'পানি পরীক্ষা', 'পাইপ প্রেসার', 'ড্রেনেজ ঢাল', 'লিকেজ', 'ওয়াটারপ্রুফিং', 'lab-08'],
+    standardUsed: 'ASTM C1602 / D5957 / BNBC-2020 Part 6 & 8 / PWD / IS 456',
+    description: 'Mixing/curing water chemistry (RCC vs PCC Chloride), uPVC/CPVC/GI hydrostatic pipe test (10 bar / 2h), sanitary pipe self-cleansing slope & 1.5m water-head + ball passage, and 72h roof/toilet/tank ponding audit.',
+  },
+  {
+    id: 'testing-lab-checklists',
+    moduleId: 'testing-lab-qaqc',
+    subAction: 'site-checklists',
+    title: 'Site Execution & Structural QA/QC Verifiers — Formwork Squareness, Rebar Seismic Cover, Stripping Days & Masonry (সাইট চেকলিস্ট)',
+    shortLabel: 'Field QA/QC Checklists',
+    shortCode: 'LAB-09',
+    category: 'Testing Lab & Field QA/QC',
+    subCategory: '9. Field Inspection Checklists',
+    keywords: ['checklist', 'pre-pour', 'rcc', 'formwork', 'shuttering', 'diagonal', 'squareness', 'camber', 'rebar', 'seismic', '135 hook', 'cover block', 'lapping', 'curing', 'deshuttering', 'stripping', 'masonry', 'plaster', 'straightedge', 'excavation', 'shoring', 'audit', 'চেকলিস্ট', 'ঢালাই', 'কাভার ব্লক', 'সিসমিক', 'কিউরিং', 'সাটার খোলা', 'প্লাস্টার', 'খনন', 'lab-09'],
+    standardUsed: 'BNBC-2020 Part 6 / ACI 318-19 / ACI 347R / PWD / OSHA',
+    description: 'Weighted Pass/Fail/N/A inspection verifiers with live calculators for Formwork Diagonal Squareness & Camber, Rebar Cover & Seismic Ductile Detailing, Post-Pour Curing & De-shuttering Days, Brick Masonry/Plaster Straightedge & Tile Hollowness, and Foundation Excavation safety.',
+  },
 ];
 
 /**
@@ -521,7 +654,7 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
 export const TOOL_REGISTRY_MAP: Record<string, ToolRegistryEntry> = TOOL_REGISTRY.reduce(
   (acc, tool) => {
     acc[tool.id] = tool;
-    if (tool.moduleId) {
+    if (tool.moduleId && !tool.subAction) {
       acc[tool.moduleId] = tool;
     }
     return acc;
@@ -543,4 +676,5 @@ export const TOOL_DISCIPLINES: ToolDiscipline[] = [
   'CAD & Utilities',
   'Site QC & Field',
   'Site Management & ERP',
+  'Testing Lab & Field QA/QC',
 ];

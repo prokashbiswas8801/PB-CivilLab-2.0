@@ -2,7 +2,9 @@ import React from 'react';
 import {
   EngineeringModuleId,
   CivilWorkspace,
+  UnitSystemPreset,
 } from '../types/civil';
+import { formatLengthByPreset } from '../utils/unitConverter';
 import {
   CalculationEnvelope,
   BeamAnalysisResult,
@@ -45,6 +47,8 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
 }) => {
   const result = currentEnvelope.result;
   const status = currentEnvelope.status;
+  const unitPreset: UnitSystemPreset = activeWorkspace.unitPreferences?.systemPreset || 'metric';
+  const fmtLen = (m: number) => formatLengthByPreset(m, unitPreset, 'table');
 
   const matchesSearch = (terms: (string | number | undefined)[]) => {
     if (!searchQuery || !searchQuery.trim()) return true;
@@ -138,8 +142,8 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Clear Span Length</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>L</td>
-                    <td className={`${cellPadding} text-right font-bold`}>{p.spanLengthM.toFixed(3)}</td>
-                    <td className={`${cellPadding} text-center`}>m</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{fmtLen(p.spanLengthM)}</td>
+                    <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'm' : 'ft-in'}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{p.spanLengthM.toFixed(3)} m</td>
                     <td className={`${cellPadding} text-center`}>—</td>
                   </tr>
@@ -228,7 +232,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
                   <tr className="bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)]">
-                    <th className={cellPadding}>Station x (m)</th>
+                    <th className={cellPadding}>Station x ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
                     <th className={`${cellPadding} text-right`}>Shear V (kN)</th>
                     <th className={`${cellPadding} text-right`}>Moment M (kN·m)</th>
                     <th className={`${cellPadding} text-right`}>Deflection δ (mm)</th>
@@ -237,7 +241,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
                   {beamRes.points.filter((_, idx) => idx % Math.ceil(beamRes.points.length / 8) === 0 || idx === beamRes.points.length - 1).map((pt, i) => (
                     <tr key={i} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
-                      <td className={`${cellPadding} font-bold`}>{pt.x.toFixed(2)} m</td>
+                      <td className={`${cellPadding} font-bold`}>{fmtLen(pt.x)}</td>
                       <td className={`${cellPadding} text-right`}>{pt.shearKn.toFixed(2)}</td>
                       <td className={`${cellPadding} text-right font-semibold text-[var(--md-sys-color-primary)]`}>{pt.momentKnm.toFixed(2)}</td>
                       <td className={`${cellPadding} text-right`}>{pt.deflectionMm.toFixed(3)}</td>
@@ -271,18 +275,18 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Footing Width × Length</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>B × L</td>
-                  <td className={`${cellPadding} text-right font-bold`}>{p.footingWidthM.toFixed(2)} × {p.footingWidthM.toFixed(2)}</td>
-                  <td className={`${cellPadding} text-center`}>m</td>
+                  <td className={`${cellPadding} text-right font-bold`}>{fmtLen(p.footingWidthM)} × {fmtLen(p.footingLengthM || p.footingWidthM)}</td>
+                  <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'm' : 'ft-in'}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{bRes.footingAreaM2.toFixed(2)} m² plan</td>
                   <td className={`${cellPadding} text-center`}>Shape: {p.footingShape}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Embedment Depth</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>D_f</td>
-                  <td className={`${cellPadding} text-right font-bold`}>{p.embedmentDepthM.toFixed(2)}</td>
-                  <td className={`${cellPadding} text-center`}>m</td>
+                  <td className={`${cellPadding} text-right font-bold`}>{fmtLen(p.embedmentDepthM)}</td>
+                  <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'm' : 'ft-in'}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{p.embedmentDepthM.toFixed(2)} m</td>
-                  <td className={`${cellPadding} text-center`}>Water T: {p.waterTableDepthM} m</td>
+                  <td className={`${cellPadding} text-center`}>Water T: {fmtLen(p.waterTableDepthM)}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Soil Effective Cohesion</td>
@@ -492,8 +496,8 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <th className={cellPadding}>Mark &amp; Bar Description</th>
                   <th className={`${cellPadding} text-center`}>Dia Φ (mm)</th>
                   <th className={`${cellPadding} text-center`}>Nos</th>
-                  <th className={`${cellPadding} text-right`}>Cutting L (m)</th>
-                  <th className={`${cellPadding} text-right`}>Total L (m)</th>
+                  <th className={`${cellPadding} text-right`}>Cutting L ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
+                  <th className={`${cellPadding} text-right`}>Total L ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
                   <th className={`${cellPadding} text-right`}>Unit Wt (kg/m)</th>
                   <th className={`${cellPadding} text-right`}>Total Mass (kg)</th>
                 </tr>
@@ -510,14 +514,14 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                       {it.description}
                       {it.requiresLapSplice && (
                         <span className="block text-[10px] font-mono text-[var(--md-sys-color-error)]">
-                          &gt;12m stock limit: {it.lapsCount} lap splice (+{(it.lappingAllowanceM || 0).toFixed(2)} m) included
+                          &gt;12m stock limit: {it.lapsCount} lap splice (+{fmtLen(it.lappingAllowanceM || 0)}) included
                         </span>
                       )}
                     </td>
                     <td className={`${cellPadding} text-center font-bold text-[var(--md-sys-color-primary)]`}>{it.barDiaMm} mm</td>
                     <td className={`${cellPadding} text-center`}>{it.count}</td>
-                    <td className={`${cellPadding} text-right`}>{it.cuttingLengthM.toFixed(3)}</td>
-                    <td className={`${cellPadding} text-right`}>{it.totalLengthM.toFixed(2)}</td>
+                    <td className={`${cellPadding} text-right`}>{fmtLen(it.cuttingLengthM)}</td>
+                    <td className={`${cellPadding} text-right`}>{fmtLen(it.totalLengthM)}</td>
                     <td className={`${cellPadding} text-right font-mono`}>{it.unitWeightKgPerM.toFixed(3)}</td>
                     <td className={`${cellPadding} text-right font-bold`}>{it.totalWeightKg.toFixed(1)}</td>
                   </tr>
@@ -526,7 +530,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <td className={cellPadding} colSpan={4}>
                     BBS Cumulative Tonnage ({bbsRes.items.length} Mark Entries{bbsRes.elementQuantity && bbsRes.elementQuantity > 1 ? ` · ×${bbsRes.elementQuantity} units` : ''})
                   </td>
-                  <td className={`${cellPadding} text-right font-black`}>{bbsRes.totalBarsLengthM.toFixed(1)} m</td>
+                  <td className={`${cellPadding} text-right font-black`}>{fmtLen(bbsRes.totalBarsLengthM)}</td>
                   <td className={`${cellPadding} text-right font-black`}>—</td>
                   <td className={`${cellPadding} text-right font-black text-sm text-[var(--md-sys-color-primary)]`}>
                     {bbsRes.totalSteelWeightKg.toFixed(1)} kg ({bbsRes.totalSteelTonnes.toFixed(3)} MT)
@@ -677,11 +681,11 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <thead>
                     <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
                       <th className={cellPadding}>Chainage</th>
-                      <th className={`${cellPadding} text-right`}>Cut (m)</th>
-                      <th className={`${cellPadding} text-right`}>Fill (m)</th>
+                      <th className={`${cellPadding} text-right`}>Cut ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
+                      <th className={`${cellPadding} text-right`}>Fill ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
                       <th className={`${cellPadding} text-right`}>A_cut (m²)</th>
                       <th className={`${cellPadding} text-right`}>A_fill (m²)</th>
-                      <th className={`${cellPadding} text-right`}>Seg L (m)</th>
+                      <th className={`${cellPadding} text-right`}>Seg L ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
                       <th className={`${cellPadding} text-right`}>Seg Cut (P / EA)</th>
                       <th className={`${cellPadding} text-right`}>Seg Fill (P / EA)</th>
                       <th className={`${cellPadding} text-right`}>Cum. Cut (m³)</th>
@@ -692,12 +696,12 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] font-mono tabular-nums">
                     {earthRes.stationSchedule.map((st) => (
                       <tr key={st.id}>
-                        <td className={`${cellPadding} font-bold`}>Ch {st.chainageM.toFixed(0)}m</td>
-                        <td className={`${cellPadding} text-right text-amber-600 dark:text-amber-400`}>{st.cutDepthM.toFixed(2)}</td>
-                        <td className={`${cellPadding} text-right text-emerald-600 dark:text-emerald-400`}>{st.fillHeightM.toFixed(2)}</td>
+                        <td className={`${cellPadding} font-bold`}>Ch {fmtLen(st.chainageM)}</td>
+                        <td className={`${cellPadding} text-right text-amber-600 dark:text-amber-400`}>{fmtLen(st.cutDepthM)}</td>
+                        <td className={`${cellPadding} text-right text-emerald-600 dark:text-emerald-400`}>{fmtLen(st.fillHeightM)}</td>
                         <td className={`${cellPadding} text-right`}>{st.cutAreaM2.toFixed(2)}</td>
                         <td className={`${cellPadding} text-right`}>{st.fillAreaM2.toFixed(2)}</td>
-                        <td className={`${cellPadding} text-right`}>{st.segmentLengthM.toFixed(1)}</td>
+                        <td className={`${cellPadding} text-right`}>{fmtLen(st.segmentLengthM)}</td>
                         <td className={`${cellPadding} text-right`}>{st.segmentCutPrismoidalM3.toFixed(1)} / {st.segmentCutEndAreaM3.toFixed(1)}</td>
                         <td className={`${cellPadding} text-right`}>{st.segmentFillPrismoidalM3.toFixed(1)} / {st.segmentFillEndAreaM3.toFixed(1)}</td>
                         <td className={`${cellPadding} text-right font-semibold`}>{st.cumCutBankM3.toFixed(1)}</td>
@@ -760,16 +764,16 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Wetted Perimeter</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>P</td>
-                  <td className={`${cellPadding} text-right font-bold`}>{hydRes.wettedPerimeterM.toFixed(3)}</td>
-                  <td className={`${cellPadding} text-center`}>m</td>
+                  <td className={`${cellPadding} text-right font-bold`}>{fmtLen(hydRes.wettedPerimeterM)}</td>
+                  <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'm' : 'ft-in'}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{hydRes.wettedPerimeterM.toFixed(3)} m</td>
                   <td className={`${cellPadding} text-center`}>P = b + 2y√(1+z²)</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Hydraulic Radius</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>R</td>
-                  <td className={`${cellPadding} text-right font-bold`}>{hydRes.hydraulicRadiusM.toFixed(4)}</td>
-                  <td className={`${cellPadding} text-center`}>m</td>
+                  <td className={`${cellPadding} text-right font-bold`}>{unitPreset === 'metric' ? hydRes.hydraulicRadiusM.toFixed(4) : fmtLen(hydRes.hydraulicRadiusM)}</td>
+                  <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'm' : 'ft-in'}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{hydRes.hydraulicRadiusM.toFixed(4)} m</td>
                   <td className={`${cellPadding} text-center`}>R = A / P</td>
                 </tr>
@@ -955,7 +959,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                         <td className={`${cellPadding} font-bold text-[var(--md-sys-color-primary)]`}>
                           Span {span.spanIndex + 1}
                         </td>
-                        <td className={`${cellPadding} text-right font-mono`}>{span.lengthM.toFixed(2)} m</td>
+                        <td className={`${cellPadding} text-right font-mono`}>{fmtLen(span.lengthM)}</td>
                         <td className={`${cellPadding} text-right font-mono`}>{(spanParam?.udlKnPerM ?? 0).toFixed(1)} kN/m</td>
                         <td className={`${cellPadding} text-right font-mono`}>{(spanParam?.pointLoadKn ?? 0).toFixed(1)} kN</td>
                         <td className={`${cellPadding} text-right font-mono font-bold text-emerald-600 dark:text-emerald-400`}>
@@ -974,7 +978,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold border-t-2 border-[var(--md-sys-color-outline)]">
                     <td className={cellPadding}>Continuous Envelope Maxima</td>
                     <td className={`${cellPadding} text-right font-mono font-black`}>
-                      {cbRes.totalLengthM.toFixed(2)} m total
+                      {fmtLen(cbRes.totalLengthM)} total
                     </td>
                     <td className={`${cellPadding} text-right`} colSpan={2}>
                       Extreme Fiber Stress: <strong className="text-[var(--md-sys-color-primary)]">{cbRes.bendingStressMpa.toFixed(1)} MPa</strong>
@@ -1055,7 +1059,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <tr className="bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
                     <th className={cellPadding}>Member</th>
                     <th className={`${cellPadding} text-center`}>Connectivity</th>
-                    <th className={`${cellPadding} text-right`}>L (m)</th>
+                    <th className={`${cellPadding} text-right`}>L ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
                     <th className={`${cellPadding} text-right`}>Axial N (kN)</th>
                     <th className={`${cellPadding} text-right`}>|V|_max (kN)</th>
                     <th className={`${cellPadding} text-right`}>|M|_max (kN·m)</th>
@@ -1072,7 +1076,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                           {mr.label} <span className="text-[10px] opacity-70 uppercase">({mr.memberType})</span>
                         </td>
                         <td className={`${cellPadding} text-center`}>{mr.startLabel} → {mr.endLabel}</td>
-                        <td className={`${cellPadding} text-right`}>{mr.lengthM.toFixed(2)}</td>
+                        <td className={`${cellPadding} text-right`}>{fmtLen(mr.lengthM)}</td>
                         <td className={`${cellPadding} text-right font-semibold ${mr.axialStartKn >= 0 ? 'text-cyan-600 dark:text-cyan-400' : 'text-rose-600 dark:text-rose-400'}`}>
                           {mr.axialStartKn >= 0 ? `+${mr.axialStartKn.toFixed(1)} (T)` : `${mr.axialStartKn.toFixed(1)} (C)`}
                         </td>
@@ -1405,7 +1409,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <th className={cellPadding}>Element</th>
                     <th className={cellPadding}>Connectivity</th>
                     <th className={`${cellPadding} text-center`}>Role</th>
-                    <th className={`${cellPadding} text-right`}>Length (m)</th>
+                    <th className={`${cellPadding} text-right`}>Length ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
                     <th className={`${cellPadding} text-right`}>Angle (°)</th>
                     <th className={`${cellPadding} text-right`}>Axial Force (kN)</th>
                     <th className={`${cellPadding} text-right`}>Stress (MPa)</th>
@@ -1421,7 +1425,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                       <td className={`${cellPadding} text-center font-bold uppercase ${m.role === 'strut' ? 'text-amber-600 dark:text-amber-400' : m.role === 'tie' ? 'text-sky-600 dark:text-sky-400' : ''}`}>
                         {m.role}
                       </td>
-                      <td className={`${cellPadding} text-right`}>{m.lengthM.toFixed(3)}</td>
+                      <td className={`${cellPadding} text-right`}>{fmtLen(m.lengthM)}</td>
                       <td className={`${cellPadding} text-right`}>{m.angleDeg.toFixed(1)}°</td>
                       <td className={`${cellPadding} text-right font-bold ${m.axialForceKn < 0 ? 'text-amber-600 dark:text-amber-400' : m.axialForceKn > 0 ? 'text-sky-600 dark:text-sky-400' : ''}`}>
                         {m.axialForceKn >= 0 ? `+${m.axialForceKn.toFixed(2)}` : m.axialForceKn.toFixed(2)}
@@ -1450,7 +1454,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <tr className="bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] font-bold border-b border-[var(--md-sys-color-outline-variant)]">
                     <th className={cellPadding}>Node</th>
                     <th className={cellPadding}>Support</th>
-                    <th className={`${cellPadding} text-right`}>(x, y) m</th>
+                    <th className={`${cellPadding} text-right`}>(x, y) {unitPreset === 'metric' ? 'm' : 'ft-in'}</th>
                     <th className={`${cellPadding} text-right`}>Applied (Fx, Fy) kN</th>
                     <th className={`${cellPadding} text-right`}>Reaction (Rx, Ry) kN</th>
                     <th className={`${cellPadding} text-right`}>Disp (ux, uy) mm</th>
@@ -1464,7 +1468,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                       <tr key={n.nodeId} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
                         <td className={`${cellPadding} font-sans font-semibold`}>{n.label}</td>
                         <td className={cellPadding}>{n.support}</td>
-                        <td className={`${cellPadding} text-right`}>({n.xM.toFixed(2)}, {n.yM.toFixed(2)})</td>
+                        <td className={`${cellPadding} text-right`}>({fmtLen(n.xM)}, {fmtLen(n.yM)})</td>
                         <td className={`${cellPadding} text-right`}>({n.appliedFxKn.toFixed(1)}, {n.appliedFyKn.toFixed(1)})</td>
                         <td className={`${cellPadding} text-right font-bold`}>({n.reactionRxKn.toFixed(2)}, {n.reactionRyKn.toFixed(2)})</td>
                         <td className={`${cellPadding} text-right`}>({n.uxMm.toFixed(3)}, {n.uyMm.toFixed(3)})</td>
@@ -1589,7 +1593,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   {pileRes.layerContributions.map((contrib, idx) => (
                     <tr key={idx} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
                       <td className={`${cellPadding} font-semibold`}>{contrib.layerName}</td>
-                      <td className={`${cellPadding} text-center font-mono`}>{contrib.depthFromM} m → {contrib.depthToM} m</td>
+                      <td className={`${cellPadding} text-center font-mono`}>{fmtLen(contrib.depthFromM)} → {fmtLen(contrib.depthToM)}</td>
                       <td className={`${cellPadding} text-right font-mono`}>{contrib.unitFrictionKpa.toFixed(1)} kPa</td>
                       <td className={`${cellPadding} text-right font-mono font-bold text-sky-600 dark:text-sky-400`}>
                         {contrib.frictionKn.toFixed(1)} kN
@@ -1643,25 +1647,25 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Frictional Head Loss (h_f)</td>
                   <td className={`${cellPadding} text-right font-mono font-bold text-amber-600 dark:text-amber-400`}>
-                    {pipeRes.frictionHeadLossM.toFixed(2)}
+                    {fmtLen(pipeRes.frictionHeadLossM)}
                   </td>
-                  <td className={`${cellPadding} text-center`}>meters of fluid</td>
+                  <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'meters of fluid' : 'ft-in head'}</td>
                   <td className={`${cellPadding} text-center`}>Hazen-Williams: 10.67·L·Q^1.852 / (C^1.852·D^4.87)</td>
                   <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Minor Head Loss (h_m)</td>
-                  <td className={`${cellPadding} text-right font-mono font-semibold`}>{pipeRes.minorHeadLossM.toFixed(2)}</td>
-                  <td className={`${cellPadding} text-center`}>meters of fluid</td>
+                  <td className={`${cellPadding} text-right font-mono font-semibold`}>{fmtLen(pipeRes.minorHeadLossM)}</td>
+                  <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'meters of fluid' : 'ft-in head'}</td>
                   <td className={`${cellPadding} text-center`}>h_m = K·(V² / 2g)</td>
                   <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Total Dynamic Head Loss (h_L)</td>
                   <td className={`${cellPadding} text-right font-mono font-bold text-rose-600 dark:text-rose-400`}>
-                    {pipeRes.totalHeadLossM.toFixed(2)}
+                    {fmtLen(pipeRes.totalHeadLossM)}
                   </td>
-                  <td className={`${cellPadding} text-center`}>meters of water</td>
+                  <td className={`${cellPadding} text-center`}>{unitPreset === 'metric' ? 'meters of water' : 'ft-in head'}</td>
                   <td className={`${cellPadding} text-center`}>h_L = h_f + h_m (Friction Slope: {(pipeRes.frictionSlopeMPerM * 100).toFixed(3)}%)</td>
                   <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
                 </tr>
@@ -1678,7 +1682,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     {pipeRes.outletPressureKpa.toFixed(1)}
                   </td>
                   <td className={`${cellPadding} text-center`}>kPa ({(pipeRes.outletPressureKpa * 0.145038).toFixed(1)} psi)</td>
-                  <td className={`${cellPadding} text-center`}>Energy Grade Line (EGL): {pipeRes.outletTotalHeadM.toFixed(2)} m</td>
+                  <td className={`${cellPadding} text-center`}>Energy Grade Line (EGL): {fmtLen(pipeRes.outletTotalHeadM)}</td>
                   <td className={`${cellPadding} text-center`}>
                     {renderStatusBadge(pipeRes.outletPressureKpa >= 100 ? 'nominal' : 'warning')}
                   </td>

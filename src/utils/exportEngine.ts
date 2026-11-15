@@ -32,6 +32,12 @@ import {
   createVerifiedReportRecord,
   saveVerifiedReport,
 } from './verificationEngine';
+import { TESTING_LAB_TEST_MAP, TESTING_LAB_TESTS } from '../data/testingLabCatalog';
+import {
+  evaluateLabTest,
+  getDefaultChecklistStates,
+  getDefaultInputsForTest,
+} from './testingLabEngine';
 
 // ============================================================================
 // 1. CLEAN SYMBOL SANITIZER (ASCII Engineering Notation for jsPDF Standard Fonts)
@@ -1551,6 +1557,55 @@ export function buildReportDataFromWorkspace(
     case 'office-docs': {
       const siteErp = getSiteErpSnapshot(workspace.id);
       populateSiteErpReportData(moduleId, siteErp, workspace, baseReport);
+      break;
+    }
+
+    case 'testing-lab-qaqc': {
+      const labState = workspace.testingLab;
+      const test =
+        (labState?.activeTestId && TESTING_LAB_TEST_MAP[labState.activeTestId]) ||
+        TESTING_LAB_TESTS[0];
+      const inputs = {
+        ...getDefaultInputsForTest(test),
+        ...(labState?.draftInputsByTestId?.[test.id] || {}),
+      };
+      const checklistStates = test.checklistItems
+        ? {
+            ...getDefaultChecklistStates(test),
+            ...(labState?.draftChecklistsByTestId?.[test.id] || {}),
+          }
+        : undefined;
+      const ev = evaluateLabTest(test.id, inputs, checklistStates);
+
+      baseReport.moduleMeta.moduleTitle = `${test.code}: ${test.title.en}`;
+      baseReport.moduleMeta.standard = test.governingCodes.join(' | ');
+      baseReport.moduleMeta.status =
+        ev.verdict === 'PASS' ? 'PASS' : ev.verdict === 'WARNING' ? 'WARNING' : 'FAIL';
+
+      baseReport.inputs = test.calculatorInputs.map((f) => ({
+        name: f.label.en,
+        symbol: f.key,
+        value: inputs[f.key] ?? f.defaultValue,
+        unit: f.unit || '-',
+        notes: f.options ? f.options.find((o) => o.value === inputs[f.key])?.label.en : undefined,
+      }));
+
+      baseReport.outputs = ev.metrics.map((m) => ({
+        name: m.labelEn,
+        symbol: m.highlight ? 'PRIMARY' : 'METRIC',
+        value: String(m.value),
+        unit: m.unit || '-',
+        limit: ev.codeLimitText,
+        status: ev.verdict === 'PASS' ? 'PASS' : ev.verdict === 'WARNING' ? 'WARNING' : 'FAIL',
+      }));
+
+      baseReport.stepByStepFormulas = ev.steps.map((s, idx) => ({
+        stepNumber: idx + 1,
+        title: `Lab Evaluation Step ${idx + 1}`,
+        equation: s,
+        result: `${ev.primaryValue} ${ev.primaryUnit}`.trim(),
+        codeRef: test.governingCodes[0] || 'BNBC-2020',
+      }));
       break;
     }
 

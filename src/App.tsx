@@ -132,7 +132,15 @@ import {
   createDefaultRcColumnDesign,
   createDefaultStrutAndTie,
   createDefaultMasterMarketRates,
+  createDefaultTestingLabState,
 } from './utils/storage';
+import { TestingLabDomainId } from './types/testingLab';
+import { getTestsForDomain, TESTING_LAB_TEST_MAP, TESTING_LAB_TESTS } from './data/testingLabCatalog';
+import {
+  evaluateLabTest,
+  getDefaultInputsForTest,
+  getDefaultChecklistStates,
+} from './utils/testingLabEngine';
 import { getIndexedDBStats, isIndexedDBSupported, persistToIndexedDB } from './utils/indexedStorage';
 import { computeFrameTruss2D, FrameTruss2DResult } from './utils/frameSolver2d';
 import { computeSectionMechanics, SectionAnalyzerResult } from './utils/sectionMechanics';
@@ -163,6 +171,7 @@ import {
   RebarBBSResult,
   ConcreteMixResult,
   MasonryResult,
+  EarthworkResult,
   RateAnalysisResult,
   ConcreteMaterialResult,
   BOQResourceAbstract,
@@ -317,6 +326,9 @@ import {
 // Dynamic Lazy Imports for Heavy Module Views & Modals
 const SiteManagementHub = React.lazy(() =>
   import('./components/sitemanagement').then((m) => ({ default: m.SiteManagementHub }))
+);
+const TestingLabHub = React.lazy(() =>
+  import('./components/testinglab').then((m) => ({ default: m.TestingLabHub }))
 );
 const SurveyingSuite = React.lazy(() =>
   import('./components/calculators/civil').then((m) => ({ default: m.SurveyingSuite }))
@@ -1033,6 +1045,45 @@ export default function App() {
             notesCount: siteData.fieldNotes.length,
           },
         };
+      case 'testing-lab-qaqc': {
+        const lab = activeWorkspace.testingLab || createDefaultTestingLabState();
+        const saved = lab.savedRecords || [];
+        const failedTests = saved.filter((r) => r.verdict === 'FAIL');
+        const warningTests = saved.filter((r) => r.verdict === 'WARNING');
+        const issues: ValidationIssue[] = [];
+        if (failedTests.length > 0) {
+          issues.push({
+            field: 'testingLab',
+            message: `${failedTests.length} logged lab/field test(s) failed code acceptance limits!`,
+            severity: 'error',
+          });
+        }
+        if (warningTests.length > 0) {
+          issues.push({
+            field: 'testingLab',
+            message: `${warningTests.length} logged lab/field test(s) flagged marginal WARNING status.`,
+            severity: 'warning',
+          });
+        }
+        return {
+          status:
+            failedTests.length > 0
+              ? ('invalid' as const)
+              : warningTests.length > 0
+              ? ('warning' as const)
+              : ('valid' as const),
+          issues,
+          result: {
+            moduleId: activeModule,
+            title: 'Testing Lab & Field QA/QC (নির্মাণ পরীক্ষণ ও মান যাচাই)',
+            status: failedTests.length > 0 ? 'invalid' : warningTests.length > 0 ? 'warning' : 'valid',
+            totalRecords: saved.length,
+            failedCount: failedTests.length,
+            activeDomainId: lab.activeDomainId,
+            activeTestId: lab.activeTestId,
+          },
+        };
+      }
       default:
         return computeBOQEstimator(activeWorkspace.boq);
     }
@@ -1050,15 +1101,29 @@ export default function App() {
     activeWorkspace.concrete,
     activeWorkspace.channel,
     activeWorkspace.continuousBeam,
+    activeWorkspace.frameTruss2d,
+    activeWorkspace.sectionAnalyzer,
+    activeWorkspace.rcColumn,
+    activeWorkspace.strutAndTie,
     activeWorkspace.pile,
     activeWorkspace.pipe,
     activeWorkspace.surveying,
+    activeWorkspace.testingLab,
     siteData,
     financialSummary,
     defaultContinuousBeam,
+    defaultFrameTruss2d,
+    defaultSectionAnalyzer,
+    defaultRcColumn,
+    defaultStrutAndTie,
     defaultPile,
     defaultPipe,
   ]);
+
+  const activeRateAnalysisResult = useMemo(() => {
+    if (activeModule !== 'boq-estimator') return null;
+    return computeRateAnalysis(activeWorkspace.rateAnalysis).result ?? null;
+  }, [activeModule, activeWorkspace.rateAnalysis]);
 
   // Live Capacity Utilization / Demand-Capacity Ratio (DCR) Assessment
   const capacityInfo = useMemo(() => {
@@ -1204,6 +1269,16 @@ export default function App() {
         if (subAction === 'staircase') {
           nextWs.rebarBbs = { ...ws.rebarBbs, elementType: 'staircase-waist' as const };
         }
+        if (moduleId === 'testing-lab-qaqc' && subAction) {
+          const domId = subAction as TestingLabDomainId;
+          const domainTests = getTestsForDomain(domId);
+          const baseLab = ws.testingLab || createDefaultTestingLabState();
+          nextWs.testingLab = {
+            ...baseLab,
+            activeDomainId: domId,
+            activeTestId: domainTests[0]?.id || baseLab.activeTestId,
+          };
+        }
         return nextWs;
       });
 
@@ -1211,7 +1286,7 @@ export default function App() {
       setIsDashboardView(false);
       setMobileDrawerOpen(false);
       workbench.recordToolUsage(moduleId);
-      civilLab.setActivePage(moduleId === 'unit-converter' ? 'converter' : 'calculator', moduleId);
+      civilLab.setActivePage('calculator', moduleId);
 
       // 3. Ensure Tab is open and selected
       const tabId = `tab-${moduleId}`;
@@ -1316,28 +1391,17 @@ export default function App() {
     }
 
     // 2. Update active workspace unitPreferences without mutating underlying base values
+    // Clear per-field unit overrides so the selected global preset drives every input/output unit cleanly
     updateActiveWorkspace((ws) => {
       const currentPreset = ws.unitPreferences?.systemPreset || 'metric';
       if (currentPreset === preset) return ws;
-
-      const nextFieldUnits: Record<string, string> = {};
-      const nextOutputUnits: Record<string, string> = {};
-
-      const nextPresetKey = preset === 'imperial' || preset === 'regional' ? preset : 'metric';
-      Object.keys(SYSTEM_PRESET_UNITS[nextPresetKey]).forEach((catKey) => {
-        const targetUnit = SYSTEM_PRESET_UNITS[nextPresetKey][catKey as UnitCategoryKey];
-        if (targetUnit) {
-          nextFieldUnits[catKey] = targetUnit;
-          nextOutputUnits[catKey] = targetUnit;
-        }
-      });
 
       return {
         ...ws,
         unitPreferences: {
           systemPreset: preset,
-          fieldUnits: nextFieldUnits,
-          outputUnits: nextOutputUnits,
+          fieldUnits: {},
+          outputUnits: {},
         },
       };
     });
@@ -1437,7 +1501,10 @@ export default function App() {
         record.moduleId === 'rc-column-design' ? 'rcColumn' :
         record.moduleId === 'strut-and-tie' ? 'strutAndTie' :
         record.moduleId === 'pile-capacity' ? 'pile' :
-        record.moduleId === 'pipe-hydraulics' ? 'pipe' : 'boq';
+        record.moduleId === 'pipe-hydraulics' ? 'pipe' :
+        record.moduleId === 'surveying-suite' ? 'surveying' :
+        record.moduleId === 'testing-lab-qaqc' ? 'testingLab' :
+        record.moduleId === 'unit-converter' ? 'converter' : 'boq';
       (newWorkspace as any)[modKey] = {
         ...(newWorkspace as any)[modKey],
         ...record.inputsSnapshot,
@@ -1755,37 +1822,75 @@ export default function App() {
   };
 
   const handleTransferMaterialsToBoq = () => {
-    const matVol = activeWorkspace.concreteMaterials.wetVolumeM3 || 1.0;
+    const members = Array.isArray(activeWorkspace.concreteMaterials.members)
+      ? activeWorkspace.concreteMaterials.members.filter((m) => (m.count || 0) > 0 && (m.computedVolumeM3 || 0) > 0)
+      : [];
     const dynamicRate = resolveDynamicRate(activeWorkspace, 'concrete');
+
+    const newBoqItems: TakeoffLineItem[] =
+      members.length > 0
+        ? members.map((m, idx) => {
+            let lengthM = m.lengthM || 1;
+            let widthM = m.widthM || 1;
+            let heightM = m.heightM || 1;
+            if (m.shape === 'circular-column') {
+              const dia = m.diameterM || m.lengthM || 0.3;
+              lengthM = Number(dia.toFixed(3));
+              widthM = Number(((dia * Math.PI) / 4).toFixed(3));
+              heightM = Number((m.heightM || 3).toFixed(3));
+            } else if (m.shape === 'trapezoidal-footing') {
+              const planArea = Math.max(0.01, lengthM * widthM);
+              heightM = Number((m.computedVolumeM3 / planArea).toFixed(3));
+            }
+            return {
+              id: `takeoff-${generateUUID().slice(0, 8)}`,
+              itemNo: `${activeWorkspace.boq.items.length + idx + 1}.01`,
+              description: `${m.name} — Cast in situ RCC (${m.shape}) [Concrete Materials]`,
+              category: 'superstructure' as const,
+              numberOfMembers: m.count,
+              lengthM: Number(lengthM.toFixed(3)),
+              widthM: Number(widthM.toFixed(3)),
+              heightM: Number(heightM.toFixed(3)),
+              deductionQty: 0,
+              unit: 'm3' as const,
+              wastagePercent: activeWorkspace.concreteMaterials.wastagePercent ?? 3.0,
+              unitRate: dynamicRate,
+            };
+          })
+        : [
+            {
+              id: `takeoff-${generateUUID().slice(0, 8)}`,
+              itemNo: `${activeWorkspace.boq.items.length + 1}.01`,
+              description: `Cast in situ Reinforced Cement Concrete (RCC) volume batch (${(activeWorkspace.concreteMaterials.wetVolumeM3 || 1.0).toFixed(2)} m³) [PWD Schedule]`,
+              category: 'superstructure' as const,
+              numberOfMembers: 1,
+              lengthM: Number((activeWorkspace.concreteMaterials.wetVolumeM3 || 1.0).toFixed(3)),
+              widthM: 1,
+              heightM: 1,
+              deductionQty: 0,
+              unit: 'm3' as const,
+              wastagePercent: activeWorkspace.concreteMaterials.wastagePercent ?? 3.0,
+              unitRate: dynamicRate,
+            },
+          ];
+
+    const totalTransferredVol =
+      members.length > 0
+        ? members.reduce((sum, m) => sum + (m.computedVolumeM3 || 0) * (m.count || 0), 0)
+        : activeWorkspace.concreteMaterials.wetVolumeM3 || 1.0;
 
     updateActiveWorkspace((ws) => ({
       ...ws,
       activeModule: 'boq-estimator',
       boq: {
         ...ws.boq,
-        items: [
-          ...ws.boq.items,
-          {
-            id: `takeoff-${generateUUID().slice(0, 8)}`,
-            itemNo: `${ws.boq.items.length + 1}.01`,
-            description: `Cast in situ Reinforced Cement Concrete (RCC) volume batch (${matVol.toFixed(2)} m³) [PWD Schedule]`,
-            category: 'superstructure',
-            numberOfMembers: 1,
-            lengthM: Math.round(Math.cbrt(matVol) * 100) / 100,
-            widthM: Math.round(Math.cbrt(matVol) * 100) / 100,
-            heightM: Math.round((matVol / (Math.cbrt(matVol) * Math.cbrt(matVol))) * 100) / 100,
-            deductionQty: 0,
-            unit: 'm3',
-            wastagePercent: 3.0,
-            unitRate: dynamicRate,
-          },
-        ],
+        items: [...ws.boq.items, ...newBoqItems],
       },
     }));
     navigateToModule('boq-estimator');
     triggerCelebration(
       'Materials Synced to BOQ',
-      `Transferred ${matVol.toFixed(2)} m³ concrete batch to BOQ at dynamic rate ৳${dynamicRate.toLocaleString()}/m³.`,
+      `Transferred ${newBoqItems.length} item(s) totaling ${totalTransferredVol.toFixed(2)} m³ concrete to BOQ at ৳${dynamicRate.toLocaleString()}/m³.`,
       'celebrate'
     );
   };
@@ -2284,7 +2389,10 @@ export default function App() {
           record.moduleId === 'rc-column-design' ? 'rcColumn' :
           record.moduleId === 'strut-and-tie' ? 'strutAndTie' :
           record.moduleId === 'pile-capacity' ? 'pile' :
-          record.moduleId === 'pipe-hydraulics' ? 'pipe' : 'boq';
+          record.moduleId === 'pipe-hydraulics' ? 'pipe' :
+          record.moduleId === 'surveying-suite' ? 'surveying' :
+          record.moduleId === 'testing-lab-qaqc' ? 'testingLab' :
+          record.moduleId === 'unit-converter' ? 'converter' : 'boq';
         return {
           ...ws,
           activeModule: record.moduleId,
@@ -2686,6 +2794,10 @@ export default function App() {
   // Generates verification QR codes lazily only when opening PrintPreviewModal,
   // triggering handleQuickPrintA4Report, or executing PDF export.
   // --------------------------------------------------------------------------
+  useEffect(() => {
+    setActiveReportQr(null);
+  }, [activeModule, activeWorkspace.id, activeWorkspace.updatedAt, currentEnvelope.status]);
+
   const getOrGenerateReportQr = async (): Promise<GeneratedReportQrResult> => {
     if (activeReportQr) return activeReportQr;
     const meta = MODULE_META[activeModule] || {
@@ -2765,7 +2877,44 @@ export default function App() {
   };
 
   const renderQuickPrintSheetToEl = async (printEl: HTMLElement) => {
+    if (activeModule === 'testing-lab-qaqc') {
+      const [{ TESTING_LAB_TESTS }, engine] = await Promise.all([
+        import('./data/testingLabCatalog'),
+        import('./utils/testingLabEngine'),
+      ]);
+      const labState = activeWorkspace.testingLab;
+      const test =
+        (labState?.activeTestId && TESTING_LAB_TEST_MAP[labState.activeTestId]) ||
+        TESTING_LAB_TESTS[0];
+      const inputs = {
+        ...engine.getDefaultInputsForTest(test),
+        ...(labState?.draftInputsByTestId?.[test.id] || {}),
+      };
+      const checklistStates = test.checklistItems
+        ? {
+            ...engine.getDefaultChecklistStates(test),
+            ...(labState?.draftChecklistsByTestId?.[test.id] || {}),
+          }
+        : undefined;
+      const evaluation = engine.evaluateLabTest(test.id, inputs, checklistStates);
+      const html = await engine.buildPrintableLabCertificateHtml({
+        test,
+        inputs,
+        evaluation,
+        sampleRef: labState?.savedRecords?.[0]?.sampleRef || 'LAB-SMP-001',
+        locationGrid: labState?.savedRecords?.[0]?.locationGrid || activeWorkspace.siteLocation || 'Site Zone',
+        remarks: '',
+        workspace: activeWorkspace,
+        userProfile,
+        checklistStates,
+      });
+      printEl.innerHTML = html;
+      printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
+      return;
+    }
+
     const meta = MODULE_META[activeModule];
+    const eqInfo = getGoverningEquations(activeModule);
     const nowStr = new Date().toLocaleString();
 
     // Lazily ensure Scannable QR Code containing document reference & project metadata
@@ -2835,15 +2984,61 @@ export default function App() {
             : ''
         }
 
-        <div class="pt-8 border-t border-slate-300 flex items-center justify-between print-avoid-break">
-          <div class="text-xs font-mono text-slate-600 space-y-1">
-            <div>Cryptographic Verification Hash: <code>${qrResult.verificationHash}</code></div>
-            <div>Submittal Portal: <code>https://civillab.bd/verify?doc=${docId}</code></div>
-            <div class="text-[9.5px] text-slate-500">BD. CivilLab Certified Analytical Kernel · Zero-tamper public submittal verification</div>
+        ${
+          eqInfo && eqInfo.equations && eqInfo.equations.length > 0
+            ? `<div class="border border-slate-300 rounded p-4 bg-slate-50/70 print-avoid-break space-y-2.5">
+                <div class="flex items-center justify-between border-b border-slate-300 pb-1">
+                  <div class="text-xs font-bold font-mono uppercase text-slate-700">Governing Equations &amp; Analytical Basis — ${eqInfo.category}</div>
+                  <div class="text-[10px] font-mono font-bold text-blue-700">${eqInfo.codeStandard}</div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px]">
+                  ${eqInfo.equations
+                    .slice(0, 4)
+                    .map(
+                      (eq) => `
+                        <div class="p-2 bg-white border border-slate-200 rounded">
+                          <div class="font-bold text-slate-900">${eq.name}</div>
+                          <div class="font-mono text-blue-800 bg-blue-50/60 px-1.5 py-0.5 rounded my-1 break-all">${eq.formula}</div>
+                          <div class="text-[10px] text-slate-600">${eq.description}</div>
+                        </div>`
+                    )
+                    .join('')}
+                </div>
+                ${
+                  eqInfo.assumptions && eqInfo.assumptions.length > 0
+                    ? `<div class="text-[10px] font-mono text-slate-600 pt-1">
+                        <strong>Key Engineering Assumptions:</strong> ${eqInfo.assumptions.slice(0, 3).join(' · ')}
+                      </div>`
+                    : ''
+                }
+              </div>`
+            : ''
+        }
+
+        <div class="pt-6 border-t border-slate-300 space-y-4 print-avoid-break">
+          <div class="grid grid-cols-3 gap-4 pt-2">
+            <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
+              <div class="text-[9px] font-mono font-bold uppercase text-slate-500">1. Prepared By (Design)</div>
+              <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
+              <div class="text-[11px] font-bold text-slate-900">${userProfile.fullName || activeWorkspace.engineerOfRecord}</div>
+              <div class="text-[9.5px] font-mono text-slate-600">Design Engineer · Date: ${nowStr.split(',')[0]}</div>
+            </div>
+            <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
+              <div class="text-[9px] font-mono font-bold uppercase text-slate-500">2. Checked By (QA / Peer Review)</div>
+              <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
+              <div class="text-[11px] font-bold text-slate-900">Senior Structural Reviewer</div>
+              <div class="text-[9.5px] font-mono text-slate-600">QA/QC Verification · Date: ____/____/20__</div>
+            </div>
+            <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
+              <div class="text-[9px] font-mono font-bold uppercase text-slate-500">3. Approved By (EOR)</div>
+              <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
+              <div class="text-[11px] font-bold text-slate-900">${userProfile.initials || 'BD'} STAMP &amp; SEAL</div>
+              <div class="text-[9.5px] font-mono text-slate-600">Reg: ${userProfile.licenseNumber || 'PE-8801-BD'} · Final Sign-Off</div>
+            </div>
           </div>
-          <div class="text-center w-56 border-t-2 border-slate-800 pt-1.5">
-            <div class="text-xs font-bold font-mono uppercase text-slate-900">${userProfile.initials || 'BD'} SEAL &amp; SIGNATURE</div>
-            <div class="text-[10px] text-slate-600 font-mono">Principal Civil &amp; Structural Engineer</div>
+          <div class="flex items-center justify-between text-[10px] font-mono text-slate-600">
+            <div>Hash: <code>${qrResult.verificationHash}</code> · Portal: <code>https://civillab.bd/verify?doc=${docId}</code></div>
+            <div>BD. CivilLab Certified Analytical Kernel</div>
           </div>
         </div>
       </div>
@@ -2954,7 +3149,9 @@ export default function App() {
       bbsEnv,
       mixEnv,
       masEnv,
-      pileEnv
+      pileEnv,
+      surveyEnv,
+      activeWorkspace.surveying
     );
     if (res.syncedItemsCount > 0) {
       updateActiveWorkspace(() => res.updatedWorkspace);
@@ -3045,19 +3242,21 @@ export default function App() {
         inputsSnapshot: { ...activeWorkspace.bearing },
       };
     } else if (activeModule === 'concrete-mix') {
-      const mixRes = currentEnvelope.result as any;
+      const mixRes = currentEnvelope.result as ConcreteMixResult;
       if (!mixRes) return;
+      const wcRatio = activeWorkspace.concrete.waterCementRatio || 0;
+      const cementBags = mixRes.cementBags50Kg ?? mixRes.batchCementKg / 50;
       newRecord = {
         id: newId,
         workspaceId: activeWorkspace.id,
         moduleId: 'concrete-mix',
         timestamp: now,
         title: `${activeWorkspace.projectCode} · ACI Mix Design (f'c=${activeWorkspace.concrete.targetStrengthMpa} MPa)`,
-        notes: `w/c=${mixRes.waterCementRatio.toFixed(2)}, Cement=${mixRes.cementWeightKg.toFixed(0)} kg, Batch=${mixRes.batchVolumeM3} m³`,
+        notes: `w/c=${wcRatio.toFixed(2)}, Cement=${mixRes.batchCementKg.toFixed(1)} kg, Batch=${mixRes.batchVolumeM3} m³`,
         status: mixRes.status,
         keyMetrics: [
-          { label: 'Cement', value: `${mixRes.cementBags50kg.toFixed(1)} bags`, unit: 'bags' },
-          { label: 'Water/Cement', value: mixRes.waterCementRatio.toFixed(2), unit: 'ratio' },
+          { label: 'Cement', value: `${cementBags.toFixed(1)} bags`, unit: 'bags' },
+          { label: 'Water/Cement', value: wcRatio.toFixed(2), unit: 'ratio' },
           { label: 'Slump Range', value: `${activeWorkspace.concrete.slumpMm} mm`, unit: 'mm' },
         ],
         inputsSnapshot: { ...activeWorkspace.concrete },
@@ -3082,8 +3281,17 @@ export default function App() {
         inputsSnapshot: { ...activeWorkspace.channel },
       };
     } else if (activeModule === 'rebar-bbs') {
-      const bbsRes = currentEnvelope.result as any;
+      const bbsRes = currentEnvelope.result as RebarBBSResult;
       if (!bbsRes) return;
+      const stirrupWeightKg = (bbsRes.items || [])
+        .filter(
+          (it) =>
+            it.shapeType === 'stirrup-135' ||
+            it.shapeType === 'spiral' ||
+            /stirrup|tie|link|ring|distribution/i.test(it.description)
+        )
+        .reduce((acc, it) => acc + (it.totalWeightKg || 0), 0);
+      const mainBarWeightKg = Math.max(0, (bbsRes.totalSteelWeightKg || 0) - stirrupWeightKg);
       newRecord = {
         id: newId,
         workspaceId: activeWorkspace.id,
@@ -3094,31 +3302,34 @@ export default function App() {
         status: bbsRes.status,
         keyMetrics: [
           { label: 'Total Steel Weight', value: (bbsRes.totalSteelWeightKg / 1000).toFixed(3), unit: 'Tonnes' },
-          { label: 'Main Steel', value: bbsRes.mainBarTotalWeightKg.toFixed(1), unit: 'kg' },
-          { label: 'Stirrups/Ties', value: bbsRes.stirrupTotalWeightKg.toFixed(1), unit: 'kg' },
+          { label: 'Main Steel', value: mainBarWeightKg.toFixed(1), unit: 'kg' },
+          { label: 'Stirrups/Ties', value: stirrupWeightKg.toFixed(1), unit: 'kg' },
         ],
         inputsSnapshot: { ...activeWorkspace.rebarBbs },
       };
     } else if (activeModule === 'boq-estimator') {
       const boqRes = currentEnvelope.result as any;
       if (!boqRes) return;
+      const totalItems = boqRes.totalItemCount ?? (boqRes.items?.length || 0);
+      const grandTotal = boqRes.grandTotalAmount ?? 0;
+      const subtotal = boqRes.subtotalAmount ?? 0;
       newRecord = {
         id: newId,
         workspaceId: activeWorkspace.id,
         moduleId: 'boq-estimator',
         timestamp: now,
-        title: `${activeWorkspace.projectCode} · Quantity Takeoff (${boqRes.itemsCount} Items)`,
-        notes: `Total Grand Cost = ${boqRes.currency} ${boqRes.grandTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        title: `${activeWorkspace.projectCode} · Quantity Takeoff (${totalItems} Items)`,
+        notes: `Total Grand Cost = ${boqRes.currency} ${Number(grandTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
         status: boqRes.status,
         keyMetrics: [
-          { label: 'Grand Total Cost', value: boqRes.grandTotalCost.toLocaleString(), unit: boqRes.currency || 'BDT' },
-          { label: 'Line Items Count', value: String(boqRes.itemsCount), unit: 'items' },
-          { label: 'Direct Works', value: boqRes.subtotalCost.toLocaleString(), unit: boqRes.currency || 'BDT' },
+          { label: 'Grand Total Cost', value: Number(grandTotal).toLocaleString(), unit: boqRes.currency || 'BDT' },
+          { label: 'Line Items Count', value: String(totalItems), unit: 'items' },
+          { label: 'Direct Works', value: Number(subtotal).toLocaleString(), unit: boqRes.currency || 'BDT' },
         ],
         inputsSnapshot: { ...activeWorkspace.boq },
       };
     } else if (activeModule === 'rate-analysis') {
-      const rateRes = currentEnvelope.result as any;
+      const rateRes = currentEnvelope.result as RateAnalysisResult;
       if (!rateRes) return;
       newRecord = {
         id: newId,
@@ -3131,9 +3342,143 @@ export default function App() {
         keyMetrics: [
           { label: 'Rate per m³', value: rateRes.unitRatePerM3.toFixed(2), unit: `${rateRes.currencySymbol}/m³` },
           { label: 'Rate per CFT', value: rateRes.unitRatePerCft.toFixed(2), unit: `${rateRes.currencySymbol}/cft` },
-          { label: 'Basic Material Cost', value: rateRes.materialCost.toFixed(2), unit: rateRes.currencySymbol },
+          { label: 'Basic Material Cost', value: (rateRes.materialsCost ?? 0).toFixed(2), unit: rateRes.currencySymbol },
         ],
         inputsSnapshot: { ...activeWorkspace.rateAnalysis },
+      };
+    } else if (activeModule === 'concrete-materials') {
+      const matRes = currentEnvelope.result as ConcreteMaterialResult;
+      if (!matRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'concrete-materials',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Concrete Materials (${matRes.code})`,
+        notes: `Wet Vol=${matRes.wetVolumeM3.toFixed(2)} m³, Cement=${matRes.cementBags50Kg.toFixed(1)} bags, Sand=${matRes.sandCft.toFixed(1)} cft, Coarse=${matRes.aggregateCft.toFixed(1)} cft`,
+        status: matRes.status,
+        keyMetrics: [
+          { label: 'Wet Volume', value: matRes.wetVolumeM3.toFixed(2), unit: 'm³' },
+          { label: 'Cement (50kg)', value: matRes.cementBags50Kg.toFixed(1), unit: 'bags' },
+          { label: 'Fine Sand', value: matRes.sandCft.toFixed(1), unit: 'cft' },
+          { label: 'Coarse Agg', value: matRes.aggregateCft.toFixed(1), unit: 'cft' },
+        ],
+        inputsSnapshot: { ...activeWorkspace.concreteMaterials },
+      };
+    } else if (activeModule === 'masonry-finishes') {
+      const masRes = currentEnvelope.result as MasonryResult;
+      if (!masRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'masonry-finishes',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Masonry & Finishes`,
+        notes: `Net Wall=${masRes.netWallVolumeM3.toFixed(2)} m³, Bricks=${masRes.bricksWithWastageCount}, Mortar Cement=${masRes.mortarCementBags50Kg.toFixed(1)} bags`,
+        status: masRes.status,
+        keyMetrics: [
+          { label: 'Bricks (incl. wastage)', value: String(masRes.bricksWithWastageCount), unit: 'nos' },
+          { label: 'Mortar Cement', value: masRes.mortarCementBags50Kg.toFixed(1), unit: 'bags' },
+          { label: 'Plaster Area', value: masRes.plasterAreaM2.toFixed(1), unit: 'm²' },
+          { label: 'Floor Tiles', value: `${masRes.tileBoxesCount} boxes`, unit: 'boxes' },
+        ],
+        inputsSnapshot: { ...activeWorkspace.masonry },
+      };
+    } else if (activeModule === 'earthwork-alignment') {
+      const ewRes = currentEnvelope.result as EarthworkResult;
+      if (!ewRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'earthwork-alignment',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Earthwork & Alignment (${ewRes.calculationType})`,
+        notes: `Bank=${ewRes.bankVolumeM3.toFixed(1)} m³, Loose=${ewRes.looseVolumeM3.toFixed(1)} m³, Trips=${ewRes.haulTruckTripsCount10M3}`,
+        status: ewRes.status,
+        keyMetrics: [
+          { label: 'Bank Volume', value: ewRes.bankVolumeM3.toFixed(1), unit: 'm³' },
+          { label: 'Loose Volume', value: ewRes.looseVolumeM3.toFixed(1), unit: 'm³' },
+          { label: 'Compacted Vol', value: ewRes.compactedVolumeM3.toFixed(1), unit: 'm³' },
+          { label: 'Dump Truck Trips', value: String(ewRes.haulTruckTripsCount10M3), unit: 'trips' },
+        ],
+        inputsSnapshot: { ...activeWorkspace.earthwork },
+      };
+    } else if (activeModule === 'unit-converter') {
+      const convRes = currentEnvelope.result as any;
+      const conv = activeWorkspace.converter;
+      if (!convRes) return;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'unit-converter',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Unit Converter (${conv.category})`,
+        notes: `${conv.inputValue} ${conv.fromUnit} = ${convRes.formattedValue ?? convRes.outputValue ?? ''} ${conv.toUnit}`,
+        status: 'nominal',
+        keyMetrics: [
+          { label: 'Input Value', value: String(conv.inputValue), unit: conv.fromUnit },
+          { label: 'Converted Output', value: String(convRes.formattedValue ?? convRes.outputValue ?? ''), unit: conv.toUnit },
+          { label: 'Category', value: conv.category, unit: 'dimension' },
+        ],
+        inputsSnapshot: { ...conv },
+      };
+    } else if (activeModule === 'surveying-suite') {
+      const surv = activeWorkspace.surveying;
+      if (!surv) return;
+      const area = surv.computedAreaSqM || 0;
+      const vol = surv.computedExcavationVolumeM3 || 0;
+      const stationsCount = surv.stations?.length || 0;
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'surveying-suite',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · Surveying & Land Area (${surv.method})`,
+        notes: `Polygon Area=${area.toFixed(2)} m², Cut/Fill Volume=${vol.toFixed(2)} m³, ${stationsCount} Leveling Stations`,
+        status: 'nominal',
+        keyMetrics: [
+          { label: 'Land Polygon Area', value: area.toFixed(2), unit: 'm²' },
+          { label: 'Excavation Volume', value: vol.toFixed(2), unit: 'm³' },
+          { label: 'Leveling Stations', value: String(stationsCount), unit: 'stations' },
+        ],
+        inputsSnapshot: { ...surv },
+      };
+    } else if (activeModule === 'testing-lab-qaqc') {
+      const labState = activeWorkspace.testingLab || createDefaultTestingLabState();
+      const test =
+        (labState.activeTestId && TESTING_LAB_TEST_MAP[labState.activeTestId]) ||
+        TESTING_LAB_TESTS[0];
+      const inputs = {
+        ...getDefaultInputsForTest(test),
+        ...(labState.draftInputsByTestId?.[test.id] || {}),
+      };
+      const checklistStates = test.checklistItems
+        ? {
+            ...getDefaultChecklistStates(test),
+            ...(labState.draftChecklistsByTestId?.[test.id] || {}),
+          }
+        : undefined;
+      const evaluation = evaluateLabTest(test.id, inputs, checklistStates);
+      const sampleRef = labState.savedRecords?.[0]?.sampleRef || 'LAB-SMP-001';
+      newRecord = {
+        id: newId,
+        workspaceId: activeWorkspace.id,
+        moduleId: 'testing-lab-qaqc',
+        timestamp: now,
+        title: `${activeWorkspace.projectCode} · ${test.code}: ${test.title.en}`,
+        notes: `${sampleRef} · ${evaluation.primaryMetricLabel.en}: ${evaluation.primaryValue} ${evaluation.primaryUnit} · Verdict: ${evaluation.verdict}`,
+        status:
+          evaluation.verdict === 'FAIL'
+            ? 'critical'
+            : evaluation.verdict === 'WARNING'
+            ? 'warning'
+            : 'nominal',
+        keyMetrics: [
+          { label: evaluation.primaryMetricLabel.en, value: evaluation.primaryValue, unit: evaluation.primaryUnit },
+          { label: 'Sample Ref', value: sampleRef, unit: 'ID' },
+          { label: 'QA/QC Verdict', value: evaluation.verdict, unit: test.code },
+        ],
+        inputsSnapshot: { ...labState },
       };
     } else if (activeModule === 'continuous-beam') {
       const contRes = currentEnvelope.result as ContinuousBeamResult;
@@ -3777,9 +4122,10 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
             isCollapsed={appState.sidebarCollapsed}
             onToggleCollapse={handleToggleSidebar}
             activeModule={activeModule}
+            activeSubAction={activeModule === 'testing-lab-qaqc' ? activeWorkspace.testingLab?.activeDomainId : undefined}
             isDashboardActive={isDashboardView}
             onSelectDashboard={() => navigateToDashboard('home')}
-            onSelectModule={(id) => navigateToModule(id)}
+            onSelectModule={(id, subAction) => navigateToModule(id, subAction)}
             onOpenArchitectureModal={(tab) => {
               setArchitectureInitialTab(tab || 'far');
               setArchitectureModalOpen(true);
@@ -3885,15 +4231,6 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 onOpenHistoryDrawer={() => setIsHistoryDrawerOpen(true)}
                 onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
               />
-            ) : civilLab.activePage === 'converter' ? (
-              <div className="p-4 md:p-6">
-                <ConverterPage
-                  activeWorkspace={activeWorkspace}
-                  updateActiveWorkspace={updateActiveWorkspace}
-                  customUnits={appState.customUnits}
-                  onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
-                />
-              </div>
             ) : civilLab.activePage === 'history' ? (
               <div className="p-4 md:p-6">
                 <HistoryPage
@@ -4294,15 +4631,56 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   />
                 </React.Suspense>
               </motion.div>
-            ) : activeModule === 'unit-converter' ? (
-              <div className="p-4 md:p-6">
+            ) : activeModule === 'testing-lab-qaqc' ? (
+              <motion.div
+                key={`testing-lab-hub-${activeWorkspace.id}-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.25 }}
+                className="p-4 md:p-6"
+              >
+                <React.Suspense fallback={<ModuleSuspenseFallback title="Testing Lab & Field QA/QC" />}>
+                  <TestingLabHub
+                    activeWorkspace={activeWorkspace}
+                    userProfile={userProfile}
+                    onUpdateTestingLab={(updater) =>
+                      updateActiveWorkspace((ws) => {
+                        const prevLab = ws.testingLab || createDefaultTestingLabState();
+                        return {
+                          ...ws,
+                          testingLab: updater(prevLab),
+                        };
+                      })
+                    }
+                    onSaveToHistory={handleLogCalculationSnapshot}
+                    onSyncToCubeRegister={(payload) => {
+                      const rec = addCubeTestRecord(payload);
+                      triggerCelebration(
+                        'Lab Test Pushed to Cube-Tests Register (SM-08)',
+                        `Logged ${rec.pourId} (${rec.concreteGrade}, f'c=${rec.targetStrengthMPa} MPa, status: ${rec.status}) into Project Cube Crushing Register.`,
+                        'celebrate'
+                      );
+                    }}
+                    onNavigateToModule={navigateToModule}
+                    onNotify={(msg) => setToastBanner(msg)}
+                  />
+                </React.Suspense>
+              </motion.div>
+            ) : activeModule === 'unit-converter' || civilLab.activePage === 'converter' ? (
+              <motion.div
+                key={`converter-${activeWorkspace.unitPreferences?.systemPreset || 'metric'}-${unitTransitionKey}`}
+                initial={{ opacity: 0.35, y: 3, filter: 'blur(1px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.25 }}
+                className="p-4 md:p-6"
+              >
                 <ConverterPage
                   activeWorkspace={activeWorkspace}
                   updateActiveWorkspace={updateActiveWorkspace}
                   customUnits={appState.customUnits}
                   onOpenCustomUnitsModal={() => setCustomUnitModalOpen(true)}
                 />
-              </div>
+              </motion.div>
             ) : (
               <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Pane: Parameter Input Form with Smooth Unit Transition */}
@@ -4318,7 +4696,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                   <BoqEstimatorInputs
                     activeWorkspace={activeWorkspace}
                     updateActiveWorkspace={updateActiveWorkspace}
-                    rateAnalysisResult={currentEnvelope.result as any}
+                    rateAnalysisResult={activeRateAnalysisResult}
                     customUnits={appState.customUnits}
                     getFieldUnit={getFieldUnit}
                     updateFieldUnit={updateFieldUnit}
@@ -4740,55 +5118,55 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     </div>
 
                     {activeModule === 'boq-estimator' && currentEnvelope.result && (
-                      <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} />
+                      <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'rate-analysis' && currentEnvelope.result && (
-                      <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} />
+                      <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'concrete-materials' && currentEnvelope.result && (
-                      <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} />
+                      <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'rebar-bbs' && currentEnvelope.result && (
-                      <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} />
+                      <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'masonry-finishes' && currentEnvelope.result && (
-                      <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} />
+                      <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
-                      <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} />
+                      <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'beam-analysis' && currentEnvelope.result && (
-                      <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} />
+                      <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'bearing-capacity' && currentEnvelope.result && (
-                      <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} />
+                      <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'concrete-mix' && currentEnvelope.result && (
-                      <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} />
+                      <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'open-channel' && currentEnvelope.result && (
-                      <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} />
+                      <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'continuous-beam' && currentEnvelope.result && (
-                      <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} />
+                      <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
-                      <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} />
+                      <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'section-analyzer' && currentEnvelope.result && (
-                      <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} />
+                      <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'rc-column-design' && currentEnvelope.result && (
-                      <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} />
+                      <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'strut-and-tie' && currentEnvelope.result && (
-                      <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} />
+                      <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'pile-capacity' && currentEnvelope.result && (
-                      <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} />
+                      <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                     {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
-                      <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} />
+                      <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                     )}
                   </div>
                 )}
@@ -5351,6 +5729,24 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
         <SiteQcModal
           isOpen={siteQcModalOpen}
           onClose={() => setSiteQcModalOpen(false)}
+          projectName={activeWorkspace.name}
+          engineerName={userProfile.fullName || activeWorkspace.engineerOfRecord}
+          onNavigateToLab={(testId) => {
+            updateActiveWorkspace((ws) => {
+              const prevLab = ws.testingLab || createDefaultTestingLabState();
+              const test = TESTING_LAB_TEST_MAP[testId];
+              return {
+                ...ws,
+                testingLab: {
+                  ...prevLab,
+                  activeDomainId: test?.domainId || 'site-checklists',
+                  activeTestId: testId,
+                },
+              };
+            });
+            setSiteQcModalOpen(false);
+            navigateToModule('testing-lab-qaqc');
+          }}
         />
 
         {/* Quick Engineering Monograph & "About This Tool" Drawer */}

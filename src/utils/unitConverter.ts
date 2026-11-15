@@ -1,4 +1,4 @@
-import { CustomUnitDefinition, UnitCategoryKey } from '../types/civil';
+import { CustomUnitDefinition, UnitCategoryKey, UnitSystemPreset } from '../types/civil';
 
 export interface UnitInfo {
   id: string;
@@ -1706,4 +1706,33 @@ export const REBAR_BAR_DESIGNATIONS: RebarDesignationEntry[] = [
   { id: 'iso-50', standard: 'ISO/BS/BDS', label: '50 mm', diameterMm: 50, diameterIn: 1.969, suta: 15.75, areaMm2: 1963.50, areaIn2: 3.043, unitWeightKgPerM: 15.41, unitWeightLbPerFt: 10.355, nearestEquivalent: '#18 (Mega Pile)' },
   { id: 'astm-18', standard: 'ASTM', label: '#18 (2.257")', diameterMm: 57.33, diameterIn: 2.257, suta: 18.06, areaMm2: 2581.39, areaIn2: 4.001, unitWeightKgPerM: 20.24, unitWeightLbPerFt: 13.600, nearestEquivalent: '50 mm (Mega Pile)' },
 ];
+
+/**
+ * Formats a metric length (meters) according to active workspace UnitSystemPreset.
+ * - 'regional' or 'imperial': Feet-Inch + decimal feet (plus metric ref in tables)
+ * - 'metric': SI meters
+ */
+export function formatLengthByPreset(
+  meters: number,
+  systemPreset: UnitSystemPreset,
+  mode: 'table' | 'diagram' = 'table'
+): string {
+  if (!Number.isFinite(meters)) return '—';
+  if (systemPreset === 'regional' || systemPreset === 'imperial') {
+    if (Math.abs(meters) < 1e-9) {
+      return `0'-0" (0.00')`;
+    }
+    const decFt = (meters / EXACT_CONVERSION.FT_TO_M).toFixed(2);
+    const ftIn = formatFeetInches(meters, {
+      isMeters: true,
+      maxDenominator: mode === 'table' ? 16 : 1,
+    });
+    if (mode === 'table') {
+      return `${ftIn} (${decFt}' / ${meters.toFixed(3)} m)`;
+    }
+    return `${ftIn} (${decFt}')`;
+  }
+  return mode === 'table' ? `${meters.toFixed(3)} m` : `${meters.toFixed(2)} m`;
+}
+
 

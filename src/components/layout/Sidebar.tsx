@@ -28,6 +28,7 @@ import {
   FolderArchive,
   ClipboardCheck,
   ExternalLink,
+  FlaskConical,
 } from 'lucide-react';
 import { EngineeringModuleId } from '../../types/civil';
 import { useWorkbench } from '../../context/WorkbenchContext';
@@ -46,6 +47,7 @@ export interface SidebarSubItem {
   name: string;
   subtitle?: string;
   moduleId?: EngineeringModuleId;
+  subAction?: string;
   actionType?: 'module' | 'far-setback' | 'watertank' | 'septictank' | 'staircase' | 'arch-services' | 'cad-viewport' | 'cad-shortcuts' | 'excel-formulas' | 'site-qc' | 'earth-pressure';
   badge?: string;
 }
@@ -56,6 +58,7 @@ export interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   activeModule: EngineeringModuleId;
+  activeSubAction?: string;
   isDashboardActive: boolean;
   onSelectDashboard: () => void;
   onSelectModule: (moduleId: EngineeringModuleId, subAction?: string) => void;
@@ -159,6 +162,22 @@ export const SIDEBAR_CATEGORIES: SidebarCategory[] = [
       { id: 'office-docs', name: 'Official Letters & Office Docs', subtitle: 'Gate Pass, Work Order & Handover', moduleId: 'office-docs', actionType: 'module', badge: 'Docs' },
     ],
   },
+  {
+    id: 'testing-lab-qaqc',
+    name: '7. Testing Lab & Field QA/QC • নির্মাণ পরীক্ষণ ও মান যাচাই',
+    icon: FlaskConical,
+    items: [
+      { id: 'lab-cement', name: 'Cement Quality Tests', subtitle: 'সিমেন্ট পরীক্ষা • Vicat / Soundness', moduleId: 'testing-lab-qaqc', subAction: 'cement', actionType: 'module', badge: 'LAB-01' },
+      { id: 'lab-aggregate', name: 'Sand & Aggregate Tests', subtitle: 'বালি ও পাথর/খোয়া • FM / Silt / LAA', moduleId: 'testing-lab-qaqc', subAction: 'aggregate', actionType: 'module', badge: 'LAB-02' },
+      { id: 'lab-brick', name: 'Brick & Block Tests', subtitle: 'ইট ও ব্লক • Crushing / Absorption', moduleId: 'testing-lab-qaqc', subAction: 'brick-block', actionType: 'module', badge: 'LAB-03' },
+      { id: 'lab-concrete', name: 'Fresh, Hardened Concrete & NDT', subtitle: 'কনক্রিট ও এনডিটি • Slump / Cylinder / UPV', moduleId: 'testing-lab-qaqc', subAction: 'concrete-ndt', actionType: 'module', badge: 'LAB-04' },
+      { id: 'lab-rebar', name: 'Reinforcing Steel (Rebar) Tests', subtitle: 'রড পরীক্ষা • Yield / Weight / Bend', moduleId: 'testing-lab-qaqc', subAction: 'rebar-steel', actionType: 'module', badge: 'LAB-05' },
+      { id: 'lab-soil', name: 'Soil, Compaction & Pile Tests', subtitle: 'মাটি ও পাইল • SPT / FDD / Slurry / PIT', moduleId: 'testing-lab-qaqc', subAction: 'soil-pile', actionType: 'module', badge: 'LAB-06' },
+      { id: 'lab-highway', name: 'Highway, Sub-base & Bitumen', subtitle: 'সড়ক ও বিটুমিন • CBR / DCP / Bitumen / Marshall', moduleId: 'testing-lab-qaqc', subAction: 'highway-bitumen', actionType: 'module', badge: 'LAB-07' },
+      { id: 'lab-water', name: 'Water, Admixture & Plumbing', subtitle: 'পানি ও লিকেজ • pH / Hydrostatic / Slope / Ponding', moduleId: 'testing-lab-qaqc', subAction: 'water-plumbing', actionType: 'module', badge: 'LAB-08' },
+      { id: 'lab-checklists', name: 'Site Execution & Structural QA/QC', subtitle: 'সাইট চেকলিস্ট • Formwork / Seismic / Stripping / Masonry', moduleId: 'testing-lab-qaqc', subAction: 'site-checklists', actionType: 'module', badge: 'LAB-09' },
+    ],
+  },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -167,6 +186,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   onToggleCollapse,
   activeModule,
+  activeSubAction,
   isDashboardActive,
   onSelectDashboard,
   onSelectModule,
@@ -184,6 +204,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     hydraulics: false,
     'cad-excel-hub': false,
     sitemanagement: true,
+    'testing-lab-qaqc': true,
   });
 
   const toggleCategory = (catId: string) => {
@@ -195,7 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleItemClick = (item: SidebarSubItem) => {
     if (item.actionType === 'module' && item.moduleId) {
-      onSelectModule(item.moduleId);
+      onSelectModule(item.moduleId, item.subAction);
     } else if (item.actionType === 'far-setback') {
       if (onOpenArchitectureModal) onOpenArchitectureModal('far');
     } else if (item.actionType === 'watertank') {
@@ -209,14 +230,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       if (onOpenArchitectureModal) onOpenArchitectureModal('services');
     } else if (item.actionType === 'cad-viewport') {
       if (onOpenCadModal) onOpenCadModal('viewport');
-    } else if (item.actionType === 'cad-shortcuts') {
-      if (onOpenCadModal) onOpenCadModal('shortcuts');
-    } else if (item.actionType === 'excel-formulas') {
-      if (onOpenCadModal) onOpenCadModal('excel');
+    } else if (onOpenCadModal && item.actionType === 'cad-shortcuts') {
+      onOpenCadModal('shortcuts');
+    } else if (onOpenCadModal && item.actionType === 'excel-formulas') {
+      onOpenCadModal('excel');
     } else if (item.actionType === 'site-qc') {
       if (onOpenSiteQcModal) onOpenSiteQcModal();
     } else if (item.moduleId) {
-      onSelectModule(item.moduleId);
+      onSelectModule(item.moduleId, item.subAction);
     }
     onCloseMobile();
   };
@@ -417,7 +438,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {isOpen && (
                   <div className="py-1 pl-6 pr-1 space-y-0.5 border-l border-[var(--md-sys-color-outline-variant)]/60 ml-4 my-1">
                     {cat.items.map((item) => {
-                      const isItemActive = !isDashboardActive && item.moduleId === activeModule;
+                      const isItemActive =
+                        !isDashboardActive &&
+                        item.moduleId === activeModule &&
+                        (!item.subAction || !activeSubAction || item.subAction === activeSubAction);
                       const isFav = item.moduleId ? workbench.isFavoriteTool(item.moduleId) : false;
 
                       return (
@@ -440,7 +464,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1 shrink-0">
-                            {(item.moduleId && TOOL_REGISTRY_MAP[item.moduleId]?.shortCode) ? (
+                            {item.subAction && item.badge ? (
+                              <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline-variant)]">
+                                {item.badge}
+                              </span>
+                            ) : (item.moduleId && TOOL_REGISTRY_MAP[item.moduleId]?.shortCode) ? (
                               <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline-variant)]">
                                 {TOOL_REGISTRY_MAP[item.moduleId].shortCode}
                               </span>

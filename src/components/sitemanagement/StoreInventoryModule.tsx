@@ -633,15 +633,32 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                           {item.minThreshold.toLocaleString()} {item.unit}
                         </td>
                         <td className="py-3 px-3 text-center">
-                          {isLow ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-800 animate-pulse">
-                              LOW STOCK
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
-                              SAFE
-                            </span>
-                          )}
+                          <div className="flex flex-col items-center gap-1">
+                            {isLow ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-800 animate-pulse">
+                                LOW STOCK
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                                SAFE
+                              </span>
+                            )}
+                            {item.qaStatus && (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-mono font-bold border ${
+                                  item.qaStatus === 'QA Verified'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                                    : item.qaStatus === 'Quarantined / Rejected'
+                                    ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                }`}
+                                title={item.lastQaRemarks || `QA Status: ${item.qaStatus}`}
+                              >
+                                {item.qaStatus}
+                                {item.lastQaTestCode ? ` · ${item.lastQaTestCode}` : ''}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-3 text-right font-mono text-xs tabular-nums text-[var(--md-sys-color-on-surface)]">
                           ৳ {item.unitRate.toLocaleString()}

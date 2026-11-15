@@ -23,6 +23,13 @@ import { CalculationEnvelope } from '../../utils/calculations';
 import { exportCertifiedEngineeringPdf, PdfExportProgress } from '../../utils/pdfExport';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
+import { TESTING_LAB_TEST_MAP, TESTING_LAB_TESTS } from '../../data/testingLabCatalog';
+import {
+  evaluateLabTest,
+  exportLabTestCertificatePdf,
+  getDefaultChecklistStates,
+  getDefaultInputsForTest,
+} from '../../utils/testingLabEngine';
 
 export interface PdfExportModalProps {
   isOpen: boolean;
@@ -83,6 +90,71 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           customHeaderTitle: customReportTitle,
           signatoryName: customSignatory,
         });
+      }
+
+      if (activeModule === 'testing-lab-qaqc') {
+        const labState = activeWorkspace.testingLab;
+        const test =
+          (labState?.activeTestId && TESTING_LAB_TEST_MAP[labState.activeTestId]) ||
+          TESTING_LAB_TESTS[0];
+        const inputs = {
+          ...getDefaultInputsForTest(test),
+          ...(labState?.draftInputsByTestId?.[test.id] || {}),
+        };
+        const checklistStates = test.checklistItems
+          ? {
+              ...getDefaultChecklistStates(test),
+              ...(labState?.draftChecklistsByTestId?.[test.id] || {}),
+            }
+          : undefined;
+        const evaluation = evaluateLabTest(test.id, inputs, checklistStates);
+        setExportProgress({ stage: 'Rendering Certified QA/QC Lab Certificate...', percent: 65 });
+        await exportLabTestCertificatePdf({
+          test,
+          inputs,
+          evaluation,
+          sampleRef: labState?.savedRecords?.[0]?.sampleRef || 'LAB-SMP-001',
+          locationGrid: labState?.savedRecords?.[0]?.locationGrid || activeWorkspace.siteLocation || 'Site Zone',
+          remarks: '',
+          workspace: activeWorkspace,
+          userProfile: {
+            fullName: customSignatory || userProfile.name || activeWorkspace.engineerOfRecord,
+            designation: userProfile.title || 'Resident Civil Engineer',
+            organization: userProfile.organization || 'BD. Civil Engineering Consultancy',
+            role: 'structural-engineer',
+            licenseNumber: userProfile.licenseNo,
+            email: userProfile.email,
+            phone: userProfile.phone,
+            initials: (userProfile.name || 'PB')
+              .split(/\s+/)
+              .map((w) => w[0])
+              .join('')
+              .slice(0, 3)
+              .toUpperCase(),
+          },
+          checklistStates,
+          customOverrides: {
+            reportTitle: customReportTitle || undefined,
+            projectName: customProjectName || undefined,
+            clientName: customClientName || undefined,
+            signatoryName: customSignatory || undefined,
+            paperSize: modalPreset.paperSize,
+            orientation: modalPreset.orientation,
+            marginMm: modalPreset.marginMm,
+            includeQR: modalPreset.includeQR,
+            includeFormulaSteps: modalPreset.includeFormulaSteps,
+            includeDiagram: modalPreset.includeDiagram,
+            includeSignatureBlock: modalPreset.includeSignatureBlock,
+          },
+        });
+        setExportProgress({ stage: 'Certificate Saved!', percent: 100 });
+        setTimeout(() => {
+          setIsExporting(false);
+          setExportProgress(null);
+          onComplete?.();
+          onClose();
+        }, 280);
+        return;
       }
 
       // Format dimensions

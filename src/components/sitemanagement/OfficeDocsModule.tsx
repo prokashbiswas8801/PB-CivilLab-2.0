@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileText,
   Printer,
@@ -63,11 +63,12 @@ interface OfficeDocsModuleProps {
 }
 
 export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorkspace }) => {
-  const { userProfile } = useCivilLab();
+  const { userProfile, pendingNcrDraft, setPendingNcrDraft } = useCivilLab();
 
   // Document Type State
   const [docType, setDocType] = useState<OfficeDocType>('gate-pass');
   const [language, setLanguage] = useState<'en' | 'bn'>('en');
+  const [ncrTitleOverride, setNcrTitleOverride] = useState<{ en: string; bn: string } | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [verificationModalOpen, setVerificationModalOpen] = useState<boolean>(false);
   const [activeVerifiedDoc, setActiveVerifiedDoc] = useState<VerifiedOfficeDocRecord | null>(null);
@@ -162,6 +163,28 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
     targetRectificationDays: '3',
     followUpInspectionDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
   });
+
+  // Consume Pending NCR Draft sent from Testing Lab & Field QA/QC
+  useEffect(() => {
+    if (!pendingNcrDraft) return;
+    setDocType('site-instruction-ncr');
+    setNcrData((prev) => ({
+      ...prev,
+      ncrNo: pendingNcrDraft.ncrNo || prev.ncrNo,
+      issuedTo: pendingNcrDraft.issuedTo || prev.issuedTo,
+      locationGrid: pendingNcrDraft.locationGrid || prev.locationGrid,
+      severity: pendingNcrDraft.severity || 'Major',
+      defectDescription: pendingNcrDraft.defectDescription,
+      governingCode: pendingNcrDraft.governingCode || prev.governingCode,
+      rectificationActionRequired: pendingNcrDraft.rectificationActionRequired || prev.rectificationActionRequired,
+      targetRectificationDays: pendingNcrDraft.verdict === 'FAIL' ? '1' : '3',
+    }));
+    setNcrTitleOverride({
+      en: pendingNcrDraft.titleEn,
+      bn: pendingNcrDraft.titleBn,
+    });
+    setPendingNcrDraft(null);
+  }, [pendingNcrDraft, setPendingNcrDraft]);
 
   // 5. PROJECT COMPLETION & HANDOVER CERTIFICATE STATE
   const [handoverData, setHandoverData] = useState({
@@ -316,8 +339,12 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
         'Concrete cube test 28-day crushing strengths verified compliant with design specifications.',
       ];
     } else if (docType === 'site-instruction-ncr') {
-      docTypeTitle = `Site Non-Conformance Notice (NCR: ${ncrData.ncrNo})`;
-      docTypeTitleBn = `সাইট নন-কনফরম্যান্স নোটিশ (NCR) ও সংশোধন নির্দেশ`;
+      docTypeTitle = ncrTitleOverride
+        ? `${ncrTitleOverride.en} (NCR: ${ncrData.ncrNo})`
+        : `Site Non-Conformance Notice (NCR: ${ncrData.ncrNo})`;
+      docTypeTitleBn = ncrTitleOverride
+        ? ncrTitleOverride.bn
+        : `সাইট নন-কনফরম্যান্স নোটিশ (NCR) ও সংশোধন নির্দেশ`;
       summaryText = ncrData.defectDescription;
       keyFields = [
         { label: 'NCR Notice No', value: ncrData.ncrNo },
@@ -1562,9 +1589,24 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                 <div className="space-y-4">
                   <div className="text-center my-3">
                     <h2 className="text-base sm:text-lg font-bold uppercase tracking-wider text-rose-900 border-b-2 border-rose-900 inline-block pb-1">
-                      {language === 'bn'
-                        ? 'সাইট নন-কনফরম্যান্স নোটিশ (NCR) ও সংশোধন নির্দেশ'
-                        : 'SITE NON-CONFORMANCE NOTICE (NCR) & RECTIFICATION DIRECTIVE'}
+                      {ncrTitleOverride ? (
+                        <span>
+                          {language === 'bn' ? (
+                            <span className="font-nikosh" lang="bn">{ncrTitleOverride.bn}</span>
+                          ) : (
+                            <>
+                              <span>{ncrTitleOverride.en}</span>
+                              <span className="block text-sm font-nikosh font-semibold mt-0.5 text-rose-800" lang="bn">
+                                {ncrTitleOverride.bn}
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      ) : language === 'bn' ? (
+                        <span className="font-nikosh" lang="bn">সাইট নন-কনফরম্যান্স নোটিশ (NCR) ও সংশোধন নির্দেশ</span>
+                      ) : (
+                        'SITE NON-CONFORMANCE NOTICE (NCR) & RECTIFICATION DIRECTIVE'
+                      )}
                     </h2>
                     <div className="text-xs font-mono text-zinc-600 mt-1">
                       NCR Reference: {ncrData.ncrNo} • Severity: <span className="font-bold text-rose-600">{ncrData.severity}</span>

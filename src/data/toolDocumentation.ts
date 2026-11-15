@@ -2652,6 +2652,84 @@ export const TOOL_DOCUMENTATION: Record<string, ToolDocumentation> = {
     ],
     limitationsAndNotes: ['Official letters should be signed by registered Professional Engineers (PE / IEB).'],
   },
+
+  'testing-lab-qaqc': {
+    id: 'testing-lab-qaqc',
+    title: 'Testing Lab & Field QA/QC (নির্মাণ পরীক্ষণ ও মান যাচাই)',
+    shortLabel: 'Testing Lab QA/QC',
+    discipline: 'Testing Lab & Field QA/QC',
+    standardUsed: 'BNBC-2020 / PWD / LGED / RHD / BDS / ASTM / BS EN / IS',
+    overview:
+      'A comprehensive bilingual (Bengali + English) Laboratory & Field Quality Assurance engine covering 27 construction material tests and interactive site checklists across 9 engineering domains. Every test features a complete 10-section engineering monograph, deterministic live calculator, acceptance comparison, remedial engineering actions, and QR-verified A4 Test Certificates.',
+    capabilities: [
+      '27 standardized tests across Cement, Sand & Aggregate, Brick & Block, Fresh/Hardened Concrete & NDT, Rebar Steel, Soil & Pile Integrity, Highway/Bitumen, Water/Plumbing Leakage, and Field Inspection Checklists',
+      'Instant 1-click Language Switcher between Dual View (বাংলা + English), শুধু বাংলা, and English Only',
+      'Live deterministic test evaluation with PASS / WARNING / FAIL verdicts calibrated against BNBC-2020, PWD, LGED, RHD, BDS ISO 6935-2, and ASTM standards',
+      'Exports QR-verified A4 Lab Test Certificates to PDF and supports clean A4 browser printing without popups',
+    ],
+    howItWorks: {
+      methodology:
+        'Each laboratory or field test evaluates user-entered sample measurements using exact governing formulas (e.g., Fineness Modulus from cumulative sieve percentages, ACI 318 compressive strength compliance, BDS ISO 6935-2 rebar UTS/Yield ratio & mass deviation, FDD vs Proctor MDD compaction percentage, and Marshall Stability/Voids checks) and compares against code acceptance bands.',
+      governingEquations: [
+        {
+          name: 'Sand Fineness Modulus (ASTM C136)',
+          formula: 'FM = Σ(% Cumulative Retained on 4.75mm to 0.15mm) / 100',
+          description: 'Evaluates sand coarseness (Sylhet concrete sand target 2.50–3.10; local plastering sand 1.20–1.80).',
+        },
+        {
+          name: 'Field Compaction Degree (ASTM D1556 / D1557)',
+          formula: '% Compaction = (γ_d,field / MDD) × 100%',
+          description: 'Verifies compacted embankment or sub-base density against laboratory Modified Proctor MDD.',
+        },
+        {
+          name: 'Rebar Actual vs Nominal Mass & Seismic Ratio',
+          formula: 'W_theo = d² / 162.2 kg/m ; Ratio = f_u / f_y ≥ 1.25',
+          description: 'Checks BDS ISO 6935-2 / BNBC-2020 seismic ductility and sectional weight tolerances.',
+        },
+      ],
+      codeStandards: [
+        'BNBC-2020 (Bangladesh National Building Code)',
+        'PWD & LGED Schedule of Rates & Material Specifications',
+        'RHD Road & Highway Pavement Testing Standards',
+        'BDS EN 197-1 / BDS 208 / BDS ISO 6935-2',
+        'ASTM C39, C136, C143, A615, D1556, D6927',
+      ],
+      assumptions: [
+        'Laboratory specimens are sampled representatively per lot frequency rules and tested using calibrated apparatus',
+        'Checklist scoring flags any Critical item failure as an immediate FAIL hold point prior to concreting or backfilling',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Select Testing Domain & Language Mode',
+        instruction: 'Choose one of the 9 testing domains (Cement, Sand/Aggregate, Brick, Concrete/NDT, Rebar, Soil/Pile, Highway/Bitumen, Water/Plumbing, or Checklists) and toggle Dual / বাংলা / English view.',
+      },
+      {
+        step: 2,
+        title: 'Review 10-Section Engineering Monograph',
+        instruction: 'Inspect sampling frequency, apparatus least counts, step-by-step test procedure, contractor pitfalls, and worked numerical examples.',
+      },
+      {
+        step: 3,
+        title: 'Run Live Lab Calculator or Site Checklist',
+        instruction: 'Modify pre-filled worked-example measurements (or mark PASS/FAIL/NA items in Domain 9) to compute live verdicts and remedial steps.',
+      },
+      {
+        step: 4,
+        title: 'Save Record & Export QR Certificate',
+        instruction: 'Save the result to the project lab log / Calculation History and download a QR-verified A4 Lab Certificate PDF or Print A4 sheet.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Always verify third-party mill certificates against physical UTM tensile and actual unit-weight tests on every rebar lot.',
+      'Reject river sand batches with silt content above 4–5% before batching structural concrete to avoid honeycombing and bond loss.',
+      'Never permit concrete placement if any Critical item in the Pre-Pour RCC Checklist fails inspection.',
+    ],
+    limitationsAndNotes: [
+      'Field rapid tests (e.g., cement lump/float test, brick drop test, rebound hammer) must be corroborated by accredited laboratory destructive tests for disputes or structural sign-off.',
+    ],
+  },
 };
 
 /**

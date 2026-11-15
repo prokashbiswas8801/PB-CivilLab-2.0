@@ -25,6 +25,7 @@ import {
   Network,
   Columns2,
   Triangle,
+  FlaskConical,
 } from 'lucide-react';
 import { EngineeringModuleId } from '../types/civil';
 
@@ -209,5 +210,11 @@ export const MODULE_META: Record<EngineeringModuleId, ModuleMetadataItem> = {
     shortLabel: 'Office Docs',
     codeStandard: 'Bilingual Formal Engineering Contracts & Notices',
     icon: ScrollText,
+  },
+  'testing-lab-qaqc': {
+    label: 'Testing Lab & Field QA/QC (নির্মাণ পরীক্ষণ ও মান যাচাই)',
+    shortLabel: 'Testing Lab QA/QC',
+    codeStandard: 'BNBC-2020 / PWD / LGED / RHD / ASTM / BDS',
+    icon: FlaskConical,
   },
 };

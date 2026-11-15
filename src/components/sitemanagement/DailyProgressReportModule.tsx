@@ -447,6 +447,33 @@ export const DailyProgressReportModule: React.FC = () => {
                 No concrete crushing scheduled for today.
               </p>
             )}
+
+            {/* Testing Lab & Field QA/QC Checks Logged Today */}
+            {dpr.qaQcLogsToday && dpr.qaQcLogsToday.length > 0 && (
+              <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+                  Lab &amp; Field QA/QC Logged ({dpr.qaQcLogsToday.length}):
+                </span>
+                {dpr.qaQcLogsToday.slice(0, 4).map((qa) => (
+                  <div key={qa.id} className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="truncate text-[var(--md-sys-color-on-surface)]" title={qa.primaryResult}>
+                      <span className="font-mono font-bold">{qa.testCode}</span> · {qa.sampleRef}
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold shrink-0 ${
+                        qa.verdict === 'PASS'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : qa.verdict === 'WARNING'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                      }`}
+                    >
+                      {qa.verdict}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -740,6 +767,40 @@ export const DailyProgressReportModule: React.FC = () => {
                   </table>
                 </div>
               </div>
+
+              {/* 4B. Laboratory & Field QA/QC Verifications Logged Today */}
+              {dpr.qaQcLogsToday && dpr.qaQcLogsToday.length > 0 && (
+                <div className="space-y-1.5 print-avoid-break">
+                  <h4 className="font-bold uppercase text-[11px] tracking-wider text-zinc-800">
+                    4B. Laboratory &amp; Field QA/QC Verifications Logged Today:
+                  </h4>
+                  <div className="overflow-hidden border border-zinc-300 rounded-lg">
+                    <table className="w-full text-left border-collapse text-[11px]">
+                      <thead className="bg-zinc-100 font-bold border-b border-zinc-300">
+                        <tr>
+                          <th className="py-1.5 px-3">Test Code</th>
+                          <th className="py-1.5 px-3">Test / Checklist &amp; Sample Ref</th>
+                          <th className="py-1.5 px-3">Measured Result</th>
+                          <th className="py-1.5 px-3 text-center">Verdict</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 font-sans">
+                        {dpr.qaQcLogsToday.map((qa) => (
+                          <tr key={qa.id}>
+                            <td className="py-1.5 px-3 font-mono font-bold">{qa.testCode}</td>
+                            <td className="py-1.5 px-3">
+                              <span className="font-medium">{qa.testNameEn}</span>{' '}
+                              <span className="text-zinc-500 font-mono">({qa.sampleRef})</span>
+                            </td>
+                            <td className="py-1.5 px-3 font-mono">{qa.primaryResult}</td>
+                            <td className="py-1.5 px-3 text-center font-mono font-bold">{qa.verdict}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* 5. Tomorrow's Plan & General Remarks */}
               <div className="grid grid-cols-2 gap-4">

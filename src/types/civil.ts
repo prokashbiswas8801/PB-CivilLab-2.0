@@ -1,3 +1,5 @@
+import { TestingLabWorkspaceState } from './testingLab';
+
 export type ThemePreference = 'light' | 'dark' | 'system';
 
 export type CalculationStatus = 'valid' | 'warning' | 'invalid';
@@ -37,7 +39,8 @@ export type EngineeringModuleId =
   | 'petty-cash'
   | 'cube-tests'
   | 'daily-progress-report'
-  | 'office-docs';
+  | 'office-docs'
+  | 'testing-lab-qaqc';
 
 export type BuildingCode = 'BNBC-2020' | 'ACI-318' | 'IS-456';
 
@@ -1061,6 +1064,7 @@ export interface CivilWorkspace {
   pipe?: PipeHydraulicsParameters;
   unitPreferences?: WorkspaceUnitPreferences;
   architecture?: ArchitectureParameters;
+  testingLab?: TestingLabWorkspaceState;
 }
 
 /* -------------------------------------------------------------

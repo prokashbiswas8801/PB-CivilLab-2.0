@@ -49,7 +49,7 @@ export const AllToolsPage: React.FC<AllToolsPageProps> = ({
 
   const handleLaunchTool = (tool: ToolRegistryEntry) => {
     if (tool.moduleId) {
-      onSelectModule(tool.moduleId);
+      onSelectModule(tool.moduleId, tool.subAction);
     } else if (tool.modalType === 'architecture' && onOpenArchitectureModal) {
       onOpenArchitectureModal(tool.modalTab as any || 'far');
     } else if (tool.modalType === 'cad' && onOpenCadModal) {

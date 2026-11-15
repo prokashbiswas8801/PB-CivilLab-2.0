@@ -26,6 +26,7 @@ import {
   SiteManagementData,
   UrgencyLevel,
   ConcreteGrade,
+  QaLogEntry,
 } from '../types/siteManagement';
 import { useCivilLab } from './CivilLabContext';
 import { useOfflineSync } from './OfflineSyncContext';
@@ -59,6 +60,7 @@ export const createInitialSiteData = (projectId: string): SiteManagementData => 
   raBills: [],
   pettyCash: [],
   cubeTests: [],
+  qaQcLogs: [],
 });
 
 /**
@@ -575,6 +577,26 @@ export const createSampleSiteData = (projectId: string): SiteManagementData => {
     },
   ];
 
+  const qaQcLogs: QaLogEntry[] = [
+    {
+      id: 'QA-LOG-SMP-01',
+      date: formatOffset(0),
+      timestamp: `${formatOffset(0)}T09:15:00Z`,
+      testId: 'con-slump-cone',
+      testCode: 'LAB-CON-01',
+      testNameEn: 'Fresh Concrete Slump Cone Test',
+      testNameBn: 'কংক্রিটের স্লাম্প কোন পরীক্ষা',
+      domainId: 'concrete-ndt',
+      sampleRef: 'POUR-L3-SLAB-B1',
+      locationGrid: '3rd Floor Slab Grid A1-D4',
+      primaryResult: '105 mm (True Slump)',
+      codeLimit: '75-125 mm',
+      verdict: 'PASS',
+      testedBy: 'Engr. Prokash',
+      remarks: 'Consistent workability prior to pump placement.',
+    },
+  ];
+
   return {
     version: 1,
     projectId,
@@ -591,6 +613,7 @@ export const createSampleSiteData = (projectId: string): SiteManagementData => {
     raBills,
     pettyCash,
     cubeTests,
+    qaQcLogs,
   };
 };
 
@@ -682,6 +705,16 @@ export interface SiteManagementContextType {
   updateCubeTestRecord: (id: string, partial: Partial<CubeTestRecord>) => void;
   deleteCubeTestRecord: (id: string) => void;
 
+  // 9. TESTING LAB & QA/QC ERP CONNECTORS
+  logLabVerdictToDpr: (
+    entry: Omit<QaLogEntry, 'id' | 'timestamp' | 'date'> & { date?: string; alsoAddFieldNote?: boolean }
+  ) => QaLogEntry;
+  updateInventoryQaStatus: (
+    itemId: string,
+    status: 'Pending' | 'QA Verified' | 'Quarantined / Rejected',
+    meta?: { testCode?: string; testName?: string; sampleRef?: string; remarks?: string }
+  ) => void;
+
   // DATA BACKUP, EXPORT & SEED
   exportSiteDataBackup: () => string;
   importSiteDataBackup: (jsonString: string) => boolean;
@@ -769,6 +802,7 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
           raBills: Array.isArray(parsed.raBills) ? parsed.raBills : [],
           pettyCash: Array.isArray(parsed.pettyCash) ? parsed.pettyCash : [],
           cubeTests: Array.isArray(parsed.cubeTests) ? parsed.cubeTests : [],
+          qaQcLogs: Array.isArray(parsed.qaQcLogs) ? parsed.qaQcLogs : [],
         };
         setSiteData(sanitized);
       } else {
@@ -1003,8 +1037,9 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
           };
         });
 
-      // 9. Field Notes
+      // 9. Field Notes & QA/QC Testing Logs
       const fieldNotesToday = siteData.fieldNotes.filter((n) => n.date === date);
+      const qaQcLogsToday = (siteData.qaQcLogs || []).filter((q) => q.date === date);
 
       return {
         date,
@@ -1025,6 +1060,7 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
         cubeTestsDueToday,
         curingRemindersActive,
         fieldNotesToday,
+        qaQcLogsToday,
         remarks: 'All quality checks and slump tests verified per ACI 318 / BNBC 2020 standards.',
         compiledBy: 'Site Engineer of Record',
         generatedAt: new Date().toISOString(),
@@ -1962,6 +1998,107 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
   );
 
   // --------------------------------------------------------------------------
+  // 9. TESTING LAB & QA/QC ERP CONNECTORS
+  // --------------------------------------------------------------------------
+  const logLabVerdictToDpr = useCallback(
+    (
+      entry: Omit<QaLogEntry, 'id' | 'timestamp' | 'date'> & {
+        date?: string;
+        alsoAddFieldNote?: boolean;
+      }
+    ): QaLogEntry => {
+      const targetDate = entry.date || new Date().toISOString().split('T')[0];
+      const newLog: QaLogEntry = {
+        id: `QA-${Date.now().toString(36).toUpperCase()}`,
+        date: targetDate,
+        timestamp: new Date().toISOString(),
+        testId: entry.testId,
+        testCode: entry.testCode,
+        testNameEn: entry.testNameEn,
+        testNameBn: entry.testNameBn,
+        domainId: entry.domainId,
+        sampleRef: entry.sampleRef,
+        locationGrid: entry.locationGrid,
+        primaryResult: entry.primaryResult,
+        codeLimit: entry.codeLimit,
+        verdict: entry.verdict,
+        testedBy: entry.testedBy,
+        remarks: entry.remarks,
+      };
+
+      const shouldAddNote = entry.alsoAddFieldNote ?? entry.verdict === 'FAIL';
+      const autoNote: FieldNote | null = shouldAddNote
+        ? {
+            id: `NOTE-QA-${Date.now().toString(36).toUpperCase()}`,
+            timestamp: new Date().toISOString(),
+            date: targetDate,
+            category: entry.verdict === 'FAIL' ? 'Quality Concern' : 'Site Observation',
+            floorGridTag: `#${entry.locationGrid || entry.testCode}`,
+            content: `[${entry.testCode} ${entry.verdict}] ${entry.testNameEn} (${entry.sampleRef}): ${entry.primaryResult}. Code Limit: ${entry.codeLimit}. ${entry.remarks || ''}`.trim(),
+            recordedBy: entry.testedBy || 'QA/QC Engineer',
+            priority: entry.verdict === 'FAIL' ? 'Critical' : 'Normal',
+            isResolved: entry.verdict === 'PASS',
+          }
+        : null;
+
+      persistState((prev) => ({
+        ...prev,
+        qaQcLogs: [newLog, ...(prev.qaQcLogs || [])],
+        fieldNotes: autoNote ? [autoNote, ...prev.fieldNotes] : prev.fieldNotes,
+      }));
+
+      enqueueMutation({
+        module: 'field-notes',
+        action: 'CREATE',
+        entityId: newLog.id,
+        summary: `QA Log [${newLog.testCode} ${newLog.verdict}]: ${newLog.primaryResult}`,
+        payload: newLog,
+        projectId: activeProjectId,
+      });
+
+      return newLog;
+    },
+    [persistState, enqueueMutation, activeProjectId]
+  );
+
+  const updateInventoryQaStatus = useCallback(
+    (
+      itemId: string,
+      status: 'Pending' | 'QA Verified' | 'Quarantined / Rejected',
+      meta?: { testCode?: string; testName?: string; sampleRef?: string; remarks?: string }
+    ) => {
+      const nowIso = new Date().toISOString();
+      persistState((prev) => ({
+        ...prev,
+        inventory: prev.inventory.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                qaStatus: status,
+                lastQaTestCode: meta?.testCode ?? item.lastQaTestCode,
+                lastQaTestName: meta?.testName ?? item.lastQaTestName,
+                lastQaSampleRef: meta?.sampleRef ?? item.lastQaSampleRef,
+                lastQaTestedAt: nowIso,
+                lastQaRemarks: meta?.remarks ?? item.lastQaRemarks,
+                updatedAt: nowIso,
+              }
+            : item
+        ),
+      }));
+
+      enqueueMutation({
+        module: 'inventory',
+        action: 'UPDATE',
+        entityId: itemId,
+        summary: `Updated Store QA Status for ${itemId}: ${status}`,
+        payload: { itemId, status, meta },
+        projectId: activeProjectId,
+      });
+    },
+    [persistState, enqueueMutation, activeProjectId]
+  );
+
+  // --------------------------------------------------------------------------
   // BACKUP, EXPORT & RECOVERY
   // --------------------------------------------------------------------------
   const exportSiteDataBackup = useCallback((): string => {
@@ -1990,6 +2127,7 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
           raBills: Array.isArray(parsed.raBills) ? parsed.raBills : [],
           pettyCash: Array.isArray(parsed.pettyCash) ? parsed.pettyCash : [],
           cubeTests: Array.isArray(parsed.cubeTests) ? parsed.cubeTests : [],
+          qaQcLogs: Array.isArray(parsed.qaQcLogs) ? parsed.qaQcLogs : [],
         };
 
         setSiteData(sanitized);
@@ -2056,6 +2194,8 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
       addCubeTestRecord,
       updateCubeTestRecord,
       deleteCubeTestRecord,
+      logLabVerdictToDpr,
+      updateInventoryQaStatus,
       exportSiteDataBackup,
       importSiteDataBackup,
       resetProjectSiteData,
@@ -2100,6 +2240,8 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
       addCubeTestRecord,
       updateCubeTestRecord,
       deleteCubeTestRecord,
+      logLabVerdictToDpr,
+      updateInventoryQaStatus,
       exportSiteDataBackup,
       importSiteDataBackup,
       resetProjectSiteData,

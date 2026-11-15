@@ -37,7 +37,9 @@ import {
   StrutAndTieParams,
   PileCapacityParameters,
   PipeHydraulicsParameters,
+  UnitSystemPreset,
 } from '../types/civil';
+import { formatLengthByPreset } from '../utils/unitConverter';
 
 /* ==============================================================
    INTERACTIVE FORMULA TOOLTIP INFRASTRUCTURE FOR SVG DIAGRAMS
@@ -174,10 +176,12 @@ export const DiagramFormulaHint: React.FC<{ className?: string }> = ({ className
 );
 
 /* 1. Beam Diagram with Interactive Crosshair & Limit State Safety */
-export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnalysisResult }> = ({
+export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnalysisResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
+  unitPreset = 'metric',
 }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverData, setHoverData] = useState<{
     x: number;
@@ -200,7 +204,7 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono">
           <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
           <text x={width / 2} y={height / 2 - 12} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-            ZERO SPAN LENGTH (L = 0.00 m)
+            ZERO SPAN LENGTH (L = {fmtD(0)})
           </text>
           <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
             Enter a positive span length to compute structural reactions, shear, bending and deflection
@@ -462,8 +466,8 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
           )}
           <text x={padLeft + plotW / 2} y={84} textAnchor="middle" fontSize="9.5" fill="var(--md-sys-color-on-surface-variant)">
             {isOverhanging
-              ? `L_tot = ${L_tot.toFixed(2)} m (OvL ${ovL.toFixed(1)}m + Span ${L_main.toFixed(1)}m + OvR ${ovR.toFixed(1)}m)`
-              : `Span L = ${L_main.toFixed(2)} m (${params.supportCondition})`}
+              ? `L_tot = ${fmtD(L_tot)} (OvL ${fmtD(ovL)} + Span ${fmtD(L_main)} + OvR ${fmtD(ovR)})`
+              : `Span L = ${fmtD(L_main)} (${params.supportCondition})`}
           </text>
         </g>
 
@@ -666,10 +670,12 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
 };
 
 /* 2. Bearing Diagram with Soil Strata, GWT, Boussinesq Stress Bulbs, and Settlement */
-export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: BearingAnalysisResult }> = ({
+export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: BearingAnalysisResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
+  unitPreset = 'metric',
 }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const [activeTab, setActiveTab] = useState<'bulbs' | 'settlement' | 'breakdown' | 'methods'>('bulbs');
   const [hoverDepth, setHoverDepth] = useState<{ z: number; py: number; deltaSigma: number; sigmaV0: number } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -1202,7 +1208,7 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
               <polyline points={`${footingCenterX + footingW / 2 + 12},${gradeY + 4} ${footingCenterX + footingW / 2 + 15},${gradeY} ${footingCenterX + footingW / 2 + 18},${gradeY + 4}`} fill="none" stroke="var(--md-sys-color-outline)" strokeWidth="1" />
               <polyline points={`${footingCenterX + footingW / 2 + 12},${footingBaseY - 4} ${footingCenterX + footingW / 2 + 15},${footingBaseY} ${footingCenterX + footingW / 2 + 18},${footingBaseY - 4}`} fill="none" stroke="var(--md-sys-color-outline)" strokeWidth="1" />
               <text x={footingCenterX + footingW / 2 + 22} y={gradeY + footingD / 2 + 3} fontSize="9" fill="var(--md-sys-color-on-surface)">
-                D_f = {params.embedmentDepthM.toFixed(1)}m
+                D_f = {fmtD(params.embedmentDepthM)}
               </text>
             </g>
 
@@ -1219,7 +1225,7 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
               <title>{`Width: B = ${params.footingWidthM.toFixed(2)} m`}</title>
               <line x1={footingCenterX - footingW / 2} y1={footingBaseY + 6} x2={footingCenterX + footingW / 2} y2={footingBaseY + 6} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
               <text x={footingCenterX} y={footingBaseY + 18} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-on-surface)">
-                B = {params.footingWidthM.toFixed(2)}m
+                B = {fmtD(params.footingWidthM)}
               </text>
             </g>
 
@@ -1298,7 +1304,7 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
 };
 
 /* 3. ACI 211 Concrete Mix Diagram */
-export const ConcreteMixSvg: React.FC<{ params: ConcreteMixParameters; result: ConcreteMixResult }> = ({
+export const ConcreteMixSvg: React.FC<{ params: ConcreteMixParameters; result: ConcreteMixResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
 }) => {
@@ -1447,10 +1453,12 @@ export const ConcreteMixSvg: React.FC<{ params: ConcreteMixParameters; result: C
 };
 
 /* 4. Open Channel Hydraulics Diagram with Flow Regime & Freeboard */
-export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result: ChannelHydraulicsResult }> = ({
+export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result: ChannelHydraulicsResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
+  unitPreset = 'metric',
 }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
   const width = 680;
   const height = 260;
@@ -1784,7 +1792,7 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
               fontWeight="bold"
               fill="#f59e0b"
             >
-              yc={result.criticalDepthM.toFixed(2)}m
+              yc={fmtD(result.criticalDepthM)}
             </text>
           </g>
         )}
@@ -1802,7 +1810,7 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
           <title>{`Depth: y = ${params.flowDepthM.toFixed(2)}m`}</title>
           <line x1={centerX - waterTopHalfPx - 18} y1={bedY - yPx} x2={centerX - waterTopHalfPx - 18} y2={bedY} stroke="#0ea5e9" strokeWidth="1.2" />
           <text x={centerX - waterTopHalfPx - 24} y={bedY - yPx / 2 + 3} textAnchor="end" fontSize="9" fontWeight="600" fill="#0ea5e9">
-            y = {params.flowDepthM.toFixed(2)}m
+            y = {fmtD(params.flowDepthM)}
           </text>
         </g>
 
@@ -1820,7 +1828,7 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
             <title>{`Freeboard: ${(params.freeboardRequirementM || 0.3).toFixed(2)}m`}</title>
             <line x1={centerX + bankTopHalfPx + 15} y1={bedY - totalDepthPx} x2={centerX + bankTopHalfPx + 15} y2={bedY - yPx} stroke="var(--md-sys-color-tertiary)" strokeWidth="1.2" />
             <text x={centerX + bankTopHalfPx + 20} y={bedY - yPx - (totalDepthPx - yPx) / 2 + 3} fontSize="8" fontWeight="600" fill="var(--md-sys-color-tertiary)">
-              FB: {(params.freeboardRequirementM || 0.3).toFixed(2)}m
+              FB: {fmtD(params.freeboardRequirementM || 0.3)}
             </text>
           </g>
         )}
@@ -1836,7 +1844,7 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
         >
           <line x1={centerX - bPx / 2} y1={bedY + 12} x2={centerX + bPx / 2} y2={bedY + 12} stroke="var(--md-sys-color-outline)" strokeWidth="1" />
           <text x={centerX} y={bedY + 24} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-on-surface)">
-            Bed b = {params.bottomWidthM.toFixed(2)}m {!isRectangular && `(Side Slope ${params.sideSlopeZ}:1)`}
+            Bed b = {fmtD(params.bottomWidthM)} {!isRectangular && `(Side Slope ${params.sideSlopeZ}:1)`}
           </text>
         </g>
 
@@ -1860,10 +1868,10 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
           <text x={12} y={76} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Mean Velocity V:</text>
           <text x={12} y={90} fontSize="11" fontWeight="600" fill="var(--md-sys-color-on-surface)">{result.velocityMps.toFixed(2)} m/s</text>
           <text x={12} y={108} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Hydraulic Radius R:</text>
-          <text x={12} y={122} fontSize="11" fontWeight="600" fill="var(--md-sys-color-on-surface)">{result.hydraulicRadiusM.toFixed(3)} m</text>
+          <text x={12} y={122} fontSize="11" fontWeight="600" fill="var(--md-sys-color-on-surface)">{unitPreset === 'metric' ? `${result.hydraulicRadiusM.toFixed(3)} m` : fmtD(result.hydraulicRadiusM)}</text>
           <text x={12} y={140} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Froude Number Fr:</text>
           <text x={12} y={154} fontSize="12" fontWeight="700" fill={regimeColor}>{result.froudeNumber.toFixed(2)}</text>
-          <text x={12} y={170} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Top Width: {result.topWidthM.toFixed(2)}m</text>
+          <text x={12} y={170} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">Top Width: {fmtD(result.topWidthM)}</text>
         </g>
       </svg>
       <FormulaTooltipOverlay tooltip={tooltip} />
@@ -1873,7 +1881,7 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
 };
 
 /* 5. Concrete Materials Diagram (BNBC 2020 / ACI 318 / IS 456) */
-export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialParameters; result: ConcreteMaterialResult }> = ({
+export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialParameters; result: ConcreteMaterialResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
 }) => {
@@ -2032,10 +2040,12 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
 };
 
 /* 6. Rebar BBS Diagram with Bar Marks, Bending Shape Schematics & Seismic Hook Detailing */
-export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: RebarBBSResult }> = ({
+export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: RebarBBSResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
+  unitPreset = 'metric',
 }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
   const width = 680;
   const height = 340;
@@ -2292,7 +2302,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
               <ellipse key={idx} cx={rx} cy={71} rx={6} ry={34} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
             ))}
             <text x={15} y={142} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-P1: {params.pileMainBarCount ?? 7}-Ø{params.pileMainBarDiaMm ?? 16} (L={params.pileLengthM ?? 18}m) · MK-P2: Spiral Ø{params.pileSpiralDiaMm ?? 8}@{params.pileSpiralPitchMm ?? 150}
+              MK-P1: {params.pileMainBarCount ?? 7}-Ø{params.pileMainBarDiaMm ?? 16} (L={fmtD(params.pileLengthM ?? 18)}) · MK-P2: Spiral Ø{params.pileSpiralDiaMm ?? 8}@{params.pileSpiralPitchMm ?? 150}
             </text>
           </g>
         )}
@@ -2314,7 +2324,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
           <text x={16} y={52} fontSize="22" fontWeight="800" fill="var(--md-sys-color-primary)">{result.totalSteelWeightKg.toFixed(1)} kg</text>
           <text x={16} y={74} fontSize="11.5" fontWeight="600" fill="var(--md-sys-color-on-surface)">= {result.totalSteelTonnes.toFixed(3)} Tonnes</text>
           <line x1={16} y1={85} x2={214} y2={85} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
-          <text x={16} y={101} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Total Cut Length: {result.totalBarsLengthM.toFixed(1)} m</text>
+          <text x={16} y={101} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Total Cut Length: {fmtD(result.totalBarsLengthM)}</text>
           <text x={16} y={116} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">
             12m Stock Bars: {result.commercialBarStock?.total12mBarsCount ?? 0} nos
           </text>
@@ -2444,10 +2454,12 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
 };
 
 /* 7. Masonry Diagram */
-export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: MasonryResult }> = ({
+export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: MasonryResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
+  unitPreset = 'metric',
 }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
   const height = 240;
@@ -2457,7 +2469,7 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
         <rect x={10} y={10} width={width - 20} height={height - 20} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" strokeDasharray="4 4" />
         <text x={width / 2} y={height / 2 - 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          ZERO MASONRY WALL GEOMETRY (0.00 m)
+          ZERO MASONRY WALL GEOMETRY ({fmtD(0)})
         </text>
         <text x={width / 2} y={height / 2 + 12} textAnchor="middle" fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
           Enter wall length and height to compute net brick count, mortar volume and plastering area
@@ -2570,10 +2582,12 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
 };
 
 /* 8. Earthwork Diagram */
-export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result: EarthworkResult }> = ({
+export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result: EarthworkResult; unitPreset?: UnitSystemPreset }> = ({
   params,
   result,
+  unitPreset = 'metric',
 }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
   const stations = result.stationSchedule && result.stationSchedule.length >= 2 ? result.stationSchedule : null;
@@ -2702,13 +2716,13 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
             fontWeight="700"
             fill="var(--md-sys-color-on-surface)"
           >
-            b = {repWidthB.toFixed(2)} m
+            b = {fmtD(repWidthB)}
           </text>
 
           {/* Depth / Height Dimension h */}
           <line x1={cx} y1={yBase} x2={cx} y2={yOther} stroke="var(--md-sys-color-primary)" strokeWidth="1.2" strokeDasharray="2 2" />
           <text x={cx + 5} y={(yBase + yOther) / 2 + 3} fontSize="9" fontWeight="700" fill="var(--md-sys-color-primary)">
-            h={repDepthH.toFixed(2)}m
+            h={fmtD(repDepthH)}
           </text>
 
           {/* Side Slope Label s:1 */}
@@ -2797,7 +2811,7 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
             <g transform="translate(0, 10)">
               <rect x={20} y={190} width={640} height={134} rx={8} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline-variant)" />
               <text x={32} y={208} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-                LONGITUDINAL CUT/FILL PROFILE &amp; MASS-HAUL CURVE (Ch {minCh}m → Ch {maxCh}m)
+                LONGITUDINAL CUT/FILL PROFILE &amp; MASS-HAUL CURVE (Ch {fmtD(minCh)} → Ch {fmtD(maxCh)})
               </text>
               <text x={648} y={208} textAnchor="end" fontSize="9" fontWeight="700" fill={(result.netMassHaulBalanceM3 ?? 0) >= 0 ? '#0284c7' : '#e11d48'}>
                 {(result.netMassHaulBalanceM3 ?? 0) >= 0
@@ -2822,7 +2836,7 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
                       <rect x={x - 6} y={baseY} width={12} height={fillH} rx={2} fill="#059669" fillOpacity="0.45" stroke="#059669" strokeWidth="1" />
                     )}
                     <text x={x} y={314} textAnchor="middle" fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">
-                      {s.chainageM}m
+                      {fmtD(s.chainageM)}
                     </text>
                   </g>
                 );
@@ -2852,6 +2866,7 @@ export const UnitConverterDiagramSvg: React.FC<{
   inputVal: number;
   outputVal: number;
   category: string;
+  unitPreset?: UnitSystemPreset;
 }> = ({ fromUnit, toUnit, inputVal, outputVal, category }) => {
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
@@ -2931,6 +2946,7 @@ export const UnitConverterDiagramSvg: React.FC<{
 export const BOQCostBreakdownDiagramSvg: React.FC<{
   params: BOQParameters;
   result: BOQResult;
+  unitPreset?: UnitSystemPreset;
 }> = ({ params, result }) => {
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
@@ -3161,6 +3177,7 @@ export const BOQCostBreakdownDiagramSvg: React.FC<{
 export const RateAnalysisBreakdownDiagramSvg: React.FC<{
   params: RateAnalysisParameters;
   result: RateAnalysisResult;
+  unitPreset?: UnitSystemPreset;
 }> = ({ params, result }) => {
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
@@ -3375,7 +3392,9 @@ export const RateAnalysisBreakdownDiagramSvg: React.FC<{
 export const ContinuousBeamDiagramSvg: React.FC<{
   params: ContinuousBeamParameters;
   result: ContinuousBeamResult;
-}> = ({ params, result }) => {
+  unitPreset?: UnitSystemPreset;
+}> = ({ params, result, unitPreset = 'metric' }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const svgRef = useRef<SVGSVGElement>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'sfd' | 'bmd' | 'deflection' | 'coordinates'>('all');
@@ -3732,7 +3751,7 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                       BEAM ELEVATION
                     </text>
                     <text x={12} y={elevY - 22} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
-                      Total L = {result.totalLengthM.toFixed(1)}m
+                      Total L = {fmtD(result.totalLengthM)}
                     </text>
 
                     {/* Main Structural Beam Solid Axis with Tooltip */}
@@ -3939,7 +3958,7 @@ export const ContinuousBeamDiagramSvg: React.FC<{
                             textAnchor="middle"
                             fill="var(--md-sys-color-on-surface)"
                           >
-                            Span {idx + 1}: L={span.lengthM}m
+                            Span {idx + 1}: L={fmtD(span.lengthM)}
                           </motion.text>
                         </g>
                       );
@@ -4320,7 +4339,9 @@ export const ContinuousBeamDiagramSvg: React.FC<{
 export const PileCapacityDiagramSvg: React.FC<{
   params: PileCapacityParameters;
   result: PileCapacityResult;
-}> = ({ params, result }) => {
+  unitPreset?: UnitSystemPreset;
+}> = ({ params, result, unitPreset = 'metric' }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const [activeTab, setActiveTab] = useState<'stratigraphy' | 'friction-spt' | 'settlement' | 'methods' | 'clauses'>('stratigraphy');
   const [hoverDepth, setHoverDepth] = useState<{ z: number; py: number; layerName: string; fsKpa: number; sigmaV0: number; sptN: number } | null>(null);
@@ -4451,7 +4472,7 @@ export const PileCapacityDiagramSvg: React.FC<{
               Deep Foundation Capacity Solvers Comparison
             </span>
             <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-              Safety Factor FS = {result.factorOfSafety} | D = {result.diameterM}m, L = {result.lengthM}m
+              Safety Factor FS = {result.factorOfSafety} | D = {fmtD(result.diameterM)}, L = {fmtD(result.lengthM)}
             </span>
           </div>
 
@@ -4661,7 +4682,7 @@ export const PileCapacityDiagramSvg: React.FC<{
                     {layer.layerName}
                   </text>
                   <text x={38} y={yTop + 25} fontSize="7" fill="var(--md-sys-color-on-surface-variant)">
-                    {layer.depthFromM}m to {layer.depthToM}m · {layer.soilType.toUpperCase()} · fs = {layer.unitFrictionKpa} kPa
+                    {fmtD(layer.depthFromM)} to {fmtD(layer.depthToM)} · {layer.soilType.toUpperCase()} · fs = {layer.unitFrictionKpa} kPa
                   </text>
 
                   {/* SPT N-Value Bar Chart on the Left (active in friction-spt tab) */}
@@ -4696,7 +4717,7 @@ export const PileCapacityDiagramSvg: React.FC<{
                       <line x1={30} y1={gwtY} x2={510} y2={gwtY} stroke="#0ea5e9" strokeWidth="1.5" strokeDasharray="6 4" />
                       <polygon points={`34,${gwtY - 6} 40,${gwtY - 6} 37,${gwtY}`} fill="#0ea5e9" />
                       <text x={44} y={gwtY - 4} fontSize="8" fontWeight="700" fill="#0ea5e9">
-                        ▼ GWT -{params.groundwaterDepthM.toFixed(1)}m (Piezometric Level)
+                        ▼ GWT -{fmtD(params.groundwaterDepthM)} (Piezometric Level)
                       </text>
                     </g>
                   );
@@ -4862,7 +4883,7 @@ export const PileCapacityDiagramSvg: React.FC<{
                 <g transform={`translate(${Math.min(350, pileCenterX + 35)}, ${Math.max(groundY + 10, hoverDepth.py - 24)})`}>
                   <rect x={0} y={0} width={150} height={48} rx={5} fill="var(--md-sys-color-surface)" stroke="var(--md-sys-color-primary)" strokeWidth="1.2" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))" />
                   <text x={8} y={13} fontSize="8.5" fontWeight="700" fill="var(--md-sys-color-primary)">
-                    Depth z = {hoverDepth.z.toFixed(2)}m · {hoverDepth.layerName}
+                    Depth z = {fmtD(hoverDepth.z)} · {hoverDepth.layerName}
                   </text>
                   <text x={8} y={26} fontSize="8" fill="var(--md-sys-color-on-surface)">
                     Unit fs: <tspan fontWeight="700" fill="#3b82f6">{hoverDepth.fsKpa} kPa</tspan> · SPT N: <tspan fontWeight="700">{hoverDepth.sptN}</tspan>
@@ -4886,7 +4907,9 @@ export const PileCapacityDiagramSvg: React.FC<{
 export const PipeHydraulicsDiagramSvg: React.FC<{
   params: PipeHydraulicsParameters;
   result: PipeHydraulicsResult;
-}> = ({ params, result }) => {
+  unitPreset?: UnitSystemPreset;
+}> = ({ params, result, unitPreset = 'metric' }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const width = 680;
   const height = 330;
@@ -4967,10 +4990,10 @@ export const PipeHydraulicsDiagramSvg: React.FC<{
           <title>Energy Grade Line (EGL)</title>
           <line x1={padLeft} y1={eglInletY} x2={padLeft + plotW} y2={eglOutletY} stroke="#e11d48" strokeWidth="2" strokeDasharray="5 2" />
           <text x={padLeft + 5} y={eglInletY - 6} fontSize="8" fontWeight="700" fill="#e11d48">
-            EGL In ({result.inletTotalHeadM} m)
+            EGL In ({fmtD(result.inletTotalHeadM)})
           </text>
-          <text x={padLeft + plotW - 85} y={eglOutletY - 6} fontSize="8" fontWeight="700" fill="#e11d48">
-            EGL Out ({result.outletTotalHeadM} m)
+          <text x={padLeft + plotW - 105} y={eglOutletY - 6} fontSize="8" fontWeight="700" fill="#e11d48">
+            EGL Out ({fmtD(result.outletTotalHeadM)})
           </text>
         </g>
 
@@ -5049,10 +5072,10 @@ export const PipeHydraulicsDiagramSvg: React.FC<{
 
         {/* Inlet & Outlet Elevation Callouts */}
         <text x={padLeft} y={inletY + 95} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
-          Inlet: {params.inletElevationM}m · Pin = {result.inletPressureKpa} kPa
+          Inlet: {fmtD(params.inletElevationM)} · Pin = {result.inletPressureKpa} kPa
         </text>
-        <text x={padLeft + plotW - 120} y={outletY + 95} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
-          Outlet: {params.outletElevationM}m · Pout = {result.outletPressureKpa} kPa
+        <text x={padLeft + plotW - 140} y={outletY + 95} fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
+          Outlet: {fmtD(params.outletElevationM)} · Pout = {result.outletPressureKpa} kPa
         </text>
 
         {/* Head Loss Dimension Bar with Tooltip */}
@@ -5071,7 +5094,7 @@ export const PipeHydraulicsDiagramSvg: React.FC<{
           <line x1={-4} y1={0} x2={4} y2={0} stroke="#f43f5e" strokeWidth="1.5" />
           <line x1={-4} y1={eglOutletY - eglInletY} x2={4} y2={eglOutletY - eglInletY} stroke="#f43f5e" strokeWidth="1.5" />
           <text x={8} y={(eglOutletY - eglInletY) / 2 + 4} fontSize="8.5" fontWeight="700" fill="#f43f5e">
-            h_f = {result.frictionHeadLossM}m
+            h_f = {fmtD(result.frictionHeadLossM)}
           </text>
         </g>
 
@@ -5124,6 +5147,7 @@ export const PipeHydraulicsDiagramSvg: React.FC<{
 export const FrameTruss2DDiagramSvg: React.FC<{
   params: FrameTruss2DParams;
   result: FrameTruss2DResult;
+  unitPreset?: UnitSystemPreset;
 }> = ({ params, result }) => {
   const [overlayMode, setOverlayMode] = useState<'deformed' | 'bmd' | 'sfd' | 'afd'>('bmd');
   const [showDeformedGhost, setShowDeformedGhost] = useState(true);
@@ -5652,7 +5676,9 @@ export const FrameTruss2DDiagramSvg: React.FC<{
 export const SectionAnalyzerDiagramSvg: React.FC<{
   params: SectionAnalyzerParams;
   result: SectionAnalyzerResult;
-}> = ({ params, result }) => {
+  unitPreset?: UnitSystemPreset;
+}> = ({ params, result, unitPreset = 'metric' }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { containerRef, tooltip, bindHover } = useFormulaTooltip();
   const [panelMode, setPanelMode] = useState<'dual' | 'stress' | 'nm'>('dual');
   const [showPlasticOverlay, setShowPlasticOverlay] = useState(true);
@@ -5961,7 +5987,9 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
 
             {/* Dimension labels */}
             <text x={secCx} y={zBotPx + 18} textAnchor="middle" fontSize="8" fill="var(--md-sys-color-on-surface-variant)">
-              b = {result.widthMm.toFixed(0)} × h = {result.depthMm.toFixed(0)} mm
+              {unitPreset === 'metric'
+                ? `b = ${result.widthMm.toFixed(0)} × h = ${result.depthMm.toFixed(0)} mm`
+                : `b = ${fmtD(result.widthMm / 1000)} × h = ${fmtD(result.depthMm / 1000)}`}
             </text>
 
             {/* Normal Stress σ(z) Diagram */}
@@ -6243,7 +6271,9 @@ export const SectionAnalyzerDiagramSvg: React.FC<{
 export const RcColumnDiagramSvg: React.FC<{
   params: RcColumnParams;
   result: RcColumnDesignResult;
-}> = ({ params, result }) => {
+  unitPreset?: UnitSystemPreset;
+}> = ({ params, result, unitPreset = 'metric' }) => {
+  const fmtD = (m: number) => formatLengthByPreset(m, unitPreset, 'diagram');
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
   const [activeAxis, setActiveAxis] = useState<'X' | 'Y'>('X');
   const [showNominal, setShowNominal] = useState(true);
@@ -6352,7 +6382,7 @@ export const RcColumnDiagramSvg: React.FC<{
       <svg viewBox="0 0 720 355" className="w-full h-auto rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
         {/* Left Panel Title */}
         <text x={secBoxCx} y={24} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface)] font-sans text-[12px] font-bold">
-          Column Section ({result.widthB_Mm}×{result.depthH_Mm} mm)
+          Column Section ({unitPreset === 'metric' ? `${result.widthB_Mm}×${result.depthH_Mm} mm` : `${fmtD(result.widthB_Mm / 1000)} × ${fmtD(result.depthH_Mm / 1000)}`})
         </text>
         <text x={secBoxCx} y={40} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
           {result.totalBarCount}-Ø{result.longitudinalBarDiaMm}mm (ρ_g = {result.rhoPercent.toFixed(2)}%)
@@ -6426,7 +6456,7 @@ export const RcColumnDiagramSvg: React.FC<{
 
         {/* Width & Depth Dimension Annotations */}
         <text x={secBoxCx} y={secY + drawH + 28} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
-          b = {result.widthB_Mm} mm
+          b = {unitPreset === 'metric' ? `${result.widthB_Mm} mm` : fmtD(result.widthB_Mm / 1000)}
         </text>
         <text
           x={secX - 18}
@@ -6435,7 +6465,7 @@ export const RcColumnDiagramSvg: React.FC<{
           transform={`rotate(-90 ${secX - 18} ${secBoxCy})`}
           className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]"
         >
-          h = {result.depthH_Mm} mm
+          h = {unitPreset === 'metric' ? `${result.depthH_Mm} mm` : fmtD(result.depthH_Mm / 1000)}
         </text>
         <text x={secBoxCx} y={322} textAnchor="middle" className="fill-[var(--md-sys-color-on-surface-variant)] font-mono text-[10px]">
           Ties Ø{result.tieBarDiaMm}@{result.tieSpacingMm}mm c/c · f&apos;c={result.concreteFcMpa} / fy={result.rebarFyMpa} MPa
@@ -6619,6 +6649,7 @@ export const RcColumnDiagramSvg: React.FC<{
 export const StrutAndTieDiagramSvg: React.FC<{
   params: StrutAndTieParams;
   result: StrutAndTieResult;
+  unitPreset?: UnitSystemPreset;
 }> = ({ params, result }) => {
   const { tooltip, containerRef, bindHover } = useFormulaTooltip();
 

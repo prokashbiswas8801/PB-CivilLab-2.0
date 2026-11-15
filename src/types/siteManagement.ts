@@ -93,6 +93,12 @@ export interface InventoryItem {
   specification?: string;
   locationRack?: string;
   notes?: string;
+  qaStatus?: 'Pending' | 'QA Verified' | 'Quarantined / Rejected';
+  lastQaTestCode?: string;
+  lastQaTestName?: string;
+  lastQaSampleRef?: string;
+  lastQaTestedAt?: string;
+  lastQaRemarks?: string;
   updatedAt: string;
 }
 
@@ -363,6 +369,24 @@ export interface ProjectFinancialSummary {
   grandTotalSiteCost: number;
 }
 
+export interface QaLogEntry {
+  id: string;
+  date: string; // YYYY-MM-DD
+  timestamp: string;
+  testId: string;
+  testCode: string;
+  testNameEn: string;
+  testNameBn: string;
+  domainId: string;
+  sampleRef: string;
+  locationGrid: string;
+  primaryResult: string;
+  codeLimit: string;
+  verdict: 'PASS' | 'WARNING' | 'FAIL';
+  testedBy: string;
+  remarks?: string;
+}
+
 export interface DailyProgressReport {
   date: string;
   projectCode: string;
@@ -409,6 +433,7 @@ export interface DailyProgressReport {
     daysLeft: number;
   }>;
   fieldNotesToday: FieldNote[];
+  qaQcLogsToday?: QaLogEntry[];
   remarks: string;
   compiledBy: string;
   generatedAt: string;
@@ -434,4 +459,5 @@ export interface SiteManagementData {
   raBills: ContractorRABill[];
   pettyCash: PettyCashTransaction[];
   cubeTests: CubeTestRecord[];
+  qaQcLogs?: QaLogEntry[];
 }
