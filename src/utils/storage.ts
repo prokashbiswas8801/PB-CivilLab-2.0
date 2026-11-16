@@ -2244,16 +2244,33 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
   };
 }
 
+const PROFILE_PURGED_V4_FLAG = 'bd_civillab_state_profile_purged_v4';
+
+function stripPreSeededProfileFromState(state: CivilLabSchemaV2): CivilLabSchemaV2 {
+  const cleanProf = createDefaultUserProfile();
+  const cleanedWorkspaces = (state.workspaces || []).map((ws) => ({
+    ...ws,
+    engineerOfRecord: '',
+  }));
+  return {
+    ...state,
+    userProfile: cleanProf,
+    workspaces: cleanedWorkspaces,
+  };
+}
+
 export function purgeLegacyStorage(): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     const hasLegacyV1 = localStorage.getItem(LEGACY_V1_KEY);
     const hasLegacyV2 = localStorage.getItem(LEGACY_V2_KEY);
+    const hasLegacyPbV3 = localStorage.getItem(LEGACY_PB_V3_KEY);
 
-    if (hasLegacyV1 !== null || hasLegacyV2 !== null) {
-      console.info('[BD. CivilLab] Purging legacy storage keys (pb_civillab_state_v1, pb_civillab_state_v2).');
+    if (hasLegacyV1 !== null || hasLegacyV2 !== null || hasLegacyPbV3 !== null) {
+      console.info('[BD. CivilLab] Purging legacy storage keys (pb_civillab_state_v1/v2/v3).');
       localStorage.removeItem(LEGACY_V1_KEY);
       localStorage.removeItem(LEGACY_V2_KEY);
+      localStorage.removeItem(LEGACY_PB_V3_KEY);
     }
   } catch (err) {
     console.warn('[BD. CivilLab] Purge error:', err);
@@ -2264,25 +2281,20 @@ export function loadPersistedState(): CivilLabSchemaV2 {
   // Purge legacy storage on initial boot
   purgeLegacyStorage();
 
-  try {
-    let rawV3 = localStorage.getItem(STORAGE_KEY);
+  const needsV4ProfilePurge =
+    typeof window !== 'undefined' &&
+    window.localStorage &&
+    localStorage.getItem(PROFILE_PURGED_V4_FLAG) !== '1';
 
-    // Seamless migration from legacy PB v3 storage key so user never loses data
-    if (!rawV3) {
-      const legacyPbV3 = localStorage.getItem(LEGACY_PB_V3_KEY);
-      if (legacyPbV3) {
-        rawV3 = legacyPbV3;
-        try {
-          localStorage.setItem(STORAGE_KEY, legacyPbV3);
-        } catch {
-          // ignore quota error
-        }
-      }
-    }
+  try {
+    const rawV3 = localStorage.getItem(STORAGE_KEY);
 
     if (!rawV3) {
       const initial = createDefaultSchemaV2();
       savePersistedState(initial);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+      }
       return initial;
     }
 
@@ -2298,17 +2310,31 @@ export function loadPersistedState(): CivilLabSchemaV2 {
       // Version mismatch: wipe previously entered user logs and reset to clean baseline while preserving system settings
       const clean = createDefaultSchemaV2();
       if (parsed.themePreference) clean.themePreference = parsed.themePreference;
-      if (parsed.userProfile) clean.userProfile = { ...clean.userProfile, ...parsed.userProfile };
+      if (parsed.userProfile && !needsV4ProfilePurge) {
+        clean.userProfile = { ...clean.userProfile, ...parsed.userProfile };
+      }
       if (parsed.userPreferences) clean.userPreferences = { ...clean.userPreferences, ...parsed.userPreferences };
       savePersistedState(clean);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+      }
       return clean;
     }
 
-    return validateAndNormalizeV2(parsed);
+    let normalized = validateAndNormalizeV2(parsed);
+    if (needsV4ProfilePurge) {
+      normalized = stripPreSeededProfileFromState(normalized);
+      savePersistedState(normalized);
+      localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+    }
+    return normalized;
   } catch (err) {
     console.error('[BD. CivilLab] Failed to parse localStorage state; falling back to clean schema v3:', err);
     const recovered = createDefaultSchemaV2();
     savePersistedState(recovered);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+    }
     return recovered;
   }
 }
@@ -2368,7 +2394,15 @@ export function clearAndResetStorage(mode: 'clean' | 'demo' = 'clean'): CivilLab
 export async function restoreStateFromIndexedDB(): Promise<CivilLabSchemaV2 | null> {
   const loaded = await loadFromIndexedDB();
   if (loaded) {
-    const normalized = validateAndNormalizeV2(loaded);
+    let normalized = validateAndNormalizeV2(loaded);
+    if (
+      typeof window !== 'undefined' &&
+      window.localStorage &&
+      localStorage.getItem(PROFILE_PURGED_V4_FLAG) !== '1'
+    ) {
+      normalized = stripPreSeededProfileFromState(normalized);
+      localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+    }
     savePersistedState(normalized);
     return normalized;
   }

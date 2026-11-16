@@ -127,6 +127,7 @@ export interface CivilLabContextType {
   // User Profile
   userProfile: CivilUserProfile;
   updateUserProfile: (partial: Partial<CivilUserProfile>) => void;
+  clearUserProfile: () => void;
   addProject: (project: Omit<CivilProjectItem, 'id' | 'createdAt'>) => void;
   updateProject: (id: string, partial: Partial<CivilProjectItem>) => void;
   removeProject: (id: string) => void;
@@ -235,21 +236,63 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         localStorage.removeItem(STORAGE_KEYS.SAVED_HISTORY);
         localStorage.removeItem(STORAGE_KEYS.SEARCH_HISTORY);
 
-        // Migrate system settings if not already present in v3
-        const oldProfile = localStorage.getItem('pb_civillab_user_profile_v2');
-        if (oldProfile && !localStorage.getItem(STORAGE_KEYS.USER_PROFILE)) {
-          localStorage.setItem(STORAGE_KEYS.USER_PROFILE, oldProfile);
-        }
-        const oldPdf = localStorage.getItem('pb_civillab_pdf_preset_v2');
-        if (oldPdf && !localStorage.getItem(STORAGE_KEYS.PDF_PRESET)) {
-          localStorage.setItem(STORAGE_KEYS.PDF_PRESET, oldPdf);
-        }
+        // Remove legacy personal profile & PDF preset caches so profile starts blank
+        localStorage.removeItem('pb_civillab_user_profile_v2');
+        localStorage.removeItem('pb_civillab_pdf_preset_v2');
+
         const oldPinned = localStorage.getItem('pb_civillab_pinned_tools_v2');
         if (oldPinned && !localStorage.getItem(STORAGE_KEYS.PINNED_TOOLS)) {
           localStorage.setItem(STORAGE_KEYS.PINNED_TOOLS, oldPinned);
         }
 
         localStorage.setItem(CIVILLAB_CONTEXT_VERSION_KEY, CURRENT_CIVILLAB_CONTEXT_VERSION);
+      }
+
+      // One-time v4 purge: delete any previously saved "Prokash Biswas" & personal credentials in Profile module
+      if (localStorage.getItem('bd_civillab_profile_purged_v4') !== '1') {
+        localStorage.removeItem('pb_civillab_user_profile_v2');
+        localStorage.removeItem('pb_civillab_pdf_preset_v2');
+
+        const existingProfileRaw = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+        if (existingProfileRaw) {
+          try {
+            const parsedProf = JSON.parse(existingProfileRaw);
+            localStorage.setItem(
+              STORAGE_KEYS.USER_PROFILE,
+              JSON.stringify({
+                ...parsedProf,
+                name: '',
+                title: '',
+                organization: '',
+                licenseNo: '',
+                email: '',
+                phone: '',
+                location: '',
+              })
+            );
+          } catch {
+            localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
+          }
+        }
+
+        const existingPdfRaw = localStorage.getItem(STORAGE_KEYS.PDF_PRESET);
+        if (existingPdfRaw) {
+          try {
+            const parsedPdf = JSON.parse(existingPdfRaw);
+            localStorage.setItem(
+              STORAGE_KEYS.PDF_PRESET,
+              JSON.stringify({
+                ...parsedPdf,
+                companySubtitle: '',
+                signatoryName: '',
+              })
+            );
+          } catch {
+            localStorage.removeItem(STORAGE_KEYS.PDF_PRESET);
+          }
+        }
+
+        localStorage.setItem('bd_civillab_profile_purged_v4', '1');
       }
     } catch (e) {
       console.warn('[CivilLabContext] Purge error:', e);
@@ -496,6 +539,24 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUserProfile((prev) => ({ ...prev, ...partial }));
   }, []);
 
+  const clearUserProfile = useCallback(() => {
+    setUserProfile((prev) => ({
+      ...prev,
+      name: '',
+      title: '',
+      organization: '',
+      licenseNo: '',
+      email: '',
+      phone: '',
+      location: '',
+    }));
+    setPdfPreset((prev) => ({
+      ...prev,
+      companySubtitle: '',
+      signatoryName: '',
+    }));
+  }, []);
+
   const addProject = useCallback((project: Omit<CivilProjectItem, 'id' | 'createdAt'>) => {
     const newProj: CivilProjectItem = {
       ...project,
@@ -585,6 +646,7 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       importSavedHistory,
       userProfile,
       updateUserProfile,
+      clearUserProfile,
       addProject,
       updateProject,
       removeProject,
@@ -616,6 +678,7 @@ export const CivilLabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       importSavedHistory,
       userProfile,
       updateUserProfile,
+      clearUserProfile,
       addProject,
       updateProject,
       removeProject,

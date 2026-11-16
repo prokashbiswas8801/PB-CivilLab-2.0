@@ -105,8 +105,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   const handleSaveMetadata = (e: React.FormEvent) => {
     e.preventDefault();
     workbench.updateProjectMetadata({
-      projectName: editName.trim() || 'Standard Civil Infrastructure Project',
-      engineerName: editEngineer.trim() || 'Lead Structural Engineer',
+      projectName: editName.trim() || 'Untitled Project',
+      engineerName: editEngineer.trim(),
       date: editDate || new Date().toISOString().split('T')[0],
     });
     setProjectPopoverOpen(false);

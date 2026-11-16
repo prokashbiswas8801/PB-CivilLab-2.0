@@ -225,11 +225,11 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_METADATA: ProjectMetadata = {
-  projectName: 'Standard Civil Infrastructure Project',
-  projectCode: 'BDCL-2026-DES',
-  clientName: 'Public Works Department (PWD)',
-  engineerName: 'Lead Structural & Civil Engineer',
-  projectLocation: 'Dhaka Metropolitan Zone, Bangladesh',
+  projectName: 'Untitled Project',
+  projectCode: 'PRJ-001',
+  clientName: '',
+  engineerName: '',
+  projectLocation: '',
   date: new Date().toISOString().split('T')[0],
 };
 
@@ -288,6 +288,45 @@ export const WorkbenchProvider: React.FC<WorkbenchProviderProps> = ({ children }
         }
 
         localStorage.setItem(WORKBENCH_VERSION_KEY, CURRENT_WORKBENCH_VERSION);
+      }
+
+      // One-time v4 cleanup: clear previously pre-seeded generic/personal project metadata
+      if (localStorage.getItem('bd_civillab_workbench_purged_v4') !== '1') {
+        const metaRaw = localStorage.getItem(STORAGE_KEYS.PROJECT_METADATA);
+        if (metaRaw) {
+          try {
+            const parsedMeta = JSON.parse(metaRaw);
+            const cleanedMeta = {
+              ...DEFAULT_METADATA,
+              ...parsedMeta,
+              projectName:
+                parsedMeta.projectName === 'Standard Civil Infrastructure Project'
+                  ? 'Untitled Project'
+                  : parsedMeta.projectName || 'Untitled Project',
+              projectCode:
+                parsedMeta.projectCode === 'BDCL-2026-DES'
+                  ? 'PRJ-001'
+                  : parsedMeta.projectCode || 'PRJ-001',
+              clientName:
+                parsedMeta.clientName === 'Public Works Department (PWD)' ||
+                parsedMeta.clientName === 'Public Works Dept (PWD)'
+                  ? ''
+                  : parsedMeta.clientName || '',
+              engineerName:
+                /prokash|biswas|lead structural/i.test(String(parsedMeta.engineerName || ''))
+                  ? ''
+                  : parsedMeta.engineerName || '',
+              projectLocation:
+                parsedMeta.projectLocation === 'Dhaka Metropolitan Zone, Bangladesh'
+                  ? ''
+                  : parsedMeta.projectLocation || '',
+            };
+            localStorage.setItem(STORAGE_KEYS.PROJECT_METADATA, JSON.stringify(cleanedMeta));
+          } catch {
+            localStorage.removeItem(STORAGE_KEYS.PROJECT_METADATA);
+          }
+        }
+        localStorage.setItem('bd_civillab_workbench_purged_v4', '1');
       }
     } catch (e) {
       console.warn('[WorkbenchContext] Purge error:', e);

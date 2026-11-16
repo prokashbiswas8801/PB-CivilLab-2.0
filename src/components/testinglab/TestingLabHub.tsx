@@ -122,7 +122,7 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
   onNotify,
 }) => {
   const { siteData, logLabVerdictToDpr, updateInventoryQaStatus } = useSiteManagement();
-  const { setPendingNcrDraft } = useCivilLab();
+  const { userProfile: civilLabProfile, setPendingNcrDraft } = useCivilLab();
 
   const labState: TestingLabWorkspaceState = activeWorkspace.testingLab || DEFAULT_TESTING_LAB_STATE;
   const langMode = labState.languageMode || 'dual';
@@ -258,7 +258,7 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
 
   const handleSaveRecord = () => {
     const nowIso = new Date().toISOString();
-    const tester = userProfile?.fullName || activeWorkspace.engineerOfRecord || 'QA/QC Site Engineer';
+    const tester = userProfile?.fullName || civilLabProfile?.name || activeWorkspace.engineerOfRecord || 'Not Set';
 
     if (activeTest.checklistItems && activeTest.checklistItems.length > 0) {
       let passed = 0;
@@ -1719,14 +1719,15 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
 
               {/* Bespoke BNBC-2020 / ACI 318 Compliance + 1-Click Sync to SM-08 Cube Register (LAB-CON-02) */}
               {activeTest.id === 'con-cylinder-cube' && (() => {
-                const fc = Math.max(5, currentInputs.designFcMpa ?? 25);
+                const fc = currentInputs.designFcMpa ?? 0;
                 const ageD = Math.max(1, Math.round(currentInputs.testAgeDays ?? 28));
                 const specTypeCode = Math.round(currentInputs.specTypeCode ?? 1);
                 const area = specTypeCode === 2 ? 22500 : specTypeCode === 3 ? Math.PI * 2500 : Math.PI * 5625;
                 const factor = specTypeCode === 2 ? 0.8 : 1.0;
-                const p1 = Math.max(0, currentInputs.load1Kn ?? 475);
-                const p2 = Math.max(0, currentInputs.load2Kn ?? 490);
-                const p3 = Math.max(0, currentInputs.load3Kn ?? 465);
+                const p1 = Math.max(0, currentInputs.load1Kn ?? 0);
+                const p2 = Math.max(0, currentInputs.load2Kn ?? 0);
+                const p3 = Math.max(0, currentInputs.load3Kn ?? 0);
+                if (fc <= 0 || (p1 <= 0 && p2 <= 0 && p3 <= 0)) return null;
                 const currMean = (((p1 + p2 + p3) * 1000) / (3 * area)) * factor;
                 const prev1 = currentInputs.prevTest1Mpa ?? currMean;
                 const prev2 = currentInputs.prevTest2Mpa ?? currMean;
@@ -1818,9 +1819,10 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
 
               {/* Bespoke ASTM C42 3-Core & L/D Correction Strip (LAB-CON-03) */}
               {activeTest.id === 'con-core-cutting' && (() => {
-                const dia = Math.max(40, currentInputs.coreDiaMm ?? 100);
-                const len = Math.max(40, currentInputs.coreLenMm ?? 175);
-                const fc = Math.max(10, currentInputs.designFcMpa ?? 25);
+                const dia = currentInputs.coreDiaMm ?? 0;
+                const len = currentInputs.coreLenMm ?? 0;
+                const fc = currentInputs.designFcMpa ?? 0;
+                if (dia <= 0 || len <= 0 || fc <= 0) return null;
                 const ld = len / dia;
                 let kLd = 1.0;
                 if (ld <= 1.0) kLd = 0.87;
@@ -1829,7 +1831,7 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                 else if (ld <= 1.75) kLd = 0.96 + ((ld - 1.5) / 0.25) * 0.02;
                 else if (ld < 2.0) kLd = 0.98 + ((ld - 1.75) / 0.25) * 0.02;
                 const area = (Math.PI * dia * dia) / 4;
-                const loads = [currentInputs.core1LoadKn ?? 178, currentInputs.core2LoadKn ?? 184, currentInputs.core3LoadKn ?? 172];
+                const loads = [currentInputs.core1LoadKn ?? 0, currentInputs.core2LoadKn ?? 0, currentInputs.core3LoadKn ?? 0];
                 const minCoreLimit = 0.75 * fc;
                 return (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50/70 dark:bg-slate-800/30 space-y-2">
@@ -1858,8 +1860,9 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
 
               {/* Bespoke IS 13311 UPV Quality Classification Band (LAB-CON-05) */}
               {activeTest.id === 'con-upv' && (() => {
-                const pathMm = Math.max(50, currentInputs.upvPathMm ?? 375);
-                const timeUs = Math.max(5, currentInputs.upvTimeUs ?? 88);
+                const pathMm = currentInputs.upvPathMm ?? 0;
+                const timeUs = currentInputs.upvTimeUs ?? 0;
+                if (pathMm <= 0 || timeUs <= 0) return null;
                 const v = pathMm / timeUs;
                 const bands = [
                   { label: '> 4.50 km/s', grade: 'Excellent', active: v > 4.5, cls: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200' },
@@ -2679,7 +2682,7 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const tester = userProfile?.fullName || activeWorkspace.engineerOfRecord || 'QA/QC Site Engineer';
+                      const tester = userProfile?.fullName || civilLabProfile?.name || activeWorkspace.engineerOfRecord || 'Not Set';
                       logLabVerdictToDpr({
                         testId: activeTest.id,
                         testCode: activeTest.code,

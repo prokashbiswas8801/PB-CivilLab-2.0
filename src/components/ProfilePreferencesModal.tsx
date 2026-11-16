@@ -45,7 +45,7 @@ import {
   EngineeringModuleId,
 } from '../types/civil';
 import { useTheme } from '../context/ThemeContext';
-import { exportPresetsPackage, parseAndValidatePresetsPackage, generateUUID } from '../utils/storage';
+import { exportPresetsPackage, parseAndValidatePresetsPackage, generateUUID, createDefaultUserProfile } from '../utils/storage';
 
 export interface ProfilePreferencesModalProps {
   isOpen: boolean;
@@ -607,7 +607,25 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-between gap-3 pt-2">
+                {(profileForm.fullName || profileForm.designation || profileForm.organization || profileForm.licenseNumber || profileForm.email || profileForm.phone || profileForm.bio) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const blank = createDefaultUserProfile();
+                      setProfileForm(blank);
+                      onSaveProfile(blank);
+                      setProfileSavedToast(true);
+                      setTimeout(() => setProfileSavedToast(false), 3000);
+                    }}
+                    className="px-4 py-2.5 rounded-lg border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold inline-flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Saved Profile</span>
+                  </button>
+                ) : (
+                  <span />
+                )}
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 text-xs font-semibold inline-flex items-center gap-2 cursor-pointer shadow-xs transition-opacity"

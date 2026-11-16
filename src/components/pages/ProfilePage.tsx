@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   Sliders,
@@ -35,6 +35,7 @@ export const ProfilePage: React.FC = () => {
   const {
     userProfile,
     updateUserProfile,
+    clearUserProfile,
     addProject,
     updateProject,
     removeProject,
@@ -97,6 +98,47 @@ export const ProfilePage: React.FC = () => {
 
   const [isGeneratingSamplePdf, setIsGeneratingSamplePdf] = useState(false);
 
+  // Keep form states synchronized if context changes externally (e.g. cleared or updated via modal)
+  useEffect(() => {
+    setProfileForm({
+      name: userProfile.name || '',
+      title: userProfile.title || '',
+      organization: userProfile.organization || '',
+      licenseNo: userProfile.licenseNo || '',
+      email: userProfile.email || '',
+      phone: userProfile.phone || '',
+      location: userProfile.location || '',
+    });
+  }, [userProfile]);
+
+  useEffect(() => {
+    setPrefForm({
+      theme: userProfile.theme || 'obsidian-gold',
+      defaultUnitSystem: userProfile.defaultUnitSystem || 'SI',
+      defaultDesignCode: userProfile.defaultDesignCode || 'BNBC 2020',
+      autoCollapseLandscape: userProfile.autoCollapseLandscape ?? true,
+      showShortcutBadges: userProfile.showShortcutBadges ?? true,
+    });
+  }, [userProfile.theme, userProfile.defaultUnitSystem, userProfile.defaultDesignCode, userProfile.autoCollapseLandscape, userProfile.showShortcutBadges]);
+
+  useEffect(() => {
+    setPresetForm({
+      paperSize: pdfPreset.paperSize || 'a4',
+      orientation: pdfPreset.orientation || 'portrait',
+      marginMm: pdfPreset.marginMm || 15,
+      includeHeader: pdfPreset.includeHeader ?? true,
+      includeFooter: pdfPreset.includeFooter ?? true,
+      includeQR: pdfPreset.includeQR ?? true,
+      includeFormulaSteps: pdfPreset.includeFormulaSteps ?? true,
+      includeDiagram: pdfPreset.includeDiagram ?? true,
+      includeSignatureBlock: pdfPreset.includeSignatureBlock ?? true,
+      showProjectMetadata: pdfPreset.showProjectMetadata ?? true,
+      customHeaderTitle: pdfPreset.customHeaderTitle || 'Official Structural & Geotechnical Submittal Sheet',
+      companySubtitle: pdfPreset.companySubtitle || '',
+      signatoryName: pdfPreset.signatoryName || '',
+    });
+  }, [pdfPreset]);
+
   const showToast = (msg: string) => {
     setSaveSuccessMsg(msg);
     setTimeout(() => setSaveSuccessMsg(null), 2500);
@@ -105,10 +147,37 @@ export const ProfilePage: React.FC = () => {
   // Save Profile Handler
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserProfile(profileForm);
-    // Also update signatoryName if it matched previous name
-    updatePdfPreset({ signatoryName: `${profileForm.name}${profileForm.title ? `, ${profileForm.title.split(' ')[0]}` : ''}` });
-    showToast('Engineer profile saved successfully.');
+    const cleaned = {
+      name: profileForm.name.trim(),
+      title: profileForm.title.trim(),
+      organization: profileForm.organization.trim(),
+      licenseNo: profileForm.licenseNo.trim(),
+      email: profileForm.email.trim(),
+      phone: profileForm.phone.trim(),
+      location: profileForm.location.trim(),
+    };
+    updateUserProfile(cleaned);
+    updatePdfPreset({
+      signatoryName: cleaned.name
+        ? `${cleaned.name}${cleaned.title ? `, ${cleaned.title.split(' ')[0]}` : ''}`
+        : '',
+    });
+    showToast(cleaned.name ? 'Engineer profile saved successfully.' : 'Engineer profile updated.');
+  };
+
+  // Delete / Clear Saved Profile Handler
+  const handleClearProfile = () => {
+    clearUserProfile();
+    setProfileForm({
+      name: '',
+      title: '',
+      organization: '',
+      licenseNo: '',
+      email: '',
+      phone: '',
+      location: '',
+    });
+    showToast('Saved engineer profile deleted. Enter new details anytime.');
   };
 
   // Save Preferences Handler
@@ -497,13 +566,25 @@ export const ProfilePage: React.FC = () => {
                   These credentials automatically populate calculation covers, submittal certificates, and PDF stamp blocks.
                 </p>
               </div>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-mono font-bold hover:opacity-90 inline-flex items-center gap-2 cursor-pointer shadow-xs transition-transform active:scale-95"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Profile</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {(profileForm.name || profileForm.title || profileForm.organization || profileForm.licenseNo || profileForm.email || profileForm.phone || profileForm.location) && (
+                  <button
+                    type="button"
+                    onClick={handleClearProfile}
+                    className="px-3.5 py-2 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-mono font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Profile</span>
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-mono font-bold hover:opacity-90 inline-flex items-center gap-2 cursor-pointer shadow-xs transition-transform active:scale-95"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Profile</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

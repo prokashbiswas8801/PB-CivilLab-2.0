@@ -144,7 +144,7 @@ export const SiteManagementHub: React.FC<SiteManagementHubProps> = ({
   onExportPdf,
   onExportCsv,
   workspaceId = 'default',
-  projectName = 'Main Civil Project',
+  projectName = 'Untitled Project',
   currency = 'BDT',
   activeWorkspace,
 }) => {

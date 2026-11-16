@@ -753,6 +753,73 @@ export default function App() {
     [appState.userProfile]
   );
 
+  // Synchronize CivilLabContext.userProfile (edited in ProfilePage) into appState.userProfile & activeWorkspace.engineerOfRecord
+  useEffect(() => {
+    const cp = civilLab.userProfile;
+    setAppState((prev) => {
+      const cur = prev.userProfile || createDefaultUserProfile();
+      const nextFullName = (cp.name || '').trim();
+      const nextTitle = (cp.title || '').trim();
+      const nextOrg = (cp.organization || '').trim();
+      const nextLic = (cp.licenseNo || '').trim();
+      const nextEmail = (cp.email || '').trim();
+      const nextPhone = (cp.phone || '').trim();
+      const nextAddress = (cp.location || '').trim();
+      const nextInitials = nextFullName
+        ? nextFullName
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase() || '')
+            .join('')
+        : '';
+
+      const sameProfile =
+        cur.fullName === nextFullName &&
+        cur.designation === nextTitle &&
+        cur.organization === nextOrg &&
+        (cur.licenseNumber || '') === nextLic &&
+        (cur.email || '') === nextEmail &&
+        (cur.phone || '') === nextPhone &&
+        (cur.address || '') === nextAddress;
+
+      const activeWs = prev.workspaces.find((w) => w.id === prev.activeWorkspaceId);
+      const sameWsEor = !activeWs || activeWs.engineerOfRecord === nextFullName;
+
+      if (sameProfile && sameWsEor) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        userProfile: {
+          ...cur,
+          fullName: nextFullName,
+          designation: nextTitle,
+          organization: nextOrg,
+          licenseNumber: nextLic,
+          email: nextEmail,
+          phone: nextPhone,
+          address: nextAddress,
+          initials: nextFullName ? (cur.initials || nextInitials) : '',
+        },
+        workspaces: prev.workspaces.map((ws) =>
+          ws.id === prev.activeWorkspaceId
+            ? { ...ws, engineerOfRecord: nextFullName, updatedAt: new Date().toISOString() }
+            : ws
+        ),
+      };
+    });
+  }, [
+    civilLab.userProfile.name,
+    civilLab.userProfile.title,
+    civilLab.userProfile.organization,
+    civilLab.userProfile.licenseNo,
+    civilLab.userProfile.email,
+    civilLab.userProfile.phone,
+    civilLab.userProfile.location,
+  ]);
+
   const userPreferences: UserCustomPreferences = useMemo(
     () => appState.userPreferences || createDefaultUserPreferences(),
     [appState.userPreferences]
@@ -2404,16 +2471,56 @@ export default function App() {
   };
 
   const handleSaveProfile = (updatedProfile: UserProfile) => {
+    const cleanName = (updatedProfile.fullName || '').trim();
+    const cleanTitle = (updatedProfile.designation || '').trim();
+    const cleanOrg = (updatedProfile.organization || '').trim();
+    const cleanLic = (updatedProfile.licenseNumber || '').trim();
+    const cleanEmail = (updatedProfile.email || '').trim();
+    const cleanPhone = (updatedProfile.phone || '').trim();
+    const cleanAddr = (updatedProfile.address || '').trim();
+
+    const normalizedProfile: UserProfile = {
+      ...updatedProfile,
+      fullName: cleanName,
+      designation: cleanTitle,
+      organization: cleanOrg,
+      licenseNumber: cleanLic,
+      email: cleanEmail,
+      phone: cleanPhone,
+      address: cleanAddr,
+      initials: cleanName ? (updatedProfile.initials || '').trim().toUpperCase() : '',
+    };
+
     setAppState((prev) => ({
       ...prev,
-      userProfile: updatedProfile,
+      userProfile: normalizedProfile,
       workspaces: prev.workspaces.map((ws) =>
         ws.id === prev.activeWorkspaceId
-          ? { ...ws, engineerOfRecord: updatedProfile.fullName, updatedAt: new Date().toISOString() }
+          ? { ...ws, engineerOfRecord: cleanName, updatedAt: new Date().toISOString() }
           : ws
       ),
     }));
-    setToastBanner(`Saved credentials for ${updatedProfile.fullName}. Reports updated.`);
+
+    civilLab.updateUserProfile({
+      name: cleanName,
+      title: cleanTitle,
+      organization: cleanOrg,
+      licenseNo: cleanLic,
+      email: cleanEmail,
+      phone: cleanPhone,
+      location: cleanAddr,
+    });
+    civilLab.updatePdfPreset({
+      signatoryName: cleanName
+        ? `${cleanName}${cleanTitle ? `, ${cleanTitle.split(' ')[0]}` : ''}`
+        : '',
+    });
+
+    setToastBanner(
+      cleanName
+        ? `Saved credentials for ${cleanName}. Reports updated.`
+        : 'Saved engineer profile deleted. Enter new details anytime.'
+    );
   };
 
   const handleSavePreferences = (updatedPrefs: UserCustomPreferences) => {

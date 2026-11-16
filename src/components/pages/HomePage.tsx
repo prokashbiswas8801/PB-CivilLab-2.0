@@ -726,11 +726,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                 {activeWorkspace.name}
               </h1>
               <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-2 mt-0.5 truncate">
-                <span>Location: {activeWorkspace.siteLocation}</span>
+                <span>Location: {activeWorkspace.siteLocation || 'Not Set'}</span>
                 <span>•</span>
                 <span>Currency: {activeWorkspace.currency}</span>
                 <span>•</span>
-                <span>EOR: {activeWorkspace.engineerOfRecord}</span>
+                <span>EOR: {activeWorkspace.engineerOfRecord || 'Not Set'}</span>
               </div>
             </div>
           </div>

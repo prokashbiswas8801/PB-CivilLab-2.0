@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   MapPin,
@@ -46,9 +46,32 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
     projectCode: workbench.projectMetadata.projectCode || activeWorkspace.projectCode,
     projectLocation: workbench.projectMetadata.projectLocation || activeWorkspace.siteLocation,
     engineerName: workbench.projectMetadata.engineerName || activeWorkspace.engineerOfRecord,
-    clientName: workbench.projectMetadata.clientName || 'Public Works Dept (PWD)',
+    clientName: workbench.projectMetadata.clientName || '',
     date: workbench.projectMetadata.date || new Date().toISOString().split('T')[0],
   });
+
+  useEffect(() => {
+    setMetaForm({
+      projectName: workbench.projectMetadata.projectName || activeWorkspace.name,
+      projectCode: workbench.projectMetadata.projectCode || activeWorkspace.projectCode,
+      projectLocation: workbench.projectMetadata.projectLocation || activeWorkspace.siteLocation,
+      engineerName: workbench.projectMetadata.engineerName || activeWorkspace.engineerOfRecord,
+      clientName: workbench.projectMetadata.clientName || '',
+      date: workbench.projectMetadata.date || new Date().toISOString().split('T')[0],
+    });
+  }, [
+    workbench.projectMetadata.projectName,
+    workbench.projectMetadata.projectCode,
+    workbench.projectMetadata.projectLocation,
+    workbench.projectMetadata.engineerName,
+    workbench.projectMetadata.clientName,
+    workbench.projectMetadata.date,
+    activeWorkspace.id,
+    activeWorkspace.name,
+    activeWorkspace.projectCode,
+    activeWorkspace.siteLocation,
+    activeWorkspace.engineerOfRecord,
+  ]);
 
   const handleSaveMeta = () => {
     workbench.updateProjectMetadata({
@@ -78,7 +101,7 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
     0
   );
 
-  const totalConcreteM3 = Number((boqConcreteM3 > 0 ? boqConcreteM3 : (matConcreteM3 > 0 ? matConcreteM3 : 64.8)).toFixed(1));
+  const totalConcreteM3 = Number((boqConcreteM3 > 0 ? boqConcreteM3 : matConcreteM3).toFixed(1));
 
   // 2. Total Rebar Steel (Ton)
   const boqRebarKg = boqItems
@@ -104,7 +127,7 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
     }, 0);
 
   const masonryBricks = (activeWorkspace.masonry?.wallLengthM || 0) * (activeWorkspace.masonry?.wallHeightM || 0) * 120;
-  const totalBricksNos = Math.round(boqBricks > 0 ? boqBricks : (masonryBricks > 0 ? masonryBricks : 14850));
+  const totalBricksNos = Math.round(boqBricks > 0 ? boqBricks : masonryBricks);
 
   // 4. Total Cement (Bags)
   // Dry volume factor 1.54: ~7.5 bags per m3 for standard 1:1.5:3 RCC + mortar demand
@@ -128,7 +151,7 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
               <span className="text-[var(--md-sys-color-on-surface-variant)]">·</span>
               <span className="text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
-                {metaForm.projectLocation}
+                {metaForm.projectLocation || 'Not Set'}
               </span>
               <span className="text-[var(--md-sys-color-on-surface-variant)]">·</span>
               <span className="text-[var(--md-sys-color-on-surface-variant)]">
@@ -283,11 +306,11 @@ export const ProjectRollupBanner: React.FC<ProjectRollupBannerProps> = ({
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
           <div className="flex items-center gap-1.5">
             <UserCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-            <span>Engineer: <strong className="text-[var(--md-sys-color-on-surface)]">{metaForm.engineerName}</strong></span>
+            <span>Engineer: <strong className="text-[var(--md-sys-color-on-surface)]">{metaForm.engineerName || 'Not Set'}</strong></span>
           </div>
           <div className="flex items-center gap-1.5">
             <Briefcase className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-            <span>Client: <strong className="text-[var(--md-sys-color-on-surface)]">{metaForm.clientName}</strong></span>
+            <span>Client: <strong className="text-[var(--md-sys-color-on-surface)]">{metaForm.clientName || 'Not Set'}</strong></span>
           </div>
           <div className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />

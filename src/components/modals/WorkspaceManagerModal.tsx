@@ -163,9 +163,9 @@ export const WorkspaceManagerModal: React.FC<WorkspaceManagerModalProps> = ({
                     <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 flex flex-wrap items-center gap-2">
                       <span>Code: <strong>{ws.projectCode}</strong></span>
                       <span>·</span>
-                      <span>Site: {ws.siteLocation}</span>
+                      <span>Site: {ws.siteLocation || 'Not Set'}</span>
                       <span>·</span>
-                      <span>EOR: {ws.engineerOfRecord}</span>
+                      <span>EOR: {ws.engineerOfRecord || 'Not Set'}</span>
                       <span>·</span>
                       <span className="font-bold text-[var(--md-sys-color-primary)]">Currency: {ws.currency || 'BDT'} ({sym})</span>
                     </div>

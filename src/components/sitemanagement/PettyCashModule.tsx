@@ -842,7 +842,7 @@ export const PettyCashModule: React.FC = () => {
                   <p className="text-[10px] text-zinc-500">Site Accountant / Engineer</p>
                 </div>
                 <div className="border-t border-zinc-400 pt-1.5">
-                  <p className="font-bold">{selectedVoucherForPrint.approvedBy || 'Project In-Charge'}</p>
+                  <p className="font-bold">{selectedVoucherForPrint.approvedBy || '________________________'}</p>
                   <p className="text-[10px] text-zinc-500">Authorized Signature</p>
                 </div>
               </div>

@@ -70,10 +70,13 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
   const [showInfoPopover, setShowInfoPopover] = useState<boolean>(false);
   const animFrameRef = useRef<number | null>(null);
 
-  // Target percentage clamped between 4% (minimum visible thumb for rounded cap) and 100%
+  const safePct = Number.isFinite(capacityInfo.percentage) ? Math.max(0, capacityInfo.percentage) : 0;
+
+  // Target percentage: 0% stays 0% on zero baseline, positive ratios clamp between 4% (visible thumb) and 100%
   const targetWidth = useMemo(() => {
-    return Math.min(100, Math.max(4, Math.round(capacityInfo.percentage)));
-  }, [capacityInfo.percentage]);
+    if (safePct <= 0) return 0;
+    return Math.min(100, Math.max(4, Math.round(safePct)));
+  }, [safePct]);
 
   // Dynamic smooth fill animation on mount and whenever analytical results change
   useEffect(() => {
@@ -93,7 +96,7 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
   // Smooth numeric counter interpolation for the percentage display
   useEffect(() => {
     const startVal = displayPercentage;
-    const endVal = capacityInfo.percentage;
+    const endVal = safePct;
     const duration = 600; // ms
     const startTime = performance.now();
 
@@ -115,7 +118,7 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [capacityInfo.percentage]);
+  }, [safePct]);
 
   const statusColorClass =
     capacityInfo.status === 'safe'
@@ -145,7 +148,7 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
       ? AlertTriangle
       : AlertOctagon;
 
-  const isZeroActive = capacityInfo.percentage === 0;
+  const isZeroActive = safePct === 0;
 
   const defaultStandaloneVariants: Variants = {
     hidden: { opacity: 0, y: 20, scale: 0.98 },
@@ -219,7 +222,7 @@ export const DcrCapacityGauge: React.FC<DcrCapacityGaugeProps> = ({
         <div
           className="dcr-gauge-track w-full h-3 rounded-full border border-[var(--md-sys-color-outline-variant)] relative"
           role="progressbar"
-          aria-valuenow={Math.round(capacityInfo.percentage)}
+          aria-valuenow={Math.round(safePct)}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuetext={`${capacityInfo.metricLabel}: ${capacityInfo.formattedValue} (${displayPercentage}%)`}

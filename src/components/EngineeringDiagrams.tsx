@@ -2722,7 +2722,7 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
   } else {
     repWidthB = Math.max(1.0, params.formationWidthM || 6.5);
     repSlopeS = Math.max(0, params.sideSlopeS ?? 1.5);
-    if (stations) {
+    if (stations && stations.length > 0) {
       const maxFill = Math.max(...stations.map((st) => st.fillHeightM));
       const maxCut = Math.max(...stations.map((st) => st.cutDepthM));
       isFillEmbankment = maxFill >= maxCut;

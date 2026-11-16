@@ -541,8 +541,13 @@ export const OpenChannelEglHglPlot: React.FC<{ result: ChannelHydraulicsResult }
   const plotW = svgWidth - padLeft - padRight;
   const plotH = svgHeight - padTop - padBottom;
 
-  const maxStation = profile[profile.length - 1].stationM || 100;
-  const allZ = profile.flatMap((p) => [p.bedElevationM, p.waterSurfaceHglM, p.energyLineEglM, p.criticalLineZ]);
+  const maxStation = Number.isFinite(profile[profile.length - 1].stationM) && profile[profile.length - 1].stationM > 0
+    ? profile[profile.length - 1].stationM
+    : 100;
+  const allZ = profile
+    .flatMap((p) => [p.bedElevationM, p.waterSurfaceHglM, p.energyLineEglM, p.criticalLineZ])
+    .filter((v) => Number.isFinite(v));
+  if (allZ.length === 0) return null;
   const minZ = Math.min(...allZ) - 0.2;
   const maxZ = Math.max(...allZ) + 0.4;
   const zRange = Math.max(0.5, maxZ - minZ);

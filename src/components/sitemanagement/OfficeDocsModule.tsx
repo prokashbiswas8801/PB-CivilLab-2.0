@@ -113,6 +113,33 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
     items: [] as GatePassItem[],
   });
 
+  useEffect(() => {
+    setDocMeta((prev) => ({
+      ...prev,
+      organization: userProfile?.organization || '',
+      projectName: activeWorkspace?.name || '',
+      projectCode: activeWorkspace?.projectCode || '',
+      siteLocation: activeWorkspace?.siteLocation || '',
+      engineerName: userProfile?.name || activeWorkspace?.engineerOfRecord || '',
+      engineerTitle: userProfile?.title || '',
+      licenseNo: userProfile?.licenseNo || '',
+    }));
+    setGatePassData((prev) => ({
+      ...prev,
+      authorizedBy: userProfile?.name || activeWorkspace?.engineerOfRecord || '',
+    }));
+  }, [
+    userProfile?.organization,
+    userProfile?.name,
+    userProfile?.title,
+    userProfile?.licenseNo,
+    activeWorkspace?.id,
+    activeWorkspace?.name,
+    activeWorkspace?.projectCode,
+    activeWorkspace?.siteLocation,
+    activeWorkspace?.engineerOfRecord,
+  ]);
+
   // 2. SUB-CONTRACTOR WORK ORDER STATE
   const [workOrderData, setWorkOrderData] = useState({
     workOrderNo: '',
@@ -1292,9 +1319,9 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                       Civil, Structural & Architectural Project Management Division
                     </div>
                     <div className="text-[11px] text-zinc-500 font-sans mt-0.5 flex items-center gap-2">
-                      <span>Site: {docMeta.siteLocation}</span>
+                      <span>Site: {docMeta.siteLocation || 'Not Set'}</span>
                       <span>•</span>
-                      <span>Email: {userProfile?.email || 'site.engr@civillab.local'}</span>
+                      <span>Email: {userProfile?.email || 'Not Set'}</span>
                     </div>
                   </div>
                   <div className="text-right">
