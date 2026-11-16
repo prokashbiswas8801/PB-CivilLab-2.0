@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 import { formatFeetInches } from '../../../utils/unitConverter';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 import {
   computeRebarSuggestions,
   REBAR_ROLE_DEFINITIONS,
@@ -1036,13 +1037,11 @@ export const BBSGenerator: React.FC = () => {
                   Wastage Allowance
                 </div>
                 <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="15"
+                  <NumericDraftInput
+                    min={0}
+                    max={15}
                     value={wastagePercent}
-                    onChange={(e) => setWastagePercent(Number(e.target.value) || 0)}
+                    onChangeValue={(val) => setWastagePercent(val)}
                     className="w-14 px-1.5 py-0.5 text-xs text-right font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
                   />
                   <span className="text-xs font-mono font-bold">%</span>
@@ -1249,11 +1248,9 @@ export const BBSGenerator: React.FC = () => {
                         <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
                           {helperElementType === 'slab' ? 'Panel Width B' : 'Width B (mm)'}
                         </span>
-                        <input
-                          type="number"
-                          step="25"
+                        <NumericDraftInput
                           value={helperWidthMm}
-                          onChange={(e) => setHelperWidthMm(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setHelperWidthMm(val)}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold"
                         />
                       </div>
@@ -1261,11 +1258,9 @@ export const BBSGenerator: React.FC = () => {
                         <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
                           {helperElementType === 'slab' ? 'Slab Thickness (mm)' : 'Depth D (mm)'}
                         </span>
-                        <input
-                          type="number"
-                          step="25"
+                        <NumericDraftInput
                           value={helperDepthMm}
-                          onChange={(e) => setHelperDepthMm(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setHelperDepthMm(val)}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold"
                         />
                       </div>
@@ -1273,11 +1268,9 @@ export const BBSGenerator: React.FC = () => {
                         <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
                           Span / Length L (mm)
                         </span>
-                        <input
-                          type="number"
-                          step="100"
+                        <NumericDraftInput
                           value={helperLengthMm}
-                          onChange={(e) => setHelperLengthMm(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setHelperLengthMm(val)}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold"
                         />
                       </div>
@@ -1285,11 +1278,9 @@ export const BBSGenerator: React.FC = () => {
                         <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
                           Clear Cover (mm)
                         </span>
-                        <input
-                          type="number"
-                          step="5"
+                        <NumericDraftInput
                           value={helperCoverMm}
-                          onChange={(e) => setHelperCoverMm(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setHelperCoverMm(val)}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold"
                         />
                       </div>
@@ -1503,21 +1494,21 @@ export const BBSGenerator: React.FC = () => {
                       </td>
 
                       <td className="py-2 px-2">
-                        <input
-                          type="number"
-                          min="0"
+                        <NumericDraftInput
+                          allowDecimal={false}
+                          min={0}
                           value={r.numMembers}
-                          onChange={(e) => handleUpdateRow(r.id, { numMembers: Math.max(0, Number(e.target.value) || 0) })}
+                          onChangeValue={(val) => handleUpdateRow(r.id, { numMembers: Math.max(0, val) })}
                           className="w-14 px-1.5 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-center"
                         />
                       </td>
 
                       <td className="py-2 px-2">
-                        <input
-                          type="number"
-                          min="0"
+                        <NumericDraftInput
+                          allowDecimal={false}
+                          min={0}
                           value={r.barsPerMember}
-                          onChange={(e) => handleUpdateRow(r.id, { barsPerMember: Math.max(0, Number(e.target.value) || 0) })}
+                          onChangeValue={(val) => handleUpdateRow(r.id, { barsPerMember: Math.max(0, val) })}
                           className="w-14 px-1.5 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-center"
                         />
                       </td>
@@ -1527,11 +1518,9 @@ export const BBSGenerator: React.FC = () => {
                       </td>
 
                       <td className="py-2 px-2">
-                        <input
-                          type="number"
-                          step="10"
+                        <NumericDraftInput
                           value={r.dimA}
-                          onChange={(e) => handleUpdateRow(r.id, { dimA: Math.max(0, Number(e.target.value)) })}
+                          onChangeValue={(val) => handleUpdateRow(r.id, { dimA: Math.max(0, val) })}
                           className="w-20 px-1.5 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </td>
@@ -1541,32 +1530,26 @@ export const BBSGenerator: React.FC = () => {
                           {r.shape === 'cranked-slab' ? (
                             <div className="flex items-center gap-1 text-[10px]">
                               <span>H:</span>
-                              <input
-                                type="number"
-                                step="5"
+                              <NumericDraftInput
                                 value={r.dimH || 0}
-                                onChange={(e) => handleUpdateRow(r.id, { dimH: Number(e.target.value) })}
+                                onChangeValue={(val) => handleUpdateRow(r.id, { dimH: val })}
                                 className="w-14 px-1 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                               />
                             </div>
                           ) : (
                             <>
-                              <input
-                                type="number"
-                                step="10"
+                              <NumericDraftInput
                                 placeholder="B"
                                 value={r.dimB || 0}
-                                onChange={(e) => handleUpdateRow(r.id, { dimB: Number(e.target.value) })}
+                                onChangeValue={(val) => handleUpdateRow(r.id, { dimB: val })}
                                 className="w-14 px-1 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                                 disabled={r.shape === 'straight'}
                               />
                               {(r.shape === 'u-bar') && (
-                                <input
-                                  type="number"
-                                  step="10"
+                                <NumericDraftInput
                                   placeholder="C"
                                   value={r.dimC || 0}
-                                  onChange={(e) => handleUpdateRow(r.id, { dimC: Number(e.target.value) })}
+                                  onChangeValue={(val) => handleUpdateRow(r.id, { dimC: val })}
                                   className="w-14 px-1 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                                 />
                               )}

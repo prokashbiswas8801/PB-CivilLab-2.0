@@ -2848,6 +2848,10 @@ export function buildRebarParamsFromTank(
   if (target === 'ugwr') {
     return {
       elementType: 'slab',
+      elementCount: 1,
+      rebarDensityKgPerM3: 7850,
+      commercialBarStockLengthM: 12.0,
+      lappingFactorD: 50,
       slabLengthM: Number(waterRes.ugwrLengthM.toFixed(2)),
       slabWidthM: Number(waterRes.ugwrWidthM.toFixed(2)),
       slabThicknessMm: 200,
@@ -2861,6 +2865,10 @@ export function buildRebarParamsFromTank(
   if (target === 'oht') {
     return {
       elementType: 'slab',
+      elementCount: 1,
+      rebarDensityKgPerM3: 7850,
+      commercialBarStockLengthM: 12.0,
+      lappingFactorD: 50,
       slabLengthM: Number(waterRes.ohtLengthM.toFixed(2)),
       slabWidthM: Number(waterRes.ohtWidthM.toFixed(2)),
       slabThicknessMm: 175,
@@ -2873,6 +2881,10 @@ export function buildRebarParamsFromTank(
   }
   return {
     elementType: 'slab',
+    elementCount: 1,
+    rebarDensityKgPerM3: 7850,
+    commercialBarStockLengthM: 12.0,
+    lappingFactorD: 50,
     slabLengthM: Number(septicRes.tankLengthM.toFixed(2)),
     slabWidthM: Number(septicRes.tankWidthM.toFixed(2)),
     slabThicknessMm: 150,

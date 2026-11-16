@@ -205,7 +205,7 @@ export const Logo: React.FC<LogoProps> = ({
             onClick();
           }
         }}
-        aria-label="BD. CivilLab Home - Return to Workbench Dashboard"
+        aria-label="BD. CivilLab — Home"
         className="group inline-flex items-center text-[var(--md-sys-color-on-surface)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-[var(--md-sys-color-primary)] rounded-lg p-0.5 transition-all cursor-pointer"
       >
         {content}
@@ -218,7 +218,7 @@ export const Logo: React.FC<LogoProps> = ({
       <button
         type="button"
         onClick={onClick}
-        aria-label="BD. CivilLab Home - Return to Workbench Dashboard"
+        aria-label="BD. CivilLab — Home"
         className="group inline-flex items-center text-[var(--md-sys-color-on-surface)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-[var(--md-sys-color-primary)] rounded-lg p-0.5 transition-all cursor-pointer border-0 bg-transparent text-left"
       >
         {content}

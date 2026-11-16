@@ -13,15 +13,27 @@ import { CivilWorkspace, UserProfile } from '../types/civil';
 import { sanitizeEngineeringSymbols } from './exportEngine';
 import { generateSubmittalDocRef } from './qrCode';
 import { createVerifiedReportRecord, saveVerifiedReport } from './verificationEngine';
-import { BRAND_LOGO_BASE64 } from '../assets/brandLogoData';
+import { BRAND_LOGO_BASE64, getBrandLogoPngDataUrl } from '../assets/brandLogoData';
 import { BRAND_LOGO_SRC } from '../components/Logo';
 
 export function getDefaultInputsForTest(test: LabTestDefinition): Record<string, number> {
   const defaults: Record<string, number> = {};
   for (const field of test.calculatorInputs) {
-    defaults[field.key] = field.defaultValue;
+    if (field.options && field.options.length > 0) {
+      defaults[field.key] = field.defaultValue;
+    } else {
+      defaults[field.key] = 0;
+    }
   }
   return defaults;
+}
+
+export function getSamplePresetInputsForTest(test: LabTestDefinition): Record<string, number> {
+  const sample: Record<string, number> = {};
+  for (const field of test.calculatorInputs) {
+    sample[field.key] = field.defaultValue;
+  }
+  return sample;
 }
 
 export function getDefaultChecklistStates(
@@ -48,7 +60,7 @@ export function formatLabFieldValue(
   field: LabTestDefinition['calculatorInputs'][number],
   rawVal: number | undefined
 ): string {
-  const val = rawVal ?? field.defaultValue;
+  const val = typeof rawVal === 'number' && Number.isFinite(rawVal) ? rawVal : 0;
   if (field.options && field.options.length > 0) {
     const matched = field.options.find((opt) => opt.value === val);
     if (matched) return matched.label.en;
@@ -63,6 +75,43 @@ export function evaluateLabTest(
 ): LabEvaluationOutput {
   const test = TESTING_LAB_TEST_MAP[testId];
   const inputs = test ? { ...getDefaultInputsForTest(test), ...rawInputs } : rawInputs;
+
+  if (test && (!test.checklistItems || test.checklistItems.length === 0)) {
+    const numericFields = test.calculatorInputs.filter((f) => !f.options || f.options.length === 0);
+    const hasAnyNumericObservation =
+      numericFields.length === 0 ||
+      numericFields.some((f) => {
+        const v = Number(inputs[f.key]);
+        return Number.isFinite(v) && Math.abs(v) > 0;
+      });
+    if (!hasAnyNumericObservation) {
+      return {
+        testId,
+        primaryMetricLabel: { en: `${test.code} Standby`, bn: '০ বেজলাইন অবস্থা' },
+        primaryValue: '0.00 (0 Baseline)',
+        primaryUnit: '',
+        codeLimitText: test.governingCodes.join(' · ') || 'Enter test observations',
+        verdict: 'WARNING',
+        verdictHeadline: {
+          en: '0 BASELINE — Enter Lab / Field Observations',
+          bn: '০ বেজলাইন — পরীক্ষার পর্যবেক্ষণ ইনপুট দিন',
+        },
+        verdictDetail: {
+          en: 'All numeric test inputs are currently at 0 baseline. Enter measured readings or click "Load Sample Test Data" to evaluate conformity.',
+          bn: 'সব সংখ্যাগত পরিমাপ এখন ০ বেজলাইনে আছে। ফলাফল যাচাই করতে পরিমাপের মান লিখুন বা "Load Sample Test Data" বাটনে ক্লিক করুন।',
+        },
+        metrics: numericFields.slice(0, 4).map((f) => ({
+          labelEn: f.label.en,
+          labelBn: f.label.bn,
+          value: '0.00',
+          unit: f.unit || '',
+        })),
+        steps: [
+          '0 Baseline active — awaiting field/laboratory measurements before evaluating limit states.',
+        ],
+      };
+    }
+  }
 
   switch (testId) {
     // =======================================================================
@@ -3076,7 +3125,8 @@ export async function exportLabTestCertificatePdf(params: {
   doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, pageWidth, 32, 'F');
   try {
-    doc.addImage(BRAND_LOGO_BASE64, 'PNG', margin, 5, 20, 20);
+    const brandLogoDataUrl = await getBrandLogoPngDataUrl(256).catch(() => BRAND_LOGO_BASE64);
+    doc.addImage(brandLogoDataUrl, 'PNG', margin, 5, 20, 20);
   } catch {
     // ignore image error
   }
@@ -3150,7 +3200,7 @@ export async function exportLabTestCertificatePdf(params: {
 
   // Project & Sample Metadata Grid
   const projectLabel = customOverrides?.projectName || workspace.name || 'Untitled Project';
-  const engineerLabel = customOverrides?.signatoryName || userProfile?.fullName || workspace.engineerOfRecord || '________________________';
+  const engineerLabel = customOverrides?.signatoryName || userProfile?.fullName || workspace.engineerOfRecord || 'Pending Signature';
   const siteLabel = workspace.siteLocation || 'Not Set';
   const clientLine = customOverrides?.clientName ? `\nClient: ${sanitizeEngineeringSymbols(customOverrides.clientName)}` : '';
 
@@ -3164,7 +3214,7 @@ export async function exportLabTestCertificatePdf(params: {
     body: [
       [
         `Project: ${sanitizeEngineeringSymbols(projectLabel)} [${workspace.projectCode || 'PRJ-001'}]\nSite: ${sanitizeEngineeringSymbols(siteLabel)}${clientLine}\nEngineer: ${sanitizeEngineeringSymbols(engineerLabel)}`,
-        `Sample ID / Batch: ${sanitizeEngineeringSymbols(sampleRef || '________________')}\nMember / Grid Location: ${sanitizeEngineeringSymbols(locationGrid || '________________')}\nAcceptance Standard: ${sanitizeEngineeringSymbols(evaluation.codeLimitText)}`,
+        `Sample ID / Batch: ${sanitizeEngineeringSymbols(sampleRef || 'Not Specified')}\nMember / Grid Location: ${sanitizeEngineeringSymbols(locationGrid || 'Not Specified')}\nAcceptance Standard: ${sanitizeEngineeringSymbols(evaluation.codeLimitText)}`,
       ],
     ],
   });
@@ -3328,8 +3378,8 @@ export async function exportLabTestCertificatePdf(params: {
     const colW = (contentWidth - 12) / 3;
     const tiers = [
       { title: '1. Tested / Inspected By', role: 'Site QA/QC Engineer', name: engineerLabel },
-      { title: '2. Checked / Verified By', role: 'Resident / Project Engineer', name: '________________________' },
-      { title: '3. Approved By', role: 'Consultant / Client Rep', name: customOverrides?.clientName || '________________________' },
+      { title: '2. Checked / Verified By', role: 'Resident / Project Engineer', name: 'Pending Reviewer' },
+      { title: '3. Approved By', role: 'Consultant / Client Rep', name: customOverrides?.clientName || 'Pending Approval' },
     ];
     tiers.forEach((tier, idx) => {
       const xStart = margin + idx * (colW + 6);
@@ -3476,12 +3526,12 @@ export async function buildPrintableLabCertificateHtml(params: {
           <div class="font-bold text-slate-500 uppercase text-[10px]">Project Information</div>
           <div class="font-bold text-slate-900">${workspace.name || 'Untitled Project'} [${workspace.projectCode || 'PRJ-001'}]</div>
           <div>Site: ${workspace.siteLocation || 'Not Set'}</div>
-          <div>Engineer: ${userProfile?.fullName || workspace.engineerOfRecord || '________________________'}</div>
+          <div>Engineer: ${userProfile?.fullName || workspace.engineerOfRecord || 'Pending Signature'}</div>
         </div>
         <div>
           <div class="font-bold text-slate-500 uppercase text-[10px]">Sample &amp; Code Reference</div>
-          <div>Sample Ref: <strong>${sampleRef || '________________'}</strong></div>
-          <div>Grid / Zone: ${locationGrid || '________________'}</div>
+          <div>Sample Ref: <strong>${sampleRef || 'Not Specified'}</strong></div>
+          <div>Grid / Zone: ${locationGrid || 'Not Specified'}</div>
           <div>Codes: ${test.governingCodes.join(' · ')}</div>
         </div>
       </div>
@@ -3547,15 +3597,15 @@ export async function buildPrintableLabCertificateHtml(params: {
       <div class="pt-10 grid grid-cols-3 gap-6 text-xs font-mono print-avoid-break">
         <div class="border-t border-slate-800 pt-1 text-center">
           <div class="font-bold">1. Tested / Inspected By</div>
-          <div class="text-[10px] text-slate-500">${userProfile?.fullName || workspace.engineerOfRecord || '________________________'}</div>
+          <div class="text-[10px] text-slate-500">${userProfile?.fullName || workspace.engineerOfRecord || 'Pending Signature'}</div>
         </div>
         <div class="border-t border-slate-800 pt-1 text-center">
           <div class="font-bold">2. Checked / Verified By</div>
-          <div class="text-[10px] text-slate-500">________________________</div>
+          <div class="text-[10px] text-slate-500">Pending Reviewer</div>
         </div>
         <div class="border-t border-slate-800 pt-1 text-center">
           <div class="font-bold">3. Approved By</div>
-          <div class="text-[10px] text-slate-500">________________________</div>
+          <div class="text-[10px] text-slate-500">Pending Approval</div>
         </div>
       </div>
       <div class="text-[9px] font-mono text-slate-400 text-center pt-1">

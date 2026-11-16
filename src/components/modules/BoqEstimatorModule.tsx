@@ -49,6 +49,7 @@ import {
 } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { MasterMarketRatesPanel } from './MasterMarketRatesPanel';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import { formatFeetInches } from '../../utils/unitConverter';
 import {
   STANDARD_WBS_SECTIONS,
@@ -639,17 +640,14 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              max="50"
+            <NumericDraftInput
+              min={0}
+              max={50}
               value={activeWorkspace.boq.contingencyPercent}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, contingencyPercent: isNaN(val) ? 0 : val },
+                  boq: { ...ws.boq, contingencyPercent: Math.max(0, val) },
                 }));
               }}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
@@ -669,17 +667,14 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              max="60"
+            <NumericDraftInput
+              min={0}
+              max={60}
               value={activeWorkspace.boq.contractorOverheadPercent}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, contractorOverheadPercent: isNaN(val) ? 0 : val },
+                  boq: { ...ws.boq, contractorOverheadPercent: Math.max(0, val) },
                 }));
               }}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
@@ -699,17 +694,14 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              max="50"
+            <NumericDraftInput
+              min={0}
+              max={50}
               value={activeWorkspace.boq.vatTaxPercent}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, vatTaxPercent: isNaN(val) ? 0 : val },
+                  boq: { ...ws.boq, vatTaxPercent: Math.max(0, val) },
                 }));
               }}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
@@ -726,17 +718,14 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 AIT Tax (%)
               </label>
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              max="25"
+            <NumericDraftInput
+              min={0}
+              max={25}
               value={activeWorkspace.boq.aitTaxPercent ?? 0}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, aitTaxPercent: isNaN(val) ? 0 : val },
+                  boq: { ...ws.boq, aitTaxPercent: Math.max(0, val) },
                 }));
               }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
@@ -750,17 +739,14 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 Retention (%)
               </label>
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              max="20"
+            <NumericDraftInput
+              min={0}
+              max={20}
               value={activeWorkspace.boq.retentionMoneyPercent ?? 0}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, retentionMoneyPercent: isNaN(val) ? 0 : val },
+                  boq: { ...ws.boq, retentionMoneyPercent: Math.max(0, val) },
                 }));
               }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
@@ -774,17 +760,14 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 Mob. Rec. (%)
               </label>
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              max="30"
+            <NumericDraftInput
+              min={0}
+              max={30}
               value={activeWorkspace.boq.mobilizationRecoveryPercent ?? 0}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  boq: { ...ws.boq, mobilizationRecoveryPercent: isNaN(val) ? 0 : val },
+                  boq: { ...ws.boq, mobilizationRecoveryPercent: Math.max(0, val) },
                 }));
               }}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
@@ -925,14 +908,10 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
+            <NumericDraftInput
+              min={0}
               value={itemMembers}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemMembersAction(isNaN(val) ? 0 : val);
-              }}
+              onChangeValue={(val) => setItemMembersAction(Math.max(0, val))}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
                 itemMembers === 0
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
@@ -983,14 +962,10 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
+            <NumericDraftInput
+              min={0}
               value={itemDeduction}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemDeductionAction(isNaN(val) ? 0 : val);
-              }}
+              onChangeValue={(val) => setItemDeductionAction(Math.max(0, val))}
               className={`w-full touch-target-48 px-2 rounded-lg border font-mono text-xs transition-colors ${
                 itemDeduction === 0
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
@@ -1011,14 +986,10 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
+            <NumericDraftInput
+              min={0}
               value={itemWastage}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemWastageAction(isNaN(val) ? 0 : val);
-              }}
+              onChangeValue={(val) => setItemWastageAction(Math.max(0, val))}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
                 itemWastage === 0
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
@@ -1049,14 +1020,10 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                 </button>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
+            <NumericDraftInput
+              min={0}
               value={itemUnitRate}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                setItemUnitRateAction(isNaN(val) ? 0 : val);
-              }}
+              onChangeValue={(val) => setItemUnitRateAction(Math.max(0, val))}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs transition-colors ${
                 itemUnitRate === 0
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
@@ -1075,32 +1042,30 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <label className="block text-[10px] font-semibold mb-1">Start Month</label>
-              <input
-                type="number"
-                min="0"
-                max="36"
+              <NumericDraftInput
+                min={0}
+                max={36}
+                allowDecimal={false}
                 value={localStartMonth}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  const val = Math.max(0, isNaN(raw) ? 0 : raw);
-                  setLocalStartMonth(val);
-                  if (setItemStartMonth) setItemStartMonth(val);
+                onChangeValue={(val) => {
+                  const safeVal = Math.max(0, Math.round(val));
+                  setLocalStartMonth(safeVal);
+                  if (setItemStartMonth) setItemStartMonth(safeVal);
                 }}
                 className="w-full px-2 py-1.5 rounded-md border border-[var(--md-sys-color-outline)] text-xs font-mono"
               />
             </div>
             <div>
               <label className="block text-[10px] font-semibold mb-1">Duration (Months)</label>
-              <input
-                type="number"
-                min="0"
-                max="24"
+              <NumericDraftInput
+                min={0}
+                max={24}
+                allowDecimal={false}
                 value={localDurationMonths}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  const val = Math.max(0, isNaN(raw) ? 0 : raw);
-                  setLocalDurationMonths(val);
-                  if (setItemDurationMonths) setItemDurationMonths(val);
+                onChangeValue={(val) => {
+                  const safeVal = Math.max(0, Math.round(val));
+                  setLocalDurationMonths(safeVal);
+                  if (setItemDurationMonths) setItemDurationMonths(safeVal);
                 }}
                 className="w-full px-2 py-1.5 rounded-md border border-[var(--md-sys-color-outline)] text-xs font-mono"
               />

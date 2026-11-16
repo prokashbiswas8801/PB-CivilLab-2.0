@@ -29,6 +29,7 @@ import {
   RequisitionStatus,
   MaterialUnit,
 } from '../../types/siteManagement';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 const URGENCY_LEVELS: UrgencyLevel[] = ['Normal', 'Urgent', 'Critical'];
 const STATUS_OPTIONS: RequisitionStatus[] = ['Pending', 'Approved', 'Received', 'Cancelled'];
@@ -619,10 +620,8 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm(`Delete requisition slip ${req.reqNo}?`)) {
-                          deleteRequisition(req.id);
-                          showToast(`Deleted ${req.reqNo}`);
-                        }
+                        deleteRequisition(req.id);
+                        showToast(`Deleted ${req.reqNo}`);
                       }}
                       className="p-1.5 rounded-full hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-600 cursor-pointer transition-colors"
                       title="Delete Requisition"
@@ -795,14 +794,12 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
                           <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
                             Required Qty ({item.unit})
                           </label>
-                          <input
-                            type="number"
-                            step="any"
-                            min="0.1"
+                          <NumericDraftInput
+                            min={0.1}
                             required
                             value={item.requestedQty}
-                            onChange={(e) =>
-                              handleItemFieldChange(idx, 'requestedQty', parseFloat(e.target.value) || 0)
+                            onChangeValue={(val) =>
+                              handleItemFieldChange(idx, 'requestedQty', val)
                             }
                             className="w-full px-3 py-1.5 rounded-full text-xs font-mono font-bold border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                           />
@@ -813,12 +810,10 @@ export const RequisitionModule: React.FC<RequisitionModuleProps> = ({ onNavigate
                           <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
                             Est. Rate (৳)
                           </label>
-                          <input
-                            type="number"
-                            step="any"
+                          <NumericDraftInput
                             value={item.estimatedRate}
-                            onChange={(e) =>
-                              handleItemFieldChange(idx, 'estimatedRate', parseFloat(e.target.value) || 0)
+                            onChangeValue={(val) =>
+                              handleItemFieldChange(idx, 'estimatedRate', val)
                             }
                             className="w-full px-3 py-1.5 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                           />

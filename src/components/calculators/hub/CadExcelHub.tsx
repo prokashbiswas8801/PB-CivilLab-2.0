@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV } from '../../../utils/exportEngine';
 import { AboutThisTool, AboutThisToolButton } from '../../ui';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 
 export type CadHubTab = 'viewport-scale' | 'shortcuts-lisp' | 'excel-formulas';
 
@@ -621,12 +622,11 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Notes / Dim Text on Paper (mm)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
-                    step="0.5"
                     value={paperTextMm}
-                    onChange={(e) => setPaperTextMm(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setPaperTextMm(Math.max(0, v))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                   <span className="text-[10px] text-slate-500">ISO standard: 2.5 mm</span>
@@ -635,12 +635,11 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Titles Text on Paper (mm)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
-                    step="0.5"
                     value={paperTitleMm}
-                    onChange={(e) => setPaperTitleMm(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setPaperTitleMm(Math.max(0, v))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                   <span className="text-[10px] text-slate-500">Major headings: 5.0 mm</span>

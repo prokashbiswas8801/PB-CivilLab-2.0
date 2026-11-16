@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Printer,
   Download,
+  FileDown,
   Settings,
   X,
   Check,
@@ -57,6 +58,14 @@ import {
   ReportVerificationPayload,
   generateSubmittalDocRef,
 } from '../utils/qrCode';
+import { exportCertifiedEngineeringPdf } from '../utils/pdfExport';
+import { TESTING_LAB_TEST_MAP, TESTING_LAB_TESTS } from '../data/testingLabCatalog';
+import {
+  evaluateLabTest,
+  exportLabTestCertificatePdf,
+  getDefaultChecklistStates,
+  getDefaultInputsForTest,
+} from '../utils/testingLabEngine';
 
 export interface PrintPreviewModalProps {
   isOpen: boolean;
@@ -102,6 +111,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
   // Zoom & View state
   const [zoomLevel, setZoomLevel] = useState<number>(100); // 75, 100, 125, etc.
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
 
   // Initialize unique document ID and timestamp when modal opens
   useEffect(() => {
@@ -217,9 +227,8 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
     }
   };
 
-  // Trigger Print / Export PDF
+  // Trigger Native Browser Print Dialog without premature DOM wipe
   const handleTriggerPrint = () => {
-    // Populate the printable report DOM node before calling window.print()
     const printEl = document.getElementById('pb-printable-report');
     const previewEl = document.getElementById('pb-report-preview-sheet');
     if (printEl && previewEl) {
@@ -229,18 +238,97 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
       document.body.classList.add('is-printing-report');
     }
     const cleanUp = () => {
-      if (printEl) {
-        printEl.innerHTML = '';
-        printEl.className = 'hidden print:block bg-white text-slate-900';
-        printEl.style.fontSize = '';
-      }
-      document.body.classList.remove('is-printing-report');
       window.removeEventListener('afterprint', cleanUp);
+      setTimeout(() => {
+        if (printEl) {
+          printEl.className = 'hidden print:block bg-white text-slate-900';
+          printEl.style.fontSize = '';
+        }
+        document.body.classList.remove('is-printing-report');
+      }, 600);
     };
     window.addEventListener('afterprint', cleanUp);
     setTimeout(() => {
       window.print();
-    }, 50);
+    }, 100);
+  };
+
+  // Direct Certified Vector PDF Download from Unified Preview Modal
+  const handleDownloadCertifiedPdf = async () => {
+    if (isDownloadingPdf) return;
+    setIsDownloadingPdf(true);
+    try {
+      const marginMm =
+        settings.margins === 'compact' ? 10 : settings.margins === 'wide' ? 20 : 14;
+
+      if (activeModule === 'testing-lab-qaqc') {
+        const labState = activeWorkspace.testingLab;
+        const test =
+          (labState?.activeTestId && TESTING_LAB_TEST_MAP[labState.activeTestId]) ||
+          TESTING_LAB_TESTS[0];
+        const inputs = {
+          ...getDefaultInputsForTest(test),
+          ...(labState?.draftInputsByTestId?.[test.id] || {}),
+        };
+        const checklistStates = test.checklistItems
+          ? {
+              ...getDefaultChecklistStates(test),
+              ...(labState?.draftChecklistsByTestId?.[test.id] || {}),
+            }
+          : undefined;
+        const evaluation = evaluateLabTest(test.id, inputs, checklistStates);
+        await exportLabTestCertificatePdf({
+          test,
+          inputs,
+          evaluation,
+          sampleRef: labState?.savedRecords?.[0]?.sampleRef || 'LAB-SMP-001',
+          locationGrid:
+            labState?.savedRecords?.[0]?.locationGrid ||
+            activeWorkspace.siteLocation ||
+            'Site Zone',
+          remarks: '',
+          workspace: activeWorkspace,
+          userProfile,
+          checklistStates,
+          customOverrides: {
+            paperSize: settings.paperSize,
+            orientation: settings.orientation,
+            marginMm,
+            includeQR: settings.includeQrCode,
+            includeFormulaSteps: settings.sections.mathematicalEquations,
+            includeDiagram: settings.sections.detailedBreakdown,
+            includeSignatureBlock: settings.sections.qualitySignOff,
+          },
+        });
+      } else {
+        await exportCertifiedEngineeringPdf({
+          workspace: activeWorkspace,
+          activeModule,
+          envelope: {
+            status: currentEnvelope.status,
+            issues: currentEnvelope.issues || [],
+            result: currentEnvelope.result,
+          },
+          userProfile,
+          customOverrides: {
+            paperSize: settings.paperSize,
+            orientation: settings.orientation,
+            marginMm,
+            includeHeader: settings.sections.primaryResultBanner,
+            showProjectMetadata: settings.sections.projectClientMetadata,
+            includeFormulaSteps: settings.sections.mathematicalEquations,
+            includeDiagram: settings.sections.detailedBreakdown,
+            includeQR: settings.includeQrCode,
+            includeSignatureBlock: settings.sections.qualitySignOff,
+            includeFooter: true,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to download PDF from PrintPreviewModal:', err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   // Download Standalone Self-Contained Vector HTML Report
@@ -346,14 +434,14 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
-                  Print Preview & Vector PDF Engine
+                  Unified Submittal Preview, Print & Vector PDF Engine
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
                   {documentId}
                 </span>
               </div>
               <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                Dynamic QR Validation · Flawless Box-Constraint Layout · Certified Submittal
+                Dynamic QR Validation · Consultant Title Block · Direct PDF Download & Print
               </p>
             </div>
           </div>
@@ -388,14 +476,27 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
               </button>
             </div>
 
-            {/* Print / Export Action Button */}
+            {/* Direct Certified PDF Download Button */}
+            <button
+              type="button"
+              disabled={isDownloadingPdf}
+              onClick={handleDownloadCertifiedPdf}
+              className="px-4 py-2 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 font-semibold text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs transition-opacity disabled:opacity-50"
+              title="Download Certified Multi-Page Vector PDF Submittal"
+            >
+              <FileDown className="w-4 h-4" />
+              <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download Certified PDF'}</span>
+            </button>
+
+            {/* Native Print Sheet Button */}
             <button
               type="button"
               onClick={handleTriggerPrint}
-              className="px-4 py-2 rounded-lg bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-95 font-semibold text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs transition-opacity"
+              className="px-3.5 py-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] font-semibold text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs transition-colors"
+              title="Print Submittal Sheet via Browser Print Dialog"
             >
-              <Printer className="w-4 h-4" />
-              <span>Print / Export PDF</span>
+              <Printer className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              <span>Print Sheet</span>
             </button>
 
             {/* Standalone Vector HTML Export */}
@@ -759,7 +860,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                             Location &amp; Work Discipline
                           </div>
                           <div className="font-semibold text-slate-800 font-sans mt-0.5">
-                            Site: {activeWorkspace.siteLocation || '________________________'}
+                            Site: {activeWorkspace.siteLocation || 'Not Specified'}
                           </div>
                           <div className="text-blue-700 font-bold mt-0.5">
                             Module: {moduleMeta.label}
@@ -779,13 +880,13 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           Certified Prepared By / Engineer of Record
                         </div>
                         <div className="font-bold text-sm text-slate-900 font-sans mt-0.5">
-                          {userProfile.fullName || '________________________'}
+                          {userProfile.fullName || 'Pending Signature'}
                         </div>
                         <div className="text-slate-700">
-                          {userProfile.designation || '________________________'} · {userProfile.organization || '________________________'}
+                          {userProfile.designation || 'Engineer of Record'} · {userProfile.organization || 'Independent Practice'}
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          License ID: <strong>{userProfile.licenseNumber || '________________________'}</strong>
+                          License ID: <strong>{userProfile.licenseNumber || 'Pending License'}</strong>
                           {userProfile.email && ` · Email: ${userProfile.email}`}
                           {userProfile.phone && ` · Tel: ${userProfile.phone}`}
                         </div>
@@ -957,17 +1058,17 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           <div className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">
                             1. Prepared By (Design)
                           </div>
-                          <div className="font-bold text-slate-900 text-sm">{userProfile.fullName || '________________________'}</div>
-                          <div className="text-slate-600 text-[11px]">{userProfile.designation || '________________________'}</div>
-                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || '________________________'}</div>
+                          <div className="font-bold text-slate-900 text-sm">{userProfile.fullName || 'Pending Signature'}</div>
+                          <div className="text-slate-600 text-[11px]">{userProfile.designation || 'Design Engineer'}</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Independent Practice'}</div>
                           <div className="pt-3">
                             <div className="w-full border-b border-slate-400 mb-1"></div>
                             <div className="flex justify-between text-[9.5px] text-slate-500">
-                              <span>Sign: ___________________</span>
+                              <span>Sign: Prepared / Sealed</span>
                               <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
                             </div>
                             <div className="text-[9.5px] text-slate-600 font-semibold mt-0.5">
-                              {userProfile.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: ________________________'}
+                              {userProfile.licenseNumber ? `Lic: ${userProfile.licenseNumber}` : 'Lic: Pending'}
                             </div>
                           </div>
                         </div>
@@ -977,17 +1078,17 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           <div className="text-[10px] font-bold uppercase text-blue-800 tracking-wider">
                             2. Checked By (QA / Peer Review)
                           </div>
-                          <div className="font-bold text-slate-900 text-sm">________________________</div>
+                          <div className="font-bold text-slate-900 text-sm">Pending QA Reviewer</div>
                           <div className="text-slate-600 text-[11px]">QA / Peer Reviewer</div>
-                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || '________________________'}</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Independent Practice'}</div>
                           <div className="pt-3">
                             <div className="w-full border-b border-slate-400 mb-1"></div>
                             <div className="flex justify-between text-[9.5px] text-slate-500">
-                              <span>Sign: ___________________</span>
+                              <span>Sign: Pending Review</span>
                               <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
                             </div>
                             <div className="text-[9.5px] text-slate-600 font-semibold mt-0.5">
-                              Lic: ________________________
+                              Lic: Pending
                             </div>
                           </div>
                         </div>
@@ -998,18 +1099,18 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                             3. Approved By (EOR)
                           </div>
                           <div className="font-bold text-slate-900 text-sm">
-                            {activeWorkspace.engineerOfRecord || userProfile.fullName || '________________________'}
+                            {activeWorkspace.engineerOfRecord || userProfile.fullName || 'Pending Signature'}
                           </div>
                           <div className="text-slate-600 text-[11px]">Engineer of Record (EOR)</div>
-                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || '________________________'}</div>
+                          <div className="text-slate-500 text-[10px]">Org: {userProfile.organization || 'Independent Practice'}</div>
                           <div className="pt-3">
                             <div className="w-full border-b-2 border-slate-800 mb-1"></div>
                             <div className="flex justify-between text-[9.5px] text-slate-500">
-                              <span>Seal &amp; Sign: ____________</span>
+                              <span>Seal &amp; Sign: Pending</span>
                               <span>Date: {new Date(timestamp).toLocaleDateString()}</span>
                             </div>
                             <div className="text-[9.5px] text-slate-900 font-bold mt-0.5">
-                              {userProfile.licenseNumber ? `EOR Lic: ${userProfile.licenseNumber}` : 'Seal & Lic: ________________________'}
+                              {userProfile.licenseNumber ? `EOR Lic: ${userProfile.licenseNumber}` : 'Seal & Lic: Pending'}
                             </div>
                           </div>
                         </div>
@@ -1673,7 +1774,7 @@ function renderModuleInputRows(moduleId: EngineeringModuleId, ws: CivilWorkspace
           <tr>
             <td className="p-2 font-medium">Jobsite Location</td>
             <td className="p-2 text-center">Site</td>
-            <td className="p-2 text-right">{ws.siteLocation || '________________________'}</td>
+            <td className="p-2 text-right">{ws.siteLocation || 'Not Specified'}</td>
             <td className="p-2 text-center">-</td>
           </tr>
         </>

@@ -757,17 +757,24 @@ export const SiteManagementProvider: React.FC<{ children: React.ReactNode }> = (
     // Purge legacy site records on version mismatch while retaining system settings
     try {
       const storedVer = localStorage.getItem(SITE_VERSION_KEY);
-      if (storedVer !== CURRENT_SITE_VERSION) {
-        console.info('[SiteManagement] Version mismatch detected. Purging previous site logs.');
+      const needsSiteZeroV5 = localStorage.getItem('bdcivillab_site_zero_v5') !== '1';
+      if (storedVer !== CURRENT_SITE_VERSION || needsSiteZeroV5) {
+        console.info('[SiteManagement] Zero-baseline / version migration detected. Resetting site logs to clean baseline.');
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && (key.startsWith('pbcivillab_site_erp_v1_') || key.startsWith('pbcivillab_site_erp_v2_'))) {
+          if (
+            key &&
+            (key.startsWith('pbcivillab_site_erp_v1_') ||
+              key.startsWith('pbcivillab_site_erp_v2_') ||
+              (needsSiteZeroV5 && key.startsWith(STORAGE_KEY_PREFIX)))
+          ) {
             keysToRemove.push(key);
           }
         }
         keysToRemove.forEach((k) => localStorage.removeItem(k));
         localStorage.setItem(SITE_VERSION_KEY, CURRENT_SITE_VERSION);
+        localStorage.setItem('bdcivillab_site_zero_v5', '1');
       }
     } catch (err) {
       console.warn('[SiteManagement] Purge error:', err);

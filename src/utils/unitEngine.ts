@@ -537,6 +537,7 @@ export interface ConversionFactorDetails {
   unitId: string;
   unitName: string;
   unitSymbol: string;
+  description: string;
   category: UnitCategoryKey;
   baseUnitId: string;
   baseUnitSymbol: string;
@@ -570,6 +571,7 @@ export function getConversionFactorDetails(
       unitId,
       unitName: unitId,
       unitSymbol: unitId,
+      description: `Canonical engineering unit (${unitId})`,
       category,
       baseUnitId: baseInfo.id,
       baseUnitSymbol: baseInfo.symbol,
@@ -578,7 +580,7 @@ export function getConversionFactorDetails(
       isBaseUnit: true,
       factorFormula: `1 ${unitId} = 1 ${baseInfo.symbol}`,
       inverseFormula: `1 ${baseInfo.symbol} = 1 ${unitId}`,
-      tooltip: `${unitId} (Canonical Base SI Unit for ${category})`,
+      tooltip: `${unitId} — Canonical Base SI Unit for ${category.replace('_', ' ')} (1 ${unitId} = 1 ${baseInfo.symbol})`,
     };
   }
 
@@ -624,14 +626,16 @@ export function getConversionFactorDetails(
     ? `1 ${baseInfo.symbol} = 1 ${unit.symbol}`
     : `1 ${baseInfo.symbol} ≈ ${inverseStr} ${unit.symbol}`;
 
+  const descLine = unit.description ? `${unit.description}\n` : '';
   const tooltip = isBase
-    ? `${unit.name} (${unit.symbol}) is the canonical Base SI unit for ${category.replace('_', ' ')} (Conversion factor: 1.0).`
-    : `Conversion factor relative to Base SI (${baseInfo.name} [${baseInfo.symbol}]):\n• 1 ${unit.symbol} = ${factorStr} ${baseInfo.symbol}${expStr ? ` (${expStr})` : ''}\n• ${inverseFormula}\n• Multiplier: ×${factorStr}`;
+    ? `${unit.name} (${unit.symbol}): ${descLine}Canonical Base SI unit for ${category.replace('_', ' ')} (Base factor: 1.0 ${baseInfo.symbol}).`
+    : `${unit.name} (${unit.symbol}) — ${unit.description || category.replace('_', ' ')}\n• Base Factor: 1 ${unit.symbol} = ${factorStr} ${baseInfo.symbol}${expStr ? ` (${expStr})` : ''}\n• Inverse: ${inverseFormula}`;
 
   return {
     unitId: unit.id,
     unitName: unit.name,
     unitSymbol: unit.symbol,
+    description: unit.description || `${unit.name} (${unit.symbol})`,
     category,
     baseUnitId: baseInfo.id,
     baseUnitSymbol: baseInfo.symbol,
@@ -644,3 +648,242 @@ export function getConversionFactorDetails(
     tooltip,
   };
 }
+
+/**
+ * Curated priority unit ordering for inline contextual unit selectors across all modules
+ */
+export const CURATED_CONTEXTUAL_UNITS: Record<UnitCategoryKey, string[]> = {
+  length: ['m', 'mm', 'cm', 'ft-in', 'ft', 'in', 'suta', 'yd', 'km'],
+  area: ['m2', 'ft2', 'in2', 'cm2', 'mm2', 'decimal', 'katha', 'bigha', 'acre', 'ha'],
+  volume: ['m3', 'cft', 'liter', 'gal_us', 'cm3', 'mm3', 'yd3', 'bag_cement'],
+  mass: ['kg', 'tonne', 'g', 'lb', 'bag50', 'quintal', 'ton_us'],
+  force: ['kN', 'N', 'kgf', 'lbf', 'kip', 'tf', 'MN'],
+  pressure: ['MPa', 'kPa', 'psi', 'kgf/cm2', 'psf', 'GPa', 'ksi', 'Pa', 'bar'],
+  distributed_load: ['kN/m', 'N/m', 'kgf/m', 'plf', 'klf', 'tf/m'],
+  moment: ['kN.m', 'N.m', 'kip.ft', 'lbf.ft', 'kgf.m', 'tf.m'],
+  density: ['kN/m3', 'kg/m3', 'pcf', 'g/cm3', 'tonne/m3'],
+  section_properties: ['mm4', 'cm4', 'in4', 'm4', 'ft4'],
+  flow_rate: ['L/s', 'm3/s', 'cfs', 'gpm', 'L/min', 'm3/hr'],
+  velocity: ['m/s', 'ft/s', 'km/h', 'mph', 'cm/s'],
+  slope: ['percent', 'ratio', 'degree', 'permille'],
+  viscosity: ['Pa.s', 'mPa.s', 'cP', 'cSt'],
+  temperature: ['c', 'f', 'k'],
+  energy: ['kJ', 'J', 'kWh', 'BTU', 'kcal'],
+  power: ['kW', 'W', 'hp', 'TR', 'btu_hr'],
+  time_frequency: ['s', 'min', 'hr', 'day', 'Hz'],
+  digital_storage: ['MB', 'GB', 'KB', 'B'],
+  fuel_economy: ['km_l', 'mpg_us', 'l_100km'],
+  cad_typography: ['mm', 'in', 'pt', 'px'],
+};
+
+const UNIT_ALIAS_LOOKUP: Record<string, { unitId: string; category: UnitCategoryKey }> = {
+  // Length
+  m: { unitId: 'm', category: 'length' },
+  mm: { unitId: 'mm', category: 'length' },
+  cm: { unitId: 'cm', category: 'length' },
+  km: { unitId: 'km', category: 'length' },
+  ft: { unitId: 'ft', category: 'length' },
+  in: { unitId: 'in', category: 'length' },
+  'ft-in': { unitId: 'ft-in', category: 'length' },
+  "ft'-in\"": { unitId: 'ft-in', category: 'length' },
+  suta: { unitId: 'suta', category: 'length' },
+  yd: { unitId: 'yd', category: 'length' },
+  rft: { unitId: 'rft', category: 'length' },
+  rm: { unitId: 'rm', category: 'length' },
+  // Area
+  m2: { unitId: 'm2', category: 'area' },
+  'm²': { unitId: 'm2', category: 'area' },
+  sqm: { unitId: 'm2', category: 'area' },
+  ft2: { unitId: 'ft2', category: 'area' },
+  'ft²': { unitId: 'ft2', category: 'area' },
+  'sq ft': { unitId: 'ft2', category: 'area' },
+  sqft: { unitId: 'ft2', category: 'area' },
+  sft: { unitId: 'ft2', category: 'area' },
+  in2: { unitId: 'in2', category: 'area' },
+  'in²': { unitId: 'in2', category: 'area' },
+  'sq in': { unitId: 'in2', category: 'area' },
+  cm2: { unitId: 'cm2', category: 'area' },
+  'cm²': { unitId: 'cm2', category: 'area' },
+  mm2: { unitId: 'mm2', category: 'area' },
+  'mm²': { unitId: 'mm2', category: 'area' },
+  decimal: { unitId: 'decimal', category: 'area' },
+  dec: { unitId: 'decimal', category: 'area' },
+  katha: { unitId: 'katha', category: 'area' },
+  bigha: { unitId: 'bigha', category: 'area' },
+  acre: { unitId: 'acre', category: 'area' },
+  ha: { unitId: 'ha', category: 'area' },
+  // Volume
+  m3: { unitId: 'm3', category: 'volume' },
+  'm³': { unitId: 'm3', category: 'volume' },
+  cum: { unitId: 'm3', category: 'volume' },
+  cft: { unitId: 'cft', category: 'volume' },
+  CFT: { unitId: 'cft', category: 'volume' },
+  ft3: { unitId: 'cft', category: 'volume' },
+  'ft³': { unitId: 'cft', category: 'volume' },
+  liter: { unitId: 'liter', category: 'volume' },
+  L: { unitId: 'liter', category: 'volume' },
+  l: { unitId: 'liter', category: 'volume' },
+  gal: { unitId: 'gal_us', category: 'volume' },
+  gal_us: { unitId: 'gal_us', category: 'volume' },
+  'US gal': { unitId: 'gal_us', category: 'volume' },
+  cm3: { unitId: 'cm3', category: 'volume' },
+  'cm³': { unitId: 'cm3', category: 'volume' },
+  mm3: { unitId: 'mm3', category: 'volume' },
+  'mm³': { unitId: 'mm3', category: 'volume' },
+  // Mass
+  kg: { unitId: 'kg', category: 'mass' },
+  tonne: { unitId: 'tonne', category: 'mass' },
+  MT: { unitId: 'tonne', category: 'mass' },
+  t: { unitId: 'tonne', category: 'mass' },
+  g: { unitId: 'g', category: 'mass' },
+  lb: { unitId: 'lb', category: 'mass' },
+  lbs: { unitId: 'lb', category: 'mass' },
+  bag50: { unitId: 'bag50', category: 'mass' },
+  bags: { unitId: 'bag50', category: 'mass' },
+  // Force
+  kN: { unitId: 'kN', category: 'force' },
+  N: { unitId: 'N', category: 'force' },
+  kgf: { unitId: 'kgf', category: 'force' },
+  lbf: { unitId: 'lbf', category: 'force' },
+  kip: { unitId: 'kip', category: 'force' },
+  tf: { unitId: 'tf', category: 'force' },
+  MN: { unitId: 'MN', category: 'force' },
+  // Pressure / Stress
+  MPa: { unitId: 'MPa', category: 'pressure' },
+  kPa: { unitId: 'kPa', category: 'pressure' },
+  GPa: { unitId: 'GPa', category: 'pressure' },
+  Pa: { unitId: 'Pa', category: 'pressure' },
+  psi: { unitId: 'psi', category: 'pressure' },
+  ksi: { unitId: 'ksi', category: 'pressure' },
+  psf: { unitId: 'psf', category: 'pressure' },
+  'kgf/cm2': { unitId: 'kgf/cm2', category: 'pressure' },
+  'kgf/cm²': { unitId: 'kgf/cm2', category: 'pressure' },
+  'kg/cm2': { unitId: 'kgf/cm2', category: 'pressure' },
+  'kg/cm²': { unitId: 'kgf/cm2', category: 'pressure' },
+  'N/mm2': { unitId: 'MPa', category: 'pressure' },
+  'N/mm²': { unitId: 'MPa', category: 'pressure' },
+  bar: { unitId: 'bar', category: 'pressure' },
+  // Distributed load
+  'kN/m': { unitId: 'kN/m', category: 'distributed_load' },
+  'N/m': { unitId: 'N/m', category: 'distributed_load' },
+  'kgf/m': { unitId: 'kgf/m', category: 'distributed_load' },
+  plf: { unitId: 'plf', category: 'distributed_load' },
+  klf: { unitId: 'klf', category: 'distributed_load' },
+  'kip/ft': { unitId: 'klf', category: 'distributed_load' },
+  // Moment
+  'kN.m': { unitId: 'kN.m', category: 'moment' },
+  'kN·m': { unitId: 'kN.m', category: 'moment' },
+  'kN-m': { unitId: 'kN.m', category: 'moment' },
+  'N.m': { unitId: 'N.m', category: 'moment' },
+  'N·m': { unitId: 'N.m', category: 'moment' },
+  'kip.ft': { unitId: 'kip.ft', category: 'moment' },
+  'kip·ft': { unitId: 'kip.ft', category: 'moment' },
+  'lbf.ft': { unitId: 'lbf.ft', category: 'moment' },
+  // Density
+  'kN/m3': { unitId: 'kN/m3', category: 'density' },
+  'kN/m³': { unitId: 'kN/m3', category: 'density' },
+  'kg/m3': { unitId: 'kg/m3', category: 'density' },
+  'kg/m³': { unitId: 'kg/m3', category: 'density' },
+  pcf: { unitId: 'pcf', category: 'density' },
+  'g/cm3': { unitId: 'g/cm3', category: 'density' },
+  'g/cm³': { unitId: 'g/cm3', category: 'density' },
+  // Section properties
+  mm4: { unitId: 'mm4', category: 'section_properties' },
+  'mm⁴': { unitId: 'mm4', category: 'section_properties' },
+  cm4: { unitId: 'cm4', category: 'section_properties' },
+  'cm⁴': { unitId: 'cm4', category: 'section_properties' },
+  in4: { unitId: 'in4', category: 'section_properties' },
+  'in⁴': { unitId: 'in4', category: 'section_properties' },
+  m4: { unitId: 'm4', category: 'section_properties' },
+  'm⁴': { unitId: 'm4', category: 'section_properties' },
+  // Flow rate
+  'L/s': { unitId: 'L/s', category: 'flow_rate' },
+  'm3/s': { unitId: 'm3/s', category: 'flow_rate' },
+  'm³/s': { unitId: 'm3/s', category: 'flow_rate' },
+  cfs: { unitId: 'cfs', category: 'flow_rate' },
+  gpm: { unitId: 'gpm', category: 'flow_rate' },
+  'L/min': { unitId: 'L/min', category: 'flow_rate' },
+  'm3/hr': { unitId: 'm3/hr', category: 'flow_rate' },
+  // Velocity
+  'm/s': { unitId: 'm/s', category: 'velocity' },
+  'ft/s': { unitId: 'ft/s', category: 'velocity' },
+  'km/h': { unitId: 'km/h', category: 'velocity' },
+  mph: { unitId: 'mph', category: 'velocity' },
+  // Temperature
+  c: { unitId: 'c', category: 'temperature' },
+  '°C': { unitId: 'c', category: 'temperature' },
+  f: { unitId: 'f', category: 'temperature' },
+  '°F': { unitId: 'f', category: 'temperature' },
+};
+
+/**
+ * Resolves any engineering unit symbol or ID to its canonical unitId, category, and ordered UnitDefinitions
+ */
+export function resolveUnitAndCategory(
+  unitSymbolOrId?: string,
+  explicitCategory?: UnitCategoryKey
+): {
+  unitId: string;
+  category: UnitCategoryKey;
+  unitDef: UnitDefinition;
+  contextualUnits: UnitDefinition[];
+} | null {
+  if (!unitSymbolOrId) return null;
+  const trimmed = unitSymbolOrId.trim();
+  if (!trimmed) return null;
+
+  let resolvedUnitId: string | undefined;
+  let resolvedCategory: UnitCategoryKey | undefined = explicitCategory;
+
+  if (explicitCategory) {
+    const catUnits = STANDARD_UNITS[explicitCategory] || [];
+    const match = catUnits.find(
+      (u) => u.id === trimmed || u.symbol === trimmed || u.id.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (match) {
+      resolvedUnitId = match.id;
+    }
+  }
+
+  if (!resolvedUnitId && UNIT_ALIAS_LOOKUP[trimmed]) {
+    resolvedUnitId = UNIT_ALIAS_LOOKUP[trimmed].unitId;
+    resolvedCategory = explicitCategory || UNIT_ALIAS_LOOKUP[trimmed].category;
+  }
+
+  if (!resolvedUnitId || !resolvedCategory) {
+    // Search all categories
+    for (const [catKey, units] of Object.entries(STANDARD_UNITS) as [UnitCategoryKey, UnitInfo[]][]) {
+      const match = units.find((u) => u.id === trimmed || u.symbol === trimmed);
+      if (match) {
+        resolvedUnitId = match.id;
+        resolvedCategory = catKey;
+        break;
+      }
+    }
+  }
+
+  if (!resolvedUnitId || !resolvedCategory) return null;
+  const unitDef = getUnitDefinition(resolvedUnitId, resolvedCategory);
+  if (!unitDef) return null;
+
+  const allInCat = STANDARD_UNITS[resolvedCategory] || [];
+  const priorityIds = CURATED_CONTEXTUAL_UNITS[resolvedCategory] || [];
+  const prioritized: UnitDefinition[] = [];
+  for (const pid of priorityIds) {
+    const found = allInCat.find((u) => u.id === pid);
+    if (found && !prioritized.some((p) => p.id === found.id)) {
+      prioritized.push(found);
+    }
+  }
+  // Ensure resolvedUnitId itself is included
+  if (!prioritized.some((p) => p.id === unitDef.id)) {
+    prioritized.unshift(unitDef);
+  }
+  return {
+    unitId: unitDef.id,
+    category: resolvedCategory,
+    unitDef,
+    contextualUnits: prioritized,
+  };
+}
+

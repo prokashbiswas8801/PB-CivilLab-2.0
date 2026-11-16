@@ -12,6 +12,7 @@ import { HYDRAULIC_MATERIALS, STANDARD_COMMERCIAL_DIAMETERS_MM } from '../../uti
 import { createDefaultPipeHydraulics } from '../../utils/storage';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import {
   Activity,
   AlertTriangle,
@@ -160,19 +161,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Hazen-Williams C
             </label>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pipe.hazenWilliamsC}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePipe({
-                  hazenWilliamsC: Math.max(0, Math.min(165, isNaN(raw) ? 0 : raw)),
-                });
-              }}
+              onChangeValue={(val) => updatePipe({ hazenWilliamsC: Math.max(0, Math.min(165, val)) })}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="5"
-              min="0"
-              max="165"
+              min={0}
+              max={165}
             />
           </div>
 
@@ -180,19 +174,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Manning Roughness n
             </label>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pipe.manningN ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePipe({
-                  manningN: Math.max(0, Math.min(0.045, isNaN(raw) ? 0 : raw)),
-                });
-              }}
+              onChangeValue={(val) => updatePipe({ manningN: Math.max(0, Math.min(0.045, val)) })}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="0.001"
-              min="0"
-              max="0.045"
+              min={0}
+              max={0.045}
             />
           </div>
 
@@ -200,19 +187,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Water Temperature (°C)
             </label>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pipe.waterTempC ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePipe({
-                  waterTempC: Math.max(0, Math.min(60, isNaN(raw) ? 0 : raw)),
-                });
-              }}
+              onChangeValue={(val) => updatePipe({ waterTempC: Math.max(0, Math.min(60, val)) })}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="1"
-              min="0"
-              max="60"
+              min={0}
+              max={60}
             />
           </div>
 
@@ -220,18 +200,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Minor Loss K (ΣK)
             </label>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pipe.minorLossCoefficientK ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePipe({
-                  minorLossCoefficientK: Math.max(0, isNaN(raw) ? 0 : raw),
-                });
-              }}
+              onChangeValue={(val) => updatePipe({ minorLossCoefficientK: Math.max(0, val) })}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="0.5"
-              min="0"
+              min={0}
             />
           </div>
         </div>
@@ -335,18 +308,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
             <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Design Storm Filling Ratio (y/D)
             </label>
-            <input
-              type="number"
-              step="0.05"
-              min="0"
-              max="1.0"
+            <NumericDraftInput
+              min={0}
+              max={1.0}
               value={pipe.stormFillingRatio ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePipe({
-                  stormFillingRatio: Math.max(0, Math.min(1.0, isNaN(raw) ? 0 : raw)),
-                });
-              }}
+              onChangeValue={(val) => updatePipe({ stormFillingRatio: Math.max(0, Math.min(1.0, val)) })}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
             />
             <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1">
@@ -384,16 +350,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div>
               <label className="block text-[11px] font-semibold mb-1">Tubewell Depth (m)</label>
-              <input
-                type="number"
-                step="5"
-                min="0"
-                max="350"
+              <NumericDraftInput
+                min={0}
+                max={350}
                 value={pipe.tubewellDepthM ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePipe({ tubewellDepthM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePipe({ tubewellDepthM: Math.max(0, val) })}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Borehole depth</span>
@@ -401,16 +362,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold mb-1">Static Water Level SWL (m)</label>
-              <input
-                type="number"
-                step="1"
-                min="0"
-                max="100"
+              <NumericDraftInput
+                min={0}
+                max={100}
                 value={pipe.staticWaterLevelM ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePipe({ staticWaterLevelM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePipe({ staticWaterLevelM: Math.max(0, val) })}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Resting water table</span>
@@ -418,16 +374,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold mb-1">Pumping Drawdown (m)</label>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                max="50"
+              <NumericDraftInput
+                min={0}
+                max={50}
                 value={pipe.drawdownM ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePipe({ drawdownM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePipe({ drawdownM: Math.max(0, val) })}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Cone of depression</span>
@@ -435,16 +386,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold mb-1">Overhead Tank Head (m)</label>
-              <input
-                type="number"
-                step="1"
-                min="0"
-                max="100"
+              <NumericDraftInput
+                min={0}
+                max={100}
                 value={pipe.deliveryHeadM ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePipe({ deliveryHeadM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePipe({ deliveryHeadM: Math.max(0, val) })}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Rooftop OHT elevation</span>
@@ -467,16 +413,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold mb-1">Pump Efficiency (%)</label>
-              <input
-                type="number"
-                step="5"
-                min="0"
-                max="95"
+              <NumericDraftInput
+                min={0}
+                max={95}
                 value={pipe.pumpEfficiencyPercent ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePipe({ pumpEfficiencyPercent: Math.max(0, Math.min(95, isNaN(raw) ? 0 : raw)) });
-                }}
+                onChangeValue={(val) => updatePipe({ pumpEfficiencyPercent: Math.max(0, Math.min(95, val)) })}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Submersible bowl eff.</span>
@@ -484,16 +425,11 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold mb-1">Motor Efficiency (%)</label>
-              <input
-                type="number"
-                step="5"
-                min="0"
-                max="98"
+              <NumericDraftInput
+                min={0}
+                max={98}
                 value={pipe.motorEfficiencyPercent ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePipe({ motorEfficiencyPercent: Math.max(0, Math.min(98, isNaN(raw) ? 0 : raw)) });
-                }}
+                onChangeValue={(val) => updatePipe({ motorEfficiencyPercent: Math.max(0, Math.min(98, val)) })}
                 className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Wet stator motor eff.</span>
@@ -534,15 +470,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Water Closets (WC)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
+                <NumericDraftInput
+                  min={0}
+                  max={100}
+                  allowDecimal={false}
                   value={pipe.fixtureWaterClosets ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updatePipe({ fixtureWaterClosets: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updatePipe({ fixtureWaterClosets: Math.max(0, Math.round(val)) })}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">3 WSFU · 4 DFU</span>
@@ -552,15 +485,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Wash Basins (WB)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
+                <NumericDraftInput
+                  min={0}
+                  max={100}
+                  allowDecimal={false}
                   value={pipe.fixtureWashBasins ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updatePipe({ fixtureWashBasins: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updatePipe({ fixtureWashBasins: Math.max(0, Math.round(val)) })}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">1.5 WSFU · 1 DFU</span>
@@ -570,15 +500,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Showers
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
+                <NumericDraftInput
+                  min={0}
+                  max={100}
+                  allowDecimal={false}
                   value={pipe.fixtureShowers ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updatePipe({ fixtureShowers: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updatePipe({ fixtureShowers: Math.max(0, Math.round(val)) })}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">2 WSFU · 2 DFU</span>
@@ -588,15 +515,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Kitchen Sinks
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
+                <NumericDraftInput
+                  min={0}
+                  max={100}
+                  allowDecimal={false}
                   value={pipe.fixtureKitchenSinks ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updatePipe({ fixtureKitchenSinks: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updatePipe({ fixtureKitchenSinks: Math.max(0, Math.round(val)) })}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">2 WSFU · 2 DFU</span>
@@ -606,15 +530,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 <label className="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 mb-1">
                   Floor Drains (FD)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
+                <NumericDraftInput
+                  min={0}
+                  max={100}
+                  allowDecimal={false}
                   value={pipe.fixtureFloorDrains ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updatePipe({ fixtureFloorDrains: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updatePipe({ fixtureFloorDrains: Math.max(0, Math.round(val)) })}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <span className="text-[9px] text-amber-600">Strainer only (2 DFU)</span>
@@ -624,15 +545,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 <label className="block text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
                   Floor Traps (FT)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
+                <NumericDraftInput
+                  min={0}
+                  max={100}
+                  allowDecimal={false}
                   value={pipe.fixtureFloorTraps ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updatePipe({ fixtureFloorTraps: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updatePipe({ fixtureFloorTraps: Math.max(0, Math.round(val)) })}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <span className="text-[9px] text-emerald-600">Water Seal Trap (2 DFU)</span>
@@ -642,15 +560,12 @@ export const PipeHydraulicsInputs: React.FC<PipeHydraulicsInputsProps> = ({
                 <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Urinals
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
+                <NumericDraftInput
+                  min={0}
+                  max={100}
+                  allowDecimal={false}
                   value={pipe.fixtureUrinals ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updatePipe({ fixtureUrinals: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updatePipe({ fixtureUrinals: Math.max(0, Math.round(val)) })}
                   className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs"
                 />
                 <span className="text-[9px] text-[var(--md-sys-color-on-surface-variant)]">2 WSFU · 2 DFU</span>

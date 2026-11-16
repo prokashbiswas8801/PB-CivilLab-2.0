@@ -8,7 +8,22 @@ import {
   RebarBBSParameters,
   MasonryParameters,
   EarthworkParameters,
+  BearingParameters,
+  PileCapacityParameters,
+  ConcreteMixParameters,
+  ChannelParameters,
+  PipeHydraulicsParameters,
+  FrameTruss2DParams,
+  SectionAnalyzerParams,
+  RcColumnParams,
+  StrutAndTieParams,
 } from '../types/civil';
+import {
+  createPresetFrameTruss2D,
+  createPresetSectionAnalyzer,
+  createPresetRcColumnDesign,
+  createPresetStrutAndTie,
+} from '../utils/storage';
 
 export interface BeamWorkedExample {
   id: string;
@@ -83,6 +98,87 @@ export interface EarthworkWorkedExample {
   params: Partial<EarthworkParameters>;
 }
 
+export interface BearingWorkedExample {
+  id: string;
+  module: 'bearing-capacity';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: Partial<BearingParameters>;
+}
+
+export interface PileWorkedExample {
+  id: string;
+  module: 'pile-capacity';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: Partial<PileCapacityParameters>;
+}
+
+export interface ConcreteMixWorkedExample {
+  id: string;
+  module: 'concrete-mix';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: Partial<ConcreteMixParameters>;
+}
+
+export interface OpenChannelWorkedExample {
+  id: string;
+  module: 'open-channel';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: Partial<ChannelParameters>;
+}
+
+export interface PipeHydraulicsWorkedExample {
+  id: string;
+  module: 'pipe-hydraulics';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: Partial<PipeHydraulicsParameters>;
+}
+
+export interface FrameTrussWorkedExample {
+  id: string;
+  module: 'frame-truss-2d';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: FrameTruss2DParams;
+}
+
+export interface SectionAnalyzerWorkedExample {
+  id: string;
+  module: 'section-analyzer';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: SectionAnalyzerParams;
+}
+
+export interface RcColumnWorkedExample {
+  id: string;
+  module: 'rc-column-design';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: RcColumnParams;
+}
+
+export interface StrutAndTieWorkedExample {
+  id: string;
+  module: 'strut-and-tie';
+  title: string;
+  subtitle: string;
+  category: string;
+  params: StrutAndTieParams;
+}
+
 export type WorkedExampleEntry =
   | BeamWorkedExample
   | ContinuousBeamWorkedExample
@@ -91,7 +187,16 @@ export type WorkedExampleEntry =
   | ConcreteMaterialsWorkedExample
   | RebarBbsWorkedExample
   | MasonryWorkedExample
-  | EarthworkWorkedExample;
+  | EarthworkWorkedExample
+  | BearingWorkedExample
+  | PileWorkedExample
+  | ConcreteMixWorkedExample
+  | OpenChannelWorkedExample
+  | PipeHydraulicsWorkedExample
+  | FrameTrussWorkedExample
+  | SectionAnalyzerWorkedExample
+  | RcColumnWorkedExample
+  | StrutAndTieWorkedExample;
 
 export const BEAM_WORKED_EXAMPLES: BeamWorkedExample[] = [
   {
@@ -1076,6 +1181,216 @@ export const EARTHWORK_WORKED_EXAMPLES: EarthworkWorkedExample[] = [
   },
 ];
 
+export const BEARING_WORKED_EXAMPLES: BearingWorkedExample[] = [
+  {
+    id: 'bearing-square-sand-2.8m',
+    module: 'bearing-capacity',
+    title: 'Square Isolated Footing on Dense Sand (2.8m × 2.8m, Df = 1.8m)',
+    subtitle: 'Terzaghi/Hansen bearing check under 2800 kN column load (φ = 36°, c = 8 kPa)',
+    category: 'Geotechnical Foundations',
+    params: {
+      footingShape: 'square',
+      footingWidthM: 2.8,
+      embedmentDepthM: 1.8,
+      soilCohesionKpa: 8,
+      frictionAngleDeg: 36,
+      unitWeightKnPerM3: 19.5,
+      waterTableDepthM: 4.0,
+      factorOfSafety: 3.0,
+      appliedColumnLoadKn: 2800,
+    },
+  },
+  {
+    id: 'bearing-deltaic-clay-3.5m',
+    module: 'bearing-capacity',
+    title: 'Alluvial Deltaic Clay Footing (3.5m × 3.5m, Shallow Water Table)',
+    subtitle: 'Cohesive soil (c = 35 kPa, φ = 18°, Dw = 1.5m) with water table buoyancy reduction',
+    category: 'Bangladesh Deltaic Soil',
+    params: {
+      footingShape: 'square',
+      footingWidthM: 3.5,
+      embedmentDepthM: 2.0,
+      soilCohesionKpa: 35,
+      frictionAngleDeg: 18,
+      unitWeightKnPerM3: 17.5,
+      waterTableDepthM: 1.5,
+      factorOfSafety: 3.0,
+      appliedColumnLoadKn: 1850,
+    },
+  },
+];
+
+export const PILE_WORKED_EXAMPLES: PileWorkedExample[] = [
+  {
+    id: 'pile-bored-600mm-22m',
+    module: 'pile-capacity',
+    title: '600mm × 22m Bored Cast-in-Situ Pile in Layered Alluvial Strata',
+    subtitle: 'BNBC-2020 Alpha/Beta + SPT check with 2×2 group efficiency & Vesic settlement',
+    category: 'Deep Foundations',
+    params: {
+      pileType: 'bored-cast-in-situ',
+      method: 'combined-bnbc',
+      codeStandard: 'BNBC-2020',
+      diameterM: 0.6,
+      lengthM: 22.0,
+      groundwaterDepthM: 3.0,
+      appliedLoadKn: 1650,
+      factorOfSafety: 2.5,
+      pileConcreteFckMpa: 28,
+      elasticModulusPileGpa: 25,
+      permissibleSettlementMm: 25,
+      pileGroupRows: 2,
+      pileGroupCols: 2,
+      pileSpacingM: 1.8,
+      layers: [
+        {
+          id: 'layer-1',
+          name: 'Soft Silty Clay (Overburden)',
+          thicknessM: 6.0,
+          soilType: 'clay',
+          cohesionKpa: 28,
+          frictionAngleDeg: 0,
+          unitWeightKnPerM3: 17.5,
+          sptN: 5,
+        },
+        {
+          id: 'layer-2',
+          name: 'Medium Dense Silty Sand',
+          thicknessM: 8.0,
+          soilType: 'sand',
+          cohesionKpa: 0,
+          frictionAngleDeg: 30,
+          unitWeightKnPerM3: 18.5,
+          sptN: 18,
+        },
+        {
+          id: 'layer-3',
+          name: 'Dense Bearing Sand & Gravel',
+          thicknessM: 10.0,
+          soilType: 'sand',
+          cohesionKpa: 0,
+          frictionAngleDeg: 36,
+          unitWeightKnPerM3: 20.0,
+          sptN: 38,
+        },
+      ],
+      tipBearingCohesionKpa: 0,
+      tipBearingFrictionDeg: 36,
+      tipBearingUnitWeightKnPerM3: 20.0,
+      tipSptN: 38,
+    },
+  },
+];
+
+export const CONCRETE_MIX_WORKED_EXAMPLES: ConcreteMixWorkedExample[] = [
+  {
+    id: 'mix-c30-structural-aci211',
+    module: 'concrete-mix',
+    title: 'ACI 211.1 C30 Ready-Mix Design (30 MPa · w/c 0.42 · 20mm Stone)',
+    subtitle: 'Absolute volume weight batching for structural columns & transfer girders',
+    category: 'Structural Ready-Mix',
+    params: {
+      targetStrengthMpa: 30,
+      waterCementRatio: 0.42,
+      slumpMm: 100,
+      maxAggregateSizeMm: 20,
+      cementSpecificGravity: 3.15,
+      fineAggSpecificGravity: 2.65,
+      coarseAggSpecificGravity: 2.7,
+      coarseAggDryRoddedDensityKgPerM3: 1600,
+      sandFinenessModulus: 2.65,
+      airEntrainmentPercent: 2.0,
+      batchVolumeM3: 10.0,
+    },
+  },
+];
+
+export const OPEN_CHANNEL_WORKED_EXAMPLES: OpenChannelWorkedExample[] = [
+  {
+    id: 'channel-trapezoidal-storm-drain',
+    module: 'open-channel',
+    title: 'Concrete-Lined Trapezoidal Storm Drain (b = 1.8m, z = 1.0, y = 1.2m)',
+    subtitle: 'Manning uniform flow (n = 0.013, S₀ = 0.002) + Froude & specific energy check',
+    category: 'Urban Storm Drainage',
+    params: {
+      shape: 'trapezoidal',
+      bottomWidthM: 1.8,
+      sideSlopeZ: 1.0,
+      flowDepthM: 1.2,
+      bedSlope: 0.002,
+      manningN: 0.013,
+      freeboardRequirementM: 0.4,
+    },
+  },
+];
+
+export const PIPE_HYDRAULICS_WORKED_EXAMPLES: PipeHydraulicsWorkedExample[] = [
+  {
+    id: 'pipe-hdpe-250mm-main',
+    module: 'pipe-hydraulics',
+    title: '250mm HDPE Pressure Transmission Main (Q = 45 L/s, L = 180m)',
+    subtitle: 'Hazen-Williams C = 150 & Darcy-Weisbach head loss with HGL/EGL profile',
+    category: 'Water Supply & Drainage',
+    params: {
+      serviceType: 'pressure',
+      pipeMaterial: 'pvc-hdpe',
+      hazenWilliamsC: 150,
+      internalDiameterMm: 250,
+      lengthM: 180,
+      flowRateLps: 45,
+      inletElevationM: 25.0,
+      outletElevationM: 18.0,
+      inletPressureKpa: 300,
+      minorLossCoefficientK: 2.0,
+      waterTempC: 20,
+    },
+  },
+];
+
+export const FRAME_TRUSS_WORKED_EXAMPLES: FrameTrussWorkedExample[] = [
+  {
+    id: 'frame-portal-sway-6m',
+    module: 'frame-truss-2d',
+    title: 'Portal Sway Frame (6.0m Bay × 4.0m Eave + Second-Order P-Delta)',
+    subtitle: 'Fixed-base portal under 22 kN/m gravity UDL + 35 kN lateral wind sway',
+    category: 'Matrix Structural Analysis',
+    params: createPresetFrameTruss2D(),
+  },
+];
+
+export const SECTION_ANALYZER_WORKED_EXAMPLES: SectionAnalyzerWorkedExample[] = [
+  {
+    id: 'section-ipe300-s355',
+    module: 'section-analyzer',
+    title: 'IPE 300 S355 Beam-Column (Class 1 Plastic N-M-V Interaction)',
+    subtitle: 'Combined axial compression (-420 kN), major bending (145 kN·m), and shear (95 kN)',
+    category: 'Cross-Section Mechanics',
+    params: createPresetSectionAnalyzer(),
+  },
+];
+
+export const RC_COLUMN_WORKED_EXAMPLES: RcColumnWorkedExample[] = [
+  {
+    id: 'rc-col-400x500-biaxial',
+    module: 'rc-column-design',
+    title: 'Tied RC Column 400×500 mm (8-Ø20mm Biaxial + Slenderness)',
+    subtitle: 'BNBC-2020 / ACI 318-19 strain-compatibility P-M envelope & Bresler contour',
+    category: 'Reinforced Concrete Design',
+    params: createPresetRcColumnDesign(),
+  },
+];
+
+export const STRUT_AND_TIE_WORKED_EXAMPLES: StrutAndTieWorkedExample[] = [
+  {
+    id: 'stm-deep-beam-900kn',
+    module: 'strut-and-tie',
+    title: 'Deep Transfer Girder STM (4.0m Span × 1.6m Depth · 900 kN Load)',
+    subtitle: 'ACI 318-19 Ch. 23 D-Region truss equilibrium, strut stress & tension tie steel',
+    category: 'D-Region Strut-and-Tie',
+    params: createPresetStrutAndTie(),
+  },
+];
+
 export const ALL_WORKED_EXAMPLES: WorkedExampleEntry[] = [
   ...BEAM_WORKED_EXAMPLES,
   ...CONTINUOUS_BEAM_WORKED_EXAMPLES,
@@ -1085,6 +1400,15 @@ export const ALL_WORKED_EXAMPLES: WorkedExampleEntry[] = [
   ...REBAR_BBS_WORKED_EXAMPLES,
   ...MASONRY_WORKED_EXAMPLES,
   ...EARTHWORK_WORKED_EXAMPLES,
+  ...BEARING_WORKED_EXAMPLES,
+  ...PILE_WORKED_EXAMPLES,
+  ...CONCRETE_MIX_WORKED_EXAMPLES,
+  ...OPEN_CHANNEL_WORKED_EXAMPLES,
+  ...PIPE_HYDRAULICS_WORKED_EXAMPLES,
+  ...FRAME_TRUSS_WORKED_EXAMPLES,
+  ...SECTION_ANALYZER_WORKED_EXAMPLES,
+  ...RC_COLUMN_WORKED_EXAMPLES,
+  ...STRUT_AND_TIE_WORKED_EXAMPLES,
 ];
 
 export type DeepLinkModuleId =
@@ -1095,7 +1419,16 @@ export type DeepLinkModuleId =
   | 'concrete-materials'
   | 'rebar-bbs'
   | 'masonry-finishes'
-  | 'earthwork-alignment';
+  | 'earthwork-alignment'
+  | 'bearing-capacity'
+  | 'pile-capacity'
+  | 'concrete-mix'
+  | 'open-channel'
+  | 'pipe-hydraulics'
+  | 'frame-truss-2d'
+  | 'section-analyzer'
+  | 'rc-column-design'
+  | 'strut-and-tie';
 
 export interface ParsedDeepLink {
   module?: DeepLinkModuleId;
@@ -1137,7 +1470,16 @@ export function parseStructuralDeepLink(search: string): ParsedDeepLink | null {
     rawModule === 'concrete-materials' ||
     rawModule === 'rebar-bbs' ||
     rawModule === 'masonry-finishes' ||
-    rawModule === 'earthwork-alignment'
+    rawModule === 'earthwork-alignment' ||
+    rawModule === 'bearing-capacity' ||
+    rawModule === 'pile-capacity' ||
+    rawModule === 'concrete-mix' ||
+    rawModule === 'open-channel' ||
+    rawModule === 'pipe-hydraulics' ||
+    rawModule === 'frame-truss-2d' ||
+    rawModule === 'section-analyzer' ||
+    rawModule === 'rc-column-design' ||
+    rawModule === 'strut-and-tie'
       ? rawModule
       : undefined;
 

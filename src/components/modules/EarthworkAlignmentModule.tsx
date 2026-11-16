@@ -9,6 +9,7 @@ import {
 import { EarthworkResult } from '../../utils/calculations';
 import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface EarthworkAlignmentInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -214,16 +215,14 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
           />
           <div>
             <label className="block text-xs font-semibold mb-1.5">Side Batter (H : 1V)</label>
-            <input
-              type="number"
-              step={0.25}
+            <NumericDraftInput
               min={0}
               max={3}
               value={ew.pitSideSlopeH}
-              onChange={(e) =>
+              onChangeValue={(val) =>
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  earthwork: { ...ws.earthwork, pitSideSlopeH: Math.max(0, Number(e.target.value) || 0) },
+                  earthwork: { ...ws.earthwork, pitSideSlopeH: Math.max(0, val) },
                 }))
               }
               className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-sm font-semibold text-[var(--md-sys-color-on-surface)]"
@@ -304,16 +303,14 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
           />
           <div>
             <label className="block text-xs font-semibold mb-1.5">Side Slope (s : 1)</label>
-            <input
-              type="number"
-              step={0.25}
+            <NumericDraftInput
               min={0}
               max={3}
               value={ew.trenchSideSlopeH}
-              onChange={(e) =>
+              onChangeValue={(val) =>
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  earthwork: { ...ws.earthwork, trenchSideSlopeH: Math.max(0, Number(e.target.value) || 0) },
+                  earthwork: { ...ws.earthwork, trenchSideSlopeH: Math.max(0, val) },
                 }))
               }
               className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-sm font-semibold text-[var(--md-sys-color-on-surface)]"
@@ -352,16 +349,14 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
 
             <div>
               <label className="block text-xs font-semibold mb-1.5">Side Slope (s : 1 H:V)</label>
-              <input
-                type="number"
-                step={0.25}
+              <NumericDraftInput
                 min={0}
                 max={4}
                 value={ew.sideSlopeS}
-                onChange={(e) =>
+                onChangeValue={(val) =>
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    earthwork: { ...ws.earthwork, sideSlopeS: Math.max(0, Number(e.target.value) || 0) },
+                    earthwork: { ...ws.earthwork, sideSlopeS: Math.max(0, val) },
                   }))
                 }
                 className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-sm font-semibold text-[var(--md-sys-color-on-surface)]"
@@ -409,15 +404,13 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
             <div className="grid grid-cols-3 gap-2.5">
               <div>
                 <label className="block text-xs font-semibold mb-1">Station 1 Depth d₁ (m)</label>
-                <input
-                  type="number"
-                  step={0.1}
+                <NumericDraftInput
                   min={0}
                   value={ew.depthStation1M}
-                  onChange={(e) =>
+                  onChangeValue={(val) =>
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      earthwork: { ...ws.earthwork, depthStation1M: Math.max(0, Number(e.target.value) || 0) },
+                      earthwork: { ...ws.earthwork, depthStation1M: Math.max(0, val) },
                     }))
                   }
                   className="w-full px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs font-semibold"
@@ -425,15 +418,13 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Mid-Station Depth d_m (m)</label>
-                <input
-                  type="number"
-                  step={0.1}
+                <NumericDraftInput
                   min={0}
                   value={ew.depthStation2M}
-                  onChange={(e) =>
+                  onChangeValue={(val) =>
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      earthwork: { ...ws.earthwork, depthStation2M: Math.max(0, Number(e.target.value) || 0) },
+                      earthwork: { ...ws.earthwork, depthStation2M: Math.max(0, val) },
                     }))
                   }
                   className="w-full px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs font-semibold"
@@ -441,15 +432,13 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Station 3 Depth d₃ (m)</label>
-                <input
-                  type="number"
-                  step={0.1}
+                <NumericDraftInput
                   min={0}
                   value={ew.depthStation3M}
-                  onChange={(e) =>
+                  onChangeValue={(val) =>
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      earthwork: { ...ws.earthwork, depthStation3M: Math.max(0, Number(e.target.value) || 0) },
+                      earthwork: { ...ws.earthwork, depthStation3M: Math.max(0, val) },
                     }))
                   }
                   className="w-full px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs font-semibold"
@@ -533,51 +522,36 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
                     {stations.map((st) => (
                       <tr key={st.id}>
                         <td className="p-1.5">
-                          <input
-                            type="number"
-                            step={25}
+                          <NumericDraftInput
                             min={0}
                             value={st.chainageM}
-                            onChange={(e) =>
-                              updateStation(st.id, { chainageM: Math.max(0, Number(e.target.value) || 0) })
-                            }
+                            onChangeValue={(val) => updateStation(st.id, { chainageM: Math.max(0, val) })}
                             className="w-20 px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] text-xs font-semibold"
                           />
                         </td>
                         <td className="p-1.5">
-                          <input
-                            type="number"
-                            step={0.1}
+                          <NumericDraftInput
                             min={0}
                             value={st.cutDepthM}
-                            onChange={(e) =>
-                              updateStation(st.id, { cutDepthM: Math.max(0, Number(e.target.value) || 0) })
-                            }
+                            onChangeValue={(val) => updateStation(st.id, { cutDepthM: Math.max(0, val) })}
                             className="w-20 px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] text-xs font-semibold"
                           />
                         </td>
                         <td className="p-1.5">
-                          <input
-                            type="number"
-                            step={0.1}
+                          <NumericDraftInput
                             min={0}
                             value={st.fillHeightM}
-                            onChange={(e) =>
-                              updateStation(st.id, { fillHeightM: Math.max(0, Number(e.target.value) || 0) })
-                            }
+                            onChangeValue={(val) => updateStation(st.id, { fillHeightM: Math.max(0, val) })}
                             className="w-20 px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] text-xs font-semibold"
                           />
                         </td>
                         <td className="p-1.5">
-                          <input
-                            type="number"
-                            step={0.5}
+                          <NumericDraftInput
+                            allowNegative={true}
                             min={-25}
                             max={25}
                             value={st.groundCrossSlopePct ?? 0}
-                            onChange={(e) =>
-                              updateStation(st.id, { groundCrossSlopePct: Number(e.target.value) || 0 })
-                            }
+                            onChangeValue={(val) => updateStation(st.id, { groundCrossSlopePct: val })}
                             className="w-20 px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] text-xs font-semibold"
                           />
                         </td>

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useSiteManagement } from '../../context/SiteManagementContext';
 import { useOfflineSync } from '../../context/OfflineSyncContext';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import {
   LaborWorker,
   TradeCategory,
@@ -181,12 +182,6 @@ export const LaborAttendanceModule: React.FC = () => {
 
   // Quick Action: Mark All Active Workers Present for Today
   const handleMarkAllPresentToday = () => {
-    if (selectedMonth !== currentMonthStr) {
-      if (!confirm(`Selected month is ${selectedMonth}, but today is in ${currentMonthStr}. Mark all present for day ${currentDayNum} of ${selectedMonth}?`)) {
-        return;
-      }
-    }
-
     const todayDateStr = `${selectedMonth}-${currentDayNum.toString().padStart(2, '0')}`;
     let updatedCount = 0;
 
@@ -954,10 +949,8 @@ export const LaborAttendanceModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm(`Remove worker ${w.name} permanently?`)) {
-                      deleteWorker(w.id);
-                      showToast(`Removed ${w.name}`);
-                    }
+                    deleteWorker(w.id);
+                    showToast(`Removed ${w.name}`);
                   }}
                   className="p-1 rounded-full text-rose-500 hover:bg-rose-100 cursor-pointer"
                   title="Delete worker"
@@ -1034,18 +1027,26 @@ export const LaborAttendanceModule: React.FC = () => {
                 <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                   Overtime Hours (OT)
                 </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max="16"
+                <NumericDraftInput
+                  allowEmpty={true}
+                  min={0}
+                  max={16}
                   value={cellPopover.currentRecord.overtimeHours || ''}
-                  onChange={(e) =>
+                  onEmpty={() =>
                     setCellPopover({
                       ...cellPopover,
                       currentRecord: {
                         ...cellPopover.currentRecord,
-                        overtimeHours: parseFloat(e.target.value) || 0,
+                        overtimeHours: 0,
+                      },
+                    })
+                  }
+                  onChangeValue={(val) =>
+                    setCellPopover({
+                      ...cellPopover,
+                      currentRecord: {
+                        ...cellPopover.currentRecord,
+                        overtimeHours: val,
                       },
                     })
                   }
@@ -1059,17 +1060,25 @@ export const LaborAttendanceModule: React.FC = () => {
                 <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                   Khoraki / Food Advance Given (৳)
                 </label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
+                <NumericDraftInput
+                  allowEmpty={true}
+                  min={0}
                   value={cellPopover.currentRecord.khoraki || ''}
-                  onChange={(e) =>
+                  onEmpty={() =>
                     setCellPopover({
                       ...cellPopover,
                       currentRecord: {
                         ...cellPopover.currentRecord,
-                        khoraki: parseFloat(e.target.value) || 0,
+                        khoraki: 0,
+                      },
+                    })
+                  }
+                  onChangeValue={(val) =>
+                    setCellPopover({
+                      ...cellPopover,
+                      currentRecord: {
+                        ...cellPopover.currentRecord,
+                        khoraki: val,
                       },
                     })
                   }
@@ -1153,14 +1162,14 @@ export const LaborAttendanceModule: React.FC = () => {
                 <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                   Amount (৳) <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="number"
-                  step="any"
+                <NumericDraftInput
+                  allowEmpty={true}
                   required
-                  min="1"
+                  min={1}
                   placeholder="e.g. 5000"
                   value={payoutForm.amount}
-                  onChange={(e) => setPayoutForm({ ...payoutForm, amount: e.target.value })}
+                  onEmpty={() => setPayoutForm({ ...payoutForm, amount: '' })}
+                  onChangeValue={(val) => setPayoutForm({ ...payoutForm, amount: String(val) })}
                   className="w-full px-4 py-2 rounded-full text-xs font-mono font-bold text-sm border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                 />
               </div>
@@ -1327,13 +1336,13 @@ export const LaborAttendanceModule: React.FC = () => {
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Daily Wage Rate (৳) <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     required
-                    min="100"
+                    min={100}
                     value={workerForm.dailyWage}
-                    onChange={(e) => setWorkerForm({ ...workerForm, dailyWage: e.target.value })}
+                    onEmpty={() => setWorkerForm({ ...workerForm, dailyWage: '' })}
+                    onChangeValue={(val) => setWorkerForm({ ...workerForm, dailyWage: String(val) })}
                     className="w-full px-4 py-2 rounded-full text-xs font-mono font-bold border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                   />
                 </div>
@@ -1342,13 +1351,13 @@ export const LaborAttendanceModule: React.FC = () => {
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Overtime Rate (৳/hr) <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     required
-                    min="10"
+                    min={10}
                     value={workerForm.overtimeRatePerHr}
-                    onChange={(e) => setWorkerForm({ ...workerForm, overtimeRatePerHr: e.target.value })}
+                    onEmpty={() => setWorkerForm({ ...workerForm, overtimeRatePerHr: '' })}
+                    onChangeValue={(val) => setWorkerForm({ ...workerForm, overtimeRatePerHr: String(val) })}
                     className="w-full px-4 py-2 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                   />
                 </div>

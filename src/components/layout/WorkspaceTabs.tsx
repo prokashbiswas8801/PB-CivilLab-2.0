@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  LayoutDashboard,
+  Home,
   X,
   Plus,
   Camera,
@@ -50,6 +50,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
           const isActive = tab.id === activeTabId;
           const toolMeta = tab.moduleId ? TOOL_REGISTRY_MAP[tab.moduleId] : null;
           const shortCode = tab.shortCode || toolMeta?.shortCode;
+          const displayTitle = tab.type === 'dashboard' ? 'Home' : tab.title;
 
           return (
             <div
@@ -60,7 +61,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                   ? 'bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface)] font-semibold shadow-xs z-10'
                   : 'bg-[var(--md-sys-color-surface-container-low)] border-transparent text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
               }`}
-              title={tab.title}
+              title={displayTitle}
             >
               {/* Active Tab Top Indicator Line with Jewel Glow */}
               {isActive && (
@@ -69,7 +70,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
 
               {/* Icon / Short Code Badge */}
               {tab.type === 'dashboard' ? (
-                <LayoutDashboard className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+                <Home className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
               ) : (
                 shortCode && (
                   <span className="px-2 py-0.5 rounded-full text-[9.5px] font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-outline)] shrink-0">
@@ -80,10 +81,10 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
 
               {/* Title */}
               <span className="truncate max-w-[140px] sm:max-w-[180px]">
-                {tab.title}
+                {displayTitle}
               </span>
 
-              {/* Close Button (Dashboard cannot be closed) */}
+              {/* Close Button (Home tab cannot be closed) */}
               {tab.type !== 'dashboard' && (
                 <button
                   type="button"

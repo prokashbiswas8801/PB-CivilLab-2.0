@@ -33,6 +33,7 @@ import {
 import { useSiteManagement } from '../../context/SiteManagementContext';
 import { useOfflineSync } from '../../context/OfflineSyncContext';
 import { PettyCashTransaction, PettyCashType, PettyCashCategory } from '../../types/siteManagement';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 const CATEGORIES: Array<{ key: PettyCashCategory; label: string; icon: any }> = [
   { key: 'Labor Snacks', label: 'Labor Snacks (নাস্তা/চা)', icon: Coffee },
@@ -175,10 +176,8 @@ export const PettyCashModule: React.FC = () => {
 
   // Handle delete
   const handleDelete = (id: string, no: string) => {
-    if (confirm(`Delete petty cash entry ${no}?`)) {
-      deletePettyCashEntry(id);
-      showToast(`Deleted ${no}`);
-    }
+    deletePettyCashEntry(id);
+    showToast(`Deleted ${no}`);
   };
 
   // Export CSV
@@ -704,13 +703,13 @@ export const PettyCashModule: React.FC = () => {
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Amount (৳ BDT)
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     required
                     placeholder="0.00"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    onEmpty={() => setAmount('')}
+                    onChangeValue={(val) => setAmount(val)}
                     className="w-full px-3 py-2 rounded-full text-xs bg-[var(--md-sys-color-surface-container)] border border-rose-500/40 font-bold tabular-nums"
                   />
                 </div>
@@ -842,7 +841,7 @@ export const PettyCashModule: React.FC = () => {
                   <p className="text-[10px] text-zinc-500">Site Accountant / Engineer</p>
                 </div>
                 <div className="border-t border-zinc-400 pt-1.5">
-                  <p className="font-bold">{selectedVoucherForPrint.approvedBy || '________________________'}</p>
+                  <p className="font-bold">{selectedVoucherForPrint.approvedBy || 'Pending Approval'}</p>
                   <p className="text-[10px] text-zinc-500">Authorized Signature</p>
                 </div>
               </div>

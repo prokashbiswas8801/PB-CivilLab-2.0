@@ -1,11 +1,11 @@
 import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import {
   CivilWorkspace,
   UserProfile,
-  TakeoffLineItem,
 } from '../types/civil';
-import { BOQResult, ComputedTakeoffItem } from './calculations';
+import { BOQResult } from './calculations';
 import {
   CashFlowForecastResult,
 } from './cashFlowEngine';
@@ -17,7 +17,8 @@ import {
   saveVerifiedReport,
 } from './verificationEngine';
 import { generateSubmittalDocRef } from './qrCode';
-import { BRAND_LOGO_BASE64 } from '../assets/brandLogoData';
+import { BRAND_LOGO_BASE64, getBrandLogoPngDataUrl } from '../assets/brandLogoData';
+import { sanitizeEngineeringSymbols } from './exportEngine';
 
 /**
  * Generates official formatted CSV spreadsheet for Tender BOQ (Form A Grand Summary & Form B Itemized WBS)
@@ -138,7 +139,7 @@ export function exportBoqResourceAbstractCsv(
   lines.push(`"Fine & Coarse Sand","${abs.sandCft.toFixed(1)}","CFT","Concrete Fine Agg + Masonry/Plaster Mortar"`);
   lines.push(`"Coarse Aggregate (Stone / Khoa)","${abs.coarseAggregateCft.toFixed(1)}","CFT","20mm Stone Chips + Brick Khoa Sub-base"`);
   lines.push(`"Deformed Steel Rebar (500W)","${abs.rebarTonnes.toFixed(3)}","Metric Ton","${abs.rebarKg.toFixed(0)} kg Direct Rebar + Embedded RCC Steel"`);
-  lines.push(`"First-Class Clay Bricks","${abs.bricksNos.toFixed(0)}","Nos","250mm (500/m³) & 125mm (52/m²) Walls"`);
+  lines.push(`"First-Class Clay Bricks","${abs.bricksNos.toFixed(0)}","Nos","250mm (500/m3) & 125mm (52/m2) Walls"`);
   lines.push(`"Skilled Head Mason (Rajmistri)","${abs.masonManDays.toFixed(1)}","Man-Days","Concreting, Masonry, Plastering & Screed"`);
   lines.push(`"General Helper (Jogali)","${abs.helperManDays.toFixed(1)}","Man-Days","Excavation, Batching, Curing & Material Handling"`);
   lines.push(`"Steel Fitter / Bar Bender","${abs.barBenderManDays.toFixed(1)}","Man-Days","Cutting, Bending, Binding & Placing Rebar"`);
@@ -166,7 +167,8 @@ export function exportBoqResourceAbstractCsv(
 }
 
 /**
- * Generates Official Multi-Page Tender BOQ Submittal PDF (Form A Grand Summary & Form B Priced Schedule)
+ * Generates Official Multi-Page Tender BOQ Submittal PDF (Form A Grand Summary, Form B Priced Schedule & Form C Bid Tabulation)
+ * Uses jspdf-autotable so schedules of any length paginate cleanly across multiple pages with zero truncation.
  */
 export async function exportTenderBoqPdf({
   workspace,
@@ -200,12 +202,10 @@ export async function exportTenderBoqPdf({
     day: 'numeric',
   });
 
-  const origin = typeof window !== 'undefined' && window.location?.origin
-    ? window.location.origin
-    : 'https://ais-dev-c54uoao5og26sxud7v2lhx-26469248367.asia-southeast1.run.app';
-
   // Build verified report record & persist in registry
   const envelope = {
+    moduleId: 'boq-estimator' as const,
+    timestamp: Date.now(),
     status: boqResult.items.length === 0 ? ('zero_baseline' as const) : ('valid' as const),
     issues: [],
     result: boqResult,
@@ -233,11 +233,11 @@ export async function exportTenderBoqPdf({
     // fallback
   }
 
-  const primaryColor = [30, 64, 175];
-  const darkTextColor = [15, 23, 42];
-  const mutedTextColor = [71, 85, 105];
-  const lightBgColor = [248, 250, 252];
-  const borderColor = [203, 213, 225];
+  const primaryColor: [number, number, number] = [30, 64, 175];
+  const darkTextColor: [number, number, number] = [15, 23, 42];
+  const mutedTextColor: [number, number, number] = [71, 85, 105];
+  const lightBgColor: [number, number, number] = [248, 250, 252];
+  const borderColor: [number, number, number] = [203, 213, 225];
 
   // PAGE 1: COVER & FORM A - GRAND SUMMARY OF BILL OF QUANTITIES
   let cursorY = margin;
@@ -250,7 +250,8 @@ export async function exportTenderBoqPdf({
 
   // Brand Logo Icon
   try {
-    doc.addImage(BRAND_LOGO_BASE64, 'PNG', margin + 4, cursorY + 4, 24, 24);
+    const brandLogoDataUrl = await getBrandLogoPngDataUrl(256).catch(() => BRAND_LOGO_BASE64);
+    doc.addImage(brandLogoDataUrl, 'PNG', margin + 4, cursorY + 4, 24, 24);
   } catch {
     // continue
   }
@@ -259,7 +260,7 @@ export async function exportTenderBoqPdf({
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('BD. CivilLab · Tender Management Suite', textX, cursorY + 8);
+  doc.text('BD. CivilLab | Tender Management Suite', textX, cursorY + 8);
 
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
   doc.setFontSize(7);
@@ -268,11 +269,23 @@ export async function exportTenderBoqPdf({
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.text(`Project: ${workspace.name || 'Untitled Project'} [${workspace.projectCode || 'PRJ-001'}] · Site: ${workspace.siteLocation || '________________________'}`, textX, cursorY + 19);
+  doc.text(
+    sanitizeEngineeringSymbols(
+      `Project: ${workspace.name || 'Untitled Project'} [${workspace.projectCode || 'PRJ-001'}] | Site: ${workspace.siteLocation || 'Not Specified'}`
+    ),
+    textX,
+    cursorY + 19
+  );
 
   doc.setFontSize(7.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Governing Standard: ${workspace.governingCode} · Currency: ${workspace.currency} · Date: ${dateStr}`, textX, cursorY + 25);
+  doc.text(
+    sanitizeEngineeringSymbols(
+      `Governing Standard: ${workspace.governingCode} | Currency: ${workspace.currency} | Date: ${dateStr}`
+    ),
+    textX,
+    cursorY + 25
+  );
 
   // Scannable QR Code Box
   const qrBoxSize = 21;
@@ -294,100 +307,109 @@ export async function exportTenderBoqPdf({
   doc.setFontSize(5.5);
   doc.text(docId, qrX + (qrBoxSize + 4) / 2, qrY + 26, { align: 'center' });
 
-  cursorY += 38;
+  cursorY += 36;
 
-  // FORM A: GRAND SUMMARY TITLE
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(margin, cursorY, contentWidth, 7, 'F');
-  doc.setTextColor(255, 255, 255);
+  // FORM A: GRAND SUMMARY VIA AUTOTABLE
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('FORM A: GRAND SUMMARY OF BILL OF QUANTITIES (WBS CHAPTERS)', margin + 4, cursorY + 4.8);
+  doc.setFontSize(8.5);
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.text('FORM A: GRAND SUMMARY OF BILL OF QUANTITIES (WBS CHAPTERS)', margin, cursorY);
+  cursorY += 2.5;
 
-  cursorY += 7;
+  const summaries =
+    boqResult.wbsSectionSummaries && boqResult.wbsSectionSummaries.length > 0
+      ? boqResult.wbsSectionSummaries
+      : boqResult.categorySummaries.map((c) => ({
+          code: c.category.toUpperCase().slice(0, 3),
+          title: `${c.category.toUpperCase()} Trade Works`,
+          itemCount: c.itemCount,
+          subtotal: c.subtotal,
+          percentageOfSubtotal: c.percentageOfSubtotal,
+        }));
 
-  // Table Header
-  doc.setFillColor(lightBgColor[0], lightBgColor[1], lightBgColor[2]);
-  doc.rect(margin, cursorY, contentWidth, 6, 'FD');
-  doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.text('WBS Code', margin + 3, cursorY + 4.2);
-  doc.text('Chapter Description', margin + 25, cursorY + 4.2);
-  doc.text('Lines', margin + 115, cursorY + 4.2, { align: 'center' });
-  doc.text(`Subtotal (${workspace.currency})`, margin + 155, cursorY + 4.2, { align: 'right' });
-  doc.text('% Share', margin + contentWidth - 4, cursorY + 4.2, { align: 'right' });
-
-  cursorY += 6;
-
-  // Table Body Rows
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-
-  const summaries = boqResult.wbsSectionSummaries && boqResult.wbsSectionSummaries.length > 0
-    ? boqResult.wbsSectionSummaries
-    : boqResult.categorySummaries.map((c) => ({
-        code: c.category.toUpperCase().slice(0, 3),
-        title: `${c.category.toUpperCase()} Trade Works`,
-        itemCount: c.itemCount,
-        subtotal: c.subtotal,
-        percentageOfSubtotal: c.percentageOfSubtotal,
-      }));
-
-  summaries.forEach((s) => {
-    doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-    doc.line(margin, cursorY + 5.5, margin + contentWidth, cursorY + 5.5);
-
-    doc.setFont('courier', 'bold');
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text(`Sec ${s.code}`, margin + 3, cursorY + 4);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-    doc.text(doc.splitTextToSize(s.title, 85)[0] || s.title, margin + 25, cursorY + 4);
-
-    doc.text(String(s.itemCount), margin + 115, cursorY + 4, { align: 'center' });
-    doc.setFont('courier', 'normal');
-    doc.text(s.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 }), margin + 155, cursorY + 4, { align: 'right' });
-    doc.text(`${s.percentageOfSubtotal.toFixed(1)}%`, margin + contentWidth - 4, cursorY + 4, { align: 'right' });
-
-    cursorY += 6;
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: margin, right: margin },
+    head: [['WBS Code', 'Chapter Description', 'Line Items', `Subtotal (${workspace.currency})`, '% Share']],
+    body: summaries.map((s) => [
+      sanitizeEngineeringSymbols(`Sec ${s.code}`),
+      sanitizeEngineeringSymbols(s.title),
+      String(s.itemCount),
+      s.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+      `${s.percentageOfSubtotal.toFixed(1)}%`,
+    ]),
+    theme: 'grid',
+    styles: { fontSize: 7.5, cellPadding: 2, textColor: darkTextColor },
+    headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: lightBgColor },
+    columnStyles: {
+      0: { cellWidth: 24, font: 'courier', fontStyle: 'bold' },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 42, font: 'courier', halign: 'right' },
+      4: { cellWidth: 22, font: 'courier', halign: 'right' },
+    },
   });
 
-  cursorY += 2;
+  cursorY = (doc as any).lastAutoTable.finalY + 5;
 
   // Subtotal Card
   doc.setFillColor(lightBgColor[0], lightBgColor[1], lightBgColor[2]);
-  doc.rect(margin, cursorY, contentWidth, 32, 'FD');
+  doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+  doc.roundedRect(margin, cursorY, contentWidth, 32, 1.5, 1.5, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
   doc.text('Direct Measurement Subtotal:', margin + 6, cursorY + 6);
-  doc.text(`${workspace.currency} ${boqResult.subtotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, margin + contentWidth - 6, cursorY + 6, { align: 'right' });
+  doc.text(
+    sanitizeEngineeringSymbols(`${workspace.currency} ${boqResult.subtotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`),
+    margin + contentWidth - 6,
+    cursorY + 6,
+    { align: 'right' }
+  );
 
   doc.setFont('helvetica', 'normal');
   doc.text(`+ Physical Contingency Reserve (${boqResult.contingencyPercent}%):`, margin + 6, cursorY + 12);
-  doc.text(`${workspace.currency} ${boqResult.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, margin + contentWidth - 6, cursorY + 12, { align: 'right' });
+  doc.text(
+    sanitizeEngineeringSymbols(`${workspace.currency} ${boqResult.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`),
+    margin + contentWidth - 6,
+    cursorY + 12,
+    { align: 'right' }
+  );
 
   doc.text(`+ Contractor Profit & Overhead CP&OH (${boqResult.contractorOverheadPercent}%):`, margin + 6, cursorY + 18);
-  doc.text(`${workspace.currency} ${boqResult.contractorOverheadAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, margin + contentWidth - 6, cursorY + 18, { align: 'right' });
+  doc.text(
+    sanitizeEngineeringSymbols(`${workspace.currency} ${boqResult.contractorOverheadAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`),
+    margin + contentWidth - 6,
+    cursorY + 18,
+    { align: 'right' }
+  );
 
   doc.text(`+ Statutory VAT / Tax (${boqResult.vatTaxPercent}%):`, margin + 6, cursorY + 24);
-  doc.text(`${workspace.currency} ${boqResult.vatTaxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, margin + contentWidth - 6, cursorY + 24, { align: 'right' });
+  doc.text(
+    sanitizeEngineeringSymbols(`${workspace.currency} ${boqResult.vatTaxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`),
+    margin + contentWidth - 6,
+    cursorY + 24,
+    { align: 'right' }
+  );
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.text('ESTIMATED GRAND TOTAL TENDER SUM:', margin + 6, cursorY + 29.5);
-  doc.text(`${workspace.currency} ${boqResult.grandTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, margin + contentWidth - 6, cursorY + 29.5, { align: 'right' });
+  doc.text(
+    sanitizeEngineeringSymbols(`${workspace.currency} ${boqResult.grandTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`),
+    margin + contentWidth - 6,
+    cursorY + 29.5,
+    { align: 'right' }
+  );
 
-  cursorY += 38;
+  cursorY += 37;
 
   // S-Curve & Cash Flow summary box on Page 1 if available
-  if (cashFlow) {
+  if (cashFlow && cursorY + 28 < pageHeight - 36) {
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-    doc.rect(margin, cursorY, contentWidth, 24, 'FD');
+    doc.roundedRect(margin, cursorY, contentWidth, 24, 1.5, 1.5, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
@@ -398,7 +420,9 @@ export async function exportTenderBoqPdf({
     doc.setFontSize(6.5);
     doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
     doc.text(
-      `Project Duration: ${cashFlow.totalProjectMonths} Months · Retainage: ${cashFlow.retainagePercent}% · Peak Burn: Month ${cashFlow.peakExpenditureMonth} (${workspace.currency} ${cashFlow.peakExpenditureAmount.toLocaleString()})`,
+      sanitizeEngineeringSymbols(
+        `Project Duration: ${cashFlow.totalProjectMonths} Months | Retainage: ${cashFlow.retainagePercent}% | Peak Burn: Month ${cashFlow.peakExpenditureMonth} (${workspace.currency} ${cashFlow.peakExpenditureAmount.toLocaleString()})`
+      ),
       margin + 4,
       cursorY + 10
     );
@@ -413,7 +437,11 @@ export async function exportTenderBoqPdf({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6);
       doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-      doc.text(`Month ${m.expectedMonth} · ${workspace.currency} ${m.cumulativeAmount.toLocaleString()}`, colX, cursorY + 20);
+      doc.text(
+        sanitizeEngineeringSymbols(`Month ${m.expectedMonth} | ${workspace.currency} ${m.cumulativeAmount.toLocaleString()}`),
+        colX,
+        cursorY + 20
+      );
     });
 
     cursorY += 28;
@@ -421,73 +449,73 @@ export async function exportTenderBoqPdf({
 
   // 3-Signature QA block at bottom of Page 1
   const sigBoxHeight = 24;
-  const sigBoxY = pageHeight - margin - sigBoxHeight - 4;
+  const sigBoxY = Math.max(cursorY + 4, pageHeight - margin - sigBoxHeight - 8);
+  if (sigBoxY + sigBoxHeight < pageHeight - 10) {
+    doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(margin, sigBoxY, contentWidth, sigBoxHeight, 1.5, 1.5, 'FD');
 
-  doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, sigBoxY, contentWidth, sigBoxHeight, 'FD');
+    const colWidth = contentWidth / 3;
+    const col1X = margin;
+    const col2X = margin + colWidth;
+    const col3X = margin + 2 * colWidth;
 
-  const colWidth = contentWidth / 3;
-  const col1X = margin;
-  const col2X = margin + colWidth;
-  const col3X = margin + 2 * colWidth;
+    doc.line(col2X, sigBoxY, col2X, sigBoxY + sigBoxHeight);
+    doc.line(col3X, sigBoxY, col3X, sigBoxY + sigBoxHeight);
 
-  doc.line(col2X, sigBoxY, col2X, sigBoxY + sigBoxHeight);
-  doc.line(col3X, sigBoxY, col3X, sigBoxY + sigBoxHeight);
+    // Col 1: Prepared By
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text('1. PREPARED BY (QUANTITY SURVEYOR)', col1X + 3, sigBoxY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
+    doc.text(sanitizeEngineeringSymbols(userProfile?.fullName || 'Pending Signature'), col1X + 3, sigBoxY + 10);
+    doc.setFontSize(5.5);
+    doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
+    doc.line(col1X + 3, sigBoxY + 16.5, col1X + 42, sigBoxY + 16.5);
+    doc.text(`Signature | Date: ${dateStr}`, col1X + 3, sigBoxY + 19.5);
 
-  // Col 1: Prepared By
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6);
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.text('1. PREPARED BY (QUANTITY SURVEYOR)', col1X + 3, sigBoxY + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text(userProfile?.fullName || '________________________', col1X + 3, sigBoxY + 10);
-  doc.setFontSize(5.5);
-  doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Signature: ________________  Date: ${dateStr}`, col1X + 3, sigBoxY + 19);
+    // Col 2: Checked By
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text('2. CHECKED BY (SENIOR ESTIMATOR)', col2X + 3, sigBoxY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
+    doc.text('QA/QC Cost Verification', col2X + 3, sigBoxY + 10);
+    doc.setFontSize(5.5);
+    doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
+    doc.line(col2X + 3, sigBoxY + 16.5, col2X + 42, sigBoxY + 16.5);
+    doc.text(`Signature | Date: ${dateStr}`, col2X + 3, sigBoxY + 19.5);
 
-  // Col 2: Checked By
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6);
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.text('2. CHECKED BY (SENIOR ESTIMATOR)', col2X + 3, sigBoxY + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text('________________________', col2X + 3, sigBoxY + 10);
-  doc.setFontSize(5.5);
-  doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Signature: ________________  Date: ${dateStr}`, col2X + 3, sigBoxY + 19);
+    // Col 3: Approved By
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text('3. APPROVED BY (ENGINEER OF RECORD)', col3X + 3, sigBoxY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
+    doc.text(
+      sanitizeEngineeringSymbols(workspace.engineerOfRecord || userProfile?.fullName || 'Pending Signature'),
+      col3X + 3,
+      sigBoxY + 10
+    );
+    doc.setFontSize(5.5);
+    doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
+    doc.line(col3X + 3, sigBoxY + 16.5, col3X + 42, sigBoxY + 16.5);
+    doc.text(`Seal & Sign | Date: ${dateStr}`, col3X + 3, sigBoxY + 19.5);
+  }
 
-  // Col 3: Approved By
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6);
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.text('3. APPROVED BY (ENGINEER OF RECORD)', col3X + 3, sigBoxY + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text(workspace.engineerOfRecord || userProfile?.fullName || '________________________', col3X + 3, sigBoxY + 10);
-  doc.setFontSize(5.5);
-  doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Seal & Sign: _____________  Date: ${dateStr}`, col3X + 3, sigBoxY + 19);
-
-  // Footer Page 1
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.5);
-  doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`BD. CivilLab Tender Submittal Engine · Ref: ${docId} · ISO 9001 Protocol · Page 1 of 2`, margin, pageHeight - margin + 2);
-  doc.text('CONFIDENTIAL · STRICTLY FOR TENDER BIDDING & PERMIT SUBMISSION', pageWidth - margin - 80, pageHeight - margin + 2);
-
-  // PAGE 2: FORM B - ITEMIZED BILL OF QUANTITIES
+  // PAGE 2+: FORM B - ITEMIZED BILL OF QUANTITIES (MULTI-PAGE AUTOTABLE)
   doc.addPage();
   cursorY = margin;
 
-  // Mini Header on Page 2
   doc.setFillColor(lightBgColor[0], lightBgColor[1], lightBgColor[2]);
-  doc.rect(margin, cursorY, contentWidth, 14, 'FD');
+  doc.roundedRect(margin, cursorY, contentWidth, 14, 1.5, 1.5, 'FD');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -495,62 +523,129 @@ export async function exportTenderBoqPdf({
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Project Code: ${workspace.projectCode} · Submittal Doc Ref: ${docId} · Total Items: ${boqResult.items.length}`, margin + 4, cursorY + 11);
+  doc.text(
+    sanitizeEngineeringSymbols(
+      `Project Code: ${workspace.projectCode} | Submittal Doc Ref: ${docId} | Total Line Items: ${boqResult.items.length}`
+    ),
+    margin + 4,
+    cursorY + 11
+  );
 
   cursorY += 17;
 
-  // Table Header
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(margin, cursorY, contentWidth, 6, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(6.5);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Item #', margin + 2, cursorY + 4.2);
-  doc.text('Description of Works', margin + 22, cursorY + 4.2);
-  doc.text('Nos', margin + 98, cursorY + 4.2, { align: 'center' });
-  doc.text('Unit', margin + 112, cursorY + 4.2, { align: 'center' });
-  doc.text('Billable Qty', margin + 134, cursorY + 4.2, { align: 'right' });
-  doc.text(`Rate (${workspace.currency})`, margin + 156, cursorY + 4.2, { align: 'right' });
-  doc.text(`Total (${workspace.currency})`, margin + contentWidth - 3, cursorY + 4.2, { align: 'right' });
-
-  cursorY += 6;
-
-  // Render items (up to 28 items fit cleanly per page)
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-
-  boqResult.items.slice(0, 28).forEach((it) => {
-    doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-    doc.line(margin, cursorY + 5.5, margin + contentWidth, cursorY + 5.5);
-
-    doc.setFont('courier', 'bold');
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text(it.itemNo, margin + 2, cursorY + 4);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-    const cleanDesc = doc.splitTextToSize(it.description, 72)[0] || it.description;
-    doc.text(cleanDesc, margin + 22, cursorY + 4);
-
-    doc.text(String(it.numberOfMembers), margin + 98, cursorY + 4, { align: 'center' });
-    doc.setFont('courier', 'bold');
-    doc.text(it.unit, margin + 112, cursorY + 4, { align: 'center' });
-
-    doc.setFont('courier', 'normal');
-    doc.text(it.totalBillableQty.toLocaleString(undefined, { minimumFractionDigits: 1 }), margin + 134, cursorY + 4, { align: 'right' });
-    doc.text(it.unitRate.toLocaleString(undefined, { minimumFractionDigits: 2 }), margin + 156, cursorY + 4, { align: 'right' });
-    doc.setFont('courier', 'bold');
-    doc.text(it.itemTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }), margin + contentWidth - 3, cursorY + 4, { align: 'right' });
-
-    cursorY += 6;
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: margin, right: margin, bottom: 16 },
+    head: [
+      [
+        'Item #',
+        'Description of Works',
+        'Nos',
+        'Dimensions (L x W x H)',
+        'Unit',
+        'Billable Qty',
+        `Rate (${workspace.currency})`,
+        `Total (${workspace.currency})`,
+      ],
+    ],
+    body: boqResult.items.map((it) => {
+      const dims =
+        it.lengthM > 0 || it.widthM > 0 || it.heightM > 0
+          ? `${it.lengthM > 0 ? it.lengthM.toFixed(2) : '-'} x ${it.widthM > 0 ? it.widthM.toFixed(2) : '-'} x ${it.heightM > 0 ? it.heightM.toFixed(2) : '-'}`
+          : 'Lump / Direct';
+      return [
+        sanitizeEngineeringSymbols(it.itemNo),
+        sanitizeEngineeringSymbols(it.description),
+        String(it.numberOfMembers),
+        dims,
+        sanitizeEngineeringSymbols(it.unit),
+        it.totalBillableQty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        it.unitRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        it.itemTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      ];
+    }),
+    theme: 'grid',
+    styles: { fontSize: 6.8, cellPadding: 1.8, textColor: darkTextColor },
+    headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: lightBgColor },
+    columnStyles: {
+      0: { cellWidth: 16, font: 'courier', fontStyle: 'bold' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 11, halign: 'center' },
+      3: { cellWidth: 32, font: 'courier', halign: 'center' },
+      4: { cellWidth: 13, font: 'courier', halign: 'center' },
+      5: { cellWidth: 21, font: 'courier', halign: 'right' },
+      6: { cellWidth: 23, font: 'courier', halign: 'right' },
+      7: { cellWidth: 26, font: 'courier', fontStyle: 'bold', halign: 'right' },
+    },
   });
 
-  // Footer Page 2
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5.5);
-  doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`BD. CivilLab Tender Submittal Engine · Ref: ${docId} · ISO 9001 Protocol · Page 2 of 2`, margin, pageHeight - margin + 2);
-  doc.text('OFFICIAL TENDER BILL OF QUANTITIES · AUTHORITATIVE ESTIMATE', pageWidth - margin - 80, pageHeight - margin + 2);
+  // Optional FORM C: VENDOR BID TABULATION COMPARISON
+  if (bidReport && bidReport.lineItems.length > 0) {
+    let bidY = (doc as any).lastAutoTable.finalY + 8;
+    if (bidY > pageHeight - 50) {
+      doc.addPage();
+      bidY = margin;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text('FORM C: VENDOR BID TABULATION & LOWEST RESPONSIVE BIDDER COMPARISON', margin, bidY);
+    bidY += 2.5;
+
+    autoTable(doc, {
+      startY: bidY,
+      margin: { left: margin, right: margin, bottom: 16 },
+      head: [
+        [
+          'Description',
+          'Qty',
+          'Eng. Rate',
+          sanitizeEngineeringSymbols(bidReport.vendors[0]?.vendorName || 'Vendor 1'),
+          sanitizeEngineeringSymbols(bidReport.vendors[1]?.vendorName || 'Vendor 2'),
+          sanitizeEngineeringSymbols(bidReport.vendors[2]?.vendorName || 'Vendor 3'),
+          'Lowest Bidder',
+        ],
+      ],
+      body: bidReport.lineItems.map((b) => [
+        sanitizeEngineeringSymbols(b.itemDescription),
+        `${b.quantity} ${sanitizeEngineeringSymbols(b.unit)}`,
+        b.engineersRate.toFixed(2),
+        b.vendor1Rate.toFixed(2),
+        b.vendor2Rate.toFixed(2),
+        b.vendor3Rate.toFixed(2),
+        sanitizeEngineeringSymbols(`${b.lowestVendorName} (${b.lowestRate.toFixed(2)})`),
+      ]),
+      theme: 'grid',
+      styles: { fontSize: 6.5, cellPadding: 1.6, textColor: darkTextColor },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: lightBgColor },
+    });
+  }
+
+  // Running Footers across all pages
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    doc.line(margin, pageHeight - 10, pageWidth - margin, pageHeight - 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
+    doc.text(
+      sanitizeEngineeringSymbols(
+        `BD. CivilLab Tender Submittal Engine | Ref: ${docId} | Governing Code: ${workspace.governingCode}`
+      ),
+      margin,
+      pageHeight - 6.5
+    );
+    doc.text(
+      `Page ${i} of ${totalPages}`,
+      pageWidth - margin,
+      pageHeight - 6.5,
+      { align: 'right' }
+    );
+  }
 
   // Save PDF
   const sanitizedProject = workspace.projectCode.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -559,3 +654,4 @@ export async function exportTenderBoqPdf({
 
   return docId;
 }
+

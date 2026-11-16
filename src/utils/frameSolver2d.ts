@@ -468,8 +468,31 @@ export function computeFrameTruss2D(
   const nodalLoads = params.nodalLoads || [];
   const analysisMode = params.analysisMode || 'first-order-linear';
   const governingCode = params.code || 'BNBC-2020';
-  const allowableStressMpa = Math.max(10, params.allowableStressMpa || 250);
-  const sectionDepthMm = Math.max(50, params.sectionDepthMm || 350);
+  const hasModelItems = nodes.length > 0 || members.length > 0 || nodalLoads.length > 0;
+  const rawAllowableStressMpa =
+    typeof params.allowableStressMpa === 'number' && Number.isFinite(params.allowableStressMpa)
+      ? params.allowableStressMpa
+      : 0;
+  const rawSectionDepthMm =
+    typeof params.sectionDepthMm === 'number' && Number.isFinite(params.sectionDepthMm)
+      ? params.sectionDepthMm
+      : 0;
+  if (rawAllowableStressMpa < 0) {
+    issues.push({
+      field: 'allowableStressMpa',
+      message: 'Allowable stress must be strictly positive (> 0 MPa).',
+      severity: 'error',
+    });
+  }
+  if (rawSectionDepthMm < 0) {
+    issues.push({
+      field: 'sectionDepthMm',
+      message: 'Section depth must be strictly positive (> 0 mm).',
+      severity: 'error',
+    });
+  }
+  const allowableStressMpa = rawAllowableStressMpa > 0 ? rawAllowableStressMpa : 250;
+  const sectionDepthMm = rawSectionDepthMm > 0 ? rawSectionDepthMm : 350;
 
   const scopeAndLimits: ScopeAndLimitsMetadata = {
     status: 'Partial',
@@ -495,7 +518,7 @@ export function computeFrameTruss2D(
     });
   }
 
-  if (nodes.length === 0 && members.length === 0 && nodalLoads.length === 0) {
+  if (!hasModelItems) {
     return createEnvelope<FrameTruss2DResult>(
       {
         analysisMode,

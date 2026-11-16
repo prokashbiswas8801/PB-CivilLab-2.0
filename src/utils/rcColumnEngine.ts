@@ -566,6 +566,22 @@ export function computeRcColumnDesign(
     );
   }
 
+  // Resolve 0-initialized secondary constants when column geometry/loads are active
+  params = {
+    ...params,
+    concreteFcMpa: params.concreteFcMpa === 0 ? 25 : params.concreteFcMpa,
+    rebarFyMpa: params.rebarFyMpa === 0 ? 415 : params.rebarFyMpa,
+    clearCoverMm: params.clearCoverMm === 0 ? 40 : params.clearCoverMm,
+    longitudinalBarDiaMm: params.longitudinalBarDiaMm === 0 ? 20 : params.longitudinalBarDiaMm,
+    tieBarDiaMm: params.tieBarDiaMm === 0 ? 10 : params.tieBarDiaMm,
+    tieSpacingMm: params.tieSpacingMm === 0 ? 200 : params.tieSpacingMm,
+    barsAlongWidthB: params.barsAlongWidthB === 0 ? 3 : params.barsAlongWidthB,
+    barsAlongDepthH: params.barsAlongDepthH === 0 ? 3 : params.barsAlongDepthH,
+    unsupportedLengthLu_M: params.unsupportedLengthLu_M === 0 ? 3.2 : params.unsupportedLengthLu_M,
+    effectiveLengthFactorK: params.effectiveLengthFactorK === 0 ? 1.0 : params.effectiveLengthFactorK,
+    sustainedLoadRatioBetaDns: params.sustainedLoadRatioBetaDns === 0 ? 0.6 : params.sustainedLoadRatioBetaDns,
+  };
+
   if (params.widthB_Mm < 150 || params.depthH_Mm < 150) {
     issues.push({
       field: 'widthB_Mm',

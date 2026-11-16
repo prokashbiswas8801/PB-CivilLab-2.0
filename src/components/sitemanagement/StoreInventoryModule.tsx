@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useSiteManagement } from '../../context/SiteManagementContext';
 import { InventoryItem, StockTransaction, MaterialUnit } from '../../types/siteManagement';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 const MATERIAL_UNITS: MaterialUnit[] = [
   'Bags',
@@ -979,14 +980,14 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Quantity Received <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     required
-                    min="0.001"
+                    min={0.001}
                     placeholder="e.g. 200"
                     value={inwardForm.quantity}
-                    onChange={(e) => setInwardForm({ ...inwardForm, quantity: e.target.value })}
+                    onEmpty={() => setInwardForm({ ...inwardForm, quantity: '' })}
+                    onChangeValue={(val) => setInwardForm({ ...inwardForm, quantity: String(val) })}
                     className="w-full px-4 py-2 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)]"
                   />
                 </div>
@@ -1165,14 +1166,14 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Quantity to Issue <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     required
-                    min="0.001"
+                    min={0.001}
                     placeholder="e.g. 50"
                     value={outwardForm.quantity}
-                    onChange={(e) => setOutwardForm({ ...outwardForm, quantity: e.target.value })}
+                    onEmpty={() => setOutwardForm({ ...outwardForm, quantity: '' })}
+                    onChangeValue={(val) => setOutwardForm({ ...outwardForm, quantity: String(val) })}
                     className={`w-full px-4 py-2 rounded-full text-xs font-mono border bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden ${
                       isOutwardExceedingStock
                         ? 'border-rose-500 ring-1 ring-rose-500'
@@ -1363,11 +1364,11 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Initial Stock
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     value={newItemForm.currentStock}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, currentStock: e.target.value })}
+                    onEmpty={() => setNewItemForm({ ...newItemForm, currentStock: '' })}
+                    onChangeValue={(val) => setNewItemForm({ ...newItemForm, currentStock: String(val) })}
                     className="w-full px-4 py-2 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)]"
                   />
                 </div>
@@ -1376,11 +1377,11 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Min Threshold (Alert)
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     value={newItemForm.minThreshold}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, minThreshold: e.target.value })}
+                    onEmpty={() => setNewItemForm({ ...newItemForm, minThreshold: '' })}
+                    onChangeValue={(val) => setNewItemForm({ ...newItemForm, minThreshold: String(val) })}
                     className="w-full px-4 py-2 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)]"
                   />
                 </div>
@@ -1389,11 +1390,11 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Unit Rate (৳)
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     value={newItemForm.unitRate}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, unitRate: e.target.value })}
+                    onEmpty={() => setNewItemForm({ ...newItemForm, unitRate: '' })}
+                    onChangeValue={(val) => setNewItemForm({ ...newItemForm, unitRate: String(val) })}
                     className="w-full px-4 py-2 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)]"
                   />
                 </div>
@@ -1404,12 +1405,12 @@ export const StoreInventoryModule: React.FC<StoreInventoryModuleProps> = ({ onNa
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Theoretical BOQ Quantity
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     placeholder="e.g. 5000"
                     value={newItemForm.theoreticalBoqQty}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, theoreticalBoqQty: e.target.value })}
+                    onEmpty={() => setNewItemForm({ ...newItemForm, theoreticalBoqQty: '' })}
+                    onChangeValue={(val) => setNewItemForm({ ...newItemForm, theoreticalBoqQty: String(val) })}
                     className="w-full px-4 py-2 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline)]/40 bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden focus:border-[var(--md-sys-color-primary)]"
                   />
                 </div>

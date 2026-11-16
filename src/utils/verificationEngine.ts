@@ -345,23 +345,23 @@ export function createVerifiedReportRecord(
 
   const signatories = {
     preparedBy: {
-      name: engineerName || '________________________',
+      name: engineerName || 'Pending Signature',
       designation: engineerDesig || 'Prepared By (Design)',
-      license: engineerLic || '________________________',
+      license: engineerLic || 'Pending License',
       date: dateStr,
       status: 'certified' as const,
     },
     checkedBy: {
-      name: (userProfile as any)?.checkerName || '________________________',
+      name: (userProfile as any)?.checkerName || 'Pending QA Reviewer',
       designation: 'Checked By (QA / Peer Review)',
-      license: '________________________',
+      license: 'Pending License',
       date: dateStr,
       status: 'certified' as const,
     },
     approvedBy: {
-      name: workspace.engineerOfRecord || engineerName || '________________________',
+      name: workspace.engineerOfRecord || engineerName || 'Pending Signature',
       designation: 'Approved By (Engineer of Record)',
-      license: engineerLic || '________________________',
+      license: engineerLic || 'Pending License',
       date: dateStr,
       status: 'certified' as const,
     },
@@ -565,9 +565,9 @@ export function decodeVerificationToken(token: string): PublicEngineeringReportR
           status: 'certified',
         },
         checkedBy: {
-          name: compact.sig[1] || '________________________',
+          name: compact.sig[1] || 'Pending QA Reviewer',
           designation: 'Checked By (QA / Peer Review)',
-          license: '________________________',
+          license: 'Pending License',
           date: dateStr,
           status: 'certified',
         },

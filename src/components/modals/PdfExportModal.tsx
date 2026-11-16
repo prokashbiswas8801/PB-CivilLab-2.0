@@ -3,26 +3,14 @@ import {
   X,
   FileDown,
   Settings,
-  ShieldCheck,
-  Check,
-  Sparkles,
-  Layers,
   Save,
-  RotateCcw,
-  Sliders,
-  QrCode,
   FileText,
-  Building,
-  User,
-  ArrowRight,
-  Eye,
+  Printer,
 } from 'lucide-react';
 import { useCivilLab, CivilPdfPreset } from '../../context/CivilLabContext';
-import { CivilWorkspace, EngineeringModuleId } from '../../types/civil';
+import { CivilWorkspace, EngineeringModuleId, UserProfile } from '../../types/civil';
 import { CalculationEnvelope } from '../../utils/calculations';
 import { exportCertifiedEngineeringPdf, PdfExportProgress } from '../../utils/pdfExport';
-import { jsPDF } from 'jspdf';
-import QRCode from 'qrcode';
 import { TESTING_LAB_TEST_MAP, TESTING_LAB_TESTS } from '../../data/testingLabCatalog';
 import {
   evaluateLabTest,
@@ -40,6 +28,7 @@ export interface PdfExportModalProps {
   moduleLabel?: string;
   codeStandard?: string;
   onComplete?: () => void;
+  onOpenPrintPreview?: () => void;
 }
 
 export const PdfExportModal: React.FC<PdfExportModalProps> = ({
@@ -49,8 +38,8 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   activeModule,
   envelope,
   moduleLabel,
-  codeStandard,
   onComplete,
+  onOpenPrintPreview,
 }) => {
   const { pdfPreset, updatePdfPreset, userProfile } = useCivilLab();
 
@@ -69,18 +58,26 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setModalPreset({ ...pdfPreset });
-      setCustomReportTitle(pdfPreset.customHeaderTitle || `${moduleLabel || activeModule} Certified Submittal`);
+      setCustomReportTitle(
+        pdfPreset.customHeaderTitle || `${moduleLabel || activeModule} Certified Submittal`
+      );
       setCustomProjectName(activeWorkspace.name);
-      setCustomClientName(userProfile.projects.find((p) => p.name === activeWorkspace.name)?.clientName || activeWorkspace.engineerOfRecord || '');
+      setCustomClientName(
+        userProfile.projects.find((p) => p.name === activeWorkspace.name)?.clientName ||
+          activeWorkspace.engineerOfRecord ||
+          ''
+      );
       setCustomSignatory(pdfPreset.signatoryName || userProfile.name || '');
+      setExportError(null);
     }
   }, [isOpen, pdfPreset, activeWorkspace, moduleLabel, activeModule, userProfile]);
 
   if (!isOpen) return null;
 
-  // Execute PDF Generation with custom overrides
+  // Execute PDF Generation with custom overrides via the unified certified export engine
   const handleGeneratePdf = async (saveAsDefault: boolean = false) => {
     setIsExporting(true);
+    setExportError(null);
     setExportProgress({ stage: 'Applying Page Setup & Geometry...', percent: 10 });
 
     try {
@@ -91,6 +88,23 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           signatoryName: customSignatory,
         });
       }
+
+      const mappedUserProfile: UserProfile = {
+        fullName:
+          customSignatory || userProfile.name || activeWorkspace.engineerOfRecord || 'Pending Signature',
+        designation: userProfile.title || 'Engineer of Record',
+        organization: userProfile.organization || 'Consulting Practice',
+        role: 'structural-engineer',
+        licenseNumber: userProfile.licenseNo || 'Pending License',
+        email: userProfile.email || '',
+        phone: userProfile.phone || '',
+        initials: (customSignatory || userProfile.name || activeWorkspace.engineerOfRecord || 'EOR')
+          .split(/\s+/)
+          .map((w) => w[0])
+          .join('')
+          .slice(0, 3)
+          .toUpperCase(),
+      };
 
       if (activeModule === 'testing-lab-qaqc') {
         const labState = activeWorkspace.testingLab;
@@ -114,24 +128,13 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           inputs,
           evaluation,
           sampleRef: labState?.savedRecords?.[0]?.sampleRef || 'LAB-SMP-001',
-          locationGrid: labState?.savedRecords?.[0]?.locationGrid || activeWorkspace.siteLocation || 'Site Zone',
+          locationGrid:
+            labState?.savedRecords?.[0]?.locationGrid ||
+            activeWorkspace.siteLocation ||
+            'Site Zone',
           remarks: '',
           workspace: activeWorkspace,
-          userProfile: {
-            fullName: customSignatory || userProfile.name || activeWorkspace.engineerOfRecord || '',
-            designation: userProfile.title || '',
-            organization: userProfile.organization || '',
-            role: 'structural-engineer',
-            licenseNumber: userProfile.licenseNo || '',
-            email: userProfile.email || '',
-            phone: userProfile.phone || '',
-            initials: (customSignatory || userProfile.name || activeWorkspace.engineerOfRecord || 'EOR')
-              .split(/\s+/)
-              .map((w) => w[0])
-              .join('')
-              .slice(0, 3)
-              .toUpperCase(),
-          },
+          userProfile: mappedUserProfile,
           checklistStates,
           customOverrides: {
             reportTitle: customReportTitle || undefined,
@@ -147,230 +150,44 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
             includeSignatureBlock: modalPreset.includeSignatureBlock,
           },
         });
-        setExportProgress({ stage: 'Certificate Saved!', percent: 100 });
-        setTimeout(() => {
-          setIsExporting(false);
-          setExportProgress(null);
-          onComplete?.();
-          onClose();
-        }, 280);
-        return;
-      }
-
-      // Format dimensions
-      const format = modalPreset.paperSize === 'legal' ? 'legal' : modalPreset.paperSize === 'letter' ? 'letter' : 'a4';
-      const orientation = modalPreset.orientation;
-      const margin = modalPreset.marginMm;
-
-      // Custom document export
-      const doc = new jsPDF({
-        orientation,
-        unit: 'mm',
-        format,
-      });
-
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const contentWidth = pageWidth - 2 * margin;
-
-      setExportProgress({ stage: 'Compiling Analytical Verification...', percent: 35 });
-      await new Promise((r) => setTimeout(r, 60));
-
-      let yPos = margin + 4;
-
-      // 1. Header
-      if (modalPreset.includeHeader) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(15, 23, 42);
-        doc.text(customReportTitle, margin, yPos);
-
-        yPos += 5;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.5);
-        doc.setTextColor(100, 116, 139);
-        doc.text(modalPreset.companySubtitle || userProfile.organization || 'Verified Engineering Submittal', margin, yPos);
-
-        yPos += 3;
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.4);
-        doc.line(margin, yPos, margin + contentWidth, yPos);
-        yPos += 7;
-      }
-
-      // 2. Project Metadata Block
-      if (modalPreset.showProjectMetadata) {
-        doc.setFillColor(248, 250, 252);
-        doc.roundedRect(margin, yPos, contentWidth, 20, 2, 2, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.roundedRect(margin, yPos, contentWidth, 20, 2, 2, 'D');
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.setTextColor(30, 41, 59);
-        doc.text(`PROJECT: ${customProjectName || 'Untitled Project'}`, margin + 4, yPos + 6);
-        doc.text(`CODE: ${activeWorkspace.projectCode || 'PRJ-001'}`, margin + contentWidth - 45, yPos + 6);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(71, 85, 105);
-        doc.text(`CLIENT: ${customClientName || '________________________'}`, margin + 4, yPos + 12);
-        doc.text(`LOCATION: ${activeWorkspace.siteLocation || '________________________'}`, margin + 4, yPos + 17);
-        doc.text(`DATE: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`, margin + contentWidth - 45, yPos + 12);
-
-        yPos += 26;
-      }
-
-      // 3. Module Sub-header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${moduleLabel || activeModule} Calculation Schedule`, margin, yPos);
-      yPos += 5;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      const envStatusLabel =
-        envelope.status === 'zero_baseline'
-          ? 'ZERO BASELINE (STANDBY)'
-          : envelope.status === 'warning'
-            ? 'WARNING / ADVISORY'
-            : envelope.status === 'invalid'
-              ? 'LIMIT STATE EXCEEDED'
-              : 'VERIFIED NOMINAL';
-      doc.text(`Governing Standard: ${codeStandard || 'BNBC 2020 / ACI 318'} · Status: ${envStatusLabel}`, margin, yPos);
-      yPos += 7;
-
-      setExportProgress({ stage: 'Rendering Analytical Result Matrices...', percent: 65 });
-      await new Promise((r) => setTimeout(r, 60));
-
-      // 4. Quantitative Results Grid
-      const res = envelope.result || {};
-      const keyEntries = Object.entries(res)
-        .filter(([k, v]) => typeof v === 'number' || typeof v === 'string')
-        .slice(0, 9);
-
-      if (keyEntries.length > 0) {
-        const cols = orientation === 'landscape' ? 4 : 3;
-        const colW = contentWidth / cols;
-
-        keyEntries.forEach(([key, val], idx) => {
-          const c = idx % cols;
-          const r = Math.floor(idx / cols);
-          const x = margin + c * colW;
-          const y = yPos + r * 13;
-
-          doc.setFillColor(255, 255, 255);
-          doc.rect(x, y, colW - 2, 11, 'F');
-          doc.setDrawColor(226, 232, 240);
-          doc.rect(x, y, colW - 2, 11, 'D');
-
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7.5);
-          doc.setTextColor(100, 116, 139);
-          const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
-          doc.text(formattedKey.substring(0, 24), x + 3, y + 4);
-
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8.5);
-          doc.setTextColor(15, 23, 42);
-          const formattedVal = typeof val === 'number' ? Number(val.toFixed(3)).toString() : String(val);
-          doc.text(formattedVal, x + 3, y + 9);
+      } else {
+        await exportCertifiedEngineeringPdf({
+          workspace: activeWorkspace,
+          activeModule,
+          envelope,
+          userProfile: mappedUserProfile,
+          onProgress: (prog) => setExportProgress(prog),
+          customOverrides: {
+            paperSize: modalPreset.paperSize,
+            orientation: modalPreset.orientation,
+            marginMm: modalPreset.marginMm,
+            customHeaderTitle: customReportTitle || undefined,
+            companySubtitle: modalPreset.companySubtitle || userProfile.organization || undefined,
+            customProjectName: customProjectName || undefined,
+            customClientName: customClientName || undefined,
+            customSignatory: customSignatory || undefined,
+            includeHeader: modalPreset.includeHeader ?? true,
+            showProjectMetadata: modalPreset.showProjectMetadata ?? true,
+            includeFormulaSteps: modalPreset.includeFormulaSteps ?? true,
+            includeDiagram: modalPreset.includeDiagram ?? true,
+            includeQR: modalPreset.includeQR ?? true,
+            includeSignatureBlock: modalPreset.includeSignatureBlock ?? true,
+            includeFooter: modalPreset.includeFooter ?? true,
+          },
         });
-
-        const rows = Math.ceil(keyEntries.length / cols);
-        yPos += rows * 13 + 6;
       }
 
-      // 5. Formula Steps
-      if (modalPreset.includeFormulaSteps) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.setTextColor(30, 41, 59);
-        doc.text('Governing Step-by-Step Mathematical Formulations:', margin, yPos);
-        yPos += 5;
-
-        doc.setFont('courier', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(51, 65, 85);
-        doc.text(`1. Verification Condition: Demand <= Nominal Capacity * Strength Reduction (phi)`, margin + 3, yPos);
-        yPos += 5;
-        doc.text(`2. Limit State Factorization: U = 1.2D + 1.6L (BNBC 2020 / ACI 318-19 Table 5.3.1)`, margin + 3, yPos);
-        yPos += 8;
-      }
-
-      // 6. Diagram Sketch Placeholder
-      if (modalPreset.includeDiagram) {
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineDashPattern([2, 2], 0);
-        doc.setFillColor(248, 250, 252);
-        doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'FD');
-        doc.setLineDashPattern([], 0);
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(100, 116, 139);
-        doc.text('[2D Vector Analytical Envelope Diagram / Loading Diagram Attached]', margin + 8, yPos + 12);
-        yPos += 28;
-      }
-
-      // 7. QR Code & Signature
-      const bottomY = Math.min(yPos, pageHeight - margin - 32);
-
-      if (modalPreset.includeQR) {
-        try {
-          const qrDataUrl = await QRCode.toDataURL(`BDCL-VERIFY:${activeWorkspace.projectCode}-${Date.now()}`, { margin: 1, width: 128 });
-          doc.addImage(qrDataUrl, 'PNG', margin, bottomY, 20, 20);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(6.5);
-          doc.setTextColor(148, 163, 184);
-          doc.text('Scan to Verify Submittal', margin, bottomY + 23);
-        } catch {
-          // ignore
-        }
-      }
-
-      if (modalPreset.includeSignatureBlock) {
-        const sigX = margin + contentWidth - 65;
-        doc.setDrawColor(148, 163, 184);
-        doc.setLineWidth(0.3);
-        doc.line(sigX, bottomY + 14, sigX + 60, bottomY + 14);
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(15, 23, 42);
-        doc.text(customSignatory || '________________________', sigX, bottomY + 18);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(100, 116, 139);
-        doc.text(userProfile.title || '________________________', sigX, bottomY + 22);
-        doc.text(`Reg: ${userProfile.licenseNo || '________________________'}`, sigX, bottomY + 26);
-      }
-
-      // 8. Footer
-      if (modalPreset.includeFooter) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(148, 163, 184);
-        doc.text('Generated by BD. CivilLab · Client-Side Verified Engineering Engine', margin, pageHeight - margin + 2);
-        doc.text(`Page 1 of 1 · ${modalPreset.paperSize.toUpperCase()} · ${orientation.toUpperCase()}`, margin + contentWidth - 45, pageHeight - margin + 2);
-      }
-
-      setExportProgress({ stage: 'Saving PDF file to disk...', percent: 100 });
-      await new Promise((r) => setTimeout(r, 80));
-
-      const filename = `${activeWorkspace.projectCode}_${activeModule}_submittal_${modalPreset.paperSize}.pdf`;
-      doc.save(filename);
-
-      if (onComplete) onComplete();
-      onClose();
+      setExportProgress({ stage: 'Certified PDF Saved!', percent: 100 });
+      setTimeout(() => {
+        setIsExporting(false);
+        setExportProgress(null);
+        onComplete?.();
+        onClose();
+      }, 240);
     } catch (err: unknown) {
       console.error('Failed to export PDF:', err);
       const msg = err instanceof Error ? err.message : 'PDF generation encountered an error.';
       setExportError(msg);
-    } finally {
       setIsExporting(false);
       setExportProgress(null);
     }
@@ -391,10 +208,10 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-[var(--md-sys-color-on-surface)] leading-tight">
-                Two-Stage PDF Export & Page Setup
+                Certified PDF Submittal & Page Setup
               </h2>
               <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                Pre-Download Customization · Default Preset Loaded
+                Full Submittal · Inputs, Derivations, 2D Diagrams, Schedules & Consultant Seal
               </span>
             </div>
           </div>
@@ -454,7 +271,9 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
                 </label>
                 <select
                   value={modalPreset.paperSize}
-                  onChange={(e) => setModalPreset({ ...modalPreset, paperSize: e.target.value as any })}
+                  onChange={(e) =>
+                    setModalPreset({ ...modalPreset, paperSize: e.target.value as any })
+                  }
                   className="w-full h-10 px-2.5 text-xs font-bold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]"
                 >
                   <option value="a4">ISO A4 (210 × 297 mm)</option>
@@ -469,7 +288,9 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
                 </label>
                 <select
                   value={modalPreset.orientation}
-                  onChange={(e) => setModalPreset({ ...modalPreset, orientation: e.target.value as any })}
+                  onChange={(e) =>
+                    setModalPreset({ ...modalPreset, orientation: e.target.value as any })
+                  }
                   className="w-full h-10 px-2.5 text-xs font-bold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]"
                 >
                   <option value="portrait">Portrait (Vertical)</option>
@@ -483,7 +304,9 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
                 </label>
                 <select
                   value={modalPreset.marginMm}
-                  onChange={(e) => setModalPreset({ ...modalPreset, marginMm: parseInt(e.target.value, 10) })}
+                  onChange={(e) =>
+                    setModalPreset({ ...modalPreset, marginMm: parseInt(e.target.value, 10) })
+                  }
                   className="w-full h-10 px-2.5 text-xs font-bold rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]"
                 >
                   <option value="10">Compact (10 mm)</option>
@@ -498,7 +321,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           <div className="space-y-3 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] font-mono">
               <FileText className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-              <span>Report Header & Project Metadata</span>
+              <span>Consultant Title Block & Project Metadata</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -555,27 +378,31 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           {/* Section 3: Content Inclusions Checklist */}
           <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
             <span className="text-[11px] font-mono uppercase font-bold text-[var(--md-sys-color-on-surface)] block">
-              Toggle Content Sections:
+              Submittal Content & Certification Elements:
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <label className="flex items-center gap-2 cursor-pointer font-medium text-[var(--md-sys-color-on-surface)]">
                 <input
                   type="checkbox"
                   checked={modalPreset.includeFormulaSteps}
-                  onChange={(e) => setModalPreset({ ...modalPreset, includeFormulaSteps: e.target.checked })}
+                  onChange={(e) =>
+                    setModalPreset({ ...modalPreset, includeFormulaSteps: e.target.checked })
+                  }
                   className="w-3.5 h-3.5 rounded text-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <span>Step-by-Step Formula Steps</span>
+                <span>Step-by-Step Derivations & Formulas</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer font-medium text-[var(--md-sys-color-on-surface)]">
                 <input
                   type="checkbox"
                   checked={modalPreset.includeDiagram ?? true}
-                  onChange={(e) => setModalPreset({ ...modalPreset, includeDiagram: e.target.checked })}
+                  onChange={(e) =>
+                    setModalPreset({ ...modalPreset, includeDiagram: e.target.checked })
+                  }
                   className="w-3.5 h-3.5 rounded text-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <span>2D Analytical Diagram / Sketch</span>
+                <span>2D Analytical Diagram / CAD Sketch</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer font-medium text-[var(--md-sys-color-on-surface)]">
@@ -592,34 +419,53 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
                 <input
                   type="checkbox"
                   checked={modalPreset.includeSignatureBlock ?? true}
-                  onChange={(e) => setModalPreset({ ...modalPreset, includeSignatureBlock: e.target.checked })}
+                  onChange={(e) =>
+                    setModalPreset({ ...modalPreset, includeSignatureBlock: e.target.checked })
+                  }
                   className="w-3.5 h-3.5 rounded text-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <span>Engineer Signature & License Stamp</span>
+                <span>3-Tier Consultant QA/QC Signature & Seal</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer font-medium text-[var(--md-sys-color-on-surface)] sm:col-span-2">
                 <input
                   type="checkbox"
                   checked={modalPreset.showProjectMetadata ?? true}
-                  onChange={(e) => setModalPreset({ ...modalPreset, showProjectMetadata: e.target.checked })}
+                  onChange={(e) =>
+                    setModalPreset({ ...modalPreset, showProjectMetadata: e.target.checked })
+                  }
                   className="w-3.5 h-3.5 rounded text-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <span>Project Metadata Card Block</span>
+                <span>Consultant Title Block & Project Identification Grid</span>
               </label>
             </div>
           </div>
         </div>
 
-        {/* Modal Footer with Two Primary Action Buttons */}
+        {/* Modal Footer */}
         <div className="px-5 py-4 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3.5 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer order-2 sm:order-1"
-          >
-            Cancel
-          </button>
+          <div className="flex items-center gap-2 order-2 sm:order-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3.5 py-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] cursor-pointer"
+            >
+              Cancel
+            </button>
+            {onOpenPrintPreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenPrintPreview();
+                }}
+                className="px-3.5 py-2 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] hover:border-[var(--md-sys-color-primary)] text-xs font-mono font-bold inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                <span>Live Sheet Preview & Print</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-2 order-1 sm:order-2">
             {/* Button 2: Download & Save Settings as New Default Preset */}
@@ -642,7 +488,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
               className="px-4 py-2 rounded-xl bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] text-xs font-mono font-bold hover:opacity-90 inline-flex items-center gap-2 cursor-pointer shadow-xs transition-transform active:scale-95 disabled:opacity-50"
             >
               <FileDown className="w-4 h-4" />
-              <span>Download PDF Now</span>
+              <span>Download Certified PDF</span>
             </button>
           </div>
         </div>

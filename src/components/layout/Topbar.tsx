@@ -21,6 +21,7 @@ import {
   Sparkles,
   Command,
   Palette,
+  Home,
 } from 'lucide-react';
 import { useWorkbench } from '../../context/WorkbenchContext';
 import { useTheme, EngineeringTheme } from '../../context/ThemeContext';
@@ -41,6 +42,8 @@ export interface TopbarProps {
   canRedo?: boolean;
   sunlightMode?: boolean;
   onToggleSunlightMode?: () => void;
+  onNavigateHome?: () => void;
+  isHomeActive?: boolean;
 }
 
 export const Topbar: React.FC<TopbarProps> = ({
@@ -56,6 +59,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   canRedo = false,
   sunlightMode = false,
   onToggleSunlightMode,
+  onNavigateHome,
+  isHomeActive = false,
 }) => {
   const workbench = useWorkbench();
   const { theme, themeConfig, setTheme, availableThemes } = useTheme();
@@ -127,10 +132,16 @@ export const Topbar: React.FC<TopbarProps> = ({
           <Menu className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onNavigateHome}
+          className="flex items-center gap-2 cursor-pointer group rounded-full py-1 pr-2 hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+          title="Home"
+          aria-label="BD. CivilLab — Home"
+        >
           <LogoMark size={24} animated={false} className="shadow-xs shrink-0" />
           <div className="flex items-baseline gap-1.5 hidden sm:flex">
-            <span className="text-sm font-black tracking-tight text-[var(--md-sys-color-on-surface)] whitespace-nowrap">
+            <span className="text-sm font-black tracking-tight text-[var(--md-sys-color-on-surface)] group-hover:text-[var(--md-sys-color-primary)] transition-colors whitespace-nowrap">
               <span className="text-[var(--md-sys-color-primary)]">BD.</span> CivilLab
             </span>
             <span className="hidden xl:inline text-[10.5px] text-[var(--md-sys-color-on-surface-variant)] opacity-80 font-nikosh tracking-normal" lang="bn">
@@ -140,7 +151,24 @@ export const Topbar: React.FC<TopbarProps> = ({
           <span className="hidden lg:inline px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline)]">
             v2.6 Enterprise
           </span>
-        </div>
+        </button>
+
+        {onNavigateHome && (
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            aria-current={isHomeActive ? 'page' : undefined}
+            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
+              isHomeActive
+                ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-[var(--md-sys-color-primary)] shadow-xs'
+                : 'bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)]'
+            }`}
+            title="Go to Home (Alt+1)"
+          >
+            <Home className="w-3.5 h-3.5 shrink-0" />
+            <span>Home</span>
+          </button>
+        )}
       </div>
 
       {/* Right Zone: Controls, Unit System Toggle, Project Quick-Edit, Theme Toggle */}

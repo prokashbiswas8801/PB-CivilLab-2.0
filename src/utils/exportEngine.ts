@@ -33,6 +33,7 @@ import {
   saveVerifiedReport,
 } from './verificationEngine';
 import { TESTING_LAB_TEST_MAP, TESTING_LAB_TESTS } from '../data/testingLabCatalog';
+import { getBrandLogoPngDataUrl } from '../assets/brandLogoData';
 import {
   evaluateLabTest,
   getDefaultChecklistStates,
@@ -44,60 +45,104 @@ import {
 // ============================================================================
 
 /**
- * Replaces unsupported Unicode and Greek symbols in jsPDF standard fonts with clean,
- * readable engineering ASCII notations (e.g. Phi, gamma, sigma, f'c, Mu, m^3/s, kN/m^2).
- * Prevents garbled or missing characters on PDF output.
+ * Replaces unsupported Unicode, Greek, subscript/superscript, and currency symbols
+ * in jsPDF standard fonts with clean, readable engineering ASCII notations
+ * (e.g. Phi, gamma, sigma, f'c, Mu, m^3/s, kN/m^2, BDT).
+ * Prevents garbled mojibake or missing characters on vector PDF output.
  */
 export function sanitizeEngineeringSymbols(text: string | number | null | undefined): string {
   if (text === null || text === undefined) return '';
   let str = String(text);
 
   const replacements: [RegExp, string][] = [
+    // Currency symbols not in WinAnsi
+    [/\u09F3/g, 'BDT '],                    // ৳
+    [/\u20B9/g, 'INR '],                    // ₹
+
     // Greek letters
     [/[\u03C6\u03D5\u03A6]/g, 'Phi'],       // φ, ϕ, Φ
     [/[\u03B3\u0393]/g, 'gamma'],           // γ, Γ
-    [/[\u03C3\u03A3]/g, 'sigma'],           // σ, Σ
+    [/[\u03C3\u03C2]/g, 'sigma'],           // σ, ς
+    [/[\u03A3\u2211]/g, 'Sum '],            // Σ, ∑
     [/[\u03C4]/g, 'tau'],                   // τ
     [/[\u03B4]/g, 'delta'],                 // δ
-    [/[\u0394]/g, 'Delta'],                 // Δ
+    [/[\u0394\u2206]/g, 'Delta'],           // Δ, ∆
     [/[\u03B8\u0398]/g, 'theta'],           // θ, Θ
     [/[\u03B2]/g, 'beta'],                  // β
     [/[\u03BB\u039B]/g, 'lambda'],          // λ, Λ
     [/[\u03C0\u03A0]/g, 'pi'],              // π, Π
     [/[\u03C1]/g, 'rho'],                   // ρ
-    [/[\u03B5]/g, 'epsilon'],               // ε
-    [/[\u03BC]/g, 'mu'],                    // μ (micro)
-    [/[\u03C9\u03A9]/g, 'omega'],           // ω, Ω
+    [/[\u03B5\u03F5]/g, 'epsilon'],         // ε, ϵ
+    [/[\u03BC\u00B5]/g, 'mu'],              // μ, µ
+    [/[\u03C9\u03A9\u2126]/g, 'omega'],     // ω, Ω, Ω
     [/[\u03B1]/g, 'alpha'],                 // α
     [/[\u03B7]/g, 'eta'],                   // η
+    [/[\u03BE\u039E]/g, 'xi'],              // ξ, Ξ
+    [/[\u03B6]/g, 'zeta'],                  // ζ
+    [/[\u03BD]/g, 'nu'],                    // ν
+    [/[\u03BA]/g, 'kappa'],                 // κ
+    [/[\u03C7]/g, 'chi'],                   // χ
+    [/[\u03C8\u03A8]/g, 'psi'],             // ψ, Ψ
 
-    // Math comparisons and symbols
+    // Math comparisons, operators, integrals, and arrows
     [/[\u2264]/g, '<='],                    // ≤
     [/[\u2265]/g, '>='],                    // ≥
     [/[\u2260]/g, '!='],                    // ≠
-    [/[\u2248]/g, '~='],                    // ≈
+    [/[\u2248\u2245\u2243]/g, '~='],        // ≈, ≅, ≃
     [/[\u00D7]/g, 'x'],                     // ×
+    [/[\u00F7]/g, '/'],                     // ÷
+    [/[\u2212]/g, '-'],                     // − (Unicode minus)
     [/[\u00B1]/g, '+/-'],                   // ±
     [/[\u221A]/g, 'sqrt'],                  // √
+    [/[\u222B]/g, 'Integral '],             // ∫
     [/[\u221E]/g, 'INF'],                   // ∞
-    [/[\u2245\u2243]/g, '~='],              // ≅, ≃
-    [/[\u2208]/g, 'in'],                    // ∈
+    [/[\u2208]/g, ' in '],                  // ∈
+    [/[\u2209]/g, ' not in '],              // ∉
+    [/[\u2192\u27F6]/g, '->'],              // →, ⟶
+    [/[\u2190]/g, '<-'],                    // ←
+    [/[\u2194\u21C4]/g, '<->'],             // ↔, ⇄
+    [/[\u21D2]/g, '=>'],                    // ⇒
+    [/[\u2032]/g, "'"],                     // ′ (feet / prime)
+    [/[\u2033]/g, '"'],                     // ″ (inches / double prime)
+    [/[\u2030]/g, ' per-mille'],            // ‰
 
     // Exponents / superscripts
+    [/[\u2070]/g, '^0'],                    // ⁰
+    [/[\u00B9]/g, '^1'],                    // ¹
     [/[\u00B2]/g, '^2'],                    // ²
     [/[\u00B3]/g, '^3'],                    // ³
     [/[\u2074]/g, '^4'],                    // ⁴
-    [/[\u2070]/g, '^0'],                    // ⁰
-    [/[\u00B9]/g, '^1'],                    // ¹
+    [/[\u2075]/g, '^5'],                    // ⁵
+    [/[\u2076]/g, '^6'],                    // ⁶
+    [/[\u2077]/g, '^7'],                    // ⁷
+    [/[\u2078]/g, '^8'],                    // ⁸
+    [/[\u2079]/g, '^9'],                    // ⁹
+    [/[\u207A]/g, '^+'],                    // ⁺
+    [/[\u207B]/g, '^-'],                    // ⁻
 
-    // Engineering units and diameters
+    // Subscripts
+    [/[\u2080]/g, '_0'],                    // ₀
+    [/[\u2081]/g, '_1'],                    // ₁
+    [/[\u2082]/g, '_2'],                    // ₂
+    [/[\u2083]/g, '_3'],                    // ₃
+    [/[\u2084]/g, '_4'],                    // ₄
+    [/[\u2085]/g, '_5'],                    // ₅
+    [/[\u2086]/g, '_6'],                    // ₆
+    [/[\u2087]/g, '_7'],                    // ₇
+    [/[\u2088]/g, '_8'],                    // ₈
+    [/[\u2089]/g, '_9'],                    // ₉
+    [/[\u208A]/g, '_+'],                    // ₊
+    [/[\u208B]/g, '_-'],                    // ₋
+
+    // Engineering units, diameters, and punctuation
     [/[\u00B0]/g, ' deg'],                  // °
-    [/[\u00D8\u00F8\u2300]/g, 'Dia '],       // Ø, ø, ⌀
+    [/[\u00D8\u00F8\u2300]/g, 'Dia '],      // Ø, ø, ⌀
     [/[\u00B7]/g, '.'],                     // ·
-    [/[\u2022]/g, '-'],                     // •
+    [/[\u2022\u25CF\u25AA]/g, '-'],         // •, ●, ▪
     [/[\u2013\u2014]/g, '-'],               // – —
     [/[\u2018\u2019]/g, "'"],               // ‘ ’
     [/[\u201C\u201D]/g, '"'],               // “ ”
+    [/[\u2026]/g, '...'],                   // …
 
     // Specific civil terms
     [/f'?c/gi, "f'c"],
@@ -110,6 +155,9 @@ export function sanitizeEngineeringSymbols(text: string | number | null | undefi
   for (const [pattern, repl] of replacements) {
     str = str.replace(pattern, repl);
   }
+
+  // Strip any remaining non-WinAnsi characters (> U+00FF) to guarantee zero mojibake in Helvetica/Courier
+  str = str.replace(/[^\x20-\x7E\xA0-\xFF\r\n\t]/g, '');
 
   return str;
 }
@@ -211,13 +259,13 @@ export interface ReportOutputRow {
 }
 
 export interface ReportTakeoffRow {
-  col1: string;          // Item No / Bar Mark
-  col2: string;          // Description / Bar Type
+  col1: string;          // Item No / Bar Mark / Span / Node
+  col2: string;          // Description / Bar Type / Member
   col3: string;          // Category / Unit / Shape
-  col4: string | number; // Dimensions / Cut Length
-  col5: string | number; // Quantity / Total Weight
-  col6?: string | number;// Unit Rate / Spacing
-  col7?: string | number;// Total Cost / MT
+  col4: string | number; // Dimensions / Cut Length / Force
+  col5: string | number; // Quantity / Total Weight / Moment
+  col6?: string | number;// Unit Rate / Spacing / Stress
+  col7?: string | number;// Total Cost / MT / Status
 }
 
 export interface ReportFormulaStep {
@@ -239,8 +287,10 @@ export interface EngineeringReportData {
     date: string;
     unitSystem: 'SI' | 'Imperial';
     engineerName?: string;
+    engineerDesignation?: string;
     engineerLicense?: string;
     organization?: string;
+    checkerName?: string;
   };
   moduleMeta: {
     moduleId: EngineeringModuleId | string;
@@ -249,14 +299,20 @@ export interface EngineeringReportData {
     standard?: string;
     status?: 'PASS' | 'SAFE' | 'WARNING' | 'FAIL' | 'CRITICAL' | 'VERIFIED' | 'ZERO BASELINE';
     dcrMax?: number;
+    dcrSummaryText?: string;
   };
   inputs: ReportParameterRow[];
   outputs: ReportOutputRow[];
+  takeoffTitle?: string;
   takeoffHeaders?: string[];
   takeoffRows?: ReportTakeoffRow[];
   takeoffSummary?: Array<{ label: string; value: string | number }>;
   stepByStepFormulas?: ReportFormulaStep[];
   governingAssumptions?: string[];
+  diagramDataUrl?: string;
+  diagramWidth?: number;
+  diagramHeight?: number;
+  diagramCaption?: string;
   qrLinkUrl?: string;
   docId?: string;
   notes?: string[];
@@ -266,6 +322,23 @@ export interface PdfExportEngineOptions {
   onProgress?: (progress: { stage: string; percent: number }) => void;
   autoDownload?: boolean;
   filename?: string;
+  paperSize?: 'a4' | 'letter' | 'legal';
+  orientation?: 'portrait' | 'landscape';
+  marginMm?: number;
+  customHeaderTitle?: string;
+  customCompanySubtitle?: string;
+  customProjectName?: string;
+  customClientName?: string;
+  customSignatory?: string;
+  includeHeader?: boolean;
+  showProjectMetadata?: boolean;
+  includeDiagram?: boolean;
+  includeFormulaSteps?: boolean;
+  includeAssumptions?: boolean;
+  includeQR?: boolean;
+  includeSignatureBlock?: boolean;
+  includeFooter?: boolean;
+  captureLiveDiagram?: boolean;
 }
 
 let cachedNikoshBase64: string | null = null;
@@ -314,254 +387,561 @@ export async function registerNikoshFontIfAvailable(doc: jsPDF): Promise<boolean
   return false;
 }
 
+/**
+ * Locates the active module's 2D analytical SVG diagram in the DOM and captures it
+ * as a high-DPI PNG data URL with resolved CSS custom property colors.
+ */
+export async function captureActiveModuleDiagramPng(): Promise<{
+  dataUrl: string;
+  width: number;
+  height: number;
+} | null> {
+  if (typeof document === 'undefined') return null;
+  const selectors = [
+    '[data-diagram-export="active-module"] svg',
+    '#pb-print-capture-source .print-capture-diagram svg',
+    '.print-capture-diagram svg',
+    '.analytical-diagram-container svg',
+  ];
+
+  for (const sel of selectors) {
+    const svgEl = document.querySelector(sel) as SVGSVGElement | null;
+    if (svgEl) {
+      const captured = await captureSvgToPngDataUrl(svgEl);
+      if (captured) return captured;
+    }
+  }
+  return null;
+}
+
 // ============================================================================
 // 4. PROFESSIONAL ENGINEERING PDF GENERATOR (jsPDF + jspdf-autotable + QRCode)
 // ============================================================================
 
 /**
  * Builds and renders a professional, multi-page engineering calculation submittal
- * using jsPDF, jspdf-autotable, and high-resolution QR verification.
+ * using jsPDF, jspdf-autotable, embedded 2D vector schematic capture, and QR verification.
  */
 export async function generateEngineeringPDF(
   reportData: EngineeringReportData,
   options: PdfExportEngineOptions = {}
 ): Promise<jsPDF> {
-  const { onProgress } = options;
+  const {
+    onProgress,
+    paperSize = 'a4',
+    orientation = 'portrait',
+    marginMm = 14,
+    customHeaderTitle,
+    customCompanySubtitle,
+    customProjectName,
+    customClientName,
+    customSignatory,
+    includeHeader = true,
+    showProjectMetadata = true,
+    includeDiagram = true,
+    includeFormulaSteps = true,
+    includeAssumptions = true,
+    includeQR = true,
+    includeSignatureBlock = true,
+    includeFooter = true,
+    captureLiveDiagram = true,
+  } = options;
 
   const notify = async (stage: string, percent: number) => {
     if (onProgress) {
       onProgress({ stage, percent });
-      await new Promise((r) => setTimeout(r, 40));
+      await new Promise((r) => setTimeout(r, 35));
     }
   };
 
-  await notify('Initializing A4 submittal geometry & vector canvas...', 15);
+  await notify('Initializing submittal sheet geometry & vector canvas...', 15);
 
-  // A4 Portrait: 210mm x 297mm
+  const format = paperSize === 'legal' ? 'legal' : paperSize === 'letter' ? 'letter' : 'a4';
   const doc = new jsPDF({
-    orientation: 'portrait',
+    orientation,
     unit: 'mm',
-    format: 'a4',
+    format,
   });
 
-  const hasNikoshFont = await registerNikoshFontIfAvailable(doc);
+  await registerNikoshFontIfAvailable(doc);
 
-  const pageWidth = 210;
-  const pageHeight = 297;
-  const margin = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = Math.max(8, Math.min(24, marginMm));
   const contentWidth = pageWidth - 2 * margin;
 
   const docId = reportData.docId || generateSubmittalDocRef(new Date().getFullYear());
   const now = new Date();
-  const dateStr = reportData.projectMeta.date || now.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  const dateStr =
+    reportData.projectMeta.date ||
+    now.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
 
-  // Generate QR Code Data URL
-  await notify('Generating cryptographic verification QR stamp...', 30);
-  const qrUrl = reportData.qrLinkUrl || (
-    typeof window !== 'undefined' && window.location?.href
-      ? window.location.href
-      : `https://bd-civillab.engine?doc=${encodeURIComponent(docId)}`
-  );
+  // Apply custom overrides if provided
+  const effectiveProjectName = customProjectName || reportData.projectMeta.projectName || 'Untitled Project';
+  const effectiveClient = customClientName || reportData.projectMeta.client || 'Not Specified';
+  const effectiveSignatory = customSignatory || reportData.projectMeta.engineerName || 'Pending Signature';
+  const effectiveModuleTitle = customHeaderTitle || reportData.moduleMeta.moduleTitle;
+
+  // Generate QR Code Data URL & Brand Logo
+  await notify('Generating cryptographic verification QR stamp & consultant seal...', 30);
+  const qrUrl =
+    reportData.qrLinkUrl ||
+    (typeof window !== 'undefined' && window.location?.origin
+      ? `${window.location.origin}/?verify=${encodeURIComponent(docId)}`
+      : `https://bd-civillab.engine?doc=${encodeURIComponent(docId)}`);
 
   let qrDataUrl = '';
-  try {
-    qrDataUrl = await QRCode.toDataURL(qrUrl, {
-      margin: 1,
-      width: 140,
-      errorCorrectionLevel: 'M',
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff',
-      },
-    });
-  } catch (err) {
-    console.warn('QR Code generation fallback:', err);
+  if (includeQR) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(qrUrl, {
+        margin: 1,
+        width: 160,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff',
+        },
+      });
+    } catch (err) {
+      console.warn('QR Code generation fallback:', err);
+    }
   }
 
+  let brandLogoDataUrl = '';
+  try {
+    brandLogoDataUrl = await getBrandLogoPngDataUrl(256);
+  } catch {
+    brandLogoDataUrl = '';
+  }
+
+  // Capture live 2D diagram if enabled and not already attached
+  let diagramImg = reportData.diagramDataUrl
+    ? {
+        dataUrl: reportData.diagramDataUrl,
+        width: reportData.diagramWidth || 640,
+        height: reportData.diagramHeight || 260,
+      }
+    : null;
+  if (includeDiagram && !diagramImg && captureLiveDiagram) {
+    diagramImg = await captureActiveModuleDiagramPng();
+  }
+
+  let yPos = margin;
+
   // ==========================================================================
-  // PAGE 1: TITLE BLOCK & HEADER
+  // PAGE 1: CONSULTANT TITLE BLOCK & HEADER
   // ==========================================================================
-  await notify('Composing engineering title block and project metadata...', 45);
+  await notify('Composing consultant title block and project credentials...', 45);
 
-  // Top Accent Banner (Navy #0f172a)
-  doc.setFillColor(15, 23, 42); // slate-900
-  doc.rect(margin, margin, contentWidth, 24, 'F');
+  if (includeHeader) {
+    const headerH = 26;
+    // Top Accent Banner (Navy #0f172a)
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, yPos, contentWidth, headerH, 'F');
 
-  // Decorative engineering accent bar (blue #2563eb)
-  doc.setFillColor(37, 99, 235);
-  doc.rect(margin, margin + 24, contentWidth, 1.5, 'F');
+    // Decorative engineering accent bar (Blue #2563eb)
+    doc.setFillColor(37, 99, 235);
+    doc.rect(margin, yPos + headerH, contentWidth, 1.5, 'F');
 
-  // Brand Name in White
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('BD. CIVILLAB', margin + 4, margin + 8);
+    let titleTextX = margin + 4;
+    if (brandLogoDataUrl) {
+      try {
+        doc.addImage(brandLogoDataUrl, 'PNG', margin + 3.5, yPos + 3.5, 19, 19);
+        titleTextX = margin + 26;
+      } catch {
+        titleTextX = margin + 4;
+      }
+    }
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(148, 163, 184); // slate-400
-  doc.text('PROFESSIONAL CIVIL ENGINEERING LABORATORY & VERIFICATION SUITE', margin + 4, margin + 13);
+    // Brand Name in White
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13.5);
+    doc.text('BD. CIVILLAB', titleTextX, yPos + 8);
 
-  doc.setFontSize(7);
-  doc.setTextColor(203, 213, 225); // slate-300
-  doc.text(
-    `SUBMITTAL REF: ${docId}  |  STATUS: ${reportData.moduleMeta.status || 'VERIFIED'}  |  SYSTEM: ${reportData.projectMeta.unitSystem.toUpperCase()}`,
-    margin + 4,
-    margin + 18.5
-  );
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      sanitizeEngineeringSymbols(
+        customCompanySubtitle || 'PROFESSIONAL CIVIL ENGINEERING LABORATORY & CERTIFIED SUBMITTAL SUITE'
+      ),
+      titleTextX,
+      yPos + 13.2
+    );
 
-  // QR Code Box (top right)
-  if (qrDataUrl) {
-    const qrSize = 21;
-    const qrX = margin + contentWidth - qrSize - 1.5;
-    const qrY = margin + 1.5;
-    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    doc.setFontSize(7);
+    doc.setTextColor(226, 232, 240);
+    doc.text(
+      sanitizeEngineeringSymbols(
+        `SUBMITTAL REF: ${docId}  |  STATUS: ${reportData.moduleMeta.status || 'VERIFIED'}  |  UNITS: ${reportData.projectMeta.unitSystem.toUpperCase()}`
+      ),
+      titleTextX,
+      yPos + 18.5
+    );
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      sanitizeEngineeringSymbols(
+        `Governing Code: ${reportData.moduleMeta.standard || 'BNBC 2020 / ACI 318-19 / AISC 360-16'}`
+      ),
+      titleTextX,
+      yPos + 23
+    );
+
+    // QR Code Box (top right)
+    if (qrDataUrl) {
+      const qrSize = 21;
+      const qrX = margin + contentWidth - qrSize - 2;
+      const qrY = yPos + 2.5;
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 1, 1, 'F');
+      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    }
+
+    yPos += headerH + 4.5;
   }
 
   // Metadata Grid Box
-  let yPos = margin + 29;
-  const metaBoxHeight = 26;
-  doc.setFillColor(248, 250, 252); // slate-50
-  doc.setDrawColor(226, 232, 240); // slate-200
-  doc.roundedRect(margin, yPos, contentWidth, metaBoxHeight, 2, 2, 'FD');
+  if (showProjectMetadata) {
+    const metaBoxHeight = 26;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(margin, yPos, contentWidth, metaBoxHeight, 1.5, 1.5, 'FD');
 
-  // Project Info Columns
-  doc.setTextColor(15, 23, 42);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+    const col1X = margin + 4;
+    const col2X = margin + contentWidth / 2 + 3;
+    doc.line(margin + contentWidth / 2, yPos + 11, margin + contentWidth / 2, yPos + metaBoxHeight - 2);
 
-  const col1X = margin + 4;
-  const col2X = margin + (contentWidth / 2) + 2;
+    // Module & Submittal Header Banner inside Metadata Box
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin + 0.3, yPos + 0.3, contentWidth - 0.6, 10, 'F');
+    doc.line(margin, yPos + 10.3, margin + contentWidth, yPos + 10.3);
 
-  // Module & Project Title
-  doc.text(
-    sanitizeEngineeringSymbols(`${reportData.moduleMeta.moduleTitle} — Calculation Submittal`),
-    col1X,
-    yPos + 5.5
-  );
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Governing Standard: ${sanitizeEngineeringSymbols(reportData.moduleMeta.standard || 'BNBC 2020 / ACI 318-19 / AISC 360-16')}`, col1X, yPos + 9.5);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(
+      sanitizeEngineeringSymbols(`${effectiveModuleTitle} - Calculation Submittal`),
+      col1X,
+      yPos + 4.8
+    );
 
-  doc.text(`Project Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectName || 'Untitled Project')}`, col1X, yPos + 14.5);
-  doc.text(`Project Code: ${sanitizeEngineeringSymbols(reportData.projectMeta.projectCode || 'PRJ-001')}`, col1X, yPos + 18.5);
-  doc.text(`Location: ${sanitizeEngineeringSymbols(reportData.projectMeta.location || '________________________')}`, col1X, yPos + 22.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      sanitizeEngineeringSymbols(
+        `Standard: ${reportData.moduleMeta.standard || 'BNBC 2020 / ACI 318-19'}  |  Category: ${reportData.moduleMeta.category || 'Structural / Civil Engineering'}`
+      ),
+      col1X,
+      yPos + 8.8
+    );
 
-  // Col 2
-  doc.text(`Client / Agency: ${sanitizeEngineeringSymbols(reportData.projectMeta.client || '________________________')}`, col2X, yPos + 14.5);
-  doc.text(`Engineer of Record: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerName || '________________________')}`, col2X, yPos + 18.5);
-  doc.text(`Date & Unit Standard: ${dateStr}  |  ${reportData.projectMeta.unitSystem} Units`, col2X, yPos + 22.5);
+    // Column 1: Project Identification
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      sanitizeEngineeringSymbols(`Project: ${effectiveProjectName} [${reportData.projectMeta.projectCode || 'PRJ-001'}]`),
+      col1X,
+      yPos + 14.8
+    );
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      sanitizeEngineeringSymbols(`Client / Authority: ${effectiveClient}`),
+      col1X,
+      yPos + 19
+    );
+    doc.text(
+      sanitizeEngineeringSymbols(`Site Location: ${reportData.projectMeta.location || 'Not Specified'}`),
+      col1X,
+      yPos + 23.2
+    );
 
-  yPos += metaBoxHeight + 5;
+    // Column 2: Engineer of Record Credentials
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      sanitizeEngineeringSymbols(`Engineer of Record: ${effectiveSignatory}`),
+      col2X,
+      yPos + 14.8
+    );
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      sanitizeEngineeringSymbols(
+        `Organization: ${reportData.projectMeta.organization || 'Independent Engineering Practice'}  |  Lic: ${reportData.projectMeta.engineerLicense || 'Pending'}`
+      ),
+      col2X,
+      yPos + 19
+    );
+    doc.text(
+      sanitizeEngineeringSymbols(`Submittal Date: ${dateStr}  |  Unit System: ${reportData.projectMeta.unitSystem} Standard`),
+      col2X,
+      yPos + 23.2
+    );
 
-  // ==========================================================================
-  // TABLE 1: INPUT DESIGN PARAMETERS
-  // ==========================================================================
-  await notify('Generating structured input parameters schedule...', 60);
+    yPos += metaBoxHeight + 5;
+  }
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 58, 138); // blue-900
-  doc.text('1. INPUT DESIGN PARAMETERS & SPECIFICATIONS', margin, yPos);
-  yPos += 2.5;
-
-  const inputHeaders = ['Parameter Description', 'Symbol', 'Design Input Value', 'Unit', 'Standard / Specification'];
-  const inputRows = reportData.inputs.map((inp) => [
-    sanitizeEngineeringSymbols(inp.name),
-    sanitizeEngineeringSymbols(inp.symbol),
-    sanitizeEngineeringSymbols(String(inp.value)),
-    sanitizeEngineeringSymbols(inp.unit),
-    sanitizeEngineeringSymbols(inp.notes || '—'),
-  ]);
-
-  autoTable(doc, {
-    startY: yPos,
-    margin: { left: margin, right: margin },
-    head: [inputHeaders],
-    body: inputRows,
-    theme: 'grid',
-    styles: {
-      fontSize: 7.5,
-      cellPadding: 1.8,
-      textColor: [15, 23, 42],
-      font: 'helvetica',
-      lineColor: [226, 232, 240],
-      lineWidth: 0.15,
-    },
-    headStyles: {
-      fillColor: [30, 58, 138], // Navy #1e3a8a
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 7.5,
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252],
-    },
-    columnStyles: {
-      0: { cellWidth: 62 },
-      1: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
-      2: { cellWidth: 32, halign: 'right', fontStyle: 'bold' },
-      3: { cellWidth: 22, halign: 'center' },
-      4: { cellWidth: 'auto' },
-    },
-  });
-
-  // Track cursor position after table
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+  let sectionNum = 1;
 
   // ==========================================================================
-  // TABLE 2: MATERIAL QUANTITIES / TAKEOFF / BBS (IF PRESENT)
+  // SECTION 1: INPUT DESIGN PARAMETERS
   // ==========================================================================
-  if (reportData.takeoffRows && reportData.takeoffRows.length > 0) {
-    // Check page overflow
-    if (yPos > pageHeight - 45) {
+  await notify('Tabulating design input parameters & specifications...', 58);
+
+  if (reportData.inputs && reportData.inputs.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text(`${sectionNum}.0 INPUT DESIGN PARAMETERS & SPECIFICATIONS`, margin, yPos);
+    sectionNum++;
+    yPos += 2.2;
+
+    const inputHeaders = ['Parameter Description', 'Symbol', 'Design Input Value', 'Unit', 'Standard / Specification'];
+    const inputRows = reportData.inputs.map((inp) => [
+      sanitizeEngineeringSymbols(inp.name),
+      sanitizeEngineeringSymbols(inp.symbol),
+      sanitizeEngineeringSymbols(String(inp.value)),
+      sanitizeEngineeringSymbols(inp.unit),
+      sanitizeEngineeringSymbols(inp.notes || '-'),
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [inputHeaders],
+      body: inputRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 7.3,
+        cellPadding: 1.6,
+        textColor: [15, 23, 42],
+        font: 'helvetica',
+        lineColor: [203, 213, 225],
+        lineWidth: 0.15,
+      },
+      headStyles: {
+        fillColor: [30, 58, 138],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.3,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      columnStyles: {
+        0: { cellWidth: contentWidth * 0.34 },
+        1: { cellWidth: contentWidth * 0.12, halign: 'center', fontStyle: 'bold' },
+        2: { cellWidth: contentWidth * 0.18, halign: 'right', fontStyle: 'bold' },
+        3: { cellWidth: contentWidth * 0.12, halign: 'center' },
+        4: { cellWidth: 'auto' },
+      },
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+  }
+
+  // ==========================================================================
+  // SECTION 2: 2D ANALYTICAL / STRUCTURAL SCHEMATIC DIAGRAM (IF AVAILABLE)
+  // ==========================================================================
+  if (includeDiagram && diagramImg && diagramImg.dataUrl) {
+    await notify('Embedding high-resolution 2D engineering schematic...', 66);
+
+    const aspect = diagramImg.height / Math.max(1, diagramImg.width);
+    const maxDiagramH = orientation === 'landscape' ? 56 : 64;
+    let renderW = contentWidth - 4;
+    let renderH = renderW * aspect;
+    if (renderH > maxDiagramH) {
+      renderH = maxDiagramH;
+      renderW = renderH / aspect;
+    }
+
+    if (yPos + renderH + 14 > pageHeight - 22) {
       doc.addPage();
-      yPos = renderPageRunningHeader(doc, reportData, docId);
+      yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
     }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 58, 138);
-    doc.text('2. MATERIAL QUANTITIES & SCHEDULE / BILL OF QUANTITIES', margin, yPos);
-    yPos += 2.5;
+    doc.text(
+      sanitizeEngineeringSymbols(
+        `${sectionNum}.0 ${reportData.diagramCaption || '2D STRUCTURAL & ANALYTICAL SCHEMATIC DIAGRAM'}`
+      ),
+      margin,
+      yPos
+    );
+    sectionNum++;
+    yPos += 2.2;
 
-    const takeoffHeaders = reportData.takeoffHeaders || [
-      'Item No',
-      'Description',
-      'Category / Unit',
-      'Dimensions / Cut Len',
-      'Quantity / Weight',
-      'Unit Rate',
-      'Total Amount',
+    doc.setFillColor(15, 23, 42);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, yPos, contentWidth, renderH + 4, 1.5, 1.5, 'FD');
+
+    const imgX = margin + (contentWidth - renderW) / 2;
+    try {
+      doc.addImage(diagramImg.dataUrl, 'PNG', imgX, yPos + 2, renderW, renderH);
+    } catch (err) {
+      console.warn('Could not embed captured SVG PNG into PDF:', err);
+    }
+
+    yPos += renderH + 9;
+  }
+
+  // ==========================================================================
+  // SECTION 3: FINAL DESIGN OUTPUTS & CODE SAFETY EVALUATIONS
+  // ==========================================================================
+  await notify('Compiling analytical design outputs and limit-state DCR checks...', 74);
+
+  if (reportData.outputs && reportData.outputs.length > 0) {
+    if (yPos > pageHeight - 42) {
+      doc.addPage();
+      yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text(`${sectionNum}.0 COMPUTED ANALYTICAL RESULTS & LIMIT-STATE CHECKS`, margin, yPos);
+    sectionNum++;
+    yPos += 2.2;
+
+    const outputHeaders = [
+      'Governing Check / Metric',
+      'Symbol',
+      'Computed Value',
+      'Unit',
+      'Code Limit / Allowable',
+      'Status / DCR',
     ];
-
-    const takeoffTableRows = reportData.takeoffRows.map((r) => [
-      sanitizeEngineeringSymbols(r.col1),
-      sanitizeEngineeringSymbols(r.col2),
-      sanitizeEngineeringSymbols(r.col3),
-      sanitizeEngineeringSymbols(String(r.col4)),
-      sanitizeEngineeringSymbols(String(r.col5)),
-      sanitizeEngineeringSymbols(r.col6 !== undefined ? String(r.col6) : '—'),
-      sanitizeEngineeringSymbols(r.col7 !== undefined ? String(r.col7) : '—'),
+    const outputRows = reportData.outputs.map((out) => [
+      sanitizeEngineeringSymbols(out.name),
+      sanitizeEngineeringSymbols(out.symbol),
+      sanitizeEngineeringSymbols(String(out.value)),
+      sanitizeEngineeringSymbols(out.unit),
+      sanitizeEngineeringSymbols(out.limit || '-'),
+      sanitizeEngineeringSymbols(out.dcrRatio ? `${out.status} (DCR: ${out.dcrRatio})` : out.status),
     ]);
 
-    // If summary exists, append summary rows
+    autoTable(doc, {
+      startY: yPos,
+      margin: { left: margin, right: margin },
+      head: [outputHeaders],
+      body: outputRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 7.3,
+        cellPadding: 1.6,
+        textColor: [15, 23, 42],
+        font: 'helvetica',
+        lineColor: [203, 213, 225],
+        lineWidth: 0.15,
+      },
+      headStyles: {
+        fillColor: [30, 58, 138],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.3,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      columnStyles: {
+        0: { cellWidth: contentWidth * 0.31 },
+        1: { cellWidth: contentWidth * 0.11, halign: 'center', fontStyle: 'bold' },
+        2: { cellWidth: contentWidth * 0.16, halign: 'right', fontStyle: 'bold' },
+        3: { cellWidth: contentWidth * 0.10, halign: 'center' },
+        4: { cellWidth: contentWidth * 0.17, halign: 'center' },
+        5: { cellWidth: 'auto', halign: 'center', fontStyle: 'bold' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 5) {
+          const raw = String(data.cell.raw || '').toUpperCase();
+          if (raw.includes('FAIL') || raw.includes('CRITICAL')) {
+            data.cell.styles.textColor = [190, 18, 60]; // rose-700
+            data.cell.styles.fillColor = [255, 241, 242];
+          } else if (raw.includes('WARN')) {
+            data.cell.styles.textColor = [180, 83, 9]; // amber-700
+            data.cell.styles.fillColor = [254, 243, 199];
+          } else if (raw.includes('PASS') || raw.includes('SAFE')) {
+            data.cell.styles.textColor = [4, 120, 87]; // emerald-700
+            data.cell.styles.fillColor = [236, 253, 245];
+          }
+        }
+      },
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 5;
+  }
+
+  // ==========================================================================
+  // SECTION 4: ITEMIZED SCHEDULE / TAKEOFF / MEMBER TABLE (IF PRESENT)
+  // ==========================================================================
+  if (reportData.takeoffRows && reportData.takeoffRows.length > 0) {
+    if (yPos > pageHeight - 42) {
+      doc.addPage();
+      yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text(
+      sanitizeEngineeringSymbols(
+        `${sectionNum}.0 ${reportData.takeoffTitle || 'ITEMIZED ENGINEERING SCHEDULE & QUANTITIES'}`
+      ),
+      margin,
+      yPos
+    );
+    sectionNum++;
+    yPos += 2.2;
+
+    const takeoffHeaders = (
+      reportData.takeoffHeaders || [
+        'Item / Mark',
+        'Description',
+        'Category / Unit',
+        'Dimension / Spec',
+        'Quantity / Value',
+        'Rate / Secondary',
+        'Total / Status',
+      ]
+    ).map((h) => sanitizeEngineeringSymbols(h));
+
+    const colCount = takeoffHeaders.length;
+    const takeoffTableRows = reportData.takeoffRows.map((r) => {
+      const fullRow = [
+        sanitizeEngineeringSymbols(r.col1),
+        sanitizeEngineeringSymbols(r.col2),
+        sanitizeEngineeringSymbols(r.col3),
+        sanitizeEngineeringSymbols(String(r.col4)),
+        sanitizeEngineeringSymbols(String(r.col5)),
+        sanitizeEngineeringSymbols(r.col6 !== undefined ? String(r.col6) : '-'),
+        sanitizeEngineeringSymbols(r.col7 !== undefined ? String(r.col7) : '-'),
+      ];
+      return fullRow.slice(0, colCount);
+    });
+
     if (reportData.takeoffSummary && reportData.takeoffSummary.length > 0) {
       reportData.takeoffSummary.forEach((s) => {
-        takeoffTableRows.push([
-          'TOTAL',
-          sanitizeEngineeringSymbols(s.label),
-          '',
-          '',
-          '',
-          '',
-          sanitizeEngineeringSymbols(String(s.value)),
-        ]);
+        const sumRow = new Array(colCount).fill('');
+        sumRow[0] = 'SUMMARY';
+        sumRow[1] = sanitizeEngineeringSymbols(s.label);
+        sumRow[colCount - 1] = sanitizeEngineeringSymbols(String(s.value));
+        takeoffTableRows.push(sumRow);
       });
     }
 
@@ -572,15 +952,15 @@ export async function generateEngineeringPDF(
       body: takeoffTableRows,
       theme: 'grid',
       styles: {
-        fontSize: 7,
-        cellPadding: 1.6,
+        fontSize: 6.9,
+        cellPadding: 1.5,
         textColor: [15, 23, 42],
         font: 'helvetica',
-        lineColor: [226, 232, 240],
+        lineColor: [203, 213, 225],
         lineWidth: 0.15,
       },
       headStyles: {
-        fillColor: [15, 23, 42], // Slate #0f172a
+        fillColor: [15, 23, 42],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 7,
@@ -594,249 +974,310 @@ export async function generateEngineeringPDF(
   }
 
   // ==========================================================================
-  // TABLE 3: FINAL DESIGN OUTPUTS & CODE SAFETY EVALUATIONS
+  // SECTION 5: STEP-BY-STEP FORMULA BREAKDOWNS (WITH DYNAMIC WRAPPING & BREAKS)
   // ==========================================================================
-  await notify('Compiling final design outputs and capacity ratios...', 75);
-
-  if (yPos > pageHeight - 45) {
-    doc.addPage();
-    yPos = renderPageRunningHeader(doc, reportData, docId);
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 58, 138);
-  doc.text('3. FINAL ANALYTICAL DESIGN OUTPUTS & CAPACITY CHECKS', margin, yPos);
-  yPos += 2.5;
-
-  const outputHeaders = ['Governing Check / Metric', 'Symbol', 'Computed Value', 'Unit', 'Code Limit / Allowable', 'Status / DCR'];
-  const outputRows = reportData.outputs.map((out) => [
-    sanitizeEngineeringSymbols(out.name),
-    sanitizeEngineeringSymbols(out.symbol),
-    sanitizeEngineeringSymbols(String(out.value)),
-    sanitizeEngineeringSymbols(out.unit),
-    sanitizeEngineeringSymbols(out.limit || '—'),
-    sanitizeEngineeringSymbols(out.dcrRatio ? `${out.status} (${out.dcrRatio})` : out.status),
-  ]);
-
-  autoTable(doc, {
-    startY: yPos,
-    margin: { left: margin, right: margin },
-    head: [outputHeaders],
-    body: outputRows,
-    theme: 'grid',
-    styles: {
-      fontSize: 7.5,
-      cellPadding: 1.8,
-      textColor: [15, 23, 42],
-      font: 'helvetica',
-      lineColor: [226, 232, 240],
-      lineWidth: 0.15,
-    },
-    headStyles: {
-      fillColor: [30, 58, 138],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 7.5,
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252],
-    },
-    columnStyles: {
-      0: { cellWidth: 55 },
-      1: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
-      2: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
-      3: { cellWidth: 18, halign: 'center' },
-      4: { cellWidth: 32, halign: 'center' },
-      5: { cellWidth: 'auto', halign: 'center', fontStyle: 'bold' },
-    },
-  });
-
-  yPos = (doc as any).lastAutoTable.finalY + 6;
-
-  // ==========================================================================
-  // SECTION 4: STEP-BY-STEP FORMULA BREAKDOWNS (WITH AUTO PAGE BREAKS)
-  // ==========================================================================
-  if (reportData.stepByStepFormulas && reportData.stepByStepFormulas.length > 0) {
+  if (includeFormulaSteps && reportData.stepByStepFormulas && reportData.stepByStepFormulas.length > 0) {
     await notify('Formulating mathematical step-by-step derivations...', 85);
 
-    if (yPos > pageHeight - 35) {
+    if (yPos > pageHeight - 36) {
       doc.addPage();
-      yPos = renderPageRunningHeader(doc, reportData, docId);
+      yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
     }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 58, 138);
-    doc.text('4. STEP-BY-STEP MATHEMATICAL FORMULATIONS & CODE DERIVATIONS', margin, yPos);
-    yPos += 4;
+    doc.text(`${sectionNum}.0 STEP-BY-STEP MATHEMATICAL FORMULATIONS & CODE DERIVATIONS`, margin, yPos);
+    sectionNum++;
+    yPos += 3.5;
+
+    const textMaxWidth = contentWidth - 7;
 
     for (let idx = 0; idx < reportData.stepByStepFormulas.length; idx++) {
       const step = reportData.stepByStepFormulas[idx];
       const stepNum = step.stepNumber !== undefined ? step.stepNumber : idx + 1;
 
-      // Estimate block height: title (4mm) + eq (5mm) + sub (5mm) + remark (4mm) + margins (4mm) ≈ 22mm
-      const blockHeight = 22;
-      if (yPos + blockHeight > pageHeight - 25) {
+      const eqLines: string[] = doc.splitTextToSize(
+        `Formula: ${sanitizeEngineeringSymbols(step.equation)}`,
+        textMaxWidth
+      );
+      const subRaw = step.substitution
+        ? `Calc:    ${sanitizeEngineeringSymbols(step.substitution)}  =>  ${sanitizeEngineeringSymbols(step.result)}`
+        : `Result:  ${sanitizeEngineeringSymbols(step.result)}`;
+      const subLines: string[] = doc.splitTextToSize(subRaw, textMaxWidth);
+      const remLines: string[] = step.remarks
+        ? doc.splitTextToSize(`Note: ${sanitizeEngineeringSymbols(step.remarks)}`, textMaxWidth)
+        : [];
+
+      const boxHeight =
+        6 +
+        eqLines.length * 3.3 +
+        subLines.length * 3.3 +
+        (remLines.length > 0 ? remLines.length * 3.1 + 1 : 0) +
+        2;
+
+      if (yPos + boxHeight > pageHeight - 22) {
         doc.addPage();
-        yPos = renderPageRunningHeader(doc, reportData, docId);
+        yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
       }
 
       // Step Box Container
       doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(margin, yPos, contentWidth, 18, 1.5, 1.5, 'FD');
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(margin, yPos, contentWidth, boxHeight, 1.2, 1.2, 'FD');
 
       // Left blue accent indicator
       doc.setFillColor(37, 99, 235);
-      doc.rect(margin, yPos, 1.5, 18, 'F');
+      doc.rect(margin, yPos, 1.5, boxHeight, 'F');
 
       // Step Title & Code Standard
+      let stepLineY = yPos + 4.2;
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7.4);
       doc.setTextColor(15, 23, 42);
-      doc.text(`[Step ${stepNum}] ${sanitizeEngineeringSymbols(step.title)}`, margin + 3.5, yPos + 4.2);
+      doc.text(
+        sanitizeEngineeringSymbols(`[Step ${stepNum}] ${step.title}`),
+        margin + 3.5,
+        stepLineY
+      );
 
       if (step.codeRef) {
-        doc.setFont('helvetica', 'normal');
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(6.5);
-        doc.setTextColor(100, 116, 139);
-        doc.text(sanitizeEngineeringSymbols(step.codeRef), margin + contentWidth - 4, yPos + 4.2, { align: 'right' });
+        doc.setTextColor(30, 58, 138);
+        doc.text(sanitizeEngineeringSymbols(step.codeRef), margin + contentWidth - 3, stepLineY, {
+          align: 'right',
+        });
       }
+
+      stepLineY += 3.8;
 
       // Governing Formula
       doc.setFont('courier', 'bold');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7.1);
       doc.setTextColor(30, 58, 138);
-      doc.text(`Formula: ${sanitizeEngineeringSymbols(step.equation)}`, margin + 3.5, yPos + 8.5);
+      eqLines.forEach((line) => {
+        doc.text(line, margin + 3.5, stepLineY);
+        stepLineY += 3.3;
+      });
 
       // Value Substitution & Result
       doc.setFont('courier', 'normal');
-      doc.setFontSize(7);
+      doc.setFontSize(6.9);
       doc.setTextColor(15, 23, 42);
-      const subText = step.substitution
-        ? `Calc:    ${sanitizeEngineeringSymbols(step.substitution)} = ${sanitizeEngineeringSymbols(step.result)}`
-        : `Result:  ${sanitizeEngineeringSymbols(step.result)}`;
-      doc.text(subText, margin + 3.5, yPos + 12.5);
+      subLines.forEach((line) => {
+        doc.text(line, margin + 3.5, stepLineY);
+        stepLineY += 3.3;
+      });
 
       // Remarks / Code Check
-      if (step.remarks) {
+      if (remLines.length > 0) {
         doc.setFont('helvetica', 'italic');
-        doc.setFontSize(6.5);
+        doc.setFontSize(6.4);
         doc.setTextColor(71, 85, 105);
-        doc.text(`Note: ${sanitizeEngineeringSymbols(step.remarks)}`, margin + 3.5, yPos + 16);
+        remLines.forEach((line) => {
+          doc.text(line, margin + 3.5, stepLineY);
+          stepLineY += 3.1;
+        });
       }
 
-      yPos += 20;
+      yPos += boxHeight + 2.2;
     }
+    yPos += 1.5;
   }
 
   // ==========================================================================
-  // SECTION 5: GOVERNING ASSUMPTIONS & ENGINEERING NOTES
+  // SECTION 6: GOVERNING ASSUMPTIONS & ENGINEERING NOTES
   // ==========================================================================
-  if (reportData.governingAssumptions && reportData.governingAssumptions.length > 0) {
+  if (
+    includeAssumptions &&
+    reportData.governingAssumptions &&
+    reportData.governingAssumptions.length > 0
+  ) {
     if (yPos > pageHeight - 35) {
       doc.addPage();
-      yPos = renderPageRunningHeader(doc, reportData, docId);
+      yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
     }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
-    doc.text('5. GOVERNING ASSUMPTIONS & DESIGN CRITERIA', margin, yPos);
+    doc.text(`${sectionNum}.0 GOVERNING ASSUMPTIONS & DESIGN CRITERIA`, margin, yPos);
+    sectionNum++;
     yPos += 3.5;
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.8);
     doc.setTextColor(71, 85, 105);
 
     reportData.governingAssumptions.forEach((assump) => {
-      if (yPos > pageHeight - 25) {
+      const wrapped = doc.splitTextToSize(
+        `-  ${sanitizeEngineeringSymbols(assump)}`,
+        contentWidth - 4
+      );
+      if (yPos + wrapped.length * 3.2 > pageHeight - 22) {
         doc.addPage();
-        yPos = renderPageRunningHeader(doc, reportData, docId);
+        yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
       }
-      doc.text(`•  ${sanitizeEngineeringSymbols(assump)}`, margin + 2, yPos);
-      yPos += 3.2;
+      wrapped.forEach((line: string) => {
+        doc.text(line, margin + 2, yPos);
+        yPos += 3.2;
+      });
     });
-    yPos += 2;
+    yPos += 2.5;
   }
 
   // ==========================================================================
-  // SECTION 6: OFFICIAL ENGINEER SIGNATURE & STAMPING BLOCK
+  // SECTION 7: OFFICIAL 3-TIER CONSULTANT QA/QC SIGNATURE & SEAL BLOCK
   // ==========================================================================
-  await notify('Finalizing professional signature and stamping block...', 92);
+  await notify('Applying 3-tier consultant QA/QC sign-off matrix & seal...', 94);
 
-  const sigBlockHeight = 28;
-  if (yPos + sigBlockHeight > pageHeight - 20) {
-    doc.addPage();
-    yPos = renderPageRunningHeader(doc, reportData, docId);
+  if (includeSignatureBlock) {
+    const sigBlockHeight = 28;
+    if (yPos + sigBlockHeight > pageHeight - 16) {
+      doc.addPage();
+      yPos = renderPageRunningHeader(doc, reportData, docId, margin, contentWidth);
+    }
+
+    yPos += 1.5;
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, yPos, contentWidth, sigBlockHeight, 1.5, 1.5, 'FD');
+
+    // Top banner inside sign-off block
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin + 0.3, yPos + 0.3, contentWidth - 0.6, 5, 'F');
+    doc.line(margin, yPos + 5.3, margin + contentWidth, yPos + 5.3);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text(
+      'QUALITY ASSURANCE (QA/QC) & CONSULTANT CERTIFICATION SIGN-OFF MATRIX',
+      margin + 3,
+      yPos + 3.8
+    );
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      sanitizeEngineeringSymbols(`Ref: ${docId}  |  ISO 9001 Verification Protocol`),
+      margin + contentWidth - 3,
+      yPos + 3.8,
+      { align: 'right' }
+    );
+
+    const colW = contentWidth / 3;
+    const c1X = margin;
+    const c2X = margin + colW;
+    const c3X = margin + 2 * colW;
+
+    doc.line(c2X, yPos + 5.3, c2X, yPos + sigBlockHeight);
+    doc.line(c3X, yPos + 5.3, c3X, yPos + sigBlockHeight);
+
+    const prepName = sanitizeEngineeringSymbols(effectiveSignatory);
+    const prepDesig = sanitizeEngineeringSymbols(
+      reportData.projectMeta.engineerDesignation || 'Design Engineer'
+    );
+    const prepLic = sanitizeEngineeringSymbols(
+      reportData.projectMeta.engineerLicense ? `Lic: ${reportData.projectMeta.engineerLicense}` : 'Lic: On File'
+    );
+
+    const checkName = sanitizeEngineeringSymbols(
+      reportData.projectMeta.checkerName || 'QA / Peer Reviewer'
+    );
+
+    const sigLineY = yPos + sigBlockHeight - 6;
+
+    // Column 1: Prepared By
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text('1. PREPARED BY (DESIGN)', c1X + 3, yPos + 9);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(7.2);
+    doc.text(doc.splitTextToSize(prepName, colW - 6)[0] || prepName, c1X + 3, yPos + 13);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(71, 85, 105);
+    doc.text(doc.splitTextToSize(prepDesig, colW - 6)[0] || prepDesig, c1X + 3, yPos + 16.5);
+    doc.line(c1X + 3, sigLineY, c1X + colW - 4, sigLineY);
+    doc.setFontSize(5.8);
+    doc.text(`Signed  |  ${prepLic}  |  ${dateStr}`, c1X + 3, sigLineY + 3.5);
+
+    // Column 2: Checked By
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text('2. CHECKED BY (QA/QC REVIEW)', c2X + 3, yPos + 9);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(7.2);
+    doc.text(doc.splitTextToSize(checkName, colW - 6)[0] || checkName, c2X + 3, yPos + 13);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Senior Structural / Civil Reviewer', c2X + 3, yPos + 16.5);
+    doc.line(c2X + 3, sigLineY, c2X + colW - 4, sigLineY);
+    doc.setFontSize(5.8);
+    doc.text(`QA Verified  |  Date: ${dateStr}`, c2X + 3, sigLineY + 3.5);
+
+    // Column 3: Approved By & Seal
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text('3. APPROVED BY (EOR & SEAL)', c3X + 3, yPos + 9);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(7.2);
+    doc.text(doc.splitTextToSize(prepName, colW - 6)[0] || prepName, c3X + 3, yPos + 13);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      doc.splitTextToSize(
+        reportData.projectMeta.organization || 'Engineer of Record (EOR)',
+        colW - 6
+      )[0] || 'Engineer of Record',
+      c3X + 3,
+      yPos + 16.5
+    );
+    doc.line(c3X + 3, sigLineY, c3X + colW - 4, sigLineY);
+    doc.setFontSize(5.8);
+    doc.text(`Official Seal  |  ${prepLic}`, c3X + 3, sigLineY + 3.5);
   }
-
-  yPos += 2;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(margin, yPos, contentWidth, sigBlockHeight, 1.5, 1.5, 'FD');
-
-  const halfWidth = contentWidth / 2;
-
-  // Box Divider line
-  doc.setDrawColor(226, 232, 240);
-  doc.line(margin + halfWidth, yPos, margin + halfWidth, yPos + sigBlockHeight);
-
-  // Column Left: Prepared By
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(15, 23, 42);
-  doc.text('PREPARED BY (DESIGN ENGINEER)', margin + 4, yPos + 4.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text(`Name: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerName || '________________________')}`, margin + 4, yPos + 9);
-  doc.text(`Reg / License No: ${sanitizeEngineeringSymbols(reportData.projectMeta.engineerLicense || '________________________')}`, margin + 4, yPos + 13);
-  doc.text(`Organization: ${sanitizeEngineeringSymbols(reportData.projectMeta.organization || '________________________')}`, margin + 4, yPos + 17);
-  doc.text('Signature: __________________________   Date: ____________', margin + 4, yPos + 23);
-
-  // Column Right: Checked & Approved By
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(15, 23, 42);
-  doc.text('CHECKED & CERTIFIED BY (LEAD PE / SE)', margin + halfWidth + 4, yPos + 4.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text('Reviewer: ____________________________', margin + halfWidth + 4, yPos + 9);
-  doc.text('Reg / Seal No: _______________________', margin + halfWidth + 4, yPos + 13);
-  doc.text(`Date of Submittal: ${dateStr}`, margin + halfWidth + 4, yPos + 17);
-  doc.text('Signature: __________________________   Date: ____________', margin + halfWidth + 4, yPos + 23);
 
   // ==========================================================================
   // FOOTERS ON ALL PAGES
   // ==========================================================================
-  const totalPages = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.setTextColor(148, 163, 184);
+  if (includeFooter) {
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.2);
+      doc.setTextColor(100, 116, 139);
 
-    // Footer divider line
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, pageHeight - 9, margin + contentWidth, pageHeight - 9);
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.2);
+      doc.line(margin, pageHeight - 9, margin + contentWidth, pageHeight - 9);
 
-    const footerLeft = `BD. CivilLab Professional Suite  •  Doc Ref: ${docId}  •  Tamper-Evident Report`;
-    const footerRight = `Page ${i} of ${totalPages}`;
+      const footerLeft = sanitizeEngineeringSymbols(
+        `BD. CivilLab Professional Engineering Suite  |  Doc Ref: ${docId}  |  Tamper-Evident Verified Submittal`
+      );
+      const footerRight = `Page ${i} of ${totalPages}`;
 
-    doc.text(footerLeft, margin, pageHeight - 6);
-    doc.text(footerRight, margin + contentWidth, pageHeight - 6, { align: 'right' });
+      doc.text(footerLeft, margin, pageHeight - 5.5);
+      doc.text(footerRight, margin + contentWidth, pageHeight - 5.5, { align: 'right' });
+    }
   }
 
   await notify('Certified engineering submittal compiled successfully!', 100);
 
-  // Auto trigger download if requested
   if (options.autoDownload !== false) {
-    const filename = options.filename || `${reportData.moduleMeta.moduleId}_submittal_${docId}.pdf`;
+    const cleanCode = (reportData.projectMeta.projectCode || 'BDCL').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename =
+      options.filename || `${cleanCode}_${reportData.moduleMeta.moduleId}_submittal_${docId}.pdf`;
     doc.save(filename);
   }
 
@@ -849,16 +1290,17 @@ export async function generateEngineeringPDF(
 function renderPageRunningHeader(
   doc: jsPDF,
   reportData: EngineeringReportData,
-  docId: string
+  docId: string,
+  margin = 14,
+  contentWidth = 182
 ): number {
-  const margin = 14;
-  const contentWidth = 210 - 2 * margin;
-
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(30, 58, 138);
   doc.text(
-    sanitizeEngineeringSymbols(`BD. CivilLab  |  ${reportData.moduleMeta.moduleTitle}  |  Project: ${reportData.projectMeta.projectCode}`),
+    sanitizeEngineeringSymbols(
+      `BD. CivilLab  |  ${reportData.moduleMeta.moduleTitle}  |  Project: ${reportData.projectMeta.projectCode}`
+    ),
     margin,
     10
   );
@@ -866,17 +1308,21 @@ function renderPageRunningHeader(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Submittal Ref: ${docId}`, margin + contentWidth, 10, { align: 'right' });
+  doc.text(sanitizeEngineeringSymbols(`Submittal Ref: ${docId}`), margin + contentWidth, 10, {
+    align: 'right',
+  });
 
   doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.2);
   doc.line(margin, 12, margin + contentWidth, 12);
 
-  return 17; // Next vertical start Y
+  return 17;
 }
 
 // ============================================================================
 // 5. EXTRACTOR / ADAPTER: BUILD REPORT DATA FROM ACTIVE WORKSPACE
 // ============================================================================
+
 
 /**
  * Constructs a comprehensive `EngineeringReportData` object from the current
@@ -1211,6 +1657,42 @@ export function buildReportDataFromWorkspace(
         { name: 'Coarse Aggregate (Stone/Brick)', symbol: 'V_agg', value: r.aggregateVolumeM3.toFixed(3), unit: 'm^3', limit: `${r.aggregateCft.toFixed(2)} cft`, status: 'SAFE' },
         { name: 'Mixing Water Demand', symbol: 'V_water', value: r.waterDemandLiters.toFixed(1), unit: 'Liters', status: 'SAFE' },
       ];
+
+      const sumParts = p.ratioCement + p.ratioSand + p.ratioAggregate;
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Dry Concrete Volume Conversion (Void & Shrinkage Allowance)',
+          equation: 'V_dry = 1.54 * V_wet',
+          substitution: `1.54 * ${p.wetVolumeM3.toFixed(3)} m^3`,
+          result: `${r.dryVolumeM3.toFixed(3)} m^3 (Sum of parts = ${sumParts})`,
+          codeRef: 'BNBC 2020 / PWD Schedule of Rates',
+        },
+        {
+          stepNumber: 2,
+          title: 'Portland Cement Volume, Mass & 50kg Bag Count',
+          equation: 'V_c = (C / Sum) * V_dry | W_c = V_c * 1440 kg/m^3 | Bags = W_c / 50',
+          substitution: `(${p.ratioCement} / ${sumParts}) * ${r.dryVolumeM3.toFixed(3)} m^3 * 1440 kg/m^3`,
+          result: `${r.cementMassKg.toFixed(1)} kg (${r.cementBags50Kg.toFixed(2)} bags of 50 kg)`,
+          codeRef: 'IS 456 / BDS EN 197-1',
+        },
+        {
+          stepNumber: 3,
+          title: 'Fine & Coarse Aggregate Batch Quantities',
+          equation: 'V_sand = (S / Sum) * V_dry | V_agg = (A / Sum) * V_dry',
+          substitution: `Sand: (${p.ratioSand}/${sumParts})*${r.dryVolumeM3.toFixed(3)} | Coarse: (${p.ratioAggregate}/${sumParts})*${r.dryVolumeM3.toFixed(3)}`,
+          result: `Sand = ${r.sandVolumeM3.toFixed(3)} m^3 (${r.sandCft.toFixed(2)} CFT), Aggregate = ${r.aggregateVolumeM3.toFixed(3)} m^3 (${r.aggregateCft.toFixed(2)} CFT)`,
+        },
+      ];
+
+      baseReport.takeoffTitle = 'CONCRETE CONSTITUENT BATCH PROCUREMENT SCHEDULE';
+      baseReport.takeoffHeaders = ['Constituent Material', 'Mix Part', 'SI Quantity', 'Field / Commercial Unit', 'Specification Remarks'];
+      baseReport.takeoffRows = [
+        { col1: 'Ordinary Portland Cement (OPC)', col2: `${p.ratioCement} part`, col3: `${r.cementMassKg.toFixed(1)} kg`, col4: `${r.cementBags50Kg.toFixed(2)} Bags (50 kg)`, col5: 'Bulk density 1440 kg/m^3' },
+        { col1: 'Fine Aggregate (Sylhet / Local Sand)', col2: `${p.ratioSand} parts`, col3: `${r.sandVolumeM3.toFixed(3)} m^3`, col4: `${r.sandCft.toFixed(2)} CFT`, col5: 'FM >= 2.5 washed sand' },
+        { col1: 'Coarse Aggregate (20mm Graded Stone)', col2: `${p.ratioAggregate} parts`, col3: `${r.aggregateVolumeM3.toFixed(3)} m^3`, col4: `${r.aggregateCft.toFixed(2)} CFT`, col5: 'ASTM C33 well-graded' },
+        { col1: 'Potable Mixing Water', col2: `w/c = ${p.waterCementRatio}`, col3: `${r.waterDemandLiters.toFixed(1)} L`, col4: `${(r.waterDemandLiters * 0.264172).toFixed(1)} US Gal`, col5: 'Free from chlorides/sulfates' },
+      ];
       break;
     }
 
@@ -1236,6 +1718,35 @@ export function buildReportDataFromWorkspace(
         { name: 'Fresh Wet Concrete Density', symbol: 'rho_wet', value: r.totalDensityKgPerM3.toFixed(1), unit: 'kg/m^3', status: 'SAFE' },
         { name: 'Estimated 28-Day Mean Strength', symbol: "f'cr", value: r.estimated28DayMpa.toFixed(1), unit: 'MPa', status: 'SAFE' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Target Mean Strength & Cementitious Demand (ACI 211.1)',
+          equation: "f'cr = f'c + Margin | C = W_water / (w/c)",
+          substitution: `W_water = ${r.waterKgPerM3.toFixed(1)} kg/m^3, w/c = ${cm.waterCementRatio}`,
+          result: `C = ${r.cementKgPerM3.toFixed(1)} kg/m^3 (${r.cementBags50Kg.toFixed(2)} bags/m^3)`,
+          codeRef: 'ACI 211.1-91 §6.3',
+        },
+        {
+          stepNumber: 2,
+          title: 'Absolute Volume Method for Fine & Coarse Aggregates',
+          equation: 'V_paste + V_air + V_CA + V_FA = 1.000 m^3',
+          substitution: `CA = ${r.coarseAggKgPerM3.toFixed(1)} kg/m^3, FA = ${r.fineAggKgPerM3.toFixed(1)} kg/m^3`,
+          result: `Fresh Wet Density = ${r.totalDensityKgPerM3.toFixed(1)} kg/m^3 (Weight Ratio 1 : ${(r.fineAggKgPerM3 / Math.max(1, r.cementKgPerM3)).toFixed(2)} : ${(r.coarseAggKgPerM3 / Math.max(1, r.cementKgPerM3)).toFixed(2)})`,
+          codeRef: 'ACI 211.1-91 §6.3.7',
+        },
+      ];
+
+      const bVol = cm.batchVolumeM3 || 1;
+      baseReport.takeoffTitle = `ACI 211.1 BATCH WEIGHT SCHEDULE (PER 1.0 m^3 & PER ${bVol} m^3 BATCH)`;
+      baseReport.takeoffHeaders = ['Constituent', 'SSD Weight / m^3', `Batch Weight (${bVol} m^3)`, 'Mass Share (%)', 'Field Notes'];
+      baseReport.takeoffRows = [
+        { col1: 'Portland Cement (OPC)', col2: `${r.cementKgPerM3.toFixed(1)} kg`, col3: `${(r.cementKgPerM3 * bVol).toFixed(1)} kg`, col4: `${((r.cementKgPerM3 / Math.max(1, r.totalDensityKgPerM3)) * 100).toFixed(1)}%`, col5: `${(r.cementBags50Kg * bVol).toFixed(2)} bags (50kg)` },
+        { col1: 'Mixing Water (Net)', col2: `${r.waterKgPerM3.toFixed(1)} kg`, col3: `${(r.waterKgPerM3 * bVol).toFixed(1)} L`, col4: `${((r.waterKgPerM3 / Math.max(1, r.totalDensityKgPerM3)) * 100).toFixed(1)}%`, col5: `w/c = ${cm.waterCementRatio}` },
+        { col1: 'Fine Aggregate (SSD Sand)', col2: `${r.fineAggKgPerM3.toFixed(1)} kg`, col3: `${(r.fineAggKgPerM3 * bVol).toFixed(1)} kg`, col4: `${((r.fineAggKgPerM3 / Math.max(1, r.totalDensityKgPerM3)) * 100).toFixed(1)}%`, col5: 'SSD Moisture Basis' },
+        { col1: `Coarse Aggregate (${cm.maxAggregateSizeMm}mm)`, col2: `${r.coarseAggKgPerM3.toFixed(1)} kg`, col3: `${(r.coarseAggKgPerM3 * bVol).toFixed(1)} kg`, col4: `${((r.coarseAggKgPerM3 / Math.max(1, r.totalDensityKgPerM3)) * 100).toFixed(1)}%`, col5: 'ASTM C33 Gradation' },
+      ];
       break;
     }
 
@@ -1245,15 +1756,16 @@ export function buildReportDataFromWorkspace(
       baseReport.moduleMeta.moduleTitle = 'Continuous Beam Analysis (Clapeyron Theorem)';
       baseReport.moduleMeta.status = 'SAFE';
 
-      const span1Len = cb?.spans?.[0]?.lengthM ?? 0;
-      const span2Len = cb?.spans?.[1]?.lengthM ?? 0;
-      const span1W = cb?.spans?.[0]?.udlKnPerM ?? 0;
-
+      const spans = cb?.spans || [];
       baseReport.inputs = [
-        { name: 'Span Count', symbol: 'N_span', value: cb?.spanCount ?? 0, unit: 'spans', notes: 'Multi-span beam' },
-        { name: 'Span 1 Length', symbol: 'L_1', value: span1Len, unit: 'm', notes: 'First span clear length' },
-        { name: 'Span 2 Length', symbol: 'L_2', value: span2Len, unit: 'm', notes: 'Second span clear length' },
-        { name: 'Span 1 Uniform Load', symbol: 'w_1', value: span1W, unit: 'kN/m', notes: 'UDL 1' },
+        { name: 'Span Count', symbol: 'N_span', value: spans.length || cb?.spanCount || 0, unit: 'spans', notes: 'Multi-span continuous beam' },
+        ...spans.map((sp, idx) => ({
+          name: `Span ${idx + 1} Geometry & Load`,
+          symbol: `L_${idx + 1} / w_${idx + 1}`,
+          value: `L = ${sp.lengthM} m, w = ${sp.udlKnPerM} kN/m, P = ${sp.pointLoadKn || 0} kN`,
+          unit: 'span',
+          notes: `I = ${sp.momentOfInertiaCm4} cm^4`,
+        })),
       ];
 
       const supportMB = r.supportMomentsKnm && r.supportMomentsKnm.length > 1 ? r.supportMomentsKnm[1] : 0;
@@ -1261,11 +1773,43 @@ export function buildReportDataFromWorkspace(
       const reactionB = r.supportReactionsKn && r.supportReactionsKn.length > 1 ? r.supportReactionsKn[1] : 0;
 
       baseReport.outputs = [
-        { name: 'Interior Support Negative Moment', symbol: 'M_B', value: supportMB.toFixed(2), unit: 'kN.m', status: 'SAFE' },
-        { name: 'Max Sagging Moment', symbol: 'M_sag', value: r.maxSaggingMomentKnm.toFixed(2), unit: 'kN.m', status: 'SAFE' },
-        { name: 'Support A Reaction', symbol: 'R_A', value: reactionA.toFixed(2), unit: 'kN', status: 'SAFE' },
-        { name: 'Support B Reaction (Central)', symbol: 'R_B', value: reactionB.toFixed(2), unit: 'kN', status: 'SAFE' },
+        { name: 'Peak Interior Support Moment', symbol: 'M_hog,max', value: r.maxHoggingMomentKnm.toFixed(2), unit: 'kN.m', status: 'SAFE' },
+        { name: 'Peak Span Sagging Moment', symbol: 'M_sag,max', value: r.maxSaggingMomentKnm.toFixed(2), unit: 'kN.m', status: 'SAFE' },
+        { name: 'Peak Shear Force Envelope', symbol: 'V_max', value: r.maxShearKn.toFixed(2), unit: 'kN', status: 'SAFE' },
+        { name: 'Support A Exterior Reaction', symbol: 'R_1', value: reactionA.toFixed(2), unit: 'kN', status: 'SAFE' },
+        { name: 'First Interior Support Reaction', symbol: 'R_2', value: reactionB.toFixed(2), unit: 'kN', status: 'SAFE' },
+        { name: 'First Interior Support Moment', symbol: 'M_2', value: supportMB.toFixed(2), unit: 'kN.m', status: 'SAFE' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Clapeyron Three-Moment Continuity Equation',
+          equation: 'M_i-1*(L_i/I_i) + 2*M_i*(L_i/I_i + L_i+1/I_i+1) + M_i+1*(L_i+1/I_i+1) = -6*(alpha_i + beta_i+1)',
+          substitution: `${spans.length} continuous spans solved via tridiagonal matrix system`,
+          result: `Support Moments: [${(r.supportMomentsKnm || []).map((m, i) => `M_${i + 1}=${m.toFixed(2)}`).join(', ')}] kN.m`,
+          codeRef: 'Structural Analysis / BNBC 2020',
+        },
+        {
+          stepNumber: 2,
+          title: 'Support Reactions by Free-Body Statics',
+          equation: 'R_i = V_i,left + V_i,right (Simple Beam Shear + Continuity Moment Shear)',
+          substitution: `Peak Hogging = ${r.maxHoggingMomentKnm.toFixed(2)} kN.m, Peak Sagging = ${r.maxSaggingMomentKnm.toFixed(2)} kN.m`,
+          result: `Support Reactions: [${(r.supportReactionsKn || []).map((rx, i) => `R_${i + 1}=${rx.toFixed(2)}`).join(', ')}] kN`,
+        },
+      ];
+
+      if (r.supportReactionsKn && r.supportReactionsKn.length > 0) {
+        baseReport.takeoffTitle = 'CONTINUOUS BEAM SUPPORT MOMENT & REACTION SCHEDULE';
+        baseReport.takeoffHeaders = ['Support Node', 'Support Type', 'Continuity Moment M (kN.m)', 'Vertical Reaction R (kN)', 'Design Remarks'];
+        baseReport.takeoffRows = r.supportReactionsKn.map((rx, idx) => ({
+          col1: `Support S-${idx + 1}`,
+          col2: idx === 0 || idx === r.supportReactionsKn.length - 1 ? 'Exterior Pin/Roller' : 'Interior Continuous',
+          col3: `${(r.supportMomentsKnm?.[idx] ?? 0).toFixed(2)} kN.m`,
+          col4: `${rx.toFixed(2)} kN`,
+          col5: idx === 0 || idx === r.supportReactionsKn.length - 1 ? 'Zero end moment' : 'Hogging negative moment',
+        }));
+      }
       break;
     }
 
@@ -1291,6 +1835,38 @@ export function buildReportDataFromWorkspace(
         { name: 'Peak Axial Force Envelope', symbol: '|N|_max', value: r.maxAbsAxialKn.toFixed(2), unit: 'kN', status: 'SAFE' },
         { name: 'Combined Axial + Flexural DCR', symbol: 'DCR', value: `${(r.utilizationRatio * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.utilizationRatio.toFixed(3), status: r.utilizationRatio <= 1.0 ? 'PASS' : 'FAIL' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Global Stiffness Matrix Assembly & Geometric P-Delta Iteration',
+          equation: '([K_E] + [K_G(N)]) * {d} = {F_ext}',
+          substitution: `${r.nodeCount} nodes (${r.freeDofs} free DOFs), ${r.memberCount} elements, ${r.pDeltaIterations} P-Delta iterations`,
+          result: `Max Nodal Displacement = ${r.maxDisplacementMm.toFixed(2)} mm, alpha_cr = ${Number.isFinite(r.criticalBucklingFactorAlphaCr) ? r.criticalBucklingFactorAlphaCr.toFixed(2) : 'Inf'}`,
+          codeRef: r.governingCode,
+        },
+        {
+          stepNumber: 2,
+          title: 'Combined Axial & Flexural Member Stress Envelope',
+          equation: 'sigma_comb = |N|/A + |M_max|/S <= sigma_all',
+          substitution: `Peak sigma = ${r.maxCombinedStressMpa.toFixed(2)} MPa vs Allowable = ${r.allowableStressMpa.toFixed(1)} MPa`,
+          result: `Governing DCR = ${(r.utilizationRatio * 100).toFixed(1)}% (${r.status.toUpperCase()})`,
+          codeRef: 'AISC 360-22 Ch. H / EN 1993-1-1',
+        },
+      ];
+
+      if (r.memberResults && r.memberResults.length > 0) {
+        baseReport.takeoffTitle = '2D FRAME / TRUSS MEMBER INTERNAL FORCE & STRESS SCHEDULE';
+        baseReport.takeoffHeaders = ['Member', 'Length (m)', 'Axial N (kN)', 'Peak Shear V (kN)', 'Peak Moment M (kN.m)', 'Peak Stress (MPa)'];
+        baseReport.takeoffRows = r.memberResults.map((mf) => ({
+          col1: mf.label || mf.memberId,
+          col2: mf.lengthM.toFixed(2),
+          col3: `${mf.axialStartKn.toFixed(2)} (${mf.axialStartKn >= 0 ? 'TENS' : 'COMP'})`,
+          col4: mf.maxAbsShearKn.toFixed(2),
+          col5: mf.maxAbsMomentKnm.toFixed(2),
+          col6: `${mf.combinedStressMpa.toFixed(1)} MPa`,
+        }));
+      }
       break;
     }
 
@@ -1316,6 +1892,38 @@ export function buildReportDataFromWorkspace(
         { name: 'Reduced Plastic Moment M_N,y,Rd', symbol: 'M_N,y,Rd', value: r.mNyReducedRdKnm.toFixed(1), unit: 'kN.m', status: r.classification.isPlasticAllowed ? 'PASS' : 'WARNING' },
         { name: 'Governing Section DCR', symbol: 'DCR', value: `${(r.governingDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.governingDcr.toFixed(3), status: r.governingDcr <= 1.0 ? 'PASS' : 'FAIL' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Cross-Section Geometric & Plastic Modulus Integration',
+          equation: 'A = int dA | I_y = int z^2 dA | W_el,y = I_y / z_max | alpha_y = W_pl,y / W_el,y',
+          substitution: `A = ${r.areaCm2.toFixed(2)} cm^2, I_y = ${r.iyCm4.toFixed(1)} cm^4, I_z = ${r.izCm4.toFixed(1)} cm^4`,
+          result: `W_pl,y = ${r.wplYCm3.toFixed(1)} cm^3, W_el,y = ${r.welYMinCm3.toFixed(1)} cm^3 (Shape factor = ${r.shapeFactorY.toFixed(3)})`,
+          codeRef: r.designCode,
+        },
+        {
+          stepNumber: 2,
+          title: 'Huber-Hencky-von Mises Equivalent Stress & Plastic N-M Check',
+          equation: 'sigma_vM = sqrt(sigma_x^2 + 3 * tau_total^2) <= f_yd',
+          substitution: `sigma_max = ${r.sigmaAbsMaxMpa.toFixed(1)} MPa, tau_max = ${r.tauTotalMaxMpa.toFixed(1)} MPa`,
+          result: `sigma_vM = ${r.vonMisesMaxMpa.toFixed(1)} MPa vs f_yd = ${r.fydMpa.toFixed(1)} MPa (DCR = ${(r.governingDcr * 100).toFixed(1)}%)`,
+          codeRef: 'EN 1993-1-1 §6.2.1 / AISC 360-22',
+        },
+      ];
+
+      if (r.cornerStresses && r.cornerStresses.length > 0) {
+        baseReport.takeoffTitle = 'CRITICAL FIBER STRESS & VON MISES VERIFICATION POINTS';
+        baseReport.takeoffHeaders = ['Fiber Location', 'Coord (y, z) mm', 'Normal sigma_x (MPa)', 'Shear tau (MPa)', 'von Mises (MPa)', 'Utilization'];
+        baseReport.takeoffRows = r.cornerStresses.map((pt) => ({
+          col1: pt.label,
+          col2: `(${pt.yMm.toFixed(0)}, ${pt.zMm.toFixed(0)})`,
+          col3: pt.sigmaMpa.toFixed(2),
+          col4: pt.tauMpa.toFixed(2),
+          col5: pt.vonMisesMpa.toFixed(2),
+          col6: `${((pt.vonMisesMpa / Math.max(1, r.fydMpa)) * 100).toFixed(1)}%`,
+        }));
+      }
       break;
     }
 
@@ -1341,6 +1949,47 @@ export function buildReportDataFromWorkspace(
         { name: 'Bresler Biaxial Contour DCR', symbol: 'Bresler', value: `${(r.breslerContourDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.breslerContourDcr.toFixed(3), status: r.breslerContourDcr <= 1.0 ? 'PASS' : 'FAIL' },
         { name: 'Governing Column DCR', symbol: 'DCR', value: `${(r.governingDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.governingDcr.toFixed(3), status: r.governingDcr <= 1.0 ? 'PASS' : 'FAIL' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Pure Axial Squash Load & Code Eccentricity Cutoff',
+          equation: "P_0 = 0.85 * f'c * (A_g - A_st) + f_y * A_st | phi*P_n,max = 0.80 * phi * P_0",
+          substitution: `A_g = ${r.grossAreaMm2.toFixed(0)} mm^2, A_st = ${r.astProvidedMm2.toFixed(0)} mm^2 (${r.rhoPercent.toFixed(2)}%)`,
+          result: `P_0 = ${r.p0Kn.toFixed(1)} kN -> phi*P_n,max = ${r.phiPnMaxKn.toFixed(1)} kN`,
+          codeRef: 'ACI 318-19 §22.4.2 / BNBC 2020',
+        },
+        {
+          stepNumber: 2,
+          title: 'Euler Critical Buckling & Moment Magnification',
+          equation: 'P_c = pi^2 * (EI)_eff / (k * L_u)^2 | delta_ns = Cm / (1 - P_u / (0.75 * P_c)) >= 1.0',
+          substitution: `X-Axis: kL/r = ${r.xAxis.slendernessRatioKluR.toFixed(1)}, P_c,x = ${r.xAxis.pcEulerKn.toFixed(0)} kN | Y-Axis: kL/r = ${r.yAxis.slendernessRatioKluR.toFixed(1)}, P_c,y = ${r.yAxis.pcEulerKn.toFixed(0)} kN`,
+          result: `Magnified Moments: M_cx = ${r.xAxis.magnifiedMomentKnm.toFixed(1)} kN.m, M_cy = ${r.yAxis.magnifiedMomentKnm.toFixed(1)} kN.m`,
+          codeRef: 'ACI 318-19 §6.6.4.5',
+        },
+        {
+          stepNumber: 3,
+          title: 'Bresler Biaxial Load Contour Interaction Check',
+          equation: '(M_cx / phi*M_nx)^alpha + (M_cy / phi*M_ny)^alpha <= 1.0',
+          substitution: `(${r.xAxis.magnifiedMomentKnm.toFixed(1)} / ${r.xAxis.phiMnAtPuKnm.toFixed(1)})^${r.breslerAlpha.toFixed(2)} + (${r.yAxis.magnifiedMomentKnm.toFixed(1)} / ${r.yAxis.phiMnAtPuKnm.toFixed(1)})^${r.breslerAlpha.toFixed(2)}`,
+          result: `Bresler Biaxial DCR = ${(r.breslerContourDcr * 100).toFixed(1)}%, Governing DCR = ${(r.governingDcr * 100).toFixed(1)}%`,
+          codeRef: 'ACI 318-19 R22.4 / Bresler (1960)',
+        },
+      ];
+
+      if (r.xAxis?.curve && r.xAxis.curve.length > 0) {
+        const sampledPoints = r.xAxis.curve.filter((_, idx) => idx % Math.max(1, Math.floor(r.xAxis.curve.length / 8)) === 0);
+        baseReport.takeoffTitle = 'UNIAXIAL N-M INTERACTION CONTROL POINTS (MAJOR X-AXIS)';
+        baseReport.takeoffHeaders = ['Limit State Regime', 'Neutral Axis c (mm)', 'Nominal Pn (kN)', 'Nominal Mn (kN.m)', 'Design phi*Pn (kN)', 'Design phi*Mn (kN.m)'];
+        baseReport.takeoffRows = sampledPoints.map((kp) => ({
+          col1: kp.regime.toUpperCase(),
+          col2: Number.isFinite(kp.cMm) ? kp.cMm.toFixed(1) : 'Infinity',
+          col3: kp.pnKn.toFixed(1),
+          col4: kp.mnKnm.toFixed(1),
+          col5: kp.phiPnKn.toFixed(1),
+          col6: kp.phiMnKnm.toFixed(1),
+        }));
+      }
       break;
     }
 
@@ -1363,6 +2012,38 @@ export function buildReportDataFromWorkspace(
         { name: 'Global Equilibrium Residual', symbol: 'Residual', value: r.equilibriumResidualKn.toExponential(2), unit: 'kN', limit: '< 1e-2 kN', status: r.equilibriumResidualKn < 1e-2 ? 'PASS' : 'WARNING' },
         { name: 'Governing Strut/Tie Stress DCR', symbol: 'DCR', value: `${(r.governingDcr * 100).toFixed(1)}%`, unit: 'ratio', limit: '<= 100%', dcrRatio: r.governingDcr.toFixed(3), status: r.governingDcr <= 1.0 ? 'PASS' : 'FAIL' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'D-Region Pin-Jointed Truss Equilibrium & Strut Capacity',
+          equation: "f_ce = 0.85 * beta_c * beta_s * f'c | phi * F_ns = phi * f_ce * A_cs",
+          substitution: `t = ${r.memberThicknessMm} mm, f'c = ${r.concreteFcMpa} MPa, Max Strut Force = ${r.maxCompressionStrutKn.toFixed(1)} kN`,
+          result: `Equilibrium residual = ${r.equilibriumResidualKn.toExponential(2)} kN`,
+          codeRef: 'ACI 318-19 §23.4 / EN 1992-1-1 §6.5',
+        },
+        {
+          stepNumber: 2,
+          title: 'Tension Tie Reinforcement Sizing',
+          equation: 'A_ts,req = F_u,tie / (phi * f_y)',
+          substitution: `Max Tie Tension = ${r.maxTensionTieKn.toFixed(1)} kN, f_y = ${r.rebarFyMpa} MPa`,
+          result: `Total Tie Reinforcement Required = ${r.totalRequiredTieSteelMm2.toFixed(0)} mm^2`,
+          codeRef: 'ACI 318-19 §23.7',
+        },
+      ];
+
+      if (r.memberResults && r.memberResults.length > 0) {
+        baseReport.takeoffTitle = 'STRUT-AND-TIE MEMBER FORCE & REINFORCEMENT SCHEDULE';
+        baseReport.takeoffHeaders = ['Element', 'Role', 'Length (m)', 'Axial Force (kN)', 'Stress / Limit (MPa)', 'DCR / Required Steel'];
+        baseReport.takeoffRows = r.memberResults.map((m) => ({
+          col1: m.label || m.memberId,
+          col2: m.role.toUpperCase(),
+          col3: m.lengthM.toFixed(2),
+          col4: `${m.axialForceKn.toFixed(1)} kN`,
+          col5: `${m.stressMpa.toFixed(1)} / ${m.allowableLimitMpa.toFixed(1)} MPa`,
+          col6: m.role === 'tie' ? `DCR ${(m.dcrRatio * 100).toFixed(0)}% (${m.requiredTieSteelMm2.toFixed(0)} mm^2)` : `DCR ${(m.dcrRatio * 100).toFixed(0)}%`,
+        }));
+      }
       break;
     }
 
@@ -1376,7 +2057,7 @@ export function buildReportDataFromWorkspace(
         { name: 'Pile Embedded Length', symbol: 'L', value: p?.lengthM ?? r.lengthM, unit: 'm', notes: 'Penetration length' },
         { name: 'Pile Shaft Diameter', symbol: 'D', value: p?.diameterM ?? r.diameterM, unit: 'm', notes: 'Bored shaft diameter' },
         { name: 'Pile Foundation Type', symbol: 'Type', value: p?.pileType || r.pileType, unit: 'classification', notes: 'Installation method' },
-        { name: 'Design Factor of Safety', symbol: 'FoS', value: p?.factorOfSafety ?? 0, unit: 'ratio', notes: 'Code safety factor' },
+        { name: 'Design Factor of Safety', symbol: 'FoS', value: p?.factorOfSafety ?? 2.5, unit: 'ratio', notes: 'Code safety factor' },
       ];
 
       baseReport.outputs = [
@@ -1385,6 +2066,28 @@ export function buildReportDataFromWorkspace(
         { name: 'Shaft Skin Friction Resistance', symbol: 'Q_s', value: r.skinFrictionKn.toFixed(2), unit: 'kN', status: 'SAFE' },
         { name: 'Base End Bearing Resistance', symbol: 'Q_b', value: r.endBearingKn.toFixed(2), unit: 'kN', status: 'SAFE' },
         { name: 'Pile Cross-Sectional Area', symbol: 'A_p', value: r.crossSectionAreaM2.toFixed(3), unit: 'm^2', status: 'INFO' },
+      ];
+
+      const shaftLen = p?.lengthM ?? r.lengthM;
+      const avgFsKpa = r.perimeterM * shaftLen > 0 ? r.skinFrictionKn / (r.perimeterM * shaftLen) : 0;
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Pile Shaft Skin Friction Resistance (Alpha / Beta Method)',
+          equation: 'Q_s = Perimeter * L * f_s = (pi * D * L) * (alpha * c_u + K_s * sigma_v * tan(delta))',
+          substitution: `Perimeter = ${r.perimeterM.toFixed(3)} m, L = ${shaftLen.toFixed(2)} m, f_s,avg = ${avgFsKpa.toFixed(2)} kPa`,
+          result: `Q_s = ${r.skinFrictionKn.toFixed(2)} kN`,
+          codeRef: 'BNBC 2020 Part 6 Ch 4 / Tomlinson',
+        },
+        {
+          stepNumber: 2,
+          title: 'Pile Tip End Bearing & Allowable Safe Working Load',
+          equation: 'Q_b = A_p * q_b | Q_ult = Q_s + Q_b | Q_all = (Q_ult - W_pile) / FoS',
+          substitution: `A_p = ${r.crossSectionAreaM2.toFixed(3)} m^2, q_b = ${r.unitEndBearingKpa.toFixed(1)} kPa, Q_b = ${r.endBearingKn.toFixed(2)} kN`,
+          result: `Q_ult = ${r.ultimateCapacityKn.toFixed(2)} kN -> Q_all = ${r.allowableCapacityKn.toFixed(2)} kN`,
+          codeRef: 'Meyerhof / Vesic Deep Foundation',
+        },
       ];
       break;
     }
@@ -1408,6 +2111,25 @@ export function buildReportDataFromWorkspace(
         { name: 'Reynolds Number', symbol: 'Re', value: r.reynoldsNumber.toFixed(0), unit: 'ratio', limit: r.flowRegime.toUpperCase(), status: 'INFO' },
         { name: 'Darcy Friction Factor', symbol: 'f', value: r.darcyFrictionFactor.toFixed(4), unit: 'dimensionless', status: 'INFO' },
         { name: 'Outlet Gauge Pressure', symbol: 'P_out', value: r.outletPressureKpa.toFixed(1), unit: 'kPa', status: 'SAFE' },
+      ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Continuity Velocity & Reynolds Turbulence Regime',
+          equation: 'V = Q / (pi * D^2 / 4) | Re = (V * D) / nu',
+          substitution: `Q = ${(p?.flowRateLps ?? r.flowRateLps).toFixed(2)} L/s, D = ${(p?.internalDiameterMm ?? r.internalDiameterMm).toFixed(0)} mm`,
+          result: `V = ${r.velocityMps.toFixed(3)} m/s, Re = ${r.reynoldsNumber.toFixed(0)} (${r.flowRegime.toUpperCase()})`,
+          codeRef: 'Fluid Mechanics / Swamee-Jain',
+        },
+        {
+          stepNumber: 2,
+          title: 'Darcy-Weisbach Friction & Minor Fitting Head Loss',
+          equation: 'h_f = f * (L / D) * (V^2 / 2g) + K_m * (V^2 / 2g)',
+          substitution: `f = ${r.darcyFrictionFactor.toFixed(4)}, h_f,major = ${r.frictionHeadLossM.toFixed(3)} m, h_m,minor = ${r.minorHeadLossM.toFixed(3)} m`,
+          result: `Total Head Loss = ${r.totalHeadLossM.toFixed(3)} m, Outlet Pressure = ${r.outletPressureKpa.toFixed(1)} kPa`,
+          codeRef: 'AWWA / BNBC Plumbing Code',
+        },
       ];
       break;
     }
@@ -1435,6 +2157,39 @@ export function buildReportDataFromWorkspace(
         { name: 'Plaster Cement Required', symbol: 'C_plaster', value: r.plasterCementBags.toFixed(1), unit: 'bags (50kg)', status: 'SAFE' },
         { name: 'Plaster Sand Required', symbol: 'V_plaster_sand', value: r.plasterSandCft.toFixed(1), unit: 'cft', status: 'SAFE' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Net Masonry Wall Volume & Modular Brick Count',
+          equation: 'V_net = (L * H - A_openings) * t_wall | N_bricks = V_net / V_nominal_brick',
+          substitution: `Gross Area = ${r.grossWallAreaM2.toFixed(2)} m^2, Deductions = ${r.totalOpeningAreaM2.toFixed(2)} m^2 -> Net Area = ${r.netWallAreaM2.toFixed(2)} m^2`,
+          result: `V_net = ${r.netWallVolumeM3.toFixed(3)} m^3 -> ${r.bricksWithWastageCount.toLocaleString()} Bricks (inc. wastage)`,
+          codeRef: 'PWD Schedule / BDS 208',
+        },
+        {
+          stepNumber: 2,
+          title: 'Brickwork Mortar & Surface Plastering Quantities',
+          equation: 'V_mortar,dry = 1.33 * V_mortar,wet | V_plaster,dry = 1.50 * (A_plaster * t_plaster)',
+          substitution: `Mortar (${m.mortarRatioCement}:${m.mortarRatioSand}) = ${r.mortarVolumeDryM3.toFixed(3)} m^3 | Plaster Area = ${r.plasterAreaM2.toFixed(2)} m^2`,
+          result: `Total Cement = ${(r.mortarCementBags50Kg + r.plasterCementBags).toFixed(1)} bags, Total Sand = ${(r.mortarSandCft + r.plasterSandCft).toFixed(1)} CFT`,
+        },
+      ];
+
+      const primerL = r.paintPuttySchedule?.primerLitersRequired ?? 0;
+      const paintL = r.paintPuttySchedule?.paintLitersRequired ?? 0;
+      const puttyKg = r.paintPuttySchedule?.puttyKgRequired ?? 0;
+
+      baseReport.takeoffTitle = 'MASONRY, PLASTER & PAINTING MATERIAL SCHEDULE';
+      baseReport.takeoffHeaders = ['Work Package', 'Material Item', 'Net Quantity', 'Commercial Unit', 'Specification'];
+      baseReport.takeoffRows = [
+        { col1: 'Brickwork', col2: 'First-Class Burnt Clay Bricks', col3: r.bricksWithWastageCount.toLocaleString(), col4: 'Nos', col5: `${m.brickLengthMm}x${m.brickWidthMm}x${m.brickHeightMm} mm` },
+        { col1: 'Brickwork Mortar', col2: 'OPC Cement (Mortar)', col3: r.mortarCementBags50Kg.toFixed(2), col4: 'Bags (50 kg)', col5: `Ratio ${m.mortarRatioCement}:${m.mortarRatioSand}` },
+        { col1: 'Brickwork Mortar', col2: 'Mortar Sand (FM 1.5)', col3: r.mortarSandCft.toFixed(1), col4: 'CFT', col5: `${r.mortarSandM3.toFixed(3)} m^3` },
+        { col1: 'Surface Plaster', col2: 'OPC Cement (Plaster)', col3: r.plasterCementBags.toFixed(2), col4: 'Bags (50 kg)', col5: `Area = ${r.plasterAreaM2.toFixed(1)} m^2` },
+        { col1: 'Surface Plaster', col2: 'Plaster Sand (FM 1.2)', col3: r.plasterSandCft.toFixed(1), col4: 'CFT', col5: 'Clean screened sand' },
+        { col1: 'Surface Finishes', col2: 'Primer + Finish Paint', col3: `${primerL.toFixed(1)} L / ${paintL.toFixed(1)} L`, col4: 'Liters', col5: `Putty = ${puttyKg.toFixed(1)} kg` },
+      ];
       break;
     }
 
@@ -1457,6 +2212,30 @@ export function buildReportDataFromWorkspace(
         { name: 'Compacted Fill Volume', symbol: 'V_compact', value: r.compactedVolumeM3.toFixed(2), unit: 'm^3', status: 'SAFE' },
         { name: '10 m^3 Dumper Trips Required', symbol: 'Trips', value: r.haulTruckTripsCount10M3, unit: 'trips', status: 'INFO' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Prismoidal & Average-End-Area Earthwork Volume',
+          equation: 'V_prism = (L / 6) * (A_1 + 4 * A_m + A_2) | V_loose = V_bank * Swell | V_comp = V_bank * Shrinkage',
+          substitution: `V_bank = ${r.bankVolumeM3.toFixed(2)} m^3, Swell = ${r.swellFactor.toFixed(2)}, Shrinkage = ${r.shrinkageFactor.toFixed(2)}`,
+          result: `Loose Volume = ${r.looseVolumeM3.toFixed(2)} m^3 (${r.haulTruckTripsCount10M3} dumper trips of 10 m^3)`,
+          codeRef: 'AASHTO / RHD Earthwork Manual',
+        },
+      ];
+
+      if (r.stationSchedule && r.stationSchedule.length > 0) {
+        baseReport.takeoffTitle = 'MULTI-STATION CHAINAGE CUT/FILL & MASS-HAUL SCHEDULE';
+        baseReport.takeoffHeaders = ['Chainage (m)', 'Cut / Fill Depth (m)', 'Cut Area (m^2)', 'Seg Cut Vol (m^3)', 'Seg Fill Vol (m^3)', 'Mass-Haul Balance (m^3)'];
+        baseReport.takeoffRows = r.stationSchedule.map((st) => ({
+          col1: `Ch ${st.chainageM.toFixed(1)}m`,
+          col2: `C: ${st.cutDepthM.toFixed(2)} / F: ${st.fillHeightM.toFixed(2)}`,
+          col3: st.cutAreaM2.toFixed(2),
+          col4: st.segmentCutPrismoidalM3.toFixed(2),
+          col5: st.segmentFillPrismoidalM3.toFixed(2),
+          col6: `${st.cumMassHaulBalanceM3 >= 0 ? '+' : ''}${st.cumMassHaulBalanceM3.toFixed(2)}`,
+        }));
+      }
       break;
     }
 
@@ -1563,10 +2342,35 @@ export function buildReportDataFromWorkspace(
         { name: 'Reduced Level Check (Last RL - First RL)', symbol: 'Delta_RL', value: deltaRl.toFixed(3), unit: 'm', status: isZeroBaseline ? 'INFO' : misclosure <= 0.002 ? 'SAFE' : 'WARNING' },
         { name: 'Arithmetic Closure Error', symbol: 'Check', value: isZeroBaseline ? 'ZERO BASELINE (0 Stations)' : misclosure <= 0.002 ? `PASSED (${misclosure.toFixed(3)}m error)` : `MISCLOSURE (${misclosure.toFixed(3)}m)`, unit: 'audit', status: isZeroBaseline ? 'INFO' : misclosure <= 0.002 ? 'SAFE' : 'WARNING' },
       ];
+
+      baseReport.stepByStepFormulas = [
+        {
+          stepNumber: 1,
+          title: 'Differential Leveling Arithmetic Closure Verification',
+          equation: 'Sum(BS) - Sum(FS) = Last RL - First RL',
+          substitution: `Sum(BS) = ${sumBS.toFixed(3)} m, Sum(FS) = ${sumFS.toFixed(3)} m -> Delta = ${deltaSights.toFixed(3)} m vs Delta RL = ${deltaRl.toFixed(3)} m`,
+          result: `Misclosure = ${misclosure.toFixed(4)} m (${misclosure <= 0.002 ? 'ARITHMETIC CHECK PASSED' : 'CHECK WARNING'})`,
+          codeRef: 'Survey of Bangladesh (SoB) Leveling Spec',
+        },
+      ];
+
+      if (stations.length > 0) {
+        baseReport.takeoffTitle = 'DIFFERENTIAL LEVELING FIELD BOOK & REDUCED LEVEL SCHEDULE';
+        baseReport.takeoffHeaders = ['Station', 'HI / Rise-Fall (m)', 'BS (m)', 'IS (m)', 'FS (m)', 'Reduced Level RL (m)', 'Remarks'];
+        baseReport.takeoffRows = stations.map((st, idx) => ({
+          col1: st.stationName || `ST-${idx + 1}`,
+          col2: st.heightOfInstrument !== undefined ? `HI ${st.heightOfInstrument.toFixed(3)}` : st.rise ? `+${st.rise.toFixed(3)}` : st.fall ? `-${st.fall.toFixed(3)}` : '—',
+          col3: st.backsight !== null && st.backsight !== undefined ? st.backsight.toFixed(3) : '—',
+          col4: st.intermediateSight !== null && st.intermediateSight !== undefined ? st.intermediateSight.toFixed(3) : '—',
+          col5: st.foresight !== null && st.foresight !== undefined ? st.foresight.toFixed(3) : '—',
+          col6: st.reducedLevel.toFixed(3),
+          col7: st.remarks || '—',
+        }));
+      }
       break;
     }
 
-    // Site Management ERP Modules (9 Modules)
+    // Site Management ERP Modules (10 Modules)
     case 'store-inventory':
     case 'material-requisition':
     case 'schedule-roster':
@@ -1688,7 +2492,7 @@ function populateSiteErpReportData(
 
       report.inputs = [
         { name: 'Project Identifier', symbol: 'Proj', value: workspace.projectCode, unit: 'code', notes: workspace.name },
-        { name: 'Site Store Location', symbol: 'Loc', value: workspace.siteLocation || '________________________', unit: 'site', notes: 'Primary storage facility' },
+        { name: 'Site Store Location', symbol: 'Loc', value: workspace.siteLocation || 'Not Specified', unit: 'site', notes: 'Primary storage facility' },
         { name: 'Total Catalog Stock Items', symbol: 'N_items', value: inventory.length, unit: 'SKUs', notes: 'Active materials in ledger' },
       ];
 
@@ -1993,7 +2797,8 @@ export async function exportCertifiedReportPDF(
   workspace: CivilWorkspace,
   envelope: CalculationEnvelope<any>,
   userProfile?: UserProfile,
-  onProgress?: (progress: { stage: string; percent: number }) => void
+  onProgress?: (progress: { stage: string; percent: number }) => void,
+  options?: PdfExportEngineOptions
 ): Promise<jsPDF> {
   const reportData = buildReportDataFromWorkspace(moduleId, workspace, envelope, userProfile);
 
@@ -2012,12 +2817,52 @@ export async function exportCertifiedReportPDF(
     console.warn('Verification record sync warning:', e);
   }
 
-  const filename = `${moduleId}_submittal_${workspace.projectCode || 'BDCL'}.pdf`;
+  const filename = options?.filename || `${moduleId}_submittal_${workspace.projectCode || 'BDCL'}.pdf`;
   return generateEngineeringPDF(reportData, {
-    onProgress,
-    autoDownload: true,
+    ...options,
+    onProgress: options?.onProgress || onProgress,
+    autoDownload: options?.autoDownload ?? true,
     filename,
   });
+}
+
+/**
+ * Safe DOM print trigger that populates `#pb-printable-report` (if HTML provided or cloned from active print area)
+ * and prevents premature `afterprint` DOM wiping before the browser print preview finishes rasterizing.
+ */
+export function triggerSafeDomPrint(customHtml?: string): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  const printEl = document.getElementById('pb-printable-report');
+  if (!printEl) {
+    window.print();
+    return true;
+  }
+
+  if (customHtml && customHtml.trim().length > 0) {
+    printEl.innerHTML = customHtml;
+  } else if (!printEl.innerHTML || printEl.innerHTML.trim().length === 0) {
+    // Capture visible printable sheet or active module card if printEl was empty
+    const explicitPrintTarget = document.querySelector('.print\\:block:not(#pb-printable-report)') as HTMLElement | null;
+    if (explicitPrintTarget) {
+      printEl.innerHTML = `<div class="p-6 bg-white text-slate-900 font-sans">${explicitPrintTarget.innerHTML}</div>`;
+    }
+  }
+
+  printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
+  document.body.classList.add('is-printing-report');
+
+  const cleanUp = () => {
+    window.removeEventListener('afterprint', cleanUp);
+    setTimeout(() => {
+      document.body.classList.remove('is-printing-report');
+      printEl.className = 'hidden print:block bg-white text-slate-900';
+    }, 600);
+  };
+  window.addEventListener('afterprint', cleanUp);
+  setTimeout(() => {
+    window.print();
+  }, 100);
+  return true;
 }
 
 // ============================================================================
@@ -2194,7 +3039,7 @@ export function exportEarthworkCSV(
         `Seg Cut ${st.segmentCutPrismoidalM3.toFixed(1)} / Seg Fill ${st.segmentFillPrismoidalM3.toFixed(1)}`,
         st.cumMassHaulBalanceM3.toFixed(2),
         'm^3 (Net)',
-        `Cum Cut=${st.cumCutBankM3.toFixed(1)} m³, Cum Fill=${st.cumFillCompactedM3.toFixed(1)} m³`,
+        `Cum Cut=${st.cumCutBankM3.toFixed(1)} m^3, Cum Fill=${st.cumFillCompactedM3.toFixed(1)} m^3`,
       ]);
     }
   }
@@ -2267,7 +3112,7 @@ export function exportModuleCSV(
 }
 
 // ============================================================================
-// 6. ARCHITECTURE SUITE CERTIFIED PDF & A4 PRINT SUBMITTAL EXPORTER
+// 7. ARCHITECTURE SUITE CERTIFIED PDF & A4 PRINT SUBMITTAL EXPORTER
 // ============================================================================
 
 export interface ArchitectureSubmittalPayload {
@@ -2313,12 +3158,34 @@ export async function captureSvgToPngDataUrl(
     clone.setAttribute('width', String(w));
     clone.setAttribute('height', String(h));
 
-    // Ensure dark high-contrast CAD background for SVG captures if relying on CSS vars
+    // Ensure high-contrast CAD background for standalone SVG captures
     if (!clone.style.backgroundColor) {
       clone.style.backgroundColor = '#0f172a';
     }
 
-    const svgText = new XMLSerializer().serializeToString(clone);
+    // Resolve CSS custom properties and currentColor so standalone Blob Image renders crisply
+    let svgText = new XMLSerializer().serializeToString(clone);
+    const cssVarMap: Record<string, string> = {
+      'var(--md-sys-color-on-surface)': '#f8fafc',
+      'var(--md-sys-color-on-surface-variant)': '#cbd5e1',
+      'var(--md-sys-color-primary)': '#38bdf8',
+      'var(--md-sys-color-secondary)': '#818cf8',
+      'var(--md-sys-color-tertiary)': '#fbbf24',
+      'var(--md-sys-color-error)': '#f87171',
+      'var(--md-sys-color-outline)': '#64748b',
+      'var(--md-sys-color-outline-variant)': '#334155',
+      'var(--md-sys-color-surface)': '#0f172a',
+      'var(--md-sys-color-surface-container)': '#1e293b',
+      'var(--md-sys-color-surface-container-low)': '#0f172a',
+      'var(--md-sys-color-surface-container-high)': '#1e293b',
+      'var(--md-sys-color-surface-container-highest)': '#334155',
+      currentColor: '#e2e8f0',
+    };
+    for (const [token, hex] of Object.entries(cssVarMap)) {
+      svgText = svgText.split(token).join(hex);
+    }
+    svgText = svgText.replace(/var\(--[^)]+\)/g, '#cbd5e1');
+
     const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
 
@@ -2349,7 +3216,7 @@ export async function captureSvgToPngDataUrl(
       height: h,
     };
   } catch (err) {
-    console.warn('[Architecture PDF] SVG capture fallback:', err);
+    console.warn('[Engineering PDF] SVG capture fallback:', err);
     return null;
   }
 }
@@ -2413,9 +3280,9 @@ export async function exportArchitectureSubmittalPDF(
     qrDataUrl = '';
   }
 
-  const logoDataUrl = payload.brandLogoSrc
-    ? await loadImageAsPngDataUrl(payload.brandLogoSrc)
-    : null;
+  const logoDataUrl =
+    (payload.brandLogoSrc ? await loadImageAsPngDataUrl(payload.brandLogoSrc) : null) ||
+    (await getBrandLogoPngDataUrl(256));
 
   // Header Title Block
   doc.setFillColor(15, 23, 42);
@@ -2432,7 +3299,7 @@ export async function exportArchitectureSubmittalPDF(
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('BD. CIVILLAB — ARCHITECTURE & BY-LAW SUBMITTAL', textStartX, margin + 8.5);
+  doc.text('BD. CIVILLAB - ARCHITECTURE & BY-LAW SUBMITTAL', textStartX, margin + 8.5);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
@@ -2458,10 +3325,10 @@ export async function exportArchitectureSubmittalPDF(
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'FD');
 
-  const engName = payload.userProfile?.fullName || '________________________';
-  const engDesig = payload.userProfile?.designation || '________________________';
-  const engOrg = payload.userProfile?.organization || '________________________';
-  const engLic = payload.userProfile?.licenseNumber || '________________________';
+  const engName = payload.userProfile?.fullName || 'Pending Signature';
+  const engDesig = payload.userProfile?.designation || 'Architect / Engineer';
+  const engOrg = payload.userProfile?.organization || 'Independent Practice';
+  const engLic = payload.userProfile?.licenseNumber || 'Pending License';
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
@@ -2475,7 +3342,7 @@ export async function exportArchitectureSubmittalPDF(
   doc.setFontSize(7);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    sanitizeEngineeringSymbols(`Site Location: ${payload.siteLocation || '________________________'}  |  Date: ${dateStr}`),
+    sanitizeEngineeringSymbols(`Site Location: ${payload.siteLocation || 'Not Specified'}  |  Date: ${dateStr}`),
     margin + 4,
     yPos + 11.5
   );
@@ -2662,9 +3529,11 @@ export async function exportArchitectureSubmittalPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.8);
   doc.setTextColor(71, 85, 105);
-  doc.text(sanitizeEngineeringSymbols(`${engName} · ${engDesig}`), margin + 4, yPos + 10);
-  doc.text(sanitizeEngineeringSymbols(`${engOrg} · Reg: ${engLic}`), margin + 4, yPos + 14.5);
-  doc.text('Signature & Seal: ____________________________   Date: ______________', margin + 4, yPos + 20.5);
+  doc.text(sanitizeEngineeringSymbols(`${engName} | ${engDesig}`), margin + 4, yPos + 10);
+  doc.text(sanitizeEngineeringSymbols(`${engOrg} | Reg: ${engLic}`), margin + 4, yPos + 14.5);
+  doc.line(margin + 28, yPos + 21, margin + 88, yPos + 21);
+  doc.text('Signature & Seal:', margin + 4, yPos + 20.5);
+  doc.text(`Date: ${dateStr}`, margin + 94, yPos + 20.5);
 
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
@@ -2673,7 +3542,7 @@ export async function exportArchitectureSubmittalPDF(
     doc.setFontSize(6);
     doc.setTextColor(148, 163, 184);
     doc.line(margin, pageHeight - 9, margin + contentWidth, pageHeight - 9);
-    doc.text(`BD. CivilLab Architecture Submittal  •  Ref: ${docId}`, margin, pageHeight - 6);
+    doc.text(sanitizeEngineeringSymbols(`BD. CivilLab Architecture Submittal  |  Ref: ${docId}`), margin, pageHeight - 6);
     doc.text(`Page ${i} of ${totalPages}`, margin + contentWidth, pageHeight - 6, { align: 'right' });
   }
 
@@ -2685,15 +3554,12 @@ export async function printArchitectureSubmittalA4(
   payload: ArchitectureSubmittalPayload
 ): Promise<boolean> {
   if (typeof document === 'undefined') return false;
-  const printEl = document.getElementById('pb-printable-report');
-  if (!printEl) return false;
-
   const docId = generateSubmittalDocRef(new Date().getFullYear());
   const nowStr = new Date().toLocaleString();
-  const engName = payload.userProfile?.fullName || '________________________';
-  const engDesig = payload.userProfile?.designation || '________________________';
-  const engOrg = payload.userProfile?.organization || '________________________';
-  const engLic = payload.userProfile?.licenseNumber || '________________________';
+  const engName = payload.userProfile?.fullName || 'Pending Signature';
+  const engDesig = payload.userProfile?.designation || 'Architect / Engineer';
+  const engOrg = payload.userProfile?.organization || 'Independent Practice';
+  const engLic = payload.userProfile?.licenseNumber || 'Pending License';
 
   let qrDataUrl = '';
   try {
@@ -2754,7 +3620,7 @@ export async function printArchitectureSubmittalA4(
     )
     .join('');
 
-  printEl.innerHTML = `
+  const html = `
     <div class="space-y-5 font-sans text-slate-900 bg-white p-6 max-w-5xl mx-auto leading-relaxed">
       <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
         <div class="flex items-center gap-3.5">
@@ -2847,18 +3713,5 @@ export async function printArchitectureSubmittalA4(
     </div>
   `;
 
-  printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
-  document.body.classList.add('is-printing-report');
-
-  const cleanUp = () => {
-    printEl.innerHTML = '';
-    printEl.className = 'hidden print:block bg-white text-slate-900';
-    document.body.classList.remove('is-printing-report');
-    window.removeEventListener('afterprint', cleanUp);
-  };
-  window.addEventListener('afterprint', cleanUp);
-  setTimeout(() => window.print(), 80);
-  return true;
+  return triggerSafeDomPrint(html);
 }
-
-

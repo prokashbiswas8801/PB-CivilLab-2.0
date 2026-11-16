@@ -879,6 +879,33 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       },
     },
     {
+      id: 'preset-concrete-mix-c30-aci211',
+      name: 'ACI 211 C30 Ready-Mix Design (30 MPa · w/c 0.42)',
+      description: 'ACI 211.1 absolute-volume weight batching design for C30 structural concrete with 20mm crushed stone and Sylhet sand.',
+      category: 'concrete-mix',
+      tags: ['ACI-211', 'C30', 'Ready-Mix', 'Batching', 'BNBC-2020'],
+      isBuiltIn: true,
+      createdAt: now,
+      updatedAt: now,
+      author: 'BD. CivilLab Standards',
+      payload: {
+        targetModule: 'concrete-mix',
+        concreteMix: {
+          targetStrengthMpa: 30,
+          waterCementRatio: 0.42,
+          slumpMm: 100,
+          maxAggregateSizeMm: 20,
+          cementSpecificGravity: 3.15,
+          fineAggSpecificGravity: 2.65,
+          coarseAggSpecificGravity: 2.7,
+          coarseAggDryRoddedDensityKgPerM3: 1600,
+          sandFinenessModulus: 2.65,
+          airEntrainmentPercent: 2.0,
+          batchVolumeM3: 1.0,
+        },
+      },
+    },
+    {
       id: 'preset-rates-pwd-2024',
       name: 'PWD Standard Rate Schedule 2024 (BDT)',
       description: 'Official Public Works Department baseline rates for government and public infrastructure works.',
@@ -893,6 +920,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
         rateAnalysis: {
           currency: 'BDT',
           workType: 'rcc-1-1.5-3',
+          basisVolumeM3: 1.0,
           cementPricePerBag: 580,
           sandPricePerM3: 1590,
           stoneChipsPricePerM3: 8480,
@@ -930,6 +958,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
         rateAnalysis: {
           currency: 'BDT',
           workType: 'rcc-1-1.5-3',
+          basisVolumeM3: 1.0,
           cementPricePerBag: 640,
           sandPricePerM3: 2295,
           stoneChipsPricePerM3: 9710,
@@ -1109,8 +1138,11 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
         targetModule: 'rebar-bbs',
         rebarBbs: {
           elementType: 'slab',
+          elementCount: 1,
           clearCoverMm: 20,
           rebarDensityKgPerM3: 7850,
+          commercialBarStockLengthM: 12.0,
+          lappingFactorD: 50,
           hookAngle: '90',
           slabLengthM: 6.0,
           slabWidthM: 4.5,
@@ -1263,11 +1295,19 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
         targetModule: 'pile-capacity',
         pile: {
           pileType: 'bored-cast-in-situ',
+          method: 'combined-bnbc',
+          codeStandard: 'BNBC-2020',
           diameterM: 0.6,
           lengthM: 22.0,
           groundwaterDepthM: 3.0,
           appliedLoadKn: 1650,
           factorOfSafety: 2.5,
+          pileConcreteFckMpa: 28,
+          elasticModulusPileGpa: 25,
+          permissibleSettlementMm: 25,
+          pileGroupRows: 2,
+          pileGroupCols: 2,
+          pileSpacingM: 1.8,
           layers: [
             {
               id: 'layer-1',
@@ -1277,6 +1317,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
               cohesionKpa: 28,
               frictionAngleDeg: 0,
               unitWeightKnPerM3: 17.5,
+              sptN: 5,
             },
             {
               id: 'layer-2',
@@ -1286,6 +1327,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
               cohesionKpa: 0,
               frictionAngleDeg: 30,
               unitWeightKnPerM3: 18.5,
+              sptN: 18,
             },
             {
               id: 'layer-3',
@@ -1295,11 +1337,13 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
               cohesionKpa: 0,
               frictionAngleDeg: 36,
               unitWeightKnPerM3: 20.0,
+              sptN: 38,
             },
           ],
           tipBearingCohesionKpa: 0,
           tipBearingFrictionDeg: 36,
           tipBearingUnitWeightKnPerM3: 20.0,
+          tipSptN: 38,
         },
       },
     },
@@ -1316,6 +1360,7 @@ export function createDefaultEngineeringPresets(): EngineeringPreset[] {
       payload: {
         targetModule: 'pipe-hydraulics',
         pipe: {
+          serviceType: 'pressure',
           pipeMaterial: 'pvc-hdpe',
           hazenWilliamsC: 150,
           internalDiameterMm: 250,
@@ -1436,13 +1481,13 @@ export function getOfficialModulePreset(moduleId: EngineeringModuleId): Engineer
     return allPresets.find((p) => p.id === 'preset-concrete-m20-nominal') || null;
   }
   if (moduleId === 'concrete-mix') {
-    return allPresets.find((p) => p.id === 'preset-concrete-m25-structural') || null;
+    return allPresets.find((p) => p.id === 'preset-concrete-mix-c30-aci211') || allPresets.find((p) => p.id === 'preset-concrete-m25-structural') || null;
   }
   if (moduleId === 'rate-analysis') {
     return allPresets.find((p) => p.id === 'preset-rates-pwd-2024') || null;
   }
   if (moduleId === 'beam-analysis') {
-    return allPresets.find((p) => p.id === 'preset-beam-w24-transfer') || null;
+    return allPresets.find((p) => p.id === 'preset-beam-secondary-6m') || null;
   }
   if (moduleId === 'bearing-capacity') {
     return allPresets.find((p) => p.id === 'preset-soil-deltaic-clay') || null;
@@ -2245,6 +2290,7 @@ export function validateAndNormalizeV2(candidate: Partial<CivilLabSchemaV2>): Ci
 }
 
 const PROFILE_PURGED_V4_FLAG = 'bd_civillab_state_profile_purged_v4';
+const ZERO_BASELINE_V5_FLAG = 'bd_civillab_zero_baseline_v5';
 
 function stripPreSeededProfileFromState(state: CivilLabSchemaV2): CivilLabSchemaV2 {
   const cleanProf = createDefaultUserProfile();
@@ -2256,6 +2302,35 @@ function stripPreSeededProfileFromState(state: CivilLabSchemaV2): CivilLabSchema
     ...state,
     userProfile: cleanProf,
     workspaces: cleanedWorkspaces,
+  };
+}
+
+function resetModuleInputsToZeroBaseline(state: CivilLabSchemaV2): CivilLabSchemaV2 {
+  const zeroWs = createDefaultWorkspaces()[0];
+  const zeroWorkspaces = (state.workspaces && state.workspaces.length > 0 ? state.workspaces : [zeroWs]).map((ws) => ({
+    ...zeroWs,
+    id: ws.id,
+    name: ws.name,
+    projectCode: ws.projectCode,
+    siteLocation: ws.siteLocation,
+    governingCode: ws.governingCode,
+    currency: ws.currency,
+    unitPreferences: ws.unitPreferences,
+    engineerOfRecord: ws.engineerOfRecord,
+    createdAt: ws.createdAt,
+    updatedAt: new Date().toISOString(),
+    testingLab: {
+      ...createDefaultTestingLabState(),
+      languageMode: ws.testingLab?.languageMode || 'dual',
+      activeDomainId: ws.testingLab?.activeDomainId || 'cement',
+      activeTestId: ws.testingLab?.activeTestId || 'cem-field-lumps',
+      savedRecords: ws.testingLab?.savedRecords || [],
+      checklistLogs: ws.testingLab?.checklistLogs || [],
+    },
+  }));
+  return {
+    ...state,
+    workspaces: zeroWorkspaces,
   };
 }
 
@@ -2286,6 +2361,11 @@ export function loadPersistedState(): CivilLabSchemaV2 {
     window.localStorage &&
     localStorage.getItem(PROFILE_PURGED_V4_FLAG) !== '1';
 
+  const needsV5ZeroBaseline =
+    typeof window !== 'undefined' &&
+    window.localStorage &&
+    localStorage.getItem(ZERO_BASELINE_V5_FLAG) !== '1';
+
   try {
     const rawV3 = localStorage.getItem(STORAGE_KEY);
 
@@ -2294,6 +2374,7 @@ export function loadPersistedState(): CivilLabSchemaV2 {
       savePersistedState(initial);
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+        localStorage.setItem(ZERO_BASELINE_V5_FLAG, '1');
       }
       return initial;
     }
@@ -2317,15 +2398,25 @@ export function loadPersistedState(): CivilLabSchemaV2 {
       savePersistedState(clean);
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+        localStorage.setItem(ZERO_BASELINE_V5_FLAG, '1');
       }
       return clean;
     }
 
     let normalized = validateAndNormalizeV2(parsed);
+    let dirty = false;
     if (needsV4ProfilePurge) {
       normalized = stripPreSeededProfileFromState(normalized);
-      savePersistedState(normalized);
       localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+      dirty = true;
+    }
+    if (needsV5ZeroBaseline) {
+      normalized = resetModuleInputsToZeroBaseline(normalized);
+      localStorage.setItem(ZERO_BASELINE_V5_FLAG, '1');
+      dirty = true;
+    }
+    if (dirty) {
+      savePersistedState(normalized);
     }
     return normalized;
   } catch (err) {
@@ -2334,6 +2425,7 @@ export function loadPersistedState(): CivilLabSchemaV2 {
     savePersistedState(recovered);
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem(PROFILE_PURGED_V4_FLAG, '1');
+      localStorage.setItem(ZERO_BASELINE_V5_FLAG, '1');
     }
     return recovered;
   }

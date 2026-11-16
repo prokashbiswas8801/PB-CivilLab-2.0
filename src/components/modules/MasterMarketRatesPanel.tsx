@@ -15,6 +15,7 @@ import {
 import { getCurrencySymbol } from '../../utils/calculations';
 import { createDefaultMasterMarketRates, createPwdDefaultMasterMarketRates } from '../../utils/storage';
 import { syncMasterMarketRatesToWorkspace } from '../../utils/rateResolver';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface MasterMarketRatesPanelProps {
   activeWorkspace: CivilWorkspace;
@@ -146,12 +147,10 @@ export const MasterMarketRatesPanel: React.FC<MasterMarketRatesPanelProps> = ({
                       {sym} {field.unit}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    min="0"
-                    step={field.step}
+                  <NumericDraftInput
+                    min={0}
                     value={val}
-                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    onChangeValue={(nextVal) => handleFieldChange(field.key, String(nextVal))}
                     className="w-full min-h-[40px] px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums font-semibold text-[var(--md-sys-color-on-surface)] focus:border-[var(--md-sys-color-primary)] focus:ring-1 focus:ring-[var(--md-sys-color-primary)]"
                   />
                 </div>

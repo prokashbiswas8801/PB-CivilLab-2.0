@@ -16,6 +16,7 @@ import {
   formatFeetInches,
   computeRegionalLandBreakdown,
   EXACT_CONVERSION,
+  CURATED_CONTEXTUAL_UNITS,
 } from '../utils/unitEngine';
 import { ChevronDown, Check, ArrowRightLeft, HelpCircle, AlertCircle, X, AlertTriangle, MapPin } from 'lucide-react';
 import { evaluateMathExpression } from './ui/TechnicalInput';
@@ -179,7 +180,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     };
   }, [tooltip, standardRef, recommendedRange, designTip, label]);
 
-  // Available units for this physical category
+  // Available units for this physical category (prioritizing curated contextual units at the top)
   const availableUnits: UnitDefinition[] = useMemo(() => {
     const standard = ALL_UNITS[category] || [];
     const customs = customUnits
@@ -188,7 +189,19 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         ...u,
         system: 'universal' as const,
       }));
-    return [...standard, ...customs];
+    const all = [...standard, ...customs];
+    const priorityIds = CURATED_CONTEXTUAL_UNITS[category] || [];
+    const prioritized: UnitDefinition[] = [];
+    for (const pid of priorityIds) {
+      const found = all.find((u) => u.id === pid);
+      if (found) prioritized.push(found);
+    }
+    for (const u of all) {
+      if (!prioritized.some((p) => p.id === u.id)) {
+        prioritized.push(u);
+      }
+    }
+    return prioritized;
   }, [category, customUnits]);
 
   const activeUnitInfo = useMemo(() => {
@@ -776,7 +789,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
       {/* Input Field with Unit Selector Dropdown Trigger */}
       <div
-        className={`relative flex items-center rounded-full overflow-hidden border bg-[var(--md-sys-color-surface)] shadow-xs transition-all duration-300 focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)] ${
+        className={`relative flex items-center rounded-xl border bg-[var(--md-sys-color-surface)] shadow-xs transition-all duration-300 focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)] ${
           validationResult?.status === 'error'
             ? 'border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error-container)]/15 ring-2 ring-[var(--md-sys-color-error)]/30 animate-input-shake'
             : validationResult?.status === 'warning'
@@ -810,7 +823,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className={`w-full min-w-0 min-h-[48px] touch-target-48 bg-transparent pl-5 pr-3 py-2 text-base md:text-sm font-mono tabular-nums text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
+          className={`w-full min-w-0 min-h-[44px] touch-target-48 bg-transparent pl-3.5 pr-3 py-2 rounded-l-xl text-base md:text-sm font-mono tabular-nums text-[var(--md-sys-color-on-surface)] focus:outline-hidden disabled:opacity-50 transition-all duration-300 ease-out ${
             isUnitFading
               ? 'opacity-25 scale-[0.985] text-[var(--md-sys-color-primary)]'
               : 'opacity-100 scale-100'
@@ -830,7 +843,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             onMouseLeave={() => setIsUnitHovered(false)}
             onFocus={() => setIsUnitHovered(true)}
             onBlur={() => setIsUnitHovered(false)}
-            className="flex items-center gap-1.5 min-h-[48px] touch-target-48 pl-3 pr-4 border-l border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-mono font-bold rounded-r-full transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 min-h-[44px] touch-target-48 pl-3 pr-3.5 border-l border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] text-xs font-mono font-bold rounded-r-xl transition-colors cursor-pointer"
             title={conversionFactorDetails.tooltip}
             aria-label={`Unit: ${activeUnitInfo.name}. ${conversionFactorDetails.factorFormula}. Click to change unit.`}
           >
@@ -864,6 +877,10 @@ export const UnitInput: React.FC<UnitInputProps> = ({
                   {conversionFactorDetails.isBaseUnit ? 'Base SI Unit' : 'SI Conversion Factor'}
                 </span>
               </div>
+
+              <p className="text-[10.5px] text-[var(--md-sys-color-on-surface-variant)] mb-1.5 leading-snug">
+                {conversionFactorDetails.description}
+              </p>
 
               <div className="space-y-1.5 font-mono text-[11px]">
                 <div className="text-[var(--md-sys-color-primary)] font-bold flex items-center justify-between">

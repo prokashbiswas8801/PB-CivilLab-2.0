@@ -15,6 +15,7 @@ import {
   getBangladeshDistrict,
   getDistrictsByDivision,
 } from '../../data/bangladeshDistricts';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface BeamAnalysisInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -662,17 +663,14 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Building Seismic W (kN)</label>
-                  <input
-                    type="number"
-                    step="500"
-                    min="0"
-                    max="100000"
+                  <NumericDraftInput
+                    min={0}
+                    max={100000}
                     value={activeWorkspace.beam.buildingSeismicWeightKn ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    onChangeValue={(val) => {
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, buildingSeismicWeightKn: isNaN(raw) ? 0 : Math.max(0, raw) },
+                        beam: { ...ws.beam, buildingSeismicWeightKn: Math.max(0, val) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
@@ -681,17 +679,14 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Basic Wind Speed V0 (m/s)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="100"
+                  <NumericDraftInput
+                    min={0}
+                    max={100}
                     value={activeWorkspace.beam.basicWindSpeedMs ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    onChangeValue={(val) => {
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, basicWindSpeedMs: isNaN(raw) ? 0 : Math.max(0, raw) },
+                        beam: { ...ws.beam, basicWindSpeedMs: Math.max(0, val) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
@@ -701,17 +696,14 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Building Height H (m)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="150"
+                  <NumericDraftInput
+                    min={0}
+                    max={150}
                     value={activeWorkspace.beam.buildingHeightM ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    onChangeValue={(val) => {
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, buildingHeightM: isNaN(raw) ? 0 : Math.max(0, raw) },
+                        beam: { ...ws.beam, buildingHeightM: Math.max(0, val) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
@@ -720,17 +712,14 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Tributary Width B (m)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="20"
+                  <NumericDraftInput
+                    min={0}
+                    max={20}
                     value={activeWorkspace.beam.tributaryWidthM ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                    onChangeValue={(val) => {
                       updateActiveWorkspace((ws) => ({
                         ...ws,
-                        beam: { ...ws.beam, tributaryWidthM: isNaN(raw) ? 0 : Math.max(0, raw) },
+                        beam: { ...ws.beam, tributaryWidthM: Math.max(0, val) },
                       }));
                     }}
                     className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface-container)]"
@@ -900,16 +889,13 @@ export const BeamAnalysisInputs: React.FC<BeamAnalysisInputsProps> = ({
                   <HelpCircle className="w-3 h-3 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
                 </span>
               </div>
-              <input
-                type="number"
-                step="100"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={activeWorkspace.beam.momentOfInertiaCm4}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                onChangeValue={(val) => {
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    beam: { ...ws.beam, momentOfInertiaCm4: isNaN(raw) ? 0 : Math.max(0, raw) },
+                    beam: { ...ws.beam, momentOfInertiaCm4: Math.max(0, val) },
                   }));
                 }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"

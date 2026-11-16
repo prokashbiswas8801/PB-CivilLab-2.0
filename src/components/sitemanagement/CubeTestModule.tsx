@@ -28,6 +28,7 @@ import { useCivilLab } from '../../context/CivilLabContext';
 import { CubeTestRecord, ConcreteGrade, CubeTestStatus } from '../../types/siteManagement';
 import { CivilWorkspace } from '../../types/civil';
 import { loadPersistedState } from '../../utils/storage';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 const CONCRETE_GRADES: Array<{ grade: ConcreteGrade; targetMpa: number; targetPsi: number; mixRatio: string }> = [
   { grade: 'M15', targetMpa: 15, targetPsi: 2175, mixRatio: '1:2:4' },
@@ -273,10 +274,8 @@ export const CubeTestModule: React.FC<CubeTestModuleProps> = ({ activeWorkspace:
 
   // Delete
   const handleDelete = (id: string, pour: string) => {
-    if (confirm(`Delete cube test record ${pour}?`)) {
-      deleteCubeTestRecord(id);
-      showToast(`Deleted ${pour}`);
-    }
+    deleteCubeTestRecord(id);
+    showToast(`Deleted ${pour}`);
   };
 
   // Export CSV
@@ -781,11 +780,12 @@ export const CubeTestModule: React.FC<CubeTestModuleProps> = ({ activeWorkspace:
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Slump Value (mm)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     required
                     value={slumpMm}
-                    onChange={(e) => setSlumpMm(e.target.value === '' ? '' : Number(e.target.value))}
+                    onEmpty={() => setSlumpMm('')}
+                    onChangeValue={(val) => setSlumpMm(val)}
                     className="w-full px-3 py-2 rounded-full text-xs bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] tabular-nums"
                   />
                 </div>
@@ -883,11 +883,11 @@ export const CubeTestModule: React.FC<CubeTestModuleProps> = ({ activeWorkspace:
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     7-Day Strength (MPa)
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     value={day7Strength}
-                    onChange={(e) => setDay7Strength(e.target.value === '' ? '' : Number(e.target.value))}
+                    onEmpty={() => setDay7Strength('')}
+                    onChangeValue={(val) => setDay7Strength(val)}
                     placeholder="e.g. 18.5"
                     className="w-full px-3 py-2 rounded-full text-xs bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] tabular-nums"
                   />
@@ -900,11 +900,11 @@ export const CubeTestModule: React.FC<CubeTestModuleProps> = ({ activeWorkspace:
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     28-Day Strength (MPa)
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     value={day28Strength}
-                    onChange={(e) => setDay28Strength(e.target.value === '' ? '' : Number(e.target.value))}
+                    onEmpty={() => setDay28Strength('')}
+                    onChangeValue={(val) => setDay28Strength(val)}
                     placeholder="e.g. 27.2"
                     className="w-full px-3 py-2 rounded-full text-xs bg-[var(--md-sys-color-surface-container)] border border-indigo-500/40 font-bold tabular-nums"
                   />

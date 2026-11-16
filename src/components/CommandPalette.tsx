@@ -61,6 +61,7 @@ interface CommandPaletteProps {
   savedCalculations?: CalculationRecord[];
   boqItems?: TakeoffLineItem[];
   onSelectCalculation?: (rec: CalculationRecord) => void;
+  onNavigateHome?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -87,6 +88,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   savedCalculations = [],
   boqItems = [],
   onSelectCalculation,
+  onNavigateHome,
 }) => {
   const { setTheme } = useTheme();
   const [query, setQuery] = useState('');
@@ -107,6 +109,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const allItems: CommandPaletteItem[] = useMemo(() => {
     const items: CommandPaletteItem[] = [
       // Primary Actions
+      ...(onNavigateHome
+        ? [
+            {
+              id: 'action-go-home',
+              title: 'Go to Home',
+              category: 'Actions' as const,
+              description: 'Return to BD. CivilLab Home workspace',
+              keywords: ['home', 'dashboard', 'main', 'start', 'overview'],
+              shortcut: 'Alt+1',
+              action: onNavigateHome,
+            },
+          ]
+        : []),
       {
         id: 'action-history-drawer',
         title: 'Open Session Calculation History Drawer',
@@ -850,6 +865,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     savedCalculations,
     onSelectCalculation,
     onSelectModule,
+    onNavigateHome,
   ]);
 
   // Filter items based on query

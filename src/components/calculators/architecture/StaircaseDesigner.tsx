@@ -29,6 +29,7 @@ import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine
 import { formatFeetInches } from '../../../utils/unitConverter';
 import { DcrGaugeSuite } from '../../DcrCapacityGauge';
 import { StepByStepPanel } from '../../StepByStepPanel';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 
 export interface StaircaseDesignerProps {
   initialValues?: Partial<StaircaseParameters>;
@@ -1093,13 +1094,12 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                   aria-label="Floor height slider"
                   className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
                   max={6000}
-                  step={25}
                   value={floorHeightMm}
-                  onChange={(e) => setFloorHeightMm(Math.max(0, Number(e.target.value) || 0))}
+                  highlightZero
+                  onChangeValue={(v) => setFloorHeightMm(Math.max(0, v))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1129,13 +1129,12 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                   aria-label="Riser height slider"
                   className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
                   max={220}
-                  step={1}
                   value={preferredRiserMm}
-                  onChange={(e) => setPreferredRiserMm(Math.max(0, Number(e.target.value) || 0))}
+                  highlightZero
+                  onChangeValue={(v) => setPreferredRiserMm(Math.max(0, v))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1165,13 +1164,12 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                   aria-label="Tread width slider"
                   className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
                   max={380}
-                  step={5}
                   value={preferredTreadMm}
-                  onChange={(e) => setPreferredTreadMm(Math.max(0, Number(e.target.value) || 0))}
+                  highlightZero
+                  onChangeValue={(v) => setPreferredTreadMm(Math.max(0, v))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1201,13 +1199,12 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
                   aria-label="Flight width slider"
                   className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
                 />
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
                   max={3000}
-                  step={25}
                   value={flightWidthMm}
-                  onChange={(e) => setFlightWidthMm(Math.max(0, Number(e.target.value) || 0))}
+                  highlightZero
+                  onChangeValue={(v) => setFlightWidthMm(Math.max(0, v))}
                   className="w-20 px-2 py-1 text-xs font-mono tabular-nums font-bold text-right rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1220,12 +1217,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Landing Depth (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={50}
                 value={landingWidthMm}
-                onChange={(e) => setLandingWidthMm(Math.max(0, Number(e.target.value) || 0))}
+                highlightZero
+                onChangeValue={(v) => setLandingWidthMm(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1234,12 +1230,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Waist Slab tw (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={10}
                 value={waistSlabMm}
-                onChange={(e) => setWaistSlabMm(Math.max(0, Number(e.target.value) || 0))}
+                highlightZero
+                onChangeValue={(v) => setWaistSlabMm(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1248,13 +1243,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Well Gap (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={50}
                 disabled={stairTopology === 'straight-flight'}
                 value={wellGapMm}
-                onChange={(e) => setWellGapMm(Math.max(0, Number(e.target.value) || 0))}
+                onChangeValue={(v) => setWellGapMm(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums disabled:opacity-60"
               />
             </div>
@@ -1263,12 +1256,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Handrail H (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={25}
                 value={handrailHeightMm}
-                onChange={(e) => setHandrailHeightMm(Math.max(0, Number(e.target.value) || 0))}
+                onChangeValue={(v) => setHandrailHeightMm(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1277,12 +1268,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Stairwell L (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={100}
                 value={stairwellLengthMm}
-                onChange={(e) => setStairwellLengthMm(Math.max(0, Number(e.target.value) || 0))}
+                onChangeValue={(v) => setStairwellLengthMm(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1291,12 +1280,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Stairwell W (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={100}
                 value={stairwellWidthMm}
-                onChange={(e) => setStairwellWidthMm(Math.max(0, Number(e.target.value) || 0))}
+                onChangeValue={(v) => setStairwellWidthMm(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1308,12 +1295,11 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Live Load q_L (kN/m²)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={0.5}
                 value={liveLoadKpa}
-                onChange={(e) => setLiveLoadKpa(Math.max(0, Number(e.target.value) || 0))}
+                highlightZero
+                onChangeValue={(v) => setLiveLoadKpa(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -1321,12 +1307,10 @@ export const StaircaseDesigner: React.FC<StaircaseDesignerProps> = ({
               <label className="block text-[10px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Finishes Load (kN/m²)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                step={0.25}
                 value={finishesLoadKpa}
-                onChange={(e) => setFinishesLoadKpa(Math.max(0, Number(e.target.value) || 0))}
+                onChangeValue={(v) => setFinishesLoadKpa(Math.max(0, v))}
                 className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>

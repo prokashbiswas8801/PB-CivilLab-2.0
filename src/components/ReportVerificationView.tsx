@@ -598,13 +598,13 @@ export function ReportVerificationView({
                     1. Prepared By (Designer)
                   </div>
                   <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
-                    {record.signatories.preparedBy.name || '________________________'}
+                    {record.signatories.preparedBy.name || 'Pending Signature'}
                   </div>
                   <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    {record.signatories.preparedBy.designation || '________________________'}
+                    {record.signatories.preparedBy.designation || 'Design Engineer'}
                   </div>
                   <div className="pt-2 text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-dashed border-[var(--md-sys-color-outline-variant)]">
-                    <div>Lic: {record.signatories.preparedBy.license || '________________________'}</div>
+                    <div>Lic: {record.signatories.preparedBy.license || 'Pending License'}</div>
                     <div>Date: {record.signatories.preparedBy.date}</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                       Status: {record.signatories.preparedBy.status.toUpperCase()}
@@ -618,13 +618,13 @@ export function ReportVerificationView({
                     2. Checked By (Peer Reviewer)
                   </div>
                   <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
-                    {record.signatories.checkedBy.name || '________________________'}
+                    {record.signatories.checkedBy.name || 'Pending QA Reviewer'}
                   </div>
                   <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    {record.signatories.checkedBy.designation || '________________________'}
+                    {record.signatories.checkedBy.designation || 'QA / Peer Reviewer'}
                   </div>
                   <div className="pt-2 text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-dashed border-[var(--md-sys-color-outline-variant)]">
-                    <div>Lic: {record.signatories.checkedBy.license || '________________________'}</div>
+                    <div>Lic: {record.signatories.checkedBy.license || 'Pending License'}</div>
                     <div>Date: {record.signatories.checkedBy.date}</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                       Status: {record.signatories.checkedBy.status.toUpperCase()}
@@ -638,13 +638,13 @@ export function ReportVerificationView({
                     3. Approved By (EOR)
                   </div>
                   <div className="font-bold text-xs text-[var(--md-sys-color-on-surface)]">
-                    {record.signatories.approvedBy.name || '________________________'}
+                    {record.signatories.approvedBy.name || 'Pending Signature'}
                   </div>
                   <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                    {record.signatories.approvedBy.designation || '________________________'}
+                    {record.signatories.approvedBy.designation || 'Engineer of Record (EOR)'}
                   </div>
                   <div className="pt-2 text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] border-t border-dashed border-[var(--md-sys-color-outline-variant)]">
-                    <div>Lic: {record.signatories.approvedBy.license || '________________________'}</div>
+                    <div>Lic: {record.signatories.approvedBy.license || 'Pending License'}</div>
                     <div>Date: {record.signatories.approvedBy.date}</div>
                     <div className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                       Status: {record.signatories.approvedBy.status.toUpperCase()}

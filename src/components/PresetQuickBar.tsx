@@ -17,32 +17,83 @@ export const PresetQuickBar: React.FC<PresetQuickBarProps> = ({
   onOpenPresetsManager,
   onSaveCurrentAsPreset,
 }) => {
-  // Filter presets relevant to active module
-  const relevantPresets = presets.filter((p) => {
-    if (activeModule === 'concrete-materials' || activeModule === 'concrete-mix') {
-      return p.category === 'concrete-mix';
+  // Helper to check if a preset directly populates the active module
+  const matchesModulePayload = (p: EngineeringPreset): boolean => {
+    if (p.payload.targetModule === activeModule) return true;
+    switch (activeModule) {
+      case 'concrete-materials':
+        return Boolean(p.payload.concreteMaterials);
+      case 'concrete-mix':
+        return Boolean(p.payload.concreteMix);
+      case 'rate-analysis':
+        return Boolean(p.payload.rateAnalysis);
+      case 'boq-estimator':
+        return Boolean(p.payload.boq);
+      case 'beam-analysis':
+        return Boolean(p.payload.beam);
+      case 'continuous-beam':
+        return Boolean(p.payload.continuousBeam);
+      case 'frame-truss-2d':
+        return Boolean(p.payload.frameTruss2d);
+      case 'section-analyzer':
+        return Boolean(p.payload.sectionAnalyzer);
+      case 'rc-column-design':
+        return Boolean(p.payload.rcColumn);
+      case 'strut-and-tie':
+        return Boolean(p.payload.strutAndTie);
+      case 'bearing-capacity':
+        return Boolean(p.payload.bearing);
+      case 'pile-capacity':
+        return Boolean(p.payload.pile);
+      case 'open-channel':
+        return Boolean(p.payload.channel);
+      case 'pipe-hydraulics':
+        return Boolean(p.payload.pipe);
+      case 'rebar-bbs':
+        return Boolean(p.payload.rebarBbs);
+      case 'masonry-finishes':
+        return Boolean(p.payload.masonry);
+      case 'earthwork-alignment':
+        return Boolean(p.payload.earthwork);
+      case 'surveying-suite':
+        return Boolean(p.payload.surveying);
+      default:
+        return false;
     }
-    if (activeModule === 'rate-analysis' || activeModule === 'boq-estimator') {
-      return p.category === 'material-rates';
-    }
-    if (
-      activeModule === 'beam-analysis' ||
-      activeModule === 'continuous-beam' ||
-      activeModule === 'frame-truss-2d' ||
-      activeModule === 'section-analyzer' ||
-      activeModule === 'rc-column-design' ||
-      activeModule === 'strut-and-tie'
-    ) {
-      return p.category === 'structural-beam';
-    }
-    if (activeModule === 'bearing-capacity') {
-      return p.category === 'bearing-soil';
-    }
-    if (activeModule === 'open-channel' || activeModule === 'earthwork-alignment') {
-      return p.category === 'earthwork-hydraulics';
-    }
-    return true;
-  });
+  };
+
+  const directMatches = presets
+    .filter(matchesModulePayload)
+    .sort((a, b) => (a.payload.targetModule === activeModule ? -1 : b.payload.targetModule === activeModule ? 1 : 0));
+
+  const relevantPresets =
+    directMatches.length > 0
+      ? directMatches
+      : presets.filter((p) => {
+          if (activeModule === 'concrete-materials' || activeModule === 'concrete-mix') {
+            return p.category === 'concrete-mix';
+          }
+          if (activeModule === 'rate-analysis' || activeModule === 'boq-estimator') {
+            return p.category === 'material-rates';
+          }
+          if (
+            activeModule === 'beam-analysis' ||
+            activeModule === 'continuous-beam' ||
+            activeModule === 'frame-truss-2d' ||
+            activeModule === 'section-analyzer' ||
+            activeModule === 'rc-column-design' ||
+            activeModule === 'strut-and-tie'
+          ) {
+            return p.category === 'structural-beam';
+          }
+          if (activeModule === 'bearing-capacity' || activeModule === 'pile-capacity') {
+            return p.category === 'bearing-soil';
+          }
+          if (activeModule === 'open-channel' || activeModule === 'pipe-hydraulics' || activeModule === 'earthwork-alignment') {
+            return p.category === 'earthwork-hydraulics';
+          }
+          return true;
+        });
 
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-xs no-print">

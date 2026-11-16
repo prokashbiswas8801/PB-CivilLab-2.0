@@ -16,7 +16,49 @@ export const BRAND_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="
 export const BRAND_LOGO_SVG_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(BRAND_LOGO_SVG)}`;
 
 /**
- * Universal PNG Data URI of the CL Vector Logo for jsPDF and high-resolution print engines.
+ * Universal PNG Data URI of the CL Vector Logo for jsPDF and high-resolution print engines (synchronous fallback).
  */
 export const BRAND_LOGO_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAADKklEQVR4nO3d3WoTURSG4Z57aK9AFEHv2bsURIRKDhqSdCezM7P2+vnWO/CeBDpJs55OliG1Ly/Ox88f39/oft7zWHJEP4mqRc/14XH5QF9fP9OCUmJg6LEYGHzzQiAw+Hy5IOCnPndLrwYMvk7mCBh+vcwQMPy6HUbA8Ou3GwHD12kXAgDo9DQAhq/XNAKGr9sUAgDotgmA4ev3EAEA9LsLgOH3aYgAAH0CQPM+AGD4/bpCAIB+AaB5AGgeAJoHgOYBoHlnAHzSt2fnTxADoGdhAL59/cL5A88PgObnB0Dz84cDoBwBoHkAaF7JHeDP338mzdzX71+fpsvy/EgDsBo+AAoCsBw+AIIBRA8/OwCvwgGcpL937/YVwz+1db9HAMx8XzO3ywPYatXwuQIEA5iRvnL42QHI7wBb3+Dq4QMgMQCP4QMgGED08LMD8CoVAM/hA6A4AMv7fWbIADBq9BpnCcDqNZQdAAAAAMBzACwwyAMYFbUDWAGouBcAYAGA26+LHjIAHAGMvjZ6yCkBKO8AFgjkdwBFAJZXAAAUBWC1A8gDGKWwA/CvgIIAjg55xfsAACh4BYgeZikAijvA6ucHAAAAAABEAIxiB/AvHMDez/8f/bz97O17AfB7ATviCuAfO0BSAPI7AAAAAIDOAEapvBVcKQAY4ogeJgAAUAcAO4DP4wcAAAAAgIQARrED+AcAAAAAAOwA6QDI7wAAAEAaABnfCpYHMIodwL+yACyyBpDpClISgDcCACTbAbwRZAYgvwMo/k+hADAE4IEAAAl3AE8EmQF4FQ5A6e8FHK397wU8iiuAGADFvxnEDrAYgDUCABQEYIkAAIV2AAIAAYBkAKx+jeP8AOD8AOD8aQFQjs4ATgcA+nUePgB6BoDmAaB5AGgeAJoHgOZdAQBBrz4MHwC9AkDzhgBA0KO7wwdAjx4CAIF2m8MHgHZTAECg2fTwQaDX08MHgFa7AIBAo93DB0H9Dg8fBHUzGz4I6mU+/EsEQMjb1Sd9Vx4gyJfL4G8RACE+t596IOQqfPC3x/sDAsP6oaca/Oi4fKBkV/RcTY7oJzF73vP4D4U4mrBMhR34AAAAAElFTkSuQmCC';
+
+const pngLogoCache = new Map<number, string>();
+
+/**
+ * Renders the vector CL monogram (`BRAND_LOGO_SVG_DATA_URI`) onto an offscreen HTML5 <canvas>
+ * and returns a crisp PNG Data URI for jsPDF exports. Falls back to `BRAND_LOGO_BASE64` if unavailable.
+ */
+export async function getBrandLogoPngDataUrl(size = 256): Promise<string> {
+  const normalizedSize = Number.isFinite(size) && size > 0 ? Math.round(size) : 256;
+  const cached = pngLogoCache.get(normalizedSize);
+  if (cached) return cached;
+
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return BRAND_LOGO_BASE64;
+  }
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = (err) => reject(err);
+      image.src = BRAND_LOGO_SVG_DATA_URI;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = normalizedSize;
+    canvas.height = normalizedSize;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return BRAND_LOGO_BASE64;
+
+    ctx.clearRect(0, 0, normalizedSize, normalizedSize);
+    ctx.drawImage(img, 0, 0, normalizedSize, normalizedSize);
+    const pngDataUrl = canvas.toDataURL('image/png');
+    if (pngDataUrl && pngDataUrl.startsWith('data:image/png')) {
+      pngLogoCache.set(normalizedSize, pngDataUrl);
+      return pngDataUrl;
+    }
+    return BRAND_LOGO_BASE64;
+  } catch {
+    return BRAND_LOGO_BASE64;
+  }
+}

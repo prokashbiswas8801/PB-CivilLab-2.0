@@ -88,6 +88,12 @@ export function createEnvelope<T>(
   };
 }
 
+const finiteNum = (val: unknown, fallbackIfMissing = 0): number =>
+  typeof val === 'number' && Number.isFinite(val) ? val : fallbackIfMissing;
+
+const posNum = (val: unknown, fallbackIfZeroOrMissing: number): number =>
+  typeof val === 'number' && Number.isFinite(val) && val > 0 ? val : fallbackIfZeroOrMissing;
+
 /* -------------------------------------------------------------
    MODULE 1: BEAM ANALYSIS (With Zero Coercion & Macaulay Solver)
 ------------------------------------------------------------- */
@@ -172,19 +178,19 @@ export function computeBeamAnalysis(
   if (params.pointLoadKn < 0) {
     issues.push({ field: 'pointLoadKn', message: 'Concentrated point load cannot be negative.', severity: 'error' });
   }
-  if (params.pointLoadKn > 0 && (params.pointLoadPositionM < 0 || params.pointLoadPositionM > totalLenCheck)) {
+  if (params.spanLengthM > 0 && (params.pointLoadPositionM < 0 || params.pointLoadPositionM > totalLenCheck)) {
     issues.push({ field: 'pointLoadPositionM', message: `Point load position must be within total beam length (0 to ${totalLenCheck.toFixed(2)} m).`, severity: 'error' });
   }
-  if (params.elasticModulusGpa <= 0 && !isZeroBaseline) {
+  if (params.elasticModulusGpa < 0) {
     issues.push({ field: 'elasticModulusGpa', message: 'Elastic modulus E must be strictly positive (> 0 GPa).', severity: 'error' });
   }
-  if (params.momentOfInertiaCm4 <= 0 && !isZeroBaseline) {
+  if (params.momentOfInertiaCm4 < 0) {
     issues.push({ field: 'momentOfInertiaCm4', message: 'Moment of inertia I must be strictly positive (> 0 cm⁴).', severity: 'error' });
   }
-  if (params.sectionDepthMm <= 0 && !isZeroBaseline) {
+  if (params.sectionDepthMm < 0) {
     issues.push({ field: 'sectionDepthMm', message: 'Section depth d must be strictly positive (> 0 mm).', severity: 'error' });
   }
-  if (params.allowableStressMpa <= 0 && !isZeroBaseline) {
+  if (params.allowableStressMpa < 0) {
     issues.push({ field: 'allowableStressMpa', message: 'Allowable bending stress must be strictly positive (> 0 MPa).', severity: 'error' });
   }
 
@@ -272,7 +278,11 @@ export function computeBeamAnalysis(
   const P = Math.max(0, params.pointLoadKn);
   const a = Math.min(L_tot, Math.max(0, params.pointLoadPositionM));
   const b = L_tot - a;
-  const EI = Math.max(0.001, (params.elasticModulusGpa || 200) * (params.momentOfInertiaCm4 || 10000) * 0.01); // kN·m²
+  const effE_Gpa = posNum(params.elasticModulusGpa, 200);
+  const effI_Cm4 = posNum(params.momentOfInertiaCm4, 18000);
+  const effDepthMm = posNum(params.sectionDepthMm, 400);
+  const effAllowStressMpa = posNum(params.allowableStressMpa, 250);
+  const EI = Math.max(0.001, effE_Gpa * effI_Cm4 * 0.01); // kN·m²
 
   // Linearly varying distributed load w(x) = wLeft + alpha * x over [0, L_tot]
   const alpha = (wRight - wLeft) / L_tot;
@@ -475,11 +485,11 @@ export function computeBeamAnalysis(
   }
 
   const allowableDeflectionMm = (L_main * 1000) / deflectionDivisor;
-  const cMm = params.sectionDepthMm / 2;
-  const iMm4 = params.momentOfInertiaCm4 * 1e4;
+  const cMm = effDepthMm / 2;
+  const iMm4 = effI_Cm4 * 1e4;
   const bendingStressMpa = (maxMomentKnm * 1e6 * cMm) / iMm4;
 
-  const stressRatio = bendingStressMpa / params.allowableStressMpa;
+  const stressRatio = bendingStressMpa / effAllowStressMpa;
   const deflRatio = maxDeflectionMm / allowableDeflectionMm;
   const utilizationRatio = Math.max(stressRatio, deflRatio);
 
@@ -624,7 +634,7 @@ export function computeBeamAnalysis(
     stepNumber: 5,
     title: 'Elastic Deflection Check (Euler-Bernoulli Double Integration)',
     formula: deflFormula,
-    substitution: `EI = ${(params.elasticModulusGpa || 200).toFixed(1)} GPa × ${params.momentOfInertiaCm4.toLocaleString()} cm⁴ = ${EI.toFixed(1)} kN·m²;  δ_allow = L/${deflectionDivisor} = ${allowableDeflectionMm.toFixed(2)} mm`,
+    substitution: `EI = ${effE_Gpa.toFixed(1)} GPa × ${effI_Cm4.toLocaleString()} cm⁴ = ${EI.toFixed(1)} kN·m²;  δ_allow = L/${deflectionDivisor} = ${allowableDeflectionMm.toFixed(2)} mm`,
     result: `δ_max = ${maxDeflectionMm.toFixed(2)} mm @ x = ${maxDeflectionLocationM.toFixed(2)} m  (L/${achievedRatio > 9000 ? '∞' : achievedRatio})`,
     reasoning: `Serviceability check per ${code}: deflection ratio is ${(deflRatio * 100).toFixed(1)}% of allowable limit L/${deflectionDivisor}.`,
     isVerifiedAgainstEngine: deflVerified,
@@ -636,7 +646,7 @@ export function computeBeamAnalysis(
     stepNumber: 6,
     title: 'Flexural Extreme-Fiber Stress & Governing DCR',
     formula: 'f_b = (M_max · c) / I;   DCR = max(f_b / f_allow,  δ_max / δ_allow)',
-    substitution: `f_b = (${maxMomentKnm.toFixed(2)} × 10⁶ × ${cMm.toFixed(1)}) / ${iMm4.toExponential(2)} = ${handFb.toFixed(2)} MPa (Allowable ${params.allowableStressMpa} MPa)`,
+    substitution: `f_b = (${maxMomentKnm.toFixed(2)} × 10⁶ × ${cMm.toFixed(1)}) / ${iMm4.toExponential(2)} = ${handFb.toFixed(2)} MPa (Allowable ${effAllowStressMpa} MPa)`,
     result: `DCR = ${(utilizationRatio * 100).toFixed(1)}% → ${status === 'nominal' ? 'PASS' : status === 'warning' ? 'MARGINAL' : 'FAIL'}`,
     reasoning: `Combines strength demand-capacity ratio (${(stressRatio * 100).toFixed(1)}%) and deflection serviceability (${(deflRatio * 100).toFixed(1)}%) to determine governing safety status.`,
     isVerifiedAgainstEngine: Math.abs(handFb - bendingStressMpa) < 1e-3,
@@ -787,17 +797,28 @@ export function computeBearingCapacity(
   if (params.frictionAngleDeg < 0 || params.frictionAngleDeg > 50) {
     issues.push({ field: 'frictionAngleDeg', message: 'Friction angle φ must be between 0° and 50°.', severity: 'error' });
   }
-  if (params.unitWeightKnPerM3 <= 0 && !isZeroBaseline && params.footingWidthM > 0) {
+  if (params.unitWeightKnPerM3 < 0) {
     issues.push({ field: 'unitWeightKnPerM3', message: 'Soil unit weight γ must be strictly positive (> 0 kN/m³).', severity: 'error' });
   }
   if (params.waterTableDepthM < 0) {
     issues.push({ field: 'waterTableDepthM', message: 'Groundwater table depth cannot be negative.', severity: 'error' });
   }
-  if (!isZeroBaseline && params.footingWidthM > 0 && params.factorOfSafety < 1.0) {
+  if (params.factorOfSafety < 0 || (!isZeroBaseline && params.footingWidthM > 0 && params.factorOfSafety > 0 && params.factorOfSafety < 1.0)) {
     issues.push({ field: 'factorOfSafety', message: 'Factor of safety must be at least 1.0 (recommended ≥ 2.5 per BNBC-2020).', severity: 'error' });
   }
   if (params.appliedColumnLoadKn < 0) {
     issues.push({ field: 'appliedColumnLoadKn', message: 'Applied load P cannot be negative.', severity: 'error' });
+  }
+  if ((params.footingThicknessMm ?? 0) < 0) {
+    issues.push({ field: 'footingThicknessMm', message: 'Footing slab thickness cannot be negative.', severity: 'error' });
+  }
+  if ((params.clearCoverMm ?? 0) < 0) {
+    issues.push({ field: 'clearCoverMm', message: 'Footing clear cover cannot be negative.', severity: 'error' });
+  } else if (
+    (params.footingThicknessMm ?? 0) > 0 &&
+    finiteNum(params.clearCoverMm, 75) >= (params.footingThicknessMm ?? 0) / 2
+  ) {
+    issues.push({ field: 'clearCoverMm', message: 'Clear cover cannot equal or exceed half the footing thickness (h/2).', severity: 'error' });
   }
 
   if (issues.some((i) => i.severity === 'error') || params.footingWidthM === 0) {
@@ -824,11 +845,11 @@ export function computeBearingCapacity(
         footingAreaM2: 0,
         utilizationRatio: 0,
         effectiveSafetyFactor: 0,
-        factorOfSafety: params.factorOfSafety || 0,
+        factorOfSafety: finiteNum(params.factorOfSafety),
         immediateSettlementMm: 0,
         consolidationSettlementMm: 0,
         totalSettlementMm: 0,
-        permissibleSettlementMm: params.permissibleSettlementMm || 0,
+        permissibleSettlementMm: finiteNum(params.permissibleSettlementMm),
         settlementUtilizationRatio: 0,
         settlementPass: true,
         boussinesqPoints: [],
@@ -878,7 +899,7 @@ export function computeBearingCapacity(
   const Df = params.embedmentDepthM;
   let c = params.soilCohesionKpa;
   let phi = params.frictionAngleDeg;
-  let gamma = params.unitWeightKnPerM3;
+  let gamma = posNum(params.unitWeightKnPerM3, 18.0);
 
   // SPT Field Corrections per BNBC-2020 Part 6 Chap 3 (Liao & Whitman 1986):
   // Overburden pressure sigma'v at foundation level
@@ -886,10 +907,10 @@ export function computeBearingCapacity(
   const gammaEffEst = DwInit < Df ? Math.max(8.0, gamma - 9.81) : gamma;
   const sigmaVPrimeAtBaseKpa = Math.max(10, gammaEffEst * Math.max(0.5, Df));
   const Cn = Math.min(2.0, Math.max(0.4, Math.sqrt(98 / sigmaVPrimeAtBaseKpa)));
-  const hammerEff = params.hammerEfficiency ?? 0.60;
-  const rawFieldN = params.boreholeFieldSptN ?? (params.sptN60 ? Math.round(params.sptN60 / (Cn * (hammerEff / 0.60))) : (phi > 0 ? Math.round(phi * 0.8) : Math.round(c / 6.25) || 12));
+  const hammerEff = posNum(params.hammerEfficiency, 0.60);
+  const rawFieldN = posNum(params.boreholeFieldSptN, posNum(params.sptN60, 0) > 0 ? Math.round(posNum(params.sptN60, 15) / (Math.max(0.01, Cn) * Math.max(0.1, hammerEff / 0.60))) : (phi > 0 ? Math.round(phi * 0.8) : Math.round(c / 6.25)));
   const calculatedN60 = Math.round(rawFieldN * (hammerEff / 0.60) * Cn);
-  let sptN = params.sptN60 ?? calculatedN60;
+  let sptN = posNum(params.sptN60, calculatedN60);
 
   // Meyerhof (1965/1976) Empirical Bearing Capacity for 25mm (1 inch) allowable settlement (BNBC-2020 Table 6.3.8):
   // For B <= 1.2m: q_all = 12.5 * N60 * (1 + 0.33 * Df / B) * (Se / 25)
@@ -908,10 +929,10 @@ export function computeBearingCapacity(
     : phi > 0
       ? Math.max(12, 0.766 * sptN)
       : Math.max(8, 0.4 * c);
-  let Cc = params.compressionIndexCc || 0.25;
-  let e0 = params.initialVoidRatioE0 || 0.85;
-  const Cr = params.recompressionIndexCr || Cc * 0.15;
-  const ocr = params.overconsolidationRatioOcr || 1.0;
+  let Cc = finiteNum(params.compressionIndexCc, 0.25);
+  let e0 = finiteNum(params.initialVoidRatioE0, 0.85);
+  const Cr = finiteNum(params.recompressionIndexCr, Cc * 0.15);
+  const ocr = Math.max(0.1, finiteNum(params.overconsolidationRatioOcr, 1.0));
 
   // Multi-layer stratigraphy weighting if strata layers are provided
   if (params.layers && params.layers.length > 0) {
@@ -939,10 +960,10 @@ export function computeBearingCapacity(
         sumC += lyr.cohesionKpa * overlapH;
         sumPhi += lyr.frictionAngleDeg * overlapH;
         sumGamma += lyr.unitWeightKnPerM3 * overlapH;
-        sumEs += (lyr.elasticModulusEsMpa || 25) * overlapH;
-        sumSpt += (lyr.sptN || 15) * overlapH;
-        if (lyr.compressionIndexCc) Cc = lyr.compressionIndexCc;
-        if (lyr.initialVoidRatioE0) e0 = lyr.initialVoidRatioE0;
+        sumEs += finiteNum(lyr.elasticModulusEsMpa, 25) * overlapH;
+        sumSpt += finiteNum(lyr.sptN, 15) * overlapH;
+        if (typeof lyr.compressionIndexCc === 'number' && Number.isFinite(lyr.compressionIndexCc)) Cc = lyr.compressionIndexCc;
+        if (typeof lyr.initialVoidRatioE0 === 'number' && Number.isFinite(lyr.initialVoidRatioE0)) e0 = lyr.initialVoidRatioE0;
       }
     }
 
@@ -955,7 +976,7 @@ export function computeBearingCapacity(
     }
   }
 
-  const FS = params.factorOfSafety;
+  const FS = posNum(params.factorOfSafety, 3.0);
   const P = params.appliedColumnLoadKn;
   const phiRad = (phi * Math.PI) / 180;
   const solverMethod = params.shallowSolverMethod || 'meyerhof';
@@ -1112,7 +1133,7 @@ export function computeBearingCapacity(
 
   // 6. Automated Settlement Estimation (BNBC-2020 Clause 3.8 / Bowles / Schmertmann)
   const EsKpa = Math.max(100, EsMpa * 1000);
-  const poisson = params.poissonRatio || (phi > 0 ? 0.30 : 0.40);
+  const poisson = posNum(params.poissonRatio, phi > 0 ? 0.30 : 0.40);
 
   // Influence factor for rigid footing
   let Is = 0.82; // Square rigid
@@ -1126,7 +1147,7 @@ export function computeBearingCapacity(
 
   // Primary Consolidation Settlement Sc (with OCR overconsolidation check)
   let consolidationSettlementMm = 0;
-  const Hc = params.clayLayerThicknessM || (c > 10 ? 4.0 : 0);
+  const Hc = posNum(params.clayLayerThicknessM, c > 10 ? 4.0 : 0);
 
   if (Hc > 0 && c > 5) {
     const sigmaV0 = qOverburden + gammaEffBottom * (Hc / 2);
@@ -1152,9 +1173,9 @@ export function computeBearingCapacity(
 
   const totalSettlementMm = immediateSettlementMm + consolidationSettlementMm;
   const permissibleSettlementMm =
-    params.permissibleSettlementMm || (phi > 25 ? 25.0 : 40.0); // BNBC-2020 Table 6.3.1 (25mm sand, 40-50mm clay)
-  const settlementUtilizationRatio = totalSettlementMm / permissibleSettlementMm;
-  const settlementPass = totalSettlementMm <= permissibleSettlementMm;
+    posNum(params.permissibleSettlementMm, phi > 25 ? 25.0 : 40.0); // BNBC-2020 Table 6.3.1 (25mm sand, 40-50mm clay)
+  const settlementUtilizationRatio = permissibleSettlementMm > 0 ? totalSettlementMm / permissibleSettlementMm : 0;
+  const settlementPass = permissibleSettlementMm <= 0 ? totalSettlementMm === 0 : totalSettlementMm <= permissibleSettlementMm;
 
   // 7. Boussinesq Stress Isobar Curve Points for Visualization (z = 0 to 3B)
   const boussinesqPoints: BoussinesqStressPoint[] = [];
@@ -1257,12 +1278,12 @@ export function computeBearingCapacity(
   }
 
   // 9. Column Axial & Footing Structural Shear Checks (BNBC-2020 Part 6 Chap 6 / ACI 318 Sec 13.2.7)
-  const footingThicknessMm = params.footingThicknessMm !== undefined ? params.footingThicknessMm : (isZeroBaseline ? 0 : 500);
-  const colWidthMm = params.colWidthMm !== undefined ? params.colWidthMm : (isZeroBaseline ? 0 : 400);
-  const colDepthMm = params.colDepthMm !== undefined ? params.colDepthMm : (isZeroBaseline ? 0 : 400);
-  const concreteStrengthFckMpa = params.fckMpa !== undefined ? params.fckMpa : 25;
-  const rebarYieldFyMpa = params.fyMpa !== undefined ? params.fyMpa : 414;
-  const clearCoverMm = params.clearCoverMm !== undefined ? params.clearCoverMm : 75; // Standard 75mm for soil contact
+  const footingThicknessMm = posNum(params.footingThicknessMm, isZeroBaseline ? 0 : 500);
+  const colWidthMm = posNum(params.colWidthMm, isZeroBaseline ? 0 : 400);
+  const colDepthMm = posNum(params.colDepthMm, isZeroBaseline ? 0 : 400);
+  const concreteStrengthFckMpa = posNum(params.fckMpa, 25);
+  const rebarYieldFyMpa = posNum(params.fyMpa, 414);
+  const clearCoverMm = posNum(params.clearCoverMm, 75); // Standard 75mm for soil contact
 
   // Effective depth d
   const effectiveDepthMm = Math.max(0, footingThicknessMm - clearCoverMm - 8); // Assume 16mm bar, db/2 = 8mm
@@ -1388,9 +1409,9 @@ export function computeBearingCapacity(
       settlementClauseRef,
       calculationsBreakdown,
       methodComparison: {
-        meyerhofKpa: Number(qUltMeyerhof.toFixed(1)),
-        terzaghiKpa: Number(qUltTerzaghi.toFixed(1)),
-        hansenKpa: Number(qUltHansen.toFixed(1)),
+        meyerhofKpa: Number((qUltMeyerhof / FS).toFixed(1)),
+        terzaghiKpa: Number((qUltTerzaghi / FS).toFixed(1)),
+        hansenKpa: Number((qUltHansen / FS).toFixed(1)),
       },
       footingThicknessMm,
       colWidthMm,
@@ -1494,16 +1515,19 @@ export function computeConcreteMix(
   if (params.targetStrengthMpa < 0) {
     issues.push({ field: 'targetStrengthMpa', message: 'Target compressive strength cannot be negative.', severity: 'error' });
   }
-  if (params.waterCementRatio < 0 || params.waterCementRatio > 0.85) {
-    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio must be between 0.25 and 0.85.', severity: 'error' });
-  } else if (!isZeroBaseline && params.targetStrengthMpa > 0 && isZeroWc) {
-    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio must be > 0 (typically 0.35–0.65).', severity: 'error' });
+  if (params.waterCementRatio < 0 || params.waterCementRatio > 1.2) {
+    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio must be between 0.25 and 1.20 (impossible w/c ratio).', severity: 'error' });
+  } else if (params.waterCementRatio > 0.85) {
+    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio exceeds 0.85 ACI/BNBC durability ceiling; high segregation risk.', severity: 'warning' });
   }
   if (params.batchVolumeM3 < 0) {
     issues.push({ field: 'batchVolumeM3', message: 'Batch volume cannot be negative.', severity: 'error' });
   }
   if (params.slumpMm < 0) {
     issues.push({ field: 'slumpMm', message: 'Slump cannot be negative.', severity: 'error' });
+  }
+  if ((params.airEntrainmentPercent ?? 0) < 0 || (params.airEntrainmentPercent ?? 0) > 15) {
+    issues.push({ field: 'airEntrainmentPercent', message: 'Air entrainment must be between 0% and 15%.', severity: 'error' });
   }
 
   if (issues.some((i) => i.severity === 'error')) {
@@ -1557,24 +1581,24 @@ export function computeConcreteMix(
     );
   }
 
-  const dMax = params.maxAggregateSizeMm || 20;
+  const dMax = posNum(params.maxAggregateSizeMm, 20);
   const baseWater =
     dMax <= 10 ? 205 : dMax <= 12.5 ? 198 : dMax <= 20 ? 186 : dMax <= 25 ? 179 : 165;
-  const slump = params.slumpMm ?? 0;
+  const slump = posNum(params.slumpMm, 90);
   const slumpAdjustment = ((slump - 90) / 25) * 5.5;
   const initialWaterDemand = baseWater + slumpAdjustment;
 
   // Chemical admixture water reduction credit (superplasticizer / HRWR)
-  const admixDosePercent = params.admixtureDosePercent ?? 0;
-  const admixSG = params.admixtureSpecificGravity || 1.15;
-  const waterReductionPercent = admixDosePercent > 0 ? (params.admixtureWaterReductionPercent ?? 15) : 0;
+  const admixDosePercent = finiteNum(params.admixtureDosePercent, 0);
+  const admixSG = Math.max(0.5, posNum(params.admixtureSpecificGravity, 1.15));
+  const waterReductionPercent = admixDosePercent > 0 ? posNum(params.admixtureWaterReductionPercent, 15) : 0;
   const waterKgPerM3 = Math.max(120, initialWaterDemand * (1 - waterReductionPercent / 100));
 
-  const effectiveWc = Math.max(0.20, params.waterCementRatio || 0.50);
+  const effectiveWc = Math.max(0.20, posNum(params.waterCementRatio, 0.45));
 
   // Cementitious content from w/c
-  const cementKgPerM3 = isZeroStrength ? 0 : waterKgPerM3 / effectiveWc;
-  const cementSG = params.cementSpecificGravity || 3.15;
+  const cementKgPerM3 = waterKgPerM3 / effectiveWc;
+  const cementSG = Math.max(1.0, posNum(params.cementSpecificGravity, 3.15));
   const volCement = cementKgPerM3 / (cementSG * 1000);
 
   // Admixture mass and volume
@@ -1584,8 +1608,8 @@ export function computeConcreteMix(
   // Water volume
   const volWater = waterKgPerM3 / 1000;
 
-  // Air volume
-  const airPercent = params.airEntrainmentPercent || 1.5;
+  // Air volume (allow explicit 0% entrained air)
+  const airPercent = finiteNum(params.airEntrainmentPercent, 1.5);
   const volAir = airPercent / 100;
 
   // Bangladeshi Local Aggregate & Sand Behavior per BNBC-2020 / PWD:
@@ -1594,19 +1618,19 @@ export function computeConcreteMix(
   const isKhoa = params.coarseAggregateType === 'brick-chips-khoa';
   const defaultCoarseSG = isKhoa ? 2.15 : 2.67;
   const defaultDruw = isKhoa ? 1400 : 1600;
-  const druw = params.coarseAggDryRoddedDensityKgPerM3 || defaultDruw;
+  const druw = posNum(params.coarseAggDryRoddedDensityKgPerM3, defaultDruw);
 
   // Sand FM: Sylhet Sand (FM 2.5 - 2.8, default 2.65), Local Sand (FM 1.2 - 1.8, default 1.50), Blended (FM 2.20)
   let defaultFm = 2.65;
   if (params.sandType === 'local-sand') defaultFm = 1.50;
   else if (params.sandType === 'blended-sand') defaultFm = 2.20;
-  const fm = params.sandFinenessModulus || defaultFm;
+  const fm = posNum(params.sandFinenessModulus, defaultFm);
 
   const coarseBaseFraction =
     dMax <= 10 ? 0.48 : dMax <= 12.5 ? 0.55 : dMax <= 20 ? 0.63 : dMax <= 25 ? 0.68 : 0.74;
   const coarseVolumeFraction = Math.max(0.40, Math.min(0.80, coarseBaseFraction - (fm - 2.8) * 0.20));
   const coarseAggDryKgPerM3 = coarseVolumeFraction * druw;
-  const coarseSG = params.coarseAggSpecificGravity || defaultCoarseSG;
+  const coarseSG = Math.max(1.0, posNum(params.coarseAggSpecificGravity, defaultCoarseSG));
   const volCoarse = coarseAggDryKgPerM3 / (coarseSG * 1000);
 
   // Fine aggregate by absolute volume difference
@@ -1622,7 +1646,7 @@ export function computeConcreteMix(
   }
 
   const defaultFineSG = params.sandType === 'local-sand' ? 2.50 : 2.62;
-  const fineSG = params.fineAggSpecificGravity || defaultFineSG;
+  const fineSG = Math.max(1.0, posNum(params.fineAggSpecificGravity, defaultFineSG));
   const fineAggDryKgPerM3 = volFine * fineSG * 1000;
 
   // Moisture & Absorption corrections (Field Batching vs Design SSD)
@@ -1652,7 +1676,7 @@ export function computeConcreteMix(
   const freshConcreteUnitWeightKgPerM3 =
     cementKgPerM3 + adjustedWaterKgPerM3 + batchedFineAggKgPerM3 + batchedCoarseAggKgPerM3 + admixtureKgPerM3;
 
-  const V = Math.max(0, params.batchVolumeM3 || 0);
+  const V = posNum(params.batchVolumeM3, 1.0);
 
   // Yield verification
   const yieldM3 = freshConcreteUnitWeightKgPerM3 > 0 ? (freshConcreteUnitWeightKgPerM3 / 2400) : 1.0;
@@ -1889,11 +1913,9 @@ export function computeChannelHydraulics(
 
   if (params.bedSlope < 0) {
     issues.push({ field: 'bedSlope', message: 'Bed slope S_0 cannot be negative.', severity: 'error' });
-  } else if (!isZeroDepth && !isZeroWidth && !isZeroCirc && params.bedSlope === 0) {
-    issues.push({ field: 'bedSlope', message: 'Bed slope S_0 is 0 (horizontal bed): Manning uniform velocity evaluates to 0 m/s.', severity: 'warning' });
   }
 
-  if (params.manningN <= 0 && !isZeroDepth && !isZeroBaseline) {
+  if (params.manningN < 0) {
     issues.push({ field: 'manningN', message: 'Manning roughness coefficient n must be strictly positive (> 0).', severity: 'error' });
   }
 
@@ -1948,8 +1970,8 @@ export function computeChannelHydraulics(
   const z = shape === 'rectangular' ? 0 : Math.max(0, params.sideSlopeZ || 0);
   const D = shape === 'circular' ? Math.max(0.05, params.diameterM || 0) : 1.0;
   const y = params.flowDepthM;
-  const S = Math.max(0, params.bedSlope);
-  const n = Math.max(0.005, params.manningN);
+  const S = posNum(params.bedSlope, 0.001);
+  const n = Math.max(0.005, posNum(params.manningN, 0.015));
 
   const geom = calculateChannelGeometry(shape, y, b, z, D);
   const flowAreaM2 = geom.area;
@@ -2165,19 +2187,25 @@ export function computeConcreteMaterials(
     issues.push({ field: 'wetVolumeM3', message: 'Wet volume cannot be negative.', severity: 'error' });
   }
 
-  if (params.ratioCement <= 0 && !isZeroBaseline) {
+  if (params.ratioCement < 0) {
     issues.push({ field: 'ratioCement', message: 'Cement ratio part must be strictly positive (> 0).', severity: 'error' });
   }
-  if (params.ratioSand <= 0 && !isZeroBaseline) {
+  if (params.ratioSand < 0) {
     issues.push({ field: 'ratioSand', message: 'Sand ratio part must be strictly positive (> 0).', severity: 'error' });
   }
   if (params.ratioAggregate < 0) {
     issues.push({ field: 'ratioAggregate', message: 'Aggregate ratio part cannot be negative.', severity: 'error' });
   }
-  if (params.waterCementRatio <= 0 && !isZeroBaseline) {
-    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio must be strictly positive (> 0).', severity: 'error' });
+  if (params.waterCementRatio < 0 || params.waterCementRatio > 1.2) {
+    issues.push({ field: 'waterCementRatio', message: 'Water-cement ratio must be between 0.01 and 1.20.', severity: 'error' });
   }
-  if (params.cementBagWeightKg <= 0 && !isZeroBaseline) {
+  if ((params.wastagePercent ?? 0) < 0) {
+    issues.push({ field: 'wastagePercent', message: 'Wastage percentage cannot be negative.', severity: 'error' });
+  }
+  if ((params.cementBulkDensityKgPerM3 ?? 1440) < 0) {
+    issues.push({ field: 'cementBulkDensityKgPerM3', message: 'Cement bulk density must be strictly positive (> 0 kg/m³).', severity: 'error' });
+  }
+  if (params.cementBagWeightKg < 0) {
     issues.push({ field: 'cementBagWeightKg', message: 'Cement bag weight must be strictly positive (> 0 kg).', severity: 'error' });
   }
 
@@ -2242,26 +2270,32 @@ export function computeConcreteMaterials(
   const dryVolumeM3 = effectiveWetVolumeM3 * dryFactor;
   const totalDryVolume = dryVolumeM3 * wastageMultiplier;
 
-  const sumRatio = params.ratioCement + params.ratioSand + params.ratioAggregate;
+  const rCement = posNum(params.ratioCement, 1);
+  const rSand = posNum(params.ratioSand, 1.5);
+  const rAgg = params.ratioAggregate > 0 ? params.ratioAggregate : (params.ratioCement === 0 && params.ratioSand === 0 ? 3.0 : Math.max(0, params.ratioAggregate));
+  const wcRatio = posNum(params.waterCementRatio, 0.45);
+  const bagWeightKg = posNum(params.cementBagWeightKg, 50);
+
+  const sumRatio = rCement + rSand + rAgg;
   if (sumRatio <= 0) {
     issues.push({ field: 'ratioCement', message: 'Sum of mix ratio parts must be greater than 0.', severity: 'error' });
     return createEnvelope<ConcreteMaterialResult>(null, issues, { scopeAndLimits });
   }
 
-  const cementVol = (params.ratioCement / sumRatio) * totalDryVolume;
-  const sandVol = (params.ratioSand / sumRatio) * totalDryVolume;
-  const aggVol = (params.ratioAggregate / sumRatio) * totalDryVolume;
+  const cementVol = (rCement / sumRatio) * totalDryVolume;
+  const sandVol = (rSand / sumRatio) * totalDryVolume;
+  const aggVol = (rAgg / sumRatio) * totalDryVolume;
 
-  const cementDensity = params.cementBulkDensityKgPerM3 || 1440;
-  const sandDensity = params.sandBulkDensityKgPerM3 || 1600;
-  const aggDensity = params.aggregateBulkDensityKgPerM3 || 1520;
+  const cementDensity = posNum(params.cementBulkDensityKgPerM3, 1440);
+  const sandDensity = posNum(params.sandBulkDensityKgPerM3, 1600);
+  const aggDensity = posNum(params.aggregateBulkDensityKgPerM3, 1520);
 
   const cementMass = cementVol * cementDensity;
   const sandMass = sandVol * sandDensity;
   const aggMass = aggVol * aggDensity;
 
-  const cementBags = cementMass / params.cementBagWeightKg;
-  const waterDemandLiters = cementMass * params.waterCementRatio;
+  const cementBags = cementMass / bagWeightKg;
+  const waterDemandLiters = cementMass * wcRatio;
 
   const sandCft = sandVol * EXACT_CONVERSION.M3_TO_CFT;
   const aggregateCft = aggVol * EXACT_CONVERSION.M3_TO_CFT;
@@ -2274,12 +2308,12 @@ export function computeConcreteMaterials(
   // Hand Calculation Steps with Numerical Verification
   const handDryBase = effectiveWetVolumeM3 * dryFactor;
   const handTotalDry = handDryBase * wastageMultiplier;
-  const handCementVol = (params.ratioCement / sumRatio) * handTotalDry;
-  const handBagVolM3 = params.cementBagWeightKg / cementDensity; // 50 / 1440 = 0.034722 m³
+  const handCementVol = (rCement / sumRatio) * handTotalDry;
+  const handBagVolM3 = bagWeightKg / cementDensity; // 50 / 1440 = 0.034722 m³
   const handCementBags = handCementVol / handBagVolM3;
-  const handSandCft = ((params.ratioSand / sumRatio) * handTotalDry) * EXACT_CONVERSION.M3_TO_CFT;
-  const handAggCft = ((params.ratioAggregate / sumRatio) * handTotalDry) * EXACT_CONVERSION.M3_TO_CFT;
-  const handWaterL = (handCementVol * cementDensity) * params.waterCementRatio;
+  const handSandCft = ((rSand / sumRatio) * handTotalDry) * EXACT_CONVERSION.M3_TO_CFT;
+  const handAggCft = ((rAgg / sumRatio) * handTotalDry) * EXACT_CONVERSION.M3_TO_CFT;
+  const handWaterL = (handCementVol * cementDensity) * wcRatio;
 
   const batchSummaryStr =
     members.length > 0 && batchedWetVolumeM3 > 0
@@ -2480,9 +2514,10 @@ export function computeRebarBBS(
 
   const items: BBSItem[] = [];
   const lapSpliceAlerts: LapSpliceAdvisory[] = [];
-  const coverM = params.clearCoverMm / 1000;
-  const density = params.rebarDensityKgPerM3 || 7850;
-  const elementQty = Math.max(0, Math.round(params.elementCount ?? 0));
+  const effCoverMm = posNum(params.clearCoverMm, 25);
+  const coverM = effCoverMm / 1000;
+  const density = posNum(params.rebarDensityKgPerM3, 7850);
+  const elementQty = Math.max(1, Math.round(posNum(params.elementCount, 1)));
 
   // Bend deduction factors: 45° = 1D, 90° = 2D, 135° = 3D, 180° = 4D
   const getBendDeduction = (diaMm: number, bendCount: number, angle: '45' | '90' | '135' | '180') => {
@@ -2490,17 +2525,17 @@ export function computeRebarBBS(
     return (bendCount * factor * diaMm) / 1000; // in meters
   };
 
-  const lappingD = params.lappingFactorD || 50;
-  const maxBarLengthM = params.commercialBarStockLengthM || 12.0;
+  const lappingD = posNum(params.lappingFactorD, 50);
+  const maxBarLengthM = posNum(params.commercialBarStockLengthM, 12.0);
 
-  // Lapping Allowance for bars exceeding commercial 12m stock
+  // Lapping Allowance for bars exceeding commercial stock length
   const applyLapping = (
     unlappedCutLengthM: number,
     diaMm: number,
     mark: string,
     description: string
   ): { cuttingLengthM: number; lappingAllowanceM: number; lapsCount: number; requiresLapSplice: boolean } => {
-    if (unlappedCutLengthM <= maxBarLengthM) {
+    if (maxBarLengthM <= 0 || unlappedCutLengthM <= maxBarLengthM) {
       return {
         cuttingLengthM: unlappedCutLengthM,
         lappingAllowanceM: 0,
@@ -2592,6 +2627,8 @@ export function computeRebarBBS(
 
     if (beamL < 0 || beamW < 0 || beamD < 0) {
       issues.push({ field: 'beamLengthM', message: 'Beam dimensions cannot be negative.', severity: 'error' });
+    } else if (beamW > 0 && beamD > 0 && params.clearCoverMm >= Math.min(beamW, beamD) / 2) {
+      issues.push({ field: 'clearCoverMm', message: 'Clear cover cannot equal or exceed half of beam width or depth.', severity: 'error' });
     }
 
     if (!issues.some((i) => i.severity === 'error') && beamL > 0 && beamW > 0 && beamD > 0) {
@@ -2702,6 +2739,8 @@ export function computeRebarBBS(
   } else if (normalizedType === 'column-rect') {
     if (params.colLengthMm < 0 || params.colWidthMm < 0 || params.colHeightM < 0) {
       issues.push({ field: 'colLengthMm', message: 'Column dimensions L, B, and H cannot be negative.', severity: 'error' });
+    } else if (params.colLengthMm > 0 && params.colWidthMm > 0 && params.clearCoverMm >= Math.min(params.colLengthMm, params.colWidthMm) / 2) {
+      issues.push({ field: 'clearCoverMm', message: 'Clear cover cannot equal or exceed half of column cross-section dimension.', severity: 'error' });
     }
     if (params.colMainBarDiaMm < 0 || params.colMainBarCount < 0) {
       issues.push({ field: 'colMainBarDiaMm', message: 'Main longitudinal bars cannot be negative.', severity: 'error' });
@@ -2752,6 +2791,8 @@ export function computeRebarBBS(
   } else if (normalizedType === 'column-circ') {
     if (params.circColDiaMm < 0 || params.circColHeightM < 0) {
       issues.push({ field: 'circColDiaMm', message: 'Circular column diameter and height cannot be negative.', severity: 'error' });
+    } else if (params.circColDiaMm > 0 && params.clearCoverMm >= params.circColDiaMm / 2) {
+      issues.push({ field: 'clearCoverMm', message: 'Clear cover cannot equal or exceed column radius (D/2).', severity: 'error' });
     }
     if (params.circMainBarDiaMm < 0 || params.circMainBarCount < 0) {
       issues.push({ field: 'circMainBarDiaMm', message: 'Main longitudinal bars cannot be negative.', severity: 'error' });
@@ -2802,6 +2843,8 @@ export function computeRebarBBS(
   } else if (normalizedType === 'footing') {
     if (params.footingLengthM < 0 || params.footingWidthM < 0 || params.footingDepthMm < 0) {
       issues.push({ field: 'footingLengthM', message: 'Footing dimensions L, B, and D cannot be negative.', severity: 'error' });
+    } else if (params.footingDepthMm > 0 && params.clearCoverMm >= params.footingDepthMm / 2) {
+      issues.push({ field: 'clearCoverMm', message: 'Clear cover cannot equal or exceed half the footing depth (D/2).', severity: 'error' });
     }
     if (params.footingBarDiaMm < 0 || params.footingBarSpacingMm < 0) {
       issues.push({ field: 'footingBarDiaMm', message: 'Footing mesh diameter and spacing cannot be negative.', severity: 'error' });
@@ -2855,7 +2898,7 @@ export function computeRebarBBS(
 
     if (!issues.some((i) => i.severity === 'error') && params.stairGoingM > 0 && params.stairTotalRiseM > 0 && params.waistSlabThicknessMm > 0) {
       const inclinedWaistM = Math.sqrt(Math.pow(params.stairGoingM, 2) + Math.pow(params.stairTotalRiseM, 2));
-      const landingM = params.landingLengthM || 1.2;
+      const landingM = Math.max(0, finiteNum(params.landingLengthM, 1.2));
       const devEmbed = lappingD * (params.stairMainBarDiaMm / 1000);
       const stairBendDed = getBendDeduction(params.stairMainBarDiaMm, 2, '45');
       const stairCutLen = inclinedWaistM + landingM + devEmbed - stairBendDed;
@@ -2913,6 +2956,8 @@ export function computeRebarBBS(
 
     if (lintelL < 0 || lintelW < 0 || lintelD < 0) {
       issues.push({ field: 'lintelLengthM', message: 'Lintel dimensions cannot be negative.', severity: 'error' });
+    } else if (lintelW > 0 && lintelD > 0 && params.clearCoverMm >= Math.min(lintelW, lintelD) / 2) {
+      issues.push({ field: 'clearCoverMm', message: 'Clear cover cannot equal or exceed half of lintel width or depth.', severity: 'error' });
     }
 
     if (!issues.some((i) => i.severity === 'error') && lintelL > 0 && lintelW > 0 && lintelD > 0) {
@@ -3469,10 +3514,10 @@ export function computeMasonryFinishes(
     issues.push({ field: 'wallDimensions', message: 'Wall dimensions cannot be negative.', severity: 'error' });
   }
 
-  if ((params.brickLengthMm <= 0 || params.brickWidthMm <= 0 || params.brickHeightMm <= 0) && !isZeroBaseline) {
+  if (params.brickLengthMm < 0 || params.brickWidthMm < 0 || params.brickHeightMm < 0) {
     issues.push({ field: 'brickLengthMm', message: 'Brick dimensions must be strictly positive (> 0 mm).', severity: 'error' });
   }
-  if ((params.mortarRatioCement <= 0 || params.mortarRatioSand <= 0) && !isZeroBaseline) {
+  if (params.mortarRatioCement < 0 || params.mortarRatioSand < 0) {
     issues.push({ field: 'mortarRatioCement', message: 'Mortar cement and sand ratios must be strictly positive.', severity: 'error' });
   }
 
@@ -3550,9 +3595,9 @@ export function computeMasonryFinishes(
   // BD Standard Brick: 240 x 115 x 70 mm (9.5" x 4.5" x 2.75") with 12mm (or configured) mortar joint
   // Modular Metric Brick: 190 x 90 x 90 mm with 10mm mortar joint (nominal 200 x 100 x 100 mm = exact 500 bricks/m³)
   // Traditional Field Brick: 241 x 114 x 70 mm
-  let brickL = params.brickLengthMm;
-  let brickW = params.brickWidthMm;
-  let brickH = params.brickHeightMm;
+  let brickL = posNum(params.brickLengthMm, 240);
+  let brickW = posNum(params.brickWidthMm, 115);
+  let brickH = posNum(params.brickHeightMm, 70);
   let defaultJointMm = 10;
 
   if (params.brickStandardType === 'bd-pwd-metric') {
@@ -3586,12 +3631,12 @@ export function computeMasonryFinishes(
 
   const bricksPerM3Effective = nominalBrickVol > 0 ? 1 / nominalBrickVol : 500;
   const rawBricks = Math.ceil(netWallVolumeM3 / nominalBrickVol);
-  const brickWastagePct = params.brickWastagePercent || 5;
+  const brickWastagePct = Math.max(0, finiteNum(params.brickWastagePercent, 5));
   const brickWastage = 1 + brickWastagePct / 100;
   const bricksWithWastage = Math.ceil(rawBricks * brickWastage);
 
   // Picked Jhama Brick Requirement for Khoa (~320 bricks per 1 m³ of brick aggregate concrete)
-  const khoaConcreteVol = params.khoaConcreteVolumeM3 && params.khoaConcreteVolumeM3 > 0 ? params.khoaConcreteVolumeM3 : 1.0;
+  const khoaConcreteVol = Math.max(0, finiteNum(params.khoaConcreteVolumeM3, 1.0));
   const jhamaRatePerM3 = 320;
   const pickedJhamaRaw = Math.ceil(khoaConcreteVol * jhamaRatePerM3);
   const jhamaKhoaSchedule = {
@@ -3606,52 +3651,59 @@ export function computeMasonryFinishes(
   const wetMortarVol = Math.max(0, netWallVolumeM3 - rawBricks * actualBrickVol);
   // Dry volume factor for mortar is 1.33 (33% shrinkage + voids)
   const dryMortarVol = wetMortarVol * 1.33;
-  const mortarSum = params.mortarRatioCement + params.mortarRatioSand;
-  const mortarCementM3 = (params.mortarRatioCement / mortarSum) * dryMortarVol;
-  const mortarSandM3 = (params.mortarRatioSand / mortarSum) * dryMortarVol;
+  const mortarC = posNum(params.mortarRatioCement, 1);
+  const mortarS = posNum(params.mortarRatioSand, 5);
+  const mortarSum = mortarC + mortarS;
+  const mortarCementM3 = mortarSum > 0 ? (mortarC / mortarSum) * dryMortarVol : 0;
+  const mortarSandM3 = mortarSum > 0 ? (mortarS / mortarSum) * dryMortarVol : 0;
   const mortarCementBags = (mortarCementM3 * 1440) / 50;
   const mortarSandCft = mortarSandM3 * EXACT_CONVERSION.M3_TO_CFT;
 
-  // Plastering Coat Calculation:
-  const plasterSides = params.plasterSides || 2;
+  // Plastering Coat Calculation (respect explicit 0 sides or 0 mm thickness):
+  const plasterSides = Math.max(0, finiteNum(params.plasterSides, 2));
   const plasterAreaM2 = netWallAreaM2 * plasterSides;
-  const plasterThickM = (params.plasterThicknessMm || 12) / 1000;
+  const plasterThickMm = Math.max(0, finiteNum(params.plasterThicknessMm, 12));
+  const plasterThickM = plasterThickMm / 1000;
   const plasterWetVolM3 = plasterAreaM2 * plasterThickM;
   // Dry volume factor for plaster: 1.33 plus uneven joint fill (approx 1.35)
   const plasterDryVolM3 = plasterWetVolM3 * 1.35;
-  const plasterSum = (params.plasterRatioCement || 1) + (params.plasterRatioSand || 4);
-  const plasterCementM3 = ((params.plasterRatioCement || 1) / plasterSum) * plasterDryVolM3;
-  const plasterSandM3 = ((params.plasterRatioSand || 4) / plasterSum) * plasterDryVolM3;
+  const plasterRatioC = posNum(params.plasterRatioCement, 1);
+  const plasterRatioS = posNum(params.plasterRatioSand, 4);
+  const plasterSum = plasterRatioC + plasterRatioS;
+  const plasterCementM3 = plasterSum > 0 ? (plasterRatioC / plasterSum) * plasterDryVolM3 : 0;
+  const plasterSandM3 = plasterSum > 0 ? (plasterRatioS / plasterSum) * plasterDryVolM3 : 0;
   const plasterCementBags = (plasterCementM3 * 1440) / 50;
   const plasterSandCft = plasterSandM3 * EXACT_CONVERSION.M3_TO_CFT;
 
   // Floor Tiles:
-  const floorAreaM2 = (params.floorLengthM || 0) * (params.floorWidthM || 0);
-  const singleTileAreaM2 =
-    ((params.tileLengthMm || 600) / 1000) * ((params.tileWidthMm || 600) / 1000);
+  const floorAreaM2 = Math.max(0, finiteNum(params.floorLengthM)) * Math.max(0, finiteNum(params.floorWidthM));
+  const tileLenMm = posNum(params.tileLengthMm, 600);
+  const tileWidMm = posNum(params.tileWidthMm, 600);
+  const singleTileAreaM2 = (tileLenMm / 1000) * (tileWidMm / 1000);
   const rawTiles = singleTileAreaM2 > 0 && floorAreaM2 > 0 ? Math.ceil(floorAreaM2 / singleTileAreaM2) : 0;
-  const tileWastage = 1 + (params.tileWastagePercent || 5) / 100;
+  const tileWastage = 1 + Math.max(0, finiteNum(params.tileWastagePercent, 5)) / 100;
   const tilesWithWastage = Math.ceil(rawTiles * tileWastage);
-  const boxes = params.tilesPerBox > 0 ? Math.ceil(tilesWithWastage / params.tilesPerBox) : 0;
+  const effTilesPerBox = posNum(params.tilesPerBox, 4);
+  const boxes = effTilesPerBox > 0 ? Math.ceil(tilesWithWastage / effTilesPerBox) : 0;
 
-  // Paint, Wall Putty & Primer Schedule:
-  const finishingAreaM2 = plasterAreaM2 + (params.ceilingPlasterAreaM2 || 0);
+  // Paint, Wall Putty & Primer Schedule (respect explicit 0 coats/wastage):
+  const finishingAreaM2 = plasterAreaM2 + Math.max(0, finiteNum(params.ceilingPlasterAreaM2));
   const finishingAreaSft = finishingAreaM2 * EXACT_CONVERSION.M2_TO_SFT;
 
-  const puttyCoats = params.puttyCoats || 2;
-  const puttyCoverage = params.puttyCoverageKgPerM2 || 0.90;
-  const primerCoverage = params.primerCoverageM2PerL || 11.0;
-  const paintCoats = params.paintCoats || 2;
-  const paintCoverage = params.paintCoverageM2PerL || 6.5;
-  const paintWastage = 1 + (params.paintWastagePercent || 5) / 100;
+  const puttyCoats = Math.max(0, finiteNum(params.puttyCoats, 2));
+  const puttyCoverage = posNum(params.puttyCoverageKgPerM2, 0.90);
+  const primerCoverage = posNum(params.primerCoverageM2PerL, 11.0);
+  const paintCoats = Math.max(0, finiteNum(params.paintCoats, 2));
+  const paintCoverage = posNum(params.paintCoverageM2PerL, 6.5);
+  const paintWastage = 1 + Math.max(0, finiteNum(params.paintWastagePercent, 5)) / 100;
 
   const rawPuttyKg = finishingAreaM2 * puttyCoverage * (puttyCoats / 2);
   const puttyKgRequired = Math.ceil(rawPuttyKg * paintWastage);
   const puttyBags20Kg = Math.ceil(puttyKgRequired / 20);
   const puttyBags40Kg = Math.ceil(puttyKgRequired / 40);
 
-  const primerLiters = Math.ceil((finishingAreaM2 / primerCoverage) * paintWastage);
-  const rawPaintLiters = (finishingAreaM2 / paintCoverage) * (paintCoats / 2);
+  const primerLiters = primerCoverage > 0 ? Math.ceil((finishingAreaM2 / primerCoverage) * paintWastage) : 0;
+  const rawPaintLiters = paintCoverage > 0 ? (finishingAreaM2 / paintCoverage) * (paintCoats / 2) : 0;
   const paintLitersRequired = Math.ceil(rawPaintLiters * paintWastage);
   const paintGallons = Number((paintLitersRequired / 3.785).toFixed(1));
   const paintDrums = Number((paintLitersRequired / 18.92).toFixed(1));
@@ -3672,7 +3724,7 @@ export function computeMasonryFinishes(
   };
 
   // MS Window/Veranda Grill & Thai Aluminum Opening Schedule (Lintels excluded from grill/glass):
-  const grillUnitWtKgPerSft = params.grillWeightKgPerSft || 1.40;
+  const grillUnitWtKgPerSft = posNum(params.grillWeightKgPerSft, 1.40);
   const grillThaiItems: GrillThaiOpeningItem[] = [];
   let totalGrillAreaSft = 0;
   let totalGrillWeightKg = 0;
@@ -3747,7 +3799,7 @@ export function computeMasonryFinishes(
   const rawSubbaseBricks = Math.ceil(bfsAreaSft * subbaseRatePerSft);
   const subbaseBricksWithWastage = Math.ceil(rawSubbaseBricks * brickWastage);
 
-  const sandBedThickM = (params.bfsSandCushionThicknessMm || 38) / 1000;
+  const sandBedThickM = Math.max(0, finiteNum(params.bfsSandCushionThicknessMm, 38)) / 1000;
   const sandCushionM3 = Number((bfsAreaM2 * sandBedThickM).toFixed(3));
   const sandCushionCft = Number((sandCushionM3 * EXACT_CONVERSION.M3_TO_CFT).toFixed(1));
 
@@ -3788,9 +3840,9 @@ export function computeMasonryFinishes(
   const handBricksRaw = Math.ceil(handNetVol / nominalBrickVol);
   const handBricksOrder = Math.ceil(handBricksRaw * brickWastage);
   const handDryMortar = Math.max(0, handNetVol - handBricksRaw * actualBrickVol) * 1.33;
-  const handMortarBags = ((params.mortarRatioCement / mortarSum) * handDryMortar * 1440) / 50;
+  const handMortarBags = ((mortarC / mortarSum) * handDryMortar * 1440) / 50;
   const handPlasterDry = netWallAreaM2 * plasterSides * plasterThickM * 1.35;
-  const handPlasterBags = (((params.plasterRatioCement || 1) / plasterSum) * handPlasterDry * 1440) / 50;
+  const handPlasterBags = plasterSum > 0 ? ((plasterRatioC / plasterSum) * handPlasterDry * 1440) / 50 : 0;
 
   const handSteps: CalculationStep[] = [
     {
@@ -3831,9 +3883,9 @@ export function computeMasonryFinishes(
     },
     {
       stepNumber: 5,
-      title: `Wall Plaster Mortar (×1.35 Dry Factor · ${params.plasterThicknessMm || 12}mm, ${plasterSides} Side${plasterSides > 1 ? 's' : ''})`,
+      title: `Wall Plaster Mortar (×1.35 Dry Factor · ${plasterThickMm}mm, ${plasterSides} Side${plasterSides > 1 ? 's' : ''})`,
       formula: 'V_plaster,dry = (A_net × N_sides × t_p) × 1.35',
-      substitution: `${netWallAreaM2.toFixed(2)} × ${plasterSides} × ${(plasterThickM * 1000).toFixed(0)}mm × 1.35 = ${handPlasterDry.toFixed(3)} m³ (1:${params.plasterRatioSand || 4})`,
+      substitution: `${netWallAreaM2.toFixed(2)} × ${plasterSides} × ${(plasterThickM * 1000).toFixed(0)}mm × 1.35 = ${handPlasterDry.toFixed(3)} m³ (1:${plasterRatioS})`,
       result: `Plaster Dry = ${plasterDryVolM3.toFixed(3)} m³ → ${plasterCementBags.toFixed(1)} Bags Cement + ${plasterSandCft.toFixed(1)} cft Sand`,
       reasoning: 'Accounts for 35% joint-filling and rebound shrinkage during brick wall plastering.',
       isVerifiedAgainstEngine: Math.abs(handPlasterDry - plasterDryVolM3) < 1e-4 && Math.abs(handPlasterBags - plasterCementBags) < 1e-2,
@@ -4023,7 +4075,10 @@ export function computeEarthwork(
 
   const swellFactor = 1 + swellPercent / 100;
   const shrinkageFactor = shrinkagePercent / 100;
-  const truckCapM3 = params.haulTruckCapacityM3 && params.haulTruckCapacityM3 > 0 ? params.haulTruckCapacityM3 : 10;
+  if (typeof params.haulTruckCapacityM3 === 'number' && params.haulTruckCapacityM3 < 0) {
+    issues.push({ field: 'haulTruckCapacityM3', message: 'Haul truck capacity cannot be negative.', severity: 'error' });
+  }
+  const truckCapM3 = posNum(params.haulTruckCapacityM3, 10);
 
   let bankVolumeM3 = 0;
   let a1 = 0;
@@ -5161,14 +5216,7 @@ export function computeRateAnalysis(
 ): CalculationEnvelope<RateAnalysisResult> {
   const issues: ValidationIssue[] = [];
 
-  const isZeroRateBaseline =
-    params.basisVolumeM3 === 0 ||
-    (params.cementPricePerBag === 0 &&
-      params.sandPricePerM3 === 0 &&
-      params.stoneChipsPricePerM3 === 0 &&
-      params.rebarPricePerKg === 0 &&
-      params.masonDailyWage === 0 &&
-      params.laborerDailyWage === 0);
+  const isZeroRateBaseline = params.basisVolumeM3 === 0;
 
   if (params.basisVolumeM3 < 0) {
     issues.push({
@@ -5247,6 +5295,15 @@ export function computeRateAnalysis(
   }
 
   const vol = Math.max(0.001, params.basisVolumeM3);
+  const isUsdLike = params.currency === 'USD' || params.currency === 'EUR' || params.currency === 'GBP';
+
+  const effCementPrice = posNum(params.cementPricePerBag, isUsdLike ? 7.5 : 580);
+  const effSandPrice = posNum(params.sandPricePerM3, isUsdLike ? 22 : 1650);
+  const effStonePrice = posNum(params.stoneChipsPricePerM3, isUsdLike ? 95 : 8500);
+  const effRebarPrice = posNum(params.rebarPricePerKg, isUsdLike ? 1.05 : 108);
+  const effRebarAllowance = posNum(params.rebarAllowanceKgPerM3, 100);
+  const effAdmixturePrice = posNum(params.admixturePricePerKg, isUsdLike ? 2.5 : 220);
+  const effBrickPricePer1000 = posNum(params.brickPricePer1000, isUsdLike ? 140 : 13000);
 
   let desc = '';
   const materials: RateAnalysisMaterialBreakdown[] = [];
@@ -5262,7 +5319,7 @@ export function computeRateAnalysis(
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 1.5;
       const stoneM3 = cementM3 * 3.0;
-      const rebarKg = (params.rebarAllowanceKgPerM3 ?? 0) * vol;
+      const rebarKg = effRebarAllowance * vol;
       const admixKg = (params.admixtureDoseKgPerM3 ?? 0) * vol;
 
       materials.push(
@@ -5270,43 +5327,43 @@ export function computeRateAnalysis(
           name: 'Portland Cement (50kg bags)',
           quantity: Number(cementBags.toFixed(2)),
           unit: 'bags',
-          unitPrice: params.cementPricePerBag,
-          totalCost: Number((cementBags * params.cementPricePerBag).toFixed(2)),
+          unitPrice: effCementPrice,
+          totalCost: Number((cementBags * effCementPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Sylhet Coarse Sand (FM 2.5)',
           quantity: Number(sandM3.toFixed(3)),
           unit: 'm³',
-          unitPrice: params.sandPricePerM3,
-          totalCost: Number((sandM3 * params.sandPricePerM3).toFixed(2)),
+          unitPrice: effSandPrice,
+          totalCost: Number((sandM3 * effSandPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Graded Stone Chips (20mm down)',
           quantity: Number(stoneM3.toFixed(3)),
           unit: 'm³',
-          unitPrice: params.stoneChipsPricePerM3,
-          totalCost: Number((stoneM3 * params.stoneChipsPricePerM3).toFixed(2)),
+          unitPrice: effStonePrice,
+          totalCost: Number((stoneM3 * effStonePrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Deformed Rebar (Grade 60/500W)',
           quantity: Number(rebarKg.toFixed(1)),
           unit: 'kg',
-          unitPrice: params.rebarPricePerKg,
-          totalCost: Number((rebarKg * params.rebarPricePerKg).toFixed(2)),
+          unitPrice: effRebarPrice,
+          totalCost: Number((rebarKg * effRebarPrice).toFixed(2)),
           percentageOfMaterial: 0,
         }
       );
 
-      if (admixKg > 0 && params.admixturePricePerKg > 0) {
+      if (admixKg > 0 && effAdmixturePrice > 0) {
         materials.push({
           name: 'Chemical Plasticizer / Retarder',
           quantity: Number(admixKg.toFixed(2)),
           unit: 'kg',
-          unitPrice: params.admixturePricePerKg,
-          totalCost: Number((admixKg * params.admixturePricePerKg).toFixed(2)),
+          unitPrice: effAdmixturePrice,
+          totalCost: Number((admixKg * effAdmixturePrice).toFixed(2)),
           percentageOfMaterial: 0,
         });
       }
@@ -5320,39 +5377,39 @@ export function computeRateAnalysis(
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 2.0;
       const stoneM3 = cementM3 * 4.0;
-      const rebarKg = (params.rebarAllowanceKgPerM3 ?? 0) * vol;
+      const rebarKg = effRebarAllowance * vol;
 
       materials.push(
         {
           name: 'Portland Cement (50kg bags)',
           quantity: Number(cementBags.toFixed(2)),
           unit: 'bags',
-          unitPrice: params.cementPricePerBag,
-          totalCost: Number((cementBags * params.cementPricePerBag).toFixed(2)),
+          unitPrice: effCementPrice,
+          totalCost: Number((cementBags * effCementPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Coarse Sand (FM 2.2–2.5)',
           quantity: Number(sandM3.toFixed(3)),
           unit: 'm³',
-          unitPrice: params.sandPricePerM3,
-          totalCost: Number((sandM3 * params.sandPricePerM3).toFixed(2)),
+          unitPrice: effSandPrice,
+          totalCost: Number((sandM3 * effSandPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Graded Stone Chips (20mm down)',
           quantity: Number(stoneM3.toFixed(3)),
           unit: 'm³',
-          unitPrice: params.stoneChipsPricePerM3,
-          totalCost: Number((stoneM3 * params.stoneChipsPricePerM3).toFixed(2)),
+          unitPrice: effStonePrice,
+          totalCost: Number((stoneM3 * effStonePrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Deformed Rebar (Grade 60/500W)',
           quantity: Number(rebarKg.toFixed(1)),
           unit: 'kg',
-          unitPrice: params.rebarPricePerKg,
-          totalCost: Number((rebarKg * params.rebarPricePerKg).toFixed(2)),
+          unitPrice: effRebarPrice,
+          totalCost: Number((rebarKg * effRebarPrice).toFixed(2)),
           percentageOfMaterial: 0,
         }
       );
@@ -5368,18 +5425,18 @@ export function computeRateAnalysis(
       const khoaM3 = cementM3 * 6.0;
       const khoaUnitRate = params.brickKhoaPricePerM3 && params.brickKhoaPricePerM3 > 0
         ? params.brickKhoaPricePerM3
-        : params.stoneChipsPricePerM3 * 0.65;
+        : effStonePrice * 0.65;
       const sandUnitRate = params.localSandPricePerM3 && params.localSandPricePerM3 > 0
         ? params.localSandPricePerM3
-        : params.sandPricePerM3;
+        : effSandPrice;
 
       materials.push(
         {
           name: 'Portland Cement (50kg bags)',
           quantity: Number(cementBags.toFixed(2)),
           unit: 'bags',
-          unitPrice: params.cementPricePerBag,
-          totalCost: Number((cementBags * params.cementPricePerBag).toFixed(2)),
+          unitPrice: effCementPrice,
+          totalCost: Number((cementBags * effCementPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
@@ -5408,10 +5465,10 @@ export function computeRateAnalysis(
       const cementM3 = dryMortarM3 / 7;
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 6;
-      const brickPriceEach = (params.brickPricePer1000 ?? 0) / 1000;
+      const brickPriceEach = effBrickPricePer1000 / 1000;
       const sandUnitRate = params.localSandPricePerM3 && params.localSandPricePerM3 > 0
         ? params.localSandPricePerM3
-        : params.sandPricePerM3;
+        : effSandPrice;
 
       materials.push(
         {
@@ -5426,8 +5483,8 @@ export function computeRateAnalysis(
           name: 'Portland Cement (1:6 Mortar)',
           quantity: Number(cementBags.toFixed(2)),
           unit: 'bags',
-          unitPrice: params.cementPricePerBag,
-          totalCost: Number((cementBags * params.cementPricePerBag).toFixed(2)),
+          unitPrice: effCementPrice,
+          totalCost: Number((cementBags * effCementPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
@@ -5449,10 +5506,10 @@ export function computeRateAnalysis(
       const cementM3 = dryMortarM3 / 5;
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 4;
-      const brickPriceEach = (params.brickPricePer1000 ?? 0) / 1000;
+      const brickPriceEach = effBrickPricePer1000 / 1000;
       const sandUnitRate = params.localSandPricePerM3 && params.localSandPricePerM3 > 0
         ? params.localSandPricePerM3
-        : params.sandPricePerM3;
+        : effSandPrice;
 
       materials.push(
         {
@@ -5467,8 +5524,8 @@ export function computeRateAnalysis(
           name: 'Portland Cement (1:4 Rich Mortar)',
           quantity: Number(cementBags.toFixed(3)),
           unit: 'bags',
-          unitPrice: params.cementPricePerBag,
-          totalCost: Number((cementBags * params.cementPricePerBag).toFixed(2)),
+          unitPrice: effCementPrice,
+          totalCost: Number((cementBags * effCementPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
@@ -5490,15 +5547,15 @@ export function computeRateAnalysis(
       const sandM3 = cementM3 * 4;
       const sandUnitRate = params.localSandPricePerM3 && params.localSandPricePerM3 > 0
         ? params.localSandPricePerM3
-        : params.sandPricePerM3;
+        : effSandPrice;
 
       materials.push(
         {
           name: 'Portland Cement (1:4 Plaster)',
           quantity: Number(cementBags.toFixed(2)),
           unit: 'bags',
-          unitPrice: params.cementPricePerBag,
-          totalCost: Number((cementBags * params.cementPricePerBag).toFixed(2)),
+          unitPrice: effCementPrice,
+          totalCost: Number((cementBags * effCementPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
@@ -5523,23 +5580,23 @@ export function computeRateAnalysis(
       const aggM3 = cementM3 * 4.0;
       const khoaUnitRate = params.brickKhoaPricePerM3 && params.brickKhoaPricePerM3 > 0
         ? params.brickKhoaPricePerM3
-        : params.stoneChipsPricePerM3 * 0.72;
+        : effStonePrice * 0.72;
 
       materials.push(
         {
           name: 'Portland Cement (1:2:4 Screed + Neat Punning)',
           quantity: Number(cementBags.toFixed(2)),
           unit: 'bags',
-          unitPrice: params.cementPricePerBag,
-          totalCost: Number((cementBags * params.cementPricePerBag).toFixed(2)),
+          unitPrice: effCementPrice,
+          totalCost: Number((cementBags * effCementPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Sylhet Coarse Sand (FM 2.5)',
           quantity: Number(sandM3.toFixed(3)),
           unit: 'm³',
-          unitPrice: params.sandPricePerM3,
-          totalCost: Number((sandM3 * params.sandPricePerM3).toFixed(2)),
+          unitPrice: effSandPrice,
+          totalCost: Number((sandM3 * effSandPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
@@ -5565,24 +5622,24 @@ export function computeRateAnalysis(
           name: 'High-Yield Deformed Steel Rebar (500W)',
           quantity: Number(steelKg.toFixed(1)),
           unit: 'kg',
-          unitPrice: params.rebarPricePerKg,
-          totalCost: Number((steelKg * params.rebarPricePerKg).toFixed(2)),
+          unitPrice: effRebarPrice,
+          totalCost: Number((steelKg * effRebarPrice).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Annealed G.I. Binding Wire (20-22 SWG)',
           quantity: Number(bindingWireKg.toFixed(1)),
           unit: 'kg',
-          unitPrice: params.rebarPricePerKg * 1.3,
-          totalCost: Number((bindingWireKg * params.rebarPricePerKg * 1.3).toFixed(2)),
+          unitPrice: effRebarPrice * 1.3,
+          totalCost: Number((bindingWireKg * effRebarPrice * 1.3).toFixed(2)),
           percentageOfMaterial: 0,
         },
         {
           name: 'Concrete Cover Spacers (40mm/25mm)',
           quantity: Number(coverBlocksNos.toFixed(0)),
           unit: 'Nos',
-          unitPrice: params.rebarPricePerKg > 0 ? 4.5 : 0,
-          totalCost: Number((coverBlocksNos * (params.rebarPricePerKg > 0 ? 4.5 : 0)).toFixed(2)),
+          unitPrice: isUsdLike ? 0.08 : 4.5,
+          totalCost: Number((coverBlocksNos * (isUsdLike ? 0.08 : 4.5)).toFixed(2)),
           percentageOfMaterial: 0,
         }
       );
@@ -5590,11 +5647,11 @@ export function computeRateAnalysis(
     }
   }
 
-  const localIndex = Math.max(0.1, params.localCostIndex ?? 1.0);
-  const matIndex = Math.max(0.1, (params.materialCostIndex ?? 1.0) * localIndex);
-  const labIndex = Math.max(0.1, (params.laborCostIndex ?? 1.0) * localIndex);
-  const eqIndex = Math.max(0.1, (params.equipmentCostIndex ?? 1.0) * localIndex);
-  const wastagePct = Math.max(0, params.wastagePercent ?? 2.5);
+  const localIndex = Math.max(0.1, posNum(params.localCostIndex, 1.0));
+  const matIndex = Math.max(0.1, posNum(params.materialCostIndex, 1.0) * localIndex);
+  const labIndex = Math.max(0.1, posNum(params.laborCostIndex, 1.0) * localIndex);
+  const eqIndex = Math.max(0.1, posNum(params.equipmentCostIndex, 1.0) * localIndex);
+  const wastagePct = Math.max(0, posNum(params.wastagePercent, 2.5));
 
   // Apply material cost index to unit rates
   materials.forEach((m) => {
@@ -5616,19 +5673,19 @@ export function computeRateAnalysis(
   });
 
   // Labors breakdown with labor wage escalation index
-  const baseMasonWage = params.masonDailyWage || 0;
+  const baseMasonWage = posNum(params.masonDailyWage, isUsdLike ? 18 : 1100);
   const indexedMasonWage = Number((baseMasonWage * labIndex).toFixed(2));
-  const masonDays = Number(((params.masonDaysRequired || 0) * vol).toFixed(3));
+  const masonDays = Number((posNum(params.masonDaysRequired, 0.35) * vol).toFixed(3));
   const masonCost = masonDays * indexedMasonWage;
 
-  const baseLaborerWage = params.laborerDailyWage || 0;
+  const baseLaborerWage = posNum(params.laborerDailyWage, isUsdLike ? 10 : 650);
   const indexedLaborerWage = Number((baseLaborerWage * labIndex).toFixed(2));
-  const laborerDays = Number(((params.laborerDaysRequired || 0) * vol).toFixed(3));
+  const laborerDays = Number((posNum(params.laborerDaysRequired, 1.8) * vol).toFixed(3));
   const laborerCost = laborerDays * indexedLaborerWage;
 
-  const baseBarBenderWage = params.barBenderDailyWage || 0;
+  const baseBarBenderWage = posNum(params.barBenderDailyWage, isUsdLike ? 15 : 950);
   const indexedBarBenderWage = Number((baseBarBenderWage * labIndex).toFixed(2));
-  const barBenderDays = Number(((params.barBenderDaysRequired || 0) * vol).toFixed(3));
+  const barBenderDays = Number((posNum(params.barBenderDaysRequired, 0.45) * vol).toFixed(3));
   const barBenderCost = barBenderDays * indexedBarBenderWage;
 
   const labors: RateAnalysisLaborBreakdown[] = [
@@ -5662,15 +5719,15 @@ export function computeRateAnalysis(
   const baseLaborsCost = labors.reduce((acc, l) => acc + l.daysRequired * l.dailyWage, 0);
 
   // Equipment & Shuttering hire with equipment hire index
-  const baseMixerRate = params.mixerHirePerM3 || 0;
+  const baseMixerRate = posNum(params.mixerHirePerM3, isUsdLike ? 4.5 : 350);
   const indexedMixerRate = Number((baseMixerRate * eqIndex).toFixed(2));
   const mixerCost = indexedMixerRate * vol;
 
-  const baseVibratorRate = params.vibratorHirePerM3 || 0;
+  const baseVibratorRate = posNum(params.vibratorHirePerM3, isUsdLike ? 2.5 : 180);
   const indexedVibratorRate = Number((baseVibratorRate * eqIndex).toFixed(2));
   const vibratorCost = indexedVibratorRate * vol;
 
-  const baseShutteringRate = params.shutteringScaffoldingPerM3 || 0;
+  const baseShutteringRate = posNum(params.shutteringScaffoldingPerM3, isUsdLike ? 16 : 1400);
   const indexedShutteringRate = Number((baseShutteringRate * eqIndex).toFixed(2));
   const shutteringCost = indexedShutteringRate * vol;
 
@@ -5701,15 +5758,15 @@ export function computeRateAnalysis(
   const primeCost = materialsCost + laborsCost + equipmentCost;
   const basePrimeCost = baseMaterialsCost + baseLaborsCost + baseEquipmentCost;
 
-  const waterElectPct = Math.max(0, params.waterElectricityPercent ?? 1.5);
+  const waterElectPct = Math.max(0, posNum(params.waterElectricityPercent, 1.5));
   const waterElectCost = primeCost * (waterElectPct / 100);
   const subtotalBeforeProfit = primeCost + waterElectCost;
 
-  const profitPct = Math.max(0, params.contractorProfitPercent ?? 10.0);
+  const profitPct = Math.max(0, posNum(params.contractorProfitPercent, 10.0));
   const contractorProfitCost = subtotalBeforeProfit * (profitPct / 100);
   const grandTotalCost = subtotalBeforeProfit + contractorProfitCost;
 
-  const vatAitPct = Math.max(0, params.vatAitPercent ?? 7.5);
+  const vatAitPct = Math.max(0, posNum(params.vatAitPercent, 7.5));
   const vatAitCost = grandTotalCost * (vatAitPct / 100);
   const commercialQuotedTotalCost = grandTotalCost + vatAitCost;
 
@@ -6075,6 +6132,19 @@ export function computeContinuousBeam(
   }
 
   // Sanitize and normalize span geometry & loads
+  if (params.sectionDepthMm !== undefined && params.sectionDepthMm < 0) {
+    issues.push({ field: 'sectionDepthMm', message: 'Beam section depth must be strictly positive (> 0 mm).', severity: 'error' });
+  }
+  if (params.sectionWidthMm !== undefined && params.sectionWidthMm < 0) {
+    issues.push({ field: 'sectionWidthMm', message: 'Beam section width must be strictly positive (> 0 mm).', severity: 'error' });
+  }
+  if (params.concreteGradeFckMpa !== undefined && params.concreteGradeFckMpa < 0) {
+    issues.push({ field: 'concreteGradeFckMpa', message: 'Concrete strength f\'c must be strictly positive (> 0 MPa).', severity: 'error' });
+  }
+  if (params.allowableStressMpa !== undefined && params.allowableStressMpa < 0) {
+    issues.push({ field: 'allowableStressMpa', message: 'Allowable bending stress must be strictly positive (> 0 MPa).', severity: 'error' });
+  }
+
   const spans = rawSpans.map((sp, idx) => {
     if (sp.lengthM <= 0) {
       issues.push({
@@ -6083,13 +6153,25 @@ export function computeContinuousBeam(
         severity: 'error',
       });
     }
-    const lengthM = Math.max(0.2, sp.lengthM || 0.2);
-    const I = Math.max(10, sp.momentOfInertiaCm4 || 120000);
-    const E = Math.max(1, sp.elasticModulusGpa || 200);
-    const w = Math.max(0, sp.udlKnPerM || 0);
-    const P = Math.max(0, sp.pointLoadKn || 0);
+    if (sp.momentOfInertiaCm4 < 0) {
+      issues.push({ field: `span_${idx}_I`, message: `Span ${idx + 1} moment of inertia I must be > 0 cm⁴.`, severity: 'error' });
+    }
+    if (sp.elasticModulusGpa < 0) {
+      issues.push({ field: `span_${idx}_E`, message: `Span ${idx + 1} elastic modulus E must be > 0 GPa.`, severity: 'error' });
+    }
+    if (sp.udlKnPerM < 0 || sp.pointLoadKn < 0 || (sp.triangularLoadKnPerM ?? 0) < 0) {
+      issues.push({ field: `span_${idx}_loads`, message: `Span ${idx + 1} loads cannot be negative.`, severity: 'error' });
+    }
+    if (sp.lengthM > 0 && sp.pointLoadPositionM !== undefined && (sp.pointLoadPositionM < 0 || sp.pointLoadPositionM > sp.lengthM)) {
+      issues.push({ field: `span_${idx}_pointPos`, message: `Span ${idx + 1} point load position must be within 0 to ${sp.lengthM.toFixed(2)} m.`, severity: 'error' });
+    }
+    const lengthM = Math.max(0.2, posNum(sp.lengthM, 0.2));
+    const I = Math.max(10, posNum(sp.momentOfInertiaCm4, 120000));
+    const E = Math.max(1, posNum(sp.elasticModulusGpa, 200));
+    const w = Math.max(0, finiteNum(sp.udlKnPerM));
+    const P = Math.max(0, finiteNum(sp.pointLoadKn));
     const a = Math.min(lengthM, Math.max(0, sp.pointLoadPositionM ?? lengthM / 2));
-    const wTri = Math.max(0, sp.triangularLoadKnPerM || 0);
+    const wTri = Math.max(0, finiteNum(sp.triangularLoadKnPerM));
     const triPattern = sp.triangularLoadPattern || 'increasing';
 
     return {
@@ -6609,7 +6691,7 @@ export function computeContinuousBeam(
     // 3. Dense Discretization Points (200 stations per span) + Exact Double-Integrated Elastic Curve
     const numStations = 200;
     const dxSpan = L / numStations;
-    const spanEI = Math.max(1, (spans[i].elasticModulusGpa || 200) * (spans[i].momentOfInertiaCm4 || 120000) * 0.01); // kN·m²
+    const spanEI = Math.max(1, spans[i].elasticModulusGpa * spans[i].momentOfInertiaCm4 * 0.01); // kN·m²
     let spanMaxV = Math.max(Math.abs(V_left), Math.abs(V_right));
 
     const stationX: number[] = new Array(numStations + 1);
@@ -6668,7 +6750,7 @@ export function computeContinuousBeam(
     }
 
     // Critical shear at distance d from support face (ACI 318 / BNBC 2020)
-    const effDepthM = Math.max(0.2, ((params.sectionDepthMm || 600) - 50) / 1000);
+    const effDepthM = Math.max(0.2, (posNum(params.sectionDepthMm, 600) - 50) / 1000);
     const dLeftM = Math.min(L / 2, effDepthM);
     const dRightM = Math.max(L / 2, L - effDepthM);
     const shearAtDLeft = Math.abs(getShearAtX(dLeftM));
@@ -6750,10 +6832,10 @@ export function computeContinuousBeam(
   /* ==============================================================
      ACI 318 / BNBC 2020 CODE CAPACITY & LIMIT STATE VERIFICATIONS
      ============================================================== */
-  const d_mm = params.sectionDepthMm || 600;
-  const b_mm = params.sectionWidthMm || Math.max(250, Math.round(d_mm * 0.5));
-  const fck = params.concreteGradeFckMpa || 25;
-  const allowableStressMpa = params.allowableStressMpa || 250;
+  const d_mm = posNum(params.sectionDepthMm, 600);
+  const b_mm = posNum(params.sectionWidthMm, Math.max(250, Math.round(d_mm * 0.5)));
+  const fck = posNum(params.concreteGradeFckMpa, 25);
+  const allowableStressMpa = posNum(params.allowableStressMpa, 250);
 
   const I_avg = spans.reduce((sum, s) => sum + s.momentOfInertiaCm4, 0) / spanCount;
   const c_mm = d_mm / 2;
@@ -6790,7 +6872,8 @@ export function computeContinuousBeam(
 
   // Estimated immediate live-load deflection check (L / Delta ~ 360 limit per ACI 318 Table 24.2.2)
   const maxSpanLengthM = Math.max(...spans.map((s) => s.lengthM));
-  const avgEI = 200e6 * (I_avg * 1e-8); // kN·m²
+  const avgE_Gpa = spans.reduce((sum, s) => sum + s.elasticModulusGpa, 0) / spanCount;
+  const avgEI = avgE_Gpa * 1e6 * (I_avg * 1e-8); // kN·m²
   const avgUDL = spans.reduce((s, sp) => s + sp.udlKnPerM, 0) / spanCount;
   const fallbackDeflectionMm =
     ((5 * avgUDL * Math.pow(maxSpanLengthM, 4)) / (384 * (avgEI || 1))) * 1000;
@@ -7108,8 +7191,26 @@ export function computePileCapacity(
   } else if (params.appliedLoadKn > 0 && (params.diameterM <= 0 || params.lengthM <= 0)) {
     issues.push({ field: 'diameterM', message: 'Pile diameter D and length L must be > 0 m when axial load is applied.', severity: 'error' });
   }
+  if ((params.pipeWallThicknessMm ?? 0) < 0) {
+    issues.push({ field: 'pipeWallThicknessMm', message: 'Pipe wall thickness cannot be negative.', severity: 'error' });
+  } else if (
+    params.pileType === 'driven-steel-pipe' &&
+    params.diameterM > 0 &&
+    2 * finiteNum(params.pipeWallThicknessMm, 12) >= params.diameterM * 1000
+  ) {
+    issues.push({ field: 'pipeWallThicknessMm', message: '2 × pipe wall thickness cannot equal or exceed outer pile diameter D (inner core ≤ 0).', severity: 'error' });
+  }
 
   const isZeroPileBaseline = params.diameterM === 0 || params.lengthM === 0;
+  if (params.factorOfSafety < 0 || (!isZeroPileBaseline && params.factorOfSafety > 0 && params.factorOfSafety < 1.0)) {
+    issues.push({ field: 'factorOfSafety', message: 'Factor of safety must be at least 1.0 (recommended ≥ 2.5 per BNBC-2020).', severity: 'error' });
+  }
+  if (!isZeroPileBaseline && params.pileConcreteFckMpa !== undefined && params.pileConcreteFckMpa < 0) {
+    issues.push({ field: 'pileConcreteFckMpa', message: 'Pile concrete grade f\'ck must be strictly positive (> 0 MPa).', severity: 'error' });
+  }
+  if (!isZeroPileBaseline && params.elasticModulusPileGpa !== undefined && params.elasticModulusPileGpa < 0) {
+    issues.push({ field: 'elasticModulusPileGpa', message: 'Pile elastic modulus E_p must be strictly positive (> 0 GPa).', severity: 'error' });
+  }
   if (issues.some((i) => i.severity === 'error') || isZeroPileBaseline) {
     const hasErr = issues.some((i) => i.severity === 'error');
     return createEnvelope<PileCapacityResult>(
@@ -7177,9 +7278,9 @@ export function computePileCapacity(
 
   const D = Math.max(0.05, params.diameterM);
   const L = Math.max(0.5, params.lengthM);
-  const P = Math.max(0, params.appliedLoadKn || 0);
-  const FS = Math.max(1.0, params.factorOfSafety || 2.5);
-  const Dw = Math.max(0, params.groundwaterDepthM ?? 0);
+  const P = Math.max(0, finiteNum(params.appliedLoadKn));
+  const FS = Math.max(1.0, posNum(params.factorOfSafety, 2.5));
+  const Dw = Math.max(0, finiteNum(params.groundwaterDepthM));
 
   const Ap = (Math.PI * Math.pow(D, 2)) / 4;
   const p = Math.PI * D;
@@ -7428,15 +7529,15 @@ export function computePileCapacity(
   };
 
   // 6. Structural Axial Compressive Capacity of Pile Shaft (BNBC Clause 3.10.4.1 / ACI 318 / ACI 543R)
-  const fckMpa = params.pileConcreteFckMpa || 25;
+  const fckMpa = posNum(params.pileConcreteFckMpa, 25);
   let structuralCapacityKn = 0;
 
   if (isSteelPipe) {
-    const wallThickM = (params.pipeWallThicknessMm || 12) / 1000;
-    const Din = Math.max(0.1, D - 2 * wallThickM);
+    const wallThickM = posNum(params.pipeWallThicknessMm, 12) / 1000;
+    const Din = Math.max(0.01, D - 2 * wallThickM);
     const Asteel = (Math.PI / 4) * (Math.pow(D, 2) - Math.pow(Din, 2));
     const Acore = (Math.PI / 4) * Math.pow(Din, 2);
-    const fyMpa = params.steelYieldFyMpa || 355;
+    const fyMpa = posNum(params.steelYieldFyMpa, 355);
     // BNBC / ACI 543R for concrete-filled steel pipe: P_allow = 0.33*fy*Asteel + 0.35*fck*Acore
     structuralCapacityKn = (0.33 * fyMpa * 1000 * Asteel) + (0.35 * fckMpa * 1000 * Acore);
   } else if (isDrivenPrecast) {
@@ -7449,11 +7550,11 @@ export function computePileCapacity(
     structuralCapacityKn = allowableStressMpa * 1000 * Ap;
   }
 
-  const structuralUtilizationRatio = P / Math.max(1, structuralCapacityKn);
+  const structuralUtilizationRatio = structuralCapacityKn > 0 ? P / structuralCapacityKn : (P > 0 ? 9.99 : 0);
   const structuralPass = P <= structuralCapacityKn;
 
   // 7. Multi-Component Vesic Elastic Settlement Analysis (BNBC Clause 3.10.4.2 / Vesic 1977)
-  const EpileKpa = (params.elasticModulusPileGpa || 25) * 1e6; // 25 GPa concrete = 25,000,000 kPa
+  const EpileKpa = posNum(params.elasticModulusPileGpa, 25) * 1e6; // 25 GPa concrete = 25,000,000 kPa
   const Qws = totalSkinFrictionKn / FS;
   const Qwp = endBearingKn / FS;
 
@@ -7502,14 +7603,14 @@ export function computePileCapacity(
   }
 
   const totalSettlementMm = elasticSettlementMm + consolidationSettlementMm;
-  const permissibleSettlementMm = params.permissibleSettlementMm || 25.0; // BNBC Clause 3.10.4.2 (25mm allowable)
-  const settlementPass = totalSettlementMm <= permissibleSettlementMm;
+  const permissibleSettlementMm = posNum(params.permissibleSettlementMm, 25.0); // BNBC Clause 3.10.4.2 (25mm allowable)
+  const settlementPass = permissibleSettlementMm <= 0 ? totalSettlementMm === 0 : totalSettlementMm <= permissibleSettlementMm;
 
   // 9. Pile Group Efficiency & Capacity (Converse-Labarre Formulation)
-  const groupRows = params.pileGroupRows || 1;
-  const groupCols = params.pileGroupCols || 1;
+  const groupRows = Math.max(1, posNum(params.pileGroupRows, 1));
+  const groupCols = Math.max(1, posNum(params.pileGroupCols, 1));
   const totalPiles = groupRows * groupCols;
-  const spacingM = params.pileSpacingM || (3.0 * D);
+  const spacingM = Math.max(D, posNum(params.pileSpacingM, 3.0 * D));
   let groupEfficiency = 1.0;
 
   if (totalPiles > 1) {

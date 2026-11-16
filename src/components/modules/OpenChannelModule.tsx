@@ -21,6 +21,7 @@ import {
   Gauge,
   ArrowRight,
 } from 'lucide-react';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface OpenChannelInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -163,6 +164,13 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
         />
       </div>
 
+      {currentShape === 'circular' && (channel.diameterM ?? 0) > 0 && channel.flowDepthM > (channel.diameterM ?? 0) && (
+        <div className="px-3 py-2 rounded-lg border border-rose-600/60 bg-rose-500/10 text-rose-700 dark:text-rose-300 text-xs font-mono flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>Flow depth y ({channel.flowDepthM.toFixed(2)} m) exceeds internal conduit diameter D ({(channel.diameterM ?? 0).toFixed(2)} m) — pressurized surcharge mode.</span>
+        </div>
+      )}
+
       {/* Slope & Roughness Inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <UnitInput
@@ -186,17 +194,14 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
             <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Side Slope z (z:1 H:V)
             </label>
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max="5"
+            <NumericDraftInput
+              min={0}
+              max={5}
               value={channel.sideSlopeZ}
-              onChange={(e) => {
-                const val = Math.max(0, Number(e.target.value) || 0);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  channel: { ...ws.channel, sideSlopeZ: val },
+                  channel: { ...ws.channel, sideSlopeZ: Math.max(0, val) },
                 }));
               }}
               placeholder="1.5 for earth, 0.5 for rock"
@@ -228,17 +233,14 @@ export const OpenChannelInputs: React.FC<OpenChannelInputsProps> = ({
           <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
             Manning Roughness n
           </label>
-          <input
-            type="number"
-            step="0.001"
-            min="0"
-            max="0.1"
+          <NumericDraftInput
+            min={0}
+            max={0.1}
             value={channel.manningN}
-            onChange={(e) => {
-              const val = Math.max(0, Math.min(0.1, Number(e.target.value) || 0));
+            onChangeValue={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                channel: { ...ws.channel, manningN: val },
+                channel: { ...ws.channel, manningN: Math.max(0, Math.min(0.1, val)) },
               }));
             }}
             className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"

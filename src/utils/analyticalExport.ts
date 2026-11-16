@@ -1706,8 +1706,8 @@ export function exportAnalyticalScheduleCsv(
         lines.push(`"${String(m.name || '').replace(/"/g, '""')}",${Number(m.quantity || 0).toFixed(3)},"${m.unit || ''}",${Number(m.indexedUnitPrice ?? m.unitPrice ?? 0).toFixed(2)},${Number(m.totalCost || 0).toFixed(2)}`);
       });
       lines.push(`"Total Materials Cost (incl. Wastage)","—","—","—",${Number(r.materialsCost || 0).toFixed(2)}`);
-      lines.push(`"Total Labor Cost","—","—","—",${Number(r.laborCost || 0).toFixed(2)}`);
-      lines.push(`"Equipment & Overhead","—","—","—",${Number((r.equipmentCost || 0) + (r.waterAndOverheadCost || 0) + (r.contractorProfit || 0)).toFixed(2)}`);
+      lines.push(`"Total Labor Cost","—","—","—",${Number(r.laborsCost ?? r.laborCost ?? 0).toFixed(2)}`);
+      lines.push(`"Equipment & Overhead","—","—","—",${Number((r.equipmentCost || 0) + (r.waterElectricityCost ?? r.waterAndOverheadCost ?? 0) + (r.contractorProfitCost ?? r.contractorProfit ?? 0)).toFixed(2)}`);
       lines.push(`"Composite Unit Rate (per m3 / unit)","1.0","${r.basisUnitLabel || 'm3'}","—",${Number(r.unitRatePerM3 || 0).toFixed(2)}`);
       lines.push(`"Composite Unit Rate (per CFT)","1.0","cft","—",${Number(r.unitRatePerCft || 0).toFixed(2)}`);
       break;

@@ -528,10 +528,8 @@ export const FieldNotebookModule: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm('Delete this field note?')) {
-                          deleteFieldNote(note.id);
-                          showToast('Note deleted');
-                        }
+                        deleteFieldNote(note.id);
+                        showToast('Note deleted');
                       }}
                       className="p-1 rounded-full text-rose-500 hover:bg-rose-100 cursor-pointer"
                       title="Delete note"

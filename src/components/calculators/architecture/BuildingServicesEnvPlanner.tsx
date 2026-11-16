@@ -22,6 +22,7 @@ import {
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 import { DcrGaugeSuite } from '../../DcrCapacityGauge';
 import { StepByStepPanel } from '../../StepByStepPanel';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 
 export type ServicesSubMode = 'rainwater' | 'daylight';
 
@@ -415,11 +416,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Roof Area (m²)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
                     value={roofCatchmentAreaM2}
-                    onChange={(e) => setRoofCatchmentAreaM2(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setRoofCatchmentAreaM2(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -427,15 +428,12 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Runoff Coeff. (Cr)
                   </label>
-                  <input
-                    type="number"
-                    step="0.02"
+                  <NumericDraftInput
                     min={0}
                     max={0.98}
                     value={runoffCoefficient}
-                    onChange={(e) =>
-                      setRunoffCoefficient(Math.min(0.98, Math.max(0, Number(e.target.value) || 0)))
-                    }
+                    highlightZero
+                    onChangeValue={(v) => setRunoffCoefficient(Math.min(0.98, Math.max(0, v)))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -469,12 +467,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Annual Rainfall (mm)
                   </label>
-                  <input
-                    type="number"
-                    step="50"
+                  <NumericDraftInput
                     min={0}
                     value={annualRainfallMm}
-                    onChange={(e) => setAnnualRainfallMm(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setAnnualRainfallMm(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -482,15 +479,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Monsoon Share (%)
                   </label>
-                  <input
-                    type="number"
-                    step="5"
+                  <NumericDraftInput
                     min={0}
                     max={100}
                     value={monsoonCaptureSharePct}
-                    onChange={(e) =>
-                      setMonsoonCaptureSharePct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
-                    }
+                    onChangeValue={(v) => setMonsoonCaptureSharePct(Math.min(100, Math.max(0, v)))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -501,11 +494,10 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Dry-Spell Storage (Days)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
                     value={drySpellDays}
-                    onChange={(e) => setDrySpellDays(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(v) => setDrySpellDays(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -513,12 +505,10 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Non-Potable Demand (L/d)
                   </label>
-                  <input
-                    type="number"
-                    step="50"
+                  <NumericDraftInput
                     min={0}
                     value={dailyRwhDemandLpd}
-                    onChange={(e) => setDailyRwhDemandLpd(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(v) => setDailyRwhDemandLpd(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -529,12 +519,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Cistern Water Depth (m)
                   </label>
-                  <input
-                    type="number"
-                    step="0.2"
+                  <NumericDraftInput
                     min={0}
                     value={cisternDepthM}
-                    onChange={(e) => setCisternDepthM(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setCisternDepthM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -542,12 +531,10 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Cistern L : W Ratio
                   </label>
-                  <input
-                    type="number"
-                    step="0.2"
+                  <NumericDraftInput
                     min={0}
                     value={cisternLwRatio}
-                    onChange={(e) => setCisternLwRatio(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(v) => setCisternLwRatio(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -727,12 +714,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Length (m)
                   </label>
-                  <input
-                    type="number"
-                    step="0.1"
+                  <NumericDraftInput
                     min={0}
                     value={roomLengthM}
-                    onChange={(e) => setRoomLengthM(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setRoomLengthM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -740,12 +726,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Width (m)
                   </label>
-                  <input
-                    type="number"
-                    step="0.1"
+                  <NumericDraftInput
                     min={0}
                     value={roomWidthM}
-                    onChange={(e) => setRoomWidthM(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setRoomWidthM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -753,12 +738,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Ceiling H (m)
                   </label>
-                  <input
-                    type="number"
-                    step="0.05"
+                  <NumericDraftInput
                     min={0}
                     value={ceilingHeightM}
-                    onChange={(e) => setCeilingHeightM(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setCeilingHeightM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -775,11 +759,11 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       No. Windows
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
+                      allowDecimal={false}
                       value={windowCount}
-                      onChange={(e) => setWindowCount(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                      onChangeValue={(v) => setWindowCount(Math.max(0, Math.round(v)))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -787,12 +771,10 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Win Width (m)
                     </label>
-                    <input
-                      type="number"
-                      step="0.1"
+                    <NumericDraftInput
                       min={0}
                       value={windowWidthM}
-                      onChange={(e) => setWindowWidthM(Math.max(0, Number(e.target.value) || 0))}
+                      onChangeValue={(v) => setWindowWidthM(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -800,12 +782,10 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Win Height (m)
                     </label>
-                    <input
-                      type="number"
-                      step="0.05"
+                    <NumericDraftInput
                       min={0}
                       value={windowHeightM}
-                      onChange={(e) => setWindowHeightM(Math.max(0, Number(e.target.value) || 0))}
+                      onChangeValue={(v) => setWindowHeightM(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -830,12 +810,10 @@ export const BuildingServicesEnvPlanner: React.FC<BuildingServicesEnvPlannerProp
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Aux. Ventilator (m²)
                     </label>
-                    <input
-                      type="number"
-                      step="0.05"
+                    <NumericDraftInput
                       min={0}
                       value={ventilatorAreaM2}
-                      onChange={(e) => setVentilatorAreaM2(Math.max(0, Number(e.target.value)))}
+                      onChangeValue={(v) => setVentilatorAreaM2(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>

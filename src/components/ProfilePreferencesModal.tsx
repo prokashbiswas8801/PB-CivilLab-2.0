@@ -44,6 +44,7 @@ import {
   SUPPORTED_CURRENCIES,
   EngineeringModuleId,
 } from '../types/civil';
+import { NumericDraftInput } from './ui/NumericDraftInput';
 import { useTheme } from '../context/ThemeContext';
 import { exportPresetsPackage, parseAndValidatePresetsPackage, generateUUID, createDefaultUserProfile } from '../utils/storage';
 
@@ -767,16 +768,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       Default Cement Bag Weight (kg)
                     </label>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="20"
-                        max="100"
+                      <NumericDraftInput
+                        min={20}
+                        max={100}
                         value={prefsForm.defaultCementBagWeightKg}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            defaultCementBagWeightKg: Number(e.target.value) || 50,
+                            defaultCementBagWeightKg: v > 0 ? v : 50,
                           })
                         }
                         className="w-full px-3 py-2 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden font-mono font-bold"
@@ -870,16 +869,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       Concrete Wastage
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        max="25"
+                      <NumericDraftInput
+                        min={0}
+                        max={25}
                         value={prefsForm.wastage.concretePercent}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            wastage: { ...prefsForm.wastage, concretePercent: Number(e.target.value) || 0 },
+                            wastage: { ...prefsForm.wastage, concretePercent: v },
                           })
                         }
                         className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-mono font-bold"
@@ -893,16 +890,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       Rebar Cutting Lap
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        max="25"
+                      <NumericDraftInput
+                        min={0}
+                        max={25}
                         value={prefsForm.wastage.rebarPercent}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            wastage: { ...prefsForm.wastage, rebarPercent: Number(e.target.value) || 0 },
+                            wastage: { ...prefsForm.wastage, rebarPercent: v },
                           })
                         }
                         className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-mono font-bold"
@@ -916,16 +911,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       Brick & Mortar
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        max="25"
+                      <NumericDraftInput
+                        min={0}
+                        max={25}
                         value={prefsForm.wastage.brickMortarPercent}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            wastage: { ...prefsForm.wastage, brickMortarPercent: Number(e.target.value) || 0 },
+                            wastage: { ...prefsForm.wastage, brickMortarPercent: v },
                           })
                         }
                         className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-mono font-bold"
@@ -939,16 +932,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       Earth Shrinkage
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        max="35"
+                      <NumericDraftInput
+                        min={0}
+                        max={35}
                         value={prefsForm.wastage.earthworkShrinkagePercent}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            wastage: { ...prefsForm.wastage, earthworkShrinkagePercent: Number(e.target.value) || 0 },
+                            wastage: { ...prefsForm.wastage, earthworkShrinkagePercent: v },
                           })
                         }
                         className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-mono font-bold"
@@ -977,16 +968,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       1 Katha in Square Feet
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="1"
-                        min="100"
-                        max="5000"
+                      <NumericDraftInput
+                        min={100}
+                        max={5000}
                         value={prefsForm.regionalLand.kathaSquareFeet}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            regionalLand: { ...prefsForm.regionalLand, kathaSquareFeet: Number(e.target.value) || 720 },
+                            regionalLand: { ...prefsForm.regionalLand, kathaSquareFeet: v > 0 ? v : 720 },
                           })
                         }
                         className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-mono font-bold"
@@ -1003,16 +992,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       1 Decimal / Satak in Square Feet
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="100"
-                        max="2000"
+                      <NumericDraftInput
+                        min={100}
+                        max={2000}
                         value={prefsForm.regionalLand.decimalSquareFeet}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            regionalLand: { ...prefsForm.regionalLand, decimalSquareFeet: Number(e.target.value) || 435.6 },
+                            regionalLand: { ...prefsForm.regionalLand, decimalSquareFeet: v > 0 ? v : 435.6 },
                           })
                         }
                         className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-mono font-bold"
@@ -1029,16 +1016,14 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                       1 Bigha in Decimals / Kathas
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        step="1"
-                        min="10"
-                        max="100"
+                      <NumericDraftInput
+                        min={10}
+                        max={100}
                         value={prefsForm.regionalLand.bighaDecimals}
-                        onChange={(e) =>
+                        onChangeValue={(v) =>
                           setPrefsForm({
                             ...prefsForm,
-                            regionalLand: { ...prefsForm.regionalLand, bighaDecimals: Number(e.target.value) || 33 },
+                            regionalLand: { ...prefsForm.regionalLand, bighaDecimals: v > 0 ? v : 33 },
                           })
                         }
                         className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] font-mono font-bold"
@@ -1174,9 +1159,7 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm('Reset to factory engineering standards? Custom presets will be replaced.')) {
-                        onResetFactoryPresets();
-                      }
+                      onResetFactoryPresets();
                     }}
                     className="p-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] cursor-pointer"
                     title="Reset to factory presets"

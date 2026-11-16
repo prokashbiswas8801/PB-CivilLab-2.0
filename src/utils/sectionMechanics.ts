@@ -824,12 +824,12 @@ function classifyCrossSection(
 ): SectionClassificationInfo {
   const epsilon = Math.sqrt(235 / Math.max(100, fyMpa));
   const isAISC = params.designCode === 'AISC-360';
-  const E_Mpa = (params.elasticModulusGpa || 210) * 1000;
+  const E_Mpa = (typeof params.elasticModulusGpa === 'number' && params.elasticModulusGpa > 0 ? params.elasticModulusGpa : 210) * 1000;
   const lambdaFactor = isAISC ? Math.sqrt(E_Mpa / Math.max(100, fyMpa)) : epsilon;
 
-  const tw = Math.max(0.5, params.webThicknessTw_Mm || 6);
-  const tf = Math.max(0.5, params.flangeThicknessTf_Mm || 10);
-  const tWall = Math.max(0.5, params.wallThicknessT_Mm || 6);
+  const tw = Math.max(0.5, typeof params.webThicknessTw_Mm === 'number' && params.webThicknessTw_Mm > 0 ? params.webThicknessTw_Mm : 6);
+  const tf = Math.max(0.5, typeof params.flangeThicknessTf_Mm === 'number' && params.flangeThicknessTf_Mm > 0 ? params.flangeThicknessTf_Mm : 10);
+  const tWall = Math.max(0.5, typeof params.wallThicknessT_Mm === 'number' && params.wallThicknessT_Mm > 0 ? params.wallThicknessT_Mm : 6);
 
   // Solid rectangle / circle / solid polygon -> compact Class 1
   if (params.shape === 'rectangular' || params.shape === 'circular') {
@@ -1046,10 +1046,10 @@ export function computeSectionMechanics(
     ],
   };
 
-  // Validate basic material inputs
-  const fyMpa = params.fyMpa || 0;
-  const E_Gpa = params.elasticModulusGpa || 0;
-  const gammaM0 = params.gammaM0 || 0;
+  // Validate basic material inputs (resolve 0-baseline secondary constants when geometry/loads are active)
+  const rawFyMpa = typeof params.fyMpa === 'number' && Number.isFinite(params.fyMpa) ? params.fyMpa : 0;
+  const rawE_Gpa = typeof params.elasticModulusGpa === 'number' && Number.isFinite(params.elasticModulusGpa) ? params.elasticModulusGpa : 0;
+  const rawGammaM0 = typeof params.gammaM0 === 'number' && Number.isFinite(params.gammaM0) ? params.gammaM0 : 0;
 
   const hasAnyForce =
     Math.abs(params.axialForceN_Kn || 0) > 0 ||
@@ -1067,13 +1067,13 @@ export function computeSectionMechanics(
         : (params.depthH_Mm || 0) === 0 && (params.widthB_Mm || 0) === 0;
 
   const hasNegSec =
-    fyMpa < 0 ||
-    E_Gpa < 0 ||
-    gammaM0 < 0 ||
+    rawFyMpa < 0 ||
+    rawE_Gpa < 0 ||
+    rawGammaM0 < 0 ||
     (params.depthH_Mm || 0) < 0 ||
     (params.widthB_Mm || 0) < 0;
 
-  if ((isZeroGeom || (fyMpa === 0 && E_Gpa === 0)) && !hasAnyForce && !hasNegSec) {
+  if (isZeroGeom && !hasAnyForce && !hasNegSec) {
     return createEnvelope<SectionAnalyzerResult>(
       {
         shape: params.shape,
@@ -1082,7 +1082,7 @@ export function computeSectionMechanics(
         fyMpa: 0,
         fydMpa: 0,
         elasticModulusGpa: 0,
-        gammaM0: gammaM0 || 1.0,
+        gammaM0: rawGammaM0,
         areaCm2: 0,
         areaMm2: 0,
         massKgPerM: 0,
@@ -1172,6 +1172,10 @@ export function computeSectionMechanics(
     );
   }
 
+  const fyMpa = rawFyMpa === 0 ? 275 : rawFyMpa;
+  const E_Gpa = rawE_Gpa === 0 ? 210 : rawE_Gpa;
+  const gammaM0 = rawGammaM0 === 0 ? (params.designCode === 'AISC-360' ? 1.11 : 1.00) : rawGammaM0;
+
   if (fyMpa <= 0) {
     issues.push({ field: 'fyMpa', message: 'Yield strength f_y must be positive (> 0 MPa).', severity: 'error' });
   }
@@ -1182,32 +1186,55 @@ export function computeSectionMechanics(
     issues.push({ field: 'gammaM0', message: 'Partial resistance factor γ_M0 must be ≥ 0.85 (typically 1.00 EC3 / 1.11 AISC).', severity: 'error' });
   }
 
+  const effWallT =
+    (params.wallThicknessT_Mm || 0) === 0 && (params.widthB_Mm || 0) > 0 && (params.depthH_Mm || 0) > 0
+      ? Math.max(4, Math.round(Math.min(params.widthB_Mm, params.depthH_Mm) * 0.06))
+      : params.wallThicknessT_Mm || 0;
+  const effWebTw =
+    (params.webThicknessTw_Mm || 0) === 0 && (params.depthH_Mm || 0) > 0
+      ? Math.max(5, Math.round(params.depthH_Mm * 0.035))
+      : params.webThicknessTw_Mm || 0;
+  const effFlangeTf =
+    (params.flangeThicknessTf_Mm || 0) === 0 && (params.depthH_Mm || 0) > 0
+      ? Math.max(8, Math.round(params.depthH_Mm * 0.055))
+      : params.flangeThicknessTf_Mm || 0;
+
+  const effectiveParams: SectionAnalyzerParams = {
+    ...params,
+    fyMpa,
+    elasticModulusGpa: E_Gpa,
+    gammaM0,
+    wallThicknessT_Mm: effWallT,
+    webThicknessTw_Mm: effWebTw,
+    flangeThicknessTf_Mm: effFlangeTf,
+  };
+
   // Geometry validation
-  if (params.shape === 'custom-polygon') {
-    if (!params.polygonPointsMm || params.polygonPointsMm.length < 3) {
+  if (effectiveParams.shape === 'custom-polygon') {
+    if (!effectiveParams.polygonPointsMm || effectiveParams.polygonPointsMm.length < 3) {
       issues.push({ field: 'polygonPointsMm', message: 'Custom polygon requires at least 3 vertices.', severity: 'error' });
     }
   } else {
-    if ((params.depthH_Mm || 0) <= 0) {
+    if ((effectiveParams.depthH_Mm || 0) <= 0) {
       issues.push({ field: 'depthH_Mm', message: 'Section depth h (or diameter D) must be greater than 0 mm.', severity: 'error' });
     }
-    if (params.shape !== 'circular' && (params.widthB_Mm || 0) <= 0) {
+    if (effectiveParams.shape !== 'circular' && (effectiveParams.widthB_Mm || 0) <= 0) {
       issues.push({ field: 'widthB_Mm', message: 'Section width b must be greater than 0 mm.', severity: 'error' });
     }
-    if (params.shape === 'hollow-box') {
-      if ((params.wallThicknessT_Mm || 0) <= 0 || params.wallThicknessT_Mm * 2 >= Math.min(params.widthB_Mm, params.depthH_Mm)) {
+    if (effectiveParams.shape === 'hollow-box') {
+      if ((effectiveParams.wallThicknessT_Mm || 0) <= 0 || effectiveParams.wallThicknessT_Mm * 2 >= Math.min(effectiveParams.widthB_Mm, effectiveParams.depthH_Mm)) {
         issues.push({ field: 'wallThicknessT_Mm', message: 'Hollow box wall thickness t must satisfy 0 < 2t < min(b, h).', severity: 'error' });
       }
     }
-    if (params.shape === 'i-beam' || params.shape === 't-section' || params.shape === 'channel') {
-      if ((params.webThicknessTw_Mm || 0) <= 0 || (params.flangeThicknessTf_Mm || 0) <= 0) {
+    if (effectiveParams.shape === 'i-beam' || effectiveParams.shape === 't-section' || effectiveParams.shape === 'channel') {
+      if ((effectiveParams.webThicknessTw_Mm || 0) <= 0 || (effectiveParams.flangeThicknessTf_Mm || 0) <= 0) {
         issues.push({ field: 'webThicknessTw_Mm', message: 'Web thickness t_w and flange thickness t_f must be > 0 mm.', severity: 'error' });
       }
-      const mult = params.shape === 't-section' ? 1 : 2;
-      if (params.flangeThicknessTf_Mm * mult >= params.depthH_Mm) {
+      const mult = effectiveParams.shape === 't-section' ? 1 : 2;
+      if (effectiveParams.flangeThicknessTf_Mm * mult >= effectiveParams.depthH_Mm) {
         issues.push({ field: 'flangeThicknessTf_Mm', message: 'Total flange thickness must be less than overall depth h.', severity: 'error' });
       }
-      if (params.webThicknessTw_Mm > params.widthB_Mm) {
+      if (effectiveParams.webThicknessTw_Mm > effectiveParams.widthB_Mm) {
         issues.push({ field: 'webThicknessTw_Mm', message: 'Web thickness t_w cannot exceed flange width b.', severity: 'error' });
       }
     }
@@ -1217,6 +1244,7 @@ export function computeSectionMechanics(
     return createEnvelope<SectionAnalyzerResult>(null, issues, { scopeAndLimits });
   }
 
+  params = effectiveParams;
   const geom = buildSectionGeometry(params);
   const fydMpa = fyMpa / gammaM0;
 

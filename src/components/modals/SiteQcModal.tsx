@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { SiteChecklist } from '../calculators/construction/SiteChecklist';
 import { AboutThisTool, AboutThisToolButton } from '../ui';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import { TESTING_LAB_TEST_MAP } from '../../data/testingLabCatalog';
 import {
   evaluateLabTest,
@@ -333,13 +334,11 @@ export const SiteQcModal: React.FC<SiteQcModalProps> = ({
                                 ))}
                               </select>
                             ) : (
-                              <input
-                                type="number"
+                              <NumericDraftInput
                                 value={currentInputs[f.key] ?? f.defaultValue}
                                 min={f.min}
                                 max={f.max}
-                                step={f.step ?? 'any'}
-                                onChange={(e) => updateInput(f.key, Number(e.target.value))}
+                                onChangeValue={(val) => updateInput(f.key, val)}
                                 className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-white"
                               />
                             )}

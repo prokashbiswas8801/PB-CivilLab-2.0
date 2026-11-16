@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2 } from 'lucide-react';
 import { CustomUnitDefinition, UnitCategoryKey } from '../../types/civil';
 import { BASE_UNITS } from '../../utils/unitConverter';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface NewCustomUnitData {
   name: string;
@@ -186,13 +187,11 @@ export const CustomUnitModal: React.FC<CustomUnitModalProps> = ({
                   <label className="block text-xs font-semibold mb-1">
                     Multiplier to SI Base ({BASE_UNITS[unitCategory]})
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
                     required
                     placeholder="e.g. 10.0"
                     value={unitFactor}
-                    onChange={(e) => setUnitFactor(Number(e.target.value))}
+                    onChangeValue={(val) => setUnitFactor(val)}
                     className="w-full touch-target-48 px-3 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
                   />
                 </div>

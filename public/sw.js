@@ -18,8 +18,6 @@ const PRECACHE_ASSETS = [
   '/logo.svg',
   '/icon-192.svg',
   '/icon-512.svg',
-  '/fonts/Nikosh.ttf',
-  '/fonts/Nikosh.woff2',
 ];
 
 // Installation: Pre-cache application shell
@@ -161,7 +159,7 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(async () => (await caches.match(request)) || new Response('Offline', { status: 503, statusText: 'Service Unavailable' }))
   );
 });
 

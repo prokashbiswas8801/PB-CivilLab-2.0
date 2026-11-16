@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 import { formatFeetInches } from '../../../utils/unitConverter';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 
 export type TakeoffSubTab = 'brickwork' | 'plaster-paint' | 'flooring-tiles' | 'formwork-labor';
 
@@ -564,11 +565,9 @@ export const MaterialTakeoff: React.FC = () => {
                       {formatFeetInches(wallLengthM, { isMeters: true })}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    step="0.5"
+                  <NumericDraftInput
                     value={wallLengthM}
-                    onChange={(e) => setWallLengthM(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setWallLengthM(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -581,11 +580,9 @@ export const MaterialTakeoff: React.FC = () => {
                       {formatFeetInches(wallHeightM, { isMeters: true })}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    step="0.2"
+                  <NumericDraftInput
                     value={wallHeightM}
-                    onChange={(e) => setWallHeightM(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setWallHeightM(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -619,11 +616,9 @@ export const MaterialTakeoff: React.FC = () => {
                 </div>
                 {wallThicknessType === 'custom' && (
                   <div className="pt-2 flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="25"
+                    <NumericDraftInput
                       value={customThicknessMm}
-                      onChange={(e) => setCustomThicknessMm(Math.max(0, Number(e.target.value) || 0))}
+                      onChangeValue={(val) => setCustomThicknessMm(Math.max(0, val))}
                       className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                       placeholder="Thickness in mm"
                     />
@@ -692,28 +687,24 @@ export const MaterialTakeoff: React.FC = () => {
                         className="flex-1 font-medium bg-transparent border-none text-[var(--md-sys-color-on-surface)] focus:outline-none"
                       />
                       <div className="flex items-center gap-1 font-mono text-[11px]">
-                        <input
-                          type="number"
-                          step="0.1"
+                        <NumericDraftInput
                           value={op.widthM}
-                          onChange={(e) => updateOpening(op.id, 'widthM', Number(e.target.value))}
+                          onChangeValue={(val) => updateOpening(op.id, 'widthM', val)}
                           className="w-12 px-1 py-0.5 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                           placeholder="W(m)"
                         />
                         <span>×</span>
-                        <input
-                          type="number"
-                          step="0.1"
+                        <NumericDraftInput
                           value={op.heightM}
-                          onChange={(e) => updateOpening(op.id, 'heightM', Number(e.target.value))}
+                          onChangeValue={(val) => updateOpening(op.id, 'heightM', val)}
                           className="w-12 px-1 py-0.5 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                           placeholder="H(m)"
                         />
                         <span>×</span>
-                        <input
-                          type="number"
+                        <NumericDraftInput
+                          allowDecimal={false}
                           value={op.quantity}
-                          onChange={(e) => updateOpening(op.id, 'quantity', Number(e.target.value))}
+                          onChangeValue={(val) => updateOpening(op.id, 'quantity', val)}
                           className="w-10 px-1 py-0.5 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold"
                           placeholder="Qty"
                         />
@@ -854,10 +845,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <span className="font-mono text-slate-500">{(plasterAreaM2 * 10.7639).toFixed(0)} sq.ft</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={plasterAreaM2}
-                    onChange={(e) => setPlasterAreaM2(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setPlasterAreaM2(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                   <span className="text-xs font-mono text-slate-500">m²</span>
@@ -1056,11 +1046,9 @@ export const MaterialTakeoff: React.FC = () => {
                       {formatFeetInches(roomLengthM, { isMeters: true })}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    step="0.5"
+                  <NumericDraftInput
                     value={roomLengthM}
-                    onChange={(e) => setRoomLengthM(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setRoomLengthM(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1073,11 +1061,9 @@ export const MaterialTakeoff: React.FC = () => {
                       {formatFeetInches(roomWidthM, { isMeters: true })}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    step="0.5"
+                  <NumericDraftInput
                     value={roomWidthM}
-                    onChange={(e) => setRoomWidthM(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setRoomWidthM(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-2 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1119,11 +1105,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Skirting Height (mm)
                   </label>
-                  <input
-                    type="number"
-                    step="25"
+                  <NumericDraftInput
                     value={skirtingHeightMm}
-                    onChange={(e) => setSkirtingHeightMm(Math.max(0, Number(e.target.value)))}
+                    onChangeValue={(val) => setSkirtingHeightMm(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1131,11 +1115,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Tile Wastage (%)
                   </label>
-                  <input
-                    type="number"
-                    step="1"
+                  <NumericDraftInput
                     value={tileWastagePercent}
-                    onChange={(e) => setTileWastagePercent(Math.max(0, Number(e.target.value)))}
+                    onChangeValue={(val) => setTileWastagePercent(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1147,11 +1129,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Mortar Bed Thickness (mm)
                   </label>
-                  <input
-                    type="number"
-                    step="5"
+                  <NumericDraftInput
                     value={bedThicknessMm}
-                    onChange={(e) => setBedThicknessMm(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setBedThicknessMm(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1159,11 +1139,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Grout Joint Width (mm)
                   </label>
-                  <input
-                    type="number"
-                    step="0.5"
+                  <NumericDraftInput
                     value={groutWidthMm}
-                    onChange={(e) => setGroutWidthMm(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setGroutWidthMm(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1268,10 +1246,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Slab Soffit Area (m²)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={slabSoffitAreaM2}
-                    onChange={(e) => setSlabSoffitAreaM2(Math.max(0, Number(e.target.value)))}
+                    onChangeValue={(val) => setSlabSoffitAreaM2(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1281,28 +1258,25 @@ export const MaterialTakeoff: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-500">Beam Length (m)</label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       value={beamLengthM}
-                      onChange={(e) => setBeamLengthM(Math.max(0, Number(e.target.value)))}
+                      onChangeValue={(val) => setBeamLengthM(Math.max(0, val))}
                       className="w-full text-xs font-mono px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-500">Depth (mm)</label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       value={beamDepthMm}
-                      onChange={(e) => setBeamDepthMm(Math.max(0, Number(e.target.value)))}
+                      onChangeValue={(val) => setBeamDepthMm(Math.max(0, val))}
                       className="w-full text-xs font-mono px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-500">Width (mm)</label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       value={beamWidthMm}
-                      onChange={(e) => setBeamWidthMm(Math.max(0, Number(e.target.value)))}
+                      onChangeValue={(val) => setBeamWidthMm(Math.max(0, val))}
                       className="w-full text-xs font-mono px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                     />
                   </div>
@@ -1313,28 +1287,26 @@ export const MaterialTakeoff: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-500">Columns (Nos)</label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
+                      allowDecimal={false}
                       value={columnCount}
-                      onChange={(e) => setColumnCount(Math.max(0, Number(e.target.value)))}
+                      onChangeValue={(val) => setColumnCount(Math.max(0, val))}
                       className="w-full text-xs font-mono px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-500">B × D (mm)</label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       value={colSizeBMm}
-                      onChange={(e) => setColSizeBMm(Math.max(0, Number(e.target.value)))}
+                      onChangeValue={(val) => setColSizeBMm(Math.max(0, val))}
                       className="w-full text-xs font-mono px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-500">Height (m)</label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       value={colHeightM}
-                      onChange={(e) => setColHeightM(Math.max(0, Number(e.target.value)))}
+                      onChangeValue={(val) => setColHeightM(Math.max(0, val))}
                       className="w-full text-xs font-mono px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                     />
                   </div>
@@ -1347,10 +1319,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Carpenter Wage (/day)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={masonDailyWage}
-                    onChange={(e) => setMasonDailyWage(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setMasonDailyWage(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1358,10 +1329,9 @@ export const MaterialTakeoff: React.FC = () => {
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Helper Wage (/day)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={helperDailyWage}
-                    onChange={(e) => setHelperDailyWage(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(val) => setHelperDailyWage(Math.max(0, val))}
                     className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>

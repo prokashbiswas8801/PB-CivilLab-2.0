@@ -30,6 +30,7 @@ import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine
 import { formatFeetInches } from '../../../utils/unitConverter';
 import { DcrGaugeSuite } from '../../DcrCapacityGauge';
 import { StepByStepPanel } from '../../StepByStepPanel';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 
 export type LandUnit = 'katha' | 'decimal' | 'sqft' | 'sqm';
 
@@ -496,14 +497,13 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                step="0.1"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={landAreaValue}
-                onChange={(e) => {
+                highlightZero
+                onChangeValue={(v) => {
                   setActivePresetId('');
-                  setLandAreaValue(Math.max(0, Number(e.target.value) || 0));
+                  setLandAreaValue(Math.max(0, v));
                 }}
                 className="w-full px-2.5 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
               />
@@ -567,27 +567,24 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
+                <NumericDraftInput
+                  min={0}
                   value={frontRoadWidthM}
-                  onChange={(e) => {
+                  highlightZero
+                  onChangeValue={(v) => {
                     setActivePresetId('');
-                    setFrontRoadWidthM(Math.max(0, Number(e.target.value) || 0));
+                    setFrontRoadWidthM(Math.max(0, v));
                   }}
                   className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
                 <span className="text-[10px] font-mono">m</span>
               </div>
               <div className="flex items-center gap-1" title="Road-widening setback surrender strip width (grants FAR bonus)">
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  max="5"
+                <NumericDraftInput
+                  min={0}
+                  max={5}
                   value={roadSurrenderWidthM}
-                  onChange={(e) => setRoadSurrenderWidthM(Math.max(0, Number(e.target.value) || 0))}
+                  onChangeValue={(v) => setRoadSurrenderWidthM(Math.max(0, v))}
                   className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                 />
                 <span className="text-[10px] font-mono whitespace-nowrap" title="Surrender Strip (m)">Surr.</span>
@@ -637,13 +634,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               <div>
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
+                <NumericDraftInput
+                  min={0}
                   value={frontageM}
                   disabled={isAutoDimension}
-                  onChange={(e) => setFrontageM(Math.max(0, Number(e.target.value) || 0))}
+                  onChangeValue={(v) => setFrontageM(Math.max(0, v))}
                   className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] disabled:opacity-70"
                 />
                 <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -651,13 +646,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                 </span>
               </div>
               <div>
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
+                <NumericDraftInput
+                  min={0}
                   value={plotDepthM}
                   disabled={isAutoDimension}
-                  onChange={(e) => setPlotDepthM(Math.max(0, Number(e.target.value) || 0))}
+                  onChangeValue={(v) => setPlotDepthM(Math.max(0, v))}
                   className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] disabled:opacity-70"
                 />
                 <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -674,13 +667,13 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
               Proposed Floors
             </label>
-            <input
-              type="number"
-              min="0"
-              max="60"
-              step="1"
+            <NumericDraftInput
+              min={0}
+              max={60}
+              allowDecimal={false}
               value={proposedFloors}
-              onChange={(e) => setProposedFloors(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+              highlightZero
+              onChangeValue={(v) => setProposedFloors(Math.max(0, Math.round(v)))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -692,12 +685,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
               Proposed GC (m²)
             </label>
-            <input
-              type="number"
-              min="0"
-              step="2"
+            <NumericDraftInput
+              min={0}
               value={proposedGroundCoverageM2}
-              onChange={(e) => setProposedGroundCoverageM2(Math.max(0, Number(e.target.value) || 0))}
+              highlightZero
+              onChangeValue={(v) => setProposedGroundCoverageM2(Math.max(0, v))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -722,12 +714,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                 = {proposedFloors} × GC
               </button>
             </div>
-            <input
-              type="number"
-              min="0"
-              step="10"
+            <NumericDraftInput
+              min={0}
               value={proposedTotalFloorAreaM2}
-              onChange={(e) => setProposedTotalFloorAreaM2(Math.max(0, Number(e.target.value) || 0))}
+              highlightZero
+              onChangeValue={(v) => setProposedTotalFloorAreaM2(Math.max(0, v))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -758,12 +749,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
               Units Count
             </label>
-            <input
-              type="number"
-              min="0"
-              step="1"
+            <NumericDraftInput
+              min={0}
+              allowDecimal={false}
               value={unitsCount}
-              onChange={(e) => setUnitsCount(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+              onChangeValue={(v) => setUnitsCount(Math.max(0, Math.round(v)))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -775,12 +765,10 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
               Avg Unit (m²)
             </label>
-            <input
-              type="number"
-              min="0"
-              step="5"
+            <NumericDraftInput
+              min={0}
               value={avgUnitAreaSqm}
-              onChange={(e) => setAvgUnitAreaSqm(Math.max(0, Number(e.target.value) || 0))}
+              onChangeValue={(v) => setAvgUnitAreaSqm(Math.max(0, v))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -792,12 +780,11 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] mb-1">
               Provided Cars
             </label>
-            <input
-              type="number"
-              min="0"
-              step="1"
+            <NumericDraftInput
+              min={0}
+              allowDecimal={false}
               value={providedCarParkingBays}
-              onChange={(e) => setProvidedCarParkingBays(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+              onChangeValue={(v) => setProvidedCarParkingBays(Math.max(0, Math.round(v)))}
               className="w-full px-2 py-1.5 text-xs font-mono tabular-nums font-bold rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
             />
             <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
@@ -830,15 +817,13 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
                 }`}
               >
                 <span className="text-[10px] font-semibold">{sb.label}:</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
+                <NumericDraftInput
+                  min={0}
                   value={providedSetbacks[sb.key]}
-                  onChange={(e) =>
+                  onChangeValue={(v) =>
                     setProvidedSetbacks((prev) => ({
                       ...prev,
-                      [sb.key]: Math.max(0, Number(e.target.value) || 0),
+                      [sb.key]: Math.max(0, v),
                     }))
                   }
                   className="w-12 bg-transparent font-bold tabular-nums text-right outline-none"
@@ -871,24 +856,20 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 mt-3 p-3 bg-[var(--md-sys-color-surface-container-low)] rounded-xl border border-[var(--md-sys-color-outline-variant)] text-xs font-mono">
             <div>
               <span className="text-[10px] block font-semibold mb-1">Override FAR</span>
-              <input
-                type="number"
-                step="0.05"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={overrideFar}
-                onChange={(e) => setOverrideFar(Math.max(0, Number(e.target.value) || 0))}
+                onChangeValue={(v) => setOverrideFar(Math.max(0, v))}
                 className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
             <div>
               <span className="text-[10px] block font-semibold mb-1">Override MGC (%)</span>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                max="95"
+              <NumericDraftInput
+                min={0}
+                max={95}
                 value={overrideMgc}
-                onChange={(e) => setOverrideMgc(Math.max(0, Math.min(95, Number(e.target.value) || 0)))}
+                onChangeValue={(v) => setOverrideMgc(Math.max(0, Math.min(95, v)))}
                 className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"
               />
             </div>
@@ -902,14 +883,13 @@ export const FarMgcCalculator: React.FC<FarMgcCalculatorProps> = ({
             ).map((f) => (
               <div key={f.key}>
                 <span className="text-[10px] block font-semibold mb-1">{f.label}</span>
-                <input
-                  type="number"
-                  step="0.1"
+                <NumericDraftInput
+                  min={0}
                   value={overrideSetbacks[f.key]}
-                  onChange={(e) =>
+                  onChangeValue={(v) =>
                     setOverrideSetbacks({
                       ...overrideSetbacks,
-                      [f.key]: Math.max(0, Number(e.target.value) || 0),
+                      [f.key]: Math.max(0, v),
                     })
                   }
                   className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-bold tabular-nums"

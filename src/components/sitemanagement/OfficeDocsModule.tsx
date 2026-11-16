@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { CivilWorkspace } from '../../types/civil';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import { OfficeDocVerificationModal } from './OfficeDocVerificationModal';
 import { OfficeDocPublicPortalView } from './OfficeDocPublicPortalView';
 import {
@@ -439,21 +440,21 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
       signatories: [
         {
           role: 'Prepared by Resident Engineer',
-          name: docMeta.engineerName || '________________________',
+          name: docMeta.engineerName || 'Pending Signature',
           title: docMeta.engineerTitle || 'Prepared By',
-          license: docMeta.licenseNo || '________________________',
+          license: docMeta.licenseNo || 'Pending License',
           verifiedStatus: 'CERTIFIED & AUTHENTIC',
         },
         {
           role: 'Checked by Project Manager / Consultant',
-          name: '________________________',
+          name: 'Pending Reviewer',
           title: docMeta.consultantOrg || 'Checked By',
-          license: '________________________',
+          license: 'Pending License',
           verifiedStatus: 'VERIFIED',
         },
         {
           role: 'Accepted by Contractor / Recipient',
-          name: '________________________',
+          name: 'Pending Acceptance',
           title: docMeta.contractorName || 'Accepted By',
           verifiedStatus: 'ACKNOWLEDGED',
         },
@@ -914,11 +915,14 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                   <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Security Retention (%)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     value={workOrderData.retentionPercent}
-                    onChange={(e) =>
-                      setWorkOrderData({ ...workOrderData, retentionPercent: e.target.value })
+                    onEmpty={() =>
+                      setWorkOrderData({ ...workOrderData, retentionPercent: '' })
+                    }
+                    onChangeValue={(val) =>
+                      setWorkOrderData({ ...workOrderData, retentionPercent: String(val) })
                     }
                     className="w-full px-3 py-1.5 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                   />
@@ -927,11 +931,15 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                   <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                     Defect Liability (Months)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
+                    allowEmpty={true}
+                    allowDecimal={false}
                     value={workOrderData.defectLiabilityMonths}
-                    onChange={(e) =>
-                      setWorkOrderData({ ...workOrderData, defectLiabilityMonths: e.target.value })
+                    onEmpty={() =>
+                      setWorkOrderData({ ...workOrderData, defectLiabilityMonths: '' })
+                    }
+                    onChangeValue={(val) =>
+                      setWorkOrderData({ ...workOrderData, defectLiabilityMonths: String(val) })
                     }
                     className="w-full px-3 py-1.5 rounded-full text-xs font-mono border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] focus:outline-hidden"
                   />
@@ -1714,10 +1722,10 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                 {/* 1. Prepared by Site Engineer */}
                 <div className="text-center">
                   <div className="border-t border-zinc-900 pt-2 font-bold text-zinc-950">
-                    {docMeta.engineerName || '________________________'}
+                    {docMeta.engineerName || 'Pending Signature'}
                   </div>
                   <div className="text-[11px] text-zinc-600">{docMeta.engineerTitle || 'Prepared By / Engineer'}</div>
-                  <div className="text-[10px] font-mono text-zinc-500">{docMeta.licenseNo || '________________________'}</div>
+                  <div className="text-[10px] font-mono text-zinc-500">{docMeta.licenseNo || 'Pending License'}</div>
                   <div className="text-[10px] text-zinc-400 mt-1">Resident Engineer / EOR</div>
                 </div>
 
@@ -1726,8 +1734,8 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                   <div className="border-t border-zinc-900 pt-2 font-bold text-zinc-950">
                     Project Manager
                   </div>
-                  <div className="text-[11px] text-zinc-600">{docMeta.organization || '________________________'}</div>
-                  <div className="text-[10px] font-mono text-zinc-500">________________________</div>
+                  <div className="text-[11px] text-zinc-600">{docMeta.organization || 'Consulting Authority'}</div>
+                  <div className="text-[10px] font-mono text-zinc-500">Pending Verification</div>
                   <div className="text-[10px] text-zinc-400 mt-1">Consulting Engineer</div>
                 </div>
 
@@ -1736,7 +1744,7 @@ export const OfficeDocsModule: React.FC<OfficeDocsModuleProps> = ({ activeWorksp
                   <div className="border-t border-zinc-900 pt-2 font-bold text-zinc-950">
                     Authorized Signatory
                   </div>
-                  <div className="text-[11px] text-zinc-600">{docMeta.contractorName || '________________________'}</div>
+                  <div className="text-[11px] text-zinc-600">{docMeta.contractorName || 'Not Specified'}</div>
                   <div className="text-[10px] font-mono text-zinc-500">Managing Director / Rep</div>
                   <div className="text-[10px] text-zinc-400 mt-1">Received & Acknowledged</div>
                 </div>

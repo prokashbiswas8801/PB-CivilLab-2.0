@@ -12,6 +12,7 @@ import {
   StrutAndTieResult,
 } from '../../utils/strutAndTieEngine';
 import { createDefaultStrutAndTie } from '../../utils/storage';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import {
   AlertTriangle,
   BookmarkCheck,
@@ -225,13 +226,11 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
               <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Web Width b (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={2000}
-                step={25}
                 value={stm.memberThicknessMm}
-                onChange={(e) => commit({ memberThicknessMm: Math.max(0, Number(e.target.value) || 0) })}
+                onChangeValue={(val) => commit({ memberThicknessMm: Math.max(0, val) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -239,13 +238,11 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
               <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Concrete f&apos;c (MPa)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={70}
-                step={1}
                 value={stm.concreteFcMpa}
-                onChange={(e) => commit({ concreteFcMpa: Math.max(0, Number(e.target.value) || 0) })}
+                onChangeValue={(val) => commit({ concreteFcMpa: Math.max(0, val) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -253,13 +250,11 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
               <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Tie Yield f_y (MPa)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={600}
-                step={20}
                 value={stm.rebarFyMpa}
-                onChange={(e) => commit({ rebarFyMpa: Math.max(0, Number(e.target.value) || 0) })}
+                onChangeValue={(val) => commit({ rebarFyMpa: Math.max(0, val) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -332,11 +327,10 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                         <label className="block text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
                           x (m)
                         </label>
-                        <input
-                          type="number"
-                          step={0.1}
+                        <NumericDraftInput
+                          allowNegative={true}
                           value={node.xM}
-                          onChange={(e) => updateNode(node.id, { xM: Number(e.target.value) })}
+                          onChangeValue={(val) => updateNode(node.id, { xM: val })}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-[11px]"
                         />
                       </div>
@@ -344,11 +338,10 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                         <label className="block text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
                           y (m)
                         </label>
-                        <input
-                          type="number"
-                          step={0.1}
+                        <NumericDraftInput
+                          allowNegative={true}
                           value={node.yM}
-                          onChange={(e) => updateNode(node.id, { yM: Number(e.target.value) })}
+                          onChangeValue={(val) => updateNode(node.id, { yM: val })}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-[11px]"
                         />
                       </div>
@@ -356,13 +349,10 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                         <label className="block text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
                           Fx (kN)
                         </label>
-                        <input
-                          type="number"
-                          step={10}
+                        <NumericDraftInput
+                          allowNegative={true}
                           value={load.fxKn}
-                          onChange={(e) =>
-                            updateLoadForNode(node.id, Number(e.target.value), load.fyKn)
-                          }
+                          onChangeValue={(val) => updateLoadForNode(node.id, val, load.fyKn)}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-[11px]"
                         />
                       </div>
@@ -370,13 +360,10 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                         <label className="block text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
                           Fy (kN)
                         </label>
-                        <input
-                          type="number"
-                          step={25}
+                        <NumericDraftInput
+                          allowNegative={true}
                           value={load.fyKn}
-                          onChange={(e) =>
-                            updateLoadForNode(node.id, load.fxKn, Number(e.target.value))
-                          }
+                          onChangeValue={(val) => updateLoadForNode(node.id, load.fxKn, val)}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-[11px]"
                         />
                       </div>
@@ -496,12 +483,10 @@ export const StrutAndTieInputs: React.FC<StrutAndTieInputsProps> = ({
                         <label className="block text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
                           Area (cm²)
                         </label>
-                        <input
-                          type="number"
+                        <NumericDraftInput
                           min={0}
-                          step={25}
                           value={mem.areaCm2}
-                          onChange={(e) => updateMember(mem.id, { areaCm2: Math.max(0, Number(e.target.value) || 0) })}
+                          onChangeValue={(val) => updateMember(mem.id, { areaCm2: Math.max(0, val) })}
                           className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-[11px]"
                         />
                       </div>

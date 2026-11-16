@@ -1,5 +1,16 @@
-import React, { useState, useEffect, useRef, useId } from 'react';
-import { Info, AlertCircle, Calculator } from 'lucide-react';
+import React, { useState, useEffect, useRef, useId, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { Info, AlertCircle, Calculator, ChevronDown, Check } from 'lucide-react';
+import { UnitCategoryKey } from '../../types/civil';
+import { cleanPrecision } from '../../utils/unitConverter';
+import {
+  resolveUnitAndCategory,
+  convertDirect,
+  parseSmartUnitInput,
+  formatFeetInches,
+  getConversionFactorDetails,
+  UnitDefinition,
+} from '../../utils/unitEngine';
 
 /**
  * High-precision, zero-eval recursive-descent math parser
@@ -117,6 +128,7 @@ export interface TechnicalInputProps {
   id?: string;
   symbol?: React.ReactNode | string;
   unit?: string;
+  unitCategory?: UnitCategoryKey;
   value: number | string;
   onChange: (value: number) => void;
   min?: number;
@@ -135,11 +147,11 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
   id,
   symbol,
   unit,
+  unitCategory,
   value,
   onChange,
   min,
   max,
-  step = 1,
   placeholder,
   disabled = false,
   readOnly = false,
@@ -151,12 +163,55 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
   const autoId = useId();
   const inputId = id || autoId;
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerBtnRef = useRef<HTMLButtonElement>(null);
+  const dropdownMenuRef = useRef<HTMLDivElement>(null);
   const isFocusedRef = useRef(false);
 
-  // Format initial display
-  const formatVal = (v: number | string): string => {
+  const resolvedUnit = useMemo(() => {
+    if (!unit) return null;
+    return resolveUnitAndCategory(unit, unitCategory);
+  }, [unit, unitCategory]);
+
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(() => resolvedUnit?.unitId || '');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; openUpward: boolean }>({
+    top: 0,
+    left: 0,
+    openUpward: false,
+  });
+
+  useEffect(() => {
+    if (resolvedUnit && (!selectedUnitId || !resolvedUnit.contextualUnits.some((u) => u.id === selectedUnitId))) {
+      setSelectedUnitId(resolvedUnit.unitId);
+    }
+  }, [resolvedUnit, selectedUnitId]);
+
+  const activeUnitDef: UnitDefinition | null = useMemo(() => {
+    if (!resolvedUnit) return null;
+    return resolvedUnit.contextualUnits.find((u) => u.id === selectedUnitId) || resolvedUnit.unitDef;
+  }, [resolvedUnit, selectedUnitId]);
+
+  const activeFactorDetails = useMemo(() => {
+    if (!resolvedUnit || !activeUnitDef) return null;
+    return getConversionFactorDetails(activeUnitDef.id, resolvedUnit.category);
+  }, [resolvedUnit, activeUnitDef]);
+
+  const formatVal = (v: number | string, targetUnitId?: string): string => {
     if (v === '' || v === undefined || v === null || isNaN(Number(v))) return '';
     const num = Number(v);
+    if (!Number.isFinite(num) || num === 0) return '0';
+
+    const effUnitId = targetUnitId || selectedUnitId || resolvedUnit?.unitId;
+    if (resolvedUnit && effUnitId && effUnitId !== resolvedUnit.unitId) {
+      if (resolvedUnit.category === 'length' && effUnitId === 'ft-in') {
+        const feetVal = convertDirect(num, resolvedUnit.unitId, 'ft', 'length');
+        return formatFeetInches(feetVal, { isMeters: false });
+      }
+      const conv = convertDirect(num, resolvedUnit.unitId, effUnitId, resolvedUnit.category);
+      if (!Number.isFinite(conv) || conv === 0) return '0';
+      return precision !== undefined ? conv.toFixed(precision) : String(cleanPrecision(conv, 6));
+    }
+
     if (precision !== undefined) {
       return num.toFixed(precision);
     }
@@ -167,12 +222,54 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [evalSuccess, setEvalSuccess] = useState<boolean>(false);
 
-  // Synchronize when external value updates, only if user is not actively editing
   useEffect(() => {
     if (!isFocusedRef.current) {
       setTextVal(formatVal(value));
     }
-  }, [value, precision]);
+  }, [value, precision, selectedUnitId, resolvedUnit?.unitId]);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        triggerBtnRef.current &&
+        !triggerBtnRef.current.contains(target) &&
+        dropdownMenuRef.current &&
+        !dropdownMenuRef.current.contains(target)
+      ) {
+        setDropdownOpen(false);
+      }
+    };
+    const handleWindowChange = () => {
+      if (!triggerBtnRef.current) return;
+      const rect = triggerBtnRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUpward = spaceBelow < 240 && rect.top > 240;
+      setDropdownCoords({
+        top: openUpward ? rect.top - 6 : rect.bottom + 6,
+        left: Math.max(8, Math.min(window.innerWidth - 232, rect.right - 224)),
+        openUpward,
+      });
+    };
+    handleWindowChange();
+    document.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('scroll', handleWindowChange, true);
+    window.addEventListener('resize', handleWindowChange);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('scroll', handleWindowChange, true);
+      window.removeEventListener('resize', handleWindowChange);
+    };
+  }, [dropdownOpen]);
+
+  const toBaseNumber = (rawVal: number, unitIdToUse: string): number => {
+    if (rawVal === 0 || !resolvedUnit || !unitIdToUse || unitIdToUse === resolvedUnit.unitId) {
+      return rawVal;
+    }
+    const effectiveFrom = unitIdToUse === 'ft-in' ? 'ft' : unitIdToUse;
+    return convertDirect(rawVal, effectiveFrom, resolvedUnit.unitId, resolvedUnit.category);
+  };
 
   const commitEvaluation = () => {
     isFocusedRef.current = false;
@@ -183,21 +280,34 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
       return;
     }
 
+    const activeId = activeUnitDef?.id || resolvedUnit?.unitId || '';
+    if (resolvedUnit && activeId) {
+      const smart = parseSmartUnitInput(raw, activeId, resolvedUnit.category);
+      if (smart.isValid && Number.isFinite(smart.parsedValue)) {
+        let baseVal = toBaseNumber(smart.parsedValue, smart.detectedUnitId);
+        if (min !== undefined && baseVal < min) baseVal = min;
+        if (max !== undefined && baseVal > max) baseVal = max;
+        onChange(cleanPrecision(baseVal, 8));
+        setTextVal(formatVal(baseVal, activeId));
+        setIsEvaluating(false);
+        return;
+      }
+    }
+
     const calculated = evaluateMathExpression(raw);
     if (calculated !== null) {
-      let finalVal = calculated;
+      let finalVal = toBaseNumber(calculated, activeId);
       if (min !== undefined && finalVal < min) finalVal = min;
       if (max !== undefined && finalVal > max) finalVal = max;
 
-      onChange(finalVal);
-      setTextVal(precision !== undefined ? finalVal.toFixed(precision) : String(finalVal));
+      onChange(cleanPrecision(finalVal, 8));
+      setTextVal(formatVal(finalVal, activeId));
 
       if (raw.includes('+') || raw.includes('-') || raw.includes('*') || raw.includes('/') || raw.includes('^')) {
         setEvalSuccess(true);
         setTimeout(() => setEvalSuccess(false), 1200);
       }
     } else {
-      // Revert to valid previous value
       setTextVal(formatVal(value));
     }
     setIsEvaluating(false);
@@ -209,9 +319,10 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
     const hasMathOp = /[+\-*/^()]/.test(v);
     setIsEvaluating(hasMathOp);
 
-    // If it's a direct valid number or decimal, update numeric state cleanly
+    const activeId = activeUnitDef?.id || resolvedUnit?.unitId || '';
     if (!hasMathOp && v.trim() !== '' && !isNaN(Number(v))) {
-      onChange(Number(v));
+      const baseVal = toBaseNumber(Number(v), activeId);
+      onChange(cleanPrecision(baseVal, 8));
     }
   };
 
@@ -240,18 +351,20 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
       textVal.trim() === '');
 
   return (
-    <div className={`relative flex items-stretch rounded-full overflow-hidden border transition-all ${
-      error
-        ? 'border-red-500 bg-red-50/10'
-        : evalSuccess
-          ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)]'
-          : isZeroActive
-            ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
-            : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]'
-    } bg-[var(--md-sys-color-surface)] ${className}`}>
+    <div
+      className={`relative flex items-stretch rounded-xl border transition-all ${
+        error
+          ? 'border-red-500 bg-red-50/10'
+          : evalSuccess
+            ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)]'
+            : isZeroActive
+              ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
+              : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] focus-within:border-[var(--md-sys-color-primary)] focus-within:ring-2 focus-within:ring-[var(--md-sys-color-primary)]'
+      } bg-[var(--md-sys-color-surface)] ${className}`}
+    >
       {/* Left Mathematical Symbol Badge */}
       {symbol && (
-        <div className="flex items-center justify-center pl-3.5 pr-2.5 bg-[var(--md-sys-color-surface-container-low)] border-r border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-xs font-semibold select-none shrink-0 min-w-[36px]">
+        <div className="flex items-center justify-center pl-3 pr-2.5 rounded-l-xl bg-[var(--md-sys-color-surface-container-low)] border-r border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-xs font-semibold select-none shrink-0 min-w-[36px]">
           {symbol}
         </div>
       )}
@@ -261,19 +374,19 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
         ref={inputRef}
         id={inputId}
         type="text"
-        inputMode="decimal"
+        inputMode={resolvedUnit?.category === 'length' && activeUnitDef?.id === 'ft-in' ? 'text' : 'decimal'}
         value={textVal}
         onChange={handleChange}
         onFocus={handleFocus}
         onBlur={commitEvaluation}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={activeUnitDef?.id === 'ft-in' ? `12'-6"` : placeholder}
         disabled={disabled}
         readOnly={readOnly}
         aria-label={ariaLabel}
-        className={`w-full min-w-0 bg-transparent px-3.5 py-2 text-xs font-mono font-medium text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/50 focus:outline-none tabular-nums ${
-          disabled ? 'opacity-50 cursor-not-allowed' : ''
-        }`}
+        className={`w-full min-w-0 bg-transparent px-3 py-2 text-xs font-mono font-medium text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/50 focus:outline-none tabular-nums ${
+          !symbol ? 'rounded-l-xl' : ''
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       />
 
       {/* Evaluation Indicator */}
@@ -286,12 +399,84 @@ export const TechnicalInput: React.FC<TechnicalInputProps> = ({
         </div>
       )}
 
-      {/* Right Engineering Unit Badge */}
-      {unit && (
-        <div className="flex items-center justify-center pl-2.5 pr-3.5 bg-[var(--md-sys-color-surface-container-low)] border-l border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-[11px] font-semibold select-none shrink-0 whitespace-nowrap badge-unit">
+      {/* Right Engineering Unit Selector or Static Badge */}
+      {resolvedUnit && activeUnitDef ? (
+        <>
+          <button
+            ref={triggerBtnRef}
+            type="button"
+            disabled={disabled || readOnly}
+            onClick={() => setDropdownOpen((prev) => !prev)}
+            title={activeFactorDetails?.tooltip || `Unit: ${activeUnitDef.name} (${activeUnitDef.symbol})`}
+            className="flex items-center justify-center gap-0.5 pl-2.5 pr-2.5 rounded-r-xl bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] border-l border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface)] font-mono text-[11px] font-bold select-none shrink-0 whitespace-nowrap cursor-pointer transition-colors"
+          >
+            <span>{activeUnitDef.symbol}</span>
+            <ChevronDown className={`w-3 h-3 opacity-75 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {dropdownOpen &&
+            typeof document !== 'undefined' &&
+            createPortal(
+              <div
+                ref={dropdownMenuRef}
+                style={{
+                  position: 'fixed',
+                  top: dropdownCoords.openUpward ? undefined : `${dropdownCoords.top}px`,
+                  bottom: dropdownCoords.openUpward
+                    ? `${window.innerHeight - dropdownCoords.top}px`
+                    : undefined,
+                  left: `${dropdownCoords.left}px`,
+                  width: '224px',
+                  zIndex: 9999,
+                }}
+                className="max-h-64 overflow-y-auto rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] p-1.5 shadow-2xl backdrop-blur-md text-xs font-mono"
+              >
+                <div className="px-2 py-1 text-[9.5px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)] mb-1 flex items-center justify-between">
+                  <span>{resolvedUnit.category.replace('_', ' ')} Unit</span>
+                  <span className="opacity-75">Base: {resolvedUnit.unitDef.symbol}</span>
+                </div>
+                {resolvedUnit.contextualUnits.map((u) => {
+                  const isSelected = u.id === activeUnitDef.id;
+                  const details = getConversionFactorDetails(u.id, resolvedUnit.category);
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        setSelectedUnitId(u.id);
+                        setTextVal(formatVal(value, u.id));
+                      }}
+                      title={details.tooltip}
+                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
+                          : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
+                      }`}
+                    >
+                      <div className="min-w-0 pr-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[11px]">{u.symbol}</span>
+                          <span className="text-[10px] opacity-75 truncate">({u.name})</span>
+                        </div>
+                        <div className="text-[9.5px] text-[var(--md-sys-color-on-surface-variant)] opacity-85 truncate">
+                          {details.factorFormula}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <Check className="w-3.5 h-3.5 shrink-0 text-[var(--md-sys-color-primary)]" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>,
+              document.body
+            )}
+        </>
+      ) : unit ? (
+        <div className="flex items-center justify-center pl-2.5 pr-3 rounded-r-xl bg-[var(--md-sys-color-surface-container-low)] border-l border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)] font-mono text-[11px] font-semibold select-none shrink-0 whitespace-nowrap badge-unit">
           {unit}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

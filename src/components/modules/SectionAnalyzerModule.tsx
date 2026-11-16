@@ -23,6 +23,7 @@ import {
   Zap,
   AlertTriangle,
 } from 'lucide-react';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface SectionAnalyzerInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -268,12 +269,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                   <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                     {sa.shape === 'circular' ? 'Outer Diameter D (mm)' : 'Overall Depth h (mm)'}
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
-                    step={1}
                     value={sa.depthH_Mm}
-                    onChange={(e) => commit({ presetId: 'custom', depthH_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    onChangeValue={(val) => commit({ presetId: 'custom', depthH_Mm: Math.max(0, val) })}
                     className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                   />
                   {isImp && (
@@ -288,12 +287,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                     <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                       Flange / Total Width b (mm)
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
-                      step={1}
                       value={sa.widthB_Mm}
-                      onChange={(e) => commit({ presetId: 'custom', widthB_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
+                      onChangeValue={(val) => commit({ presetId: 'custom', widthB_Mm: Math.max(0, val) })}
                       className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                     />
                     {isImp && (
@@ -304,21 +301,34 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                   </div>
                 )}
 
-                {sa.shape === 'hollow-box' && (
-                  <div className="col-span-2">
-                    <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
-                      Uniform Wall Thickness t (mm)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      value={sa.wallThicknessT_Mm}
-                      onChange={(e) => commit({ presetId: 'custom', wallThicknessT_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
-                      className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
-                    />
-                  </div>
-                )}
+                {sa.shape === 'hollow-box' && (() => {
+                  const invalidWall =
+                    sa.depthH_Mm > 0 &&
+                    sa.widthB_Mm > 0 &&
+                    sa.wallThicknessT_Mm * 2 >= Math.min(sa.depthH_Mm, sa.widthB_Mm);
+                  return (
+                    <div className="col-span-2">
+                      <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
+                        Uniform Wall Thickness t (mm)
+                      </label>
+                      <NumericDraftInput
+                        min={0}
+                        value={sa.wallThicknessT_Mm}
+                        onChangeValue={(val) => commit({ presetId: 'custom', wallThicknessT_Mm: Math.max(0, val) })}
+                        className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border text-[var(--md-sys-color-on-surface)] ${
+                          invalidWall
+                            ? 'border-rose-600 bg-rose-500/10 ring-1 ring-rose-500/50 text-rose-700 dark:text-rose-300'
+                            : 'border-[var(--md-sys-color-outline-variant)]'
+                        }`}
+                      />
+                      {invalidWall && (
+                        <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 mt-1">
+                          2t ({(sa.wallThicknessT_Mm * 2).toFixed(1)} mm) ≥ min(h, b) ({Math.min(sa.depthH_Mm, sa.widthB_Mm)} mm) — hollow core collapses.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {(sa.shape === 'i-beam' || sa.shape === 't-section' || sa.shape === 'channel') && (
                   <>
@@ -326,12 +336,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                       <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                         Web Thickness t_w (mm)
                       </label>
-                      <input
-                        type="number"
+                      <NumericDraftInput
                         min={0}
-                        step={0.2}
                         value={sa.webThicknessTw_Mm}
-                        onChange={(e) => commit({ presetId: 'custom', webThicknessTw_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
+                        onChangeValue={(val) => commit({ presetId: 'custom', webThicknessTw_Mm: Math.max(0, val) })}
                         className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                       />
                     </div>
@@ -339,12 +347,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                       <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                         Flange Thickness t_f (mm)
                       </label>
-                      <input
-                        type="number"
+                      <NumericDraftInput
                         min={0}
-                        step={0.2}
                         value={sa.flangeThicknessTf_Mm}
-                        onChange={(e) => commit({ presetId: 'custom', flangeThicknessTf_Mm: Math.max(0, parseFloat(e.target.value) || 0) })}
+                        onChangeValue={(val) => commit({ presetId: 'custom', flangeThicknessTf_Mm: Math.max(0, val) })}
                         className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)]"
                       />
                     </div>
@@ -378,19 +384,21 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                   {(sa.polygonPointsMm || []).map((pt, idx) => (
                     <div key={pt.id} className="grid grid-cols-12 gap-1.5 items-center px-2 py-1 text-xs font-mono">
                       <span className="col-span-2 text-[10px] font-bold text-[var(--md-sys-color-primary)]">V{idx + 1}</span>
-                      <input
-                        type="number"
+                      <NumericDraftInput
+                        allowNegative={true}
+                        baseUnit="mm"
                         value={pt.yMm}
-                        onChange={(e) => handleUpdateVertex(pt.id, 'yMm', parseFloat(e.target.value))}
+                        onChangeValue={(val) => handleUpdateVertex(pt.id, 'yMm', val)}
                         className="col-span-4 px-1.5 py-1 rounded bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-right tabular-nums"
-                        aria-label={`Vertex ${idx + 1} Y`}
+                        aria-label={`Vertex ${idx + 1} Y (mm)`}
                       />
-                      <input
-                        type="number"
+                      <NumericDraftInput
+                        allowNegative={true}
+                        baseUnit="mm"
                         value={pt.zMm}
-                        onChange={(e) => handleUpdateVertex(pt.id, 'zMm', parseFloat(e.target.value))}
+                        onChangeValue={(val) => handleUpdateVertex(pt.id, 'zMm', val)}
                         className="col-span-4 px-1.5 py-1 rounded bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-right tabular-nums"
-                        aria-label={`Vertex ${idx + 1} Z`}
+                        aria-label={`Vertex ${idx + 1} Z (mm)`}
                       />
                       <button
                         type="button"
@@ -450,12 +458,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Yield f_y (MPa)
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
-                  step={5}
                   value={sa.fyMpa}
-                  onChange={(e) => commit({ fyMpa: Math.max(0, parseFloat(e.target.value) || 0) })}
+                  onChangeValue={(val) => commit({ fyMpa: Math.max(0, val) })}
                   className="w-full px-2 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
                 {isImp && (
@@ -469,12 +475,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Modulus E (GPa)
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
-                  step={5}
                   value={sa.elasticModulusGpa}
-                  onChange={(e) => commit({ elasticModulusGpa: Math.max(0, parseFloat(e.target.value) || 0) })}
+                  onChangeValue={(val) => commit({ elasticModulusGpa: Math.max(0, val) })}
                   className="w-full px-2 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>
@@ -483,15 +487,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Factor γ_M0
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
-                  step={0.05}
                   value={sa.gammaM0}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    commit({ gammaM0: isNaN(v) ? 0 : Math.max(0, v) });
-                  }}
+                  onChangeValue={(val) => commit({ gammaM0: Math.max(0, val) })}
                   className="w-full px-2 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>
@@ -553,11 +552,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Axial Force N (kN) <span className="opacity-70">(−Comp / +Tens)</span>
                 </label>
-                <input
-                  type="number"
-                  step={10}
+                <NumericDraftInput
+                  allowNegative={true}
                   value={sa.axialForceN_Kn}
-                  onChange={(e) => commit({ axialForceN_Kn: parseFloat(e.target.value) || 0 })}
+                  onChangeValue={(val) => commit({ axialForceN_Kn: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
                 {isImp && (
@@ -571,11 +569,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Major Moment M_y (kN·m)
                 </label>
-                <input
-                  type="number"
-                  step={5}
+                <NumericDraftInput
+                  allowNegative={true}
                   value={sa.momentMy_Knm}
-                  onChange={(e) => commit({ momentMy_Knm: parseFloat(e.target.value) || 0 })}
+                  onChangeValue={(val) => commit({ momentMy_Knm: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
                 {isImp && (
@@ -589,11 +586,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Minor Moment M_z (kN·m)
                 </label>
-                <input
-                  type="number"
-                  step={2}
+                <NumericDraftInput
+                  allowNegative={true}
                   value={sa.momentMz_Knm}
-                  onChange={(e) => commit({ momentMz_Knm: parseFloat(e.target.value) || 0 })}
+                  onChangeValue={(val) => commit({ momentMz_Knm: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>
@@ -602,11 +598,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Vertical Shear V_z (kN)
                 </label>
-                <input
-                  type="number"
-                  step={5}
+                <NumericDraftInput
+                  allowNegative={true}
                   value={sa.shearVz_Kn}
-                  onChange={(e) => commit({ shearVz_Kn: parseFloat(e.target.value) || 0 })}
+                  onChangeValue={(val) => commit({ shearVz_Kn: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>
@@ -615,11 +610,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Horizontal Shear V_y (kN)
                 </label>
-                <input
-                  type="number"
-                  step={2}
+                <NumericDraftInput
+                  allowNegative={true}
                   value={sa.shearVy_Kn}
-                  onChange={(e) => commit({ shearVy_Kn: parseFloat(e.target.value) || 0 })}
+                  onChangeValue={(val) => commit({ shearVy_Kn: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>
@@ -628,11 +622,10 @@ export const SectionAnalyzerInputs: React.FC<SectionAnalyzerInputsProps> = ({
                 <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Torsion Moment T (kN·m)
                 </label>
-                <input
-                  type="number"
-                  step={1}
+                <NumericDraftInput
+                  allowNegative={true}
                   value={sa.torsionT_Knm}
-                  onChange={(e) => commit({ torsionT_Knm: parseFloat(e.target.value) || 0 })}
+                  onChangeValue={(val) => commit({ torsionT_Knm: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 />
               </div>

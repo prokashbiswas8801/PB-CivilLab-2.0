@@ -25,6 +25,7 @@ import { getCurrencySymbol, RateAnalysisResult } from '../../utils/calculations'
 import { RATE_ANALYSIS_TRADE_PRESETS } from '../../utils/rateResolver';
 import { MasterMarketRatesPanel } from './MasterMarketRatesPanel';
 import { UnitInput } from '../UnitInput';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface RateAnalysisInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -182,16 +183,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                   {currentWorkType === 'brickwork-125mm-1-4' ? 'Analysis Basis Area (m²)' : 'Analysis Basis Mass (Metric Ton)'}
                 </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
+                <NumericDraftInput
+                  min={0}
                   value={activeWorkspace.rateAnalysis.basisVolumeM3}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? 0 : Number(e.target.value);
+                  onChangeValue={(val) => {
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      rateAnalysis: { ...ws.rateAnalysis, basisVolumeM3: Number.isFinite(val) && val >= 0 ? val : 0 },
+                      rateAnalysis: { ...ws.rateAnalysis, basisVolumeM3: Math.max(0, val) },
                     }));
                   }}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
@@ -310,18 +308,14 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             className="flex-1 accent-[var(--md-sys-color-primary)] cursor-pointer"
           />
           <div className="w-24 shrink-0">
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              max="5.00"
+            <NumericDraftInput
+              min={0}
+              max={5.0}
               value={localCostIndex}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, localCostIndex: val },
+                  rateAnalysis: { ...ws.rateAnalysis, localCostIndex: Math.max(0, val) },
                 }));
               }}
               className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono font-bold text-center"
@@ -368,18 +362,14 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               <label className="block text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Material Index ({materialCostIndex.toFixed(2)}x)
               </label>
-              <input
-                type="number"
-                step="0.05"
-                min="0"
-                max="3.0"
+              <NumericDraftInput
+                min={0}
+                max={3.0}
                 value={materialCostIndex}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
+                onChangeValue={(val) => {
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, materialCostIndex: val },
+                    rateAnalysis: { ...ws.rateAnalysis, materialCostIndex: Math.max(0, val) },
                   }));
                 }}
                 className="w-full touch-target-48 px-2 rounded border border-[var(--md-sys-color-outline)] text-xs"
@@ -389,18 +379,14 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               <label className="block text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Labor Index ({laborCostIndex.toFixed(2)}x)
               </label>
-              <input
-                type="number"
-                step="0.05"
-                min="0"
-                max="3.0"
+              <NumericDraftInput
+                min={0}
+                max={3.0}
                 value={laborCostIndex}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
+                onChangeValue={(val) => {
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, laborCostIndex: val },
+                    rateAnalysis: { ...ws.rateAnalysis, laborCostIndex: Math.max(0, val) },
                   }));
                 }}
                 className="w-full touch-target-48 px-2 rounded border border-[var(--md-sys-color-outline)] text-xs"
@@ -410,18 +396,14 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               <label className="block text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Plant/Hire Index ({equipmentCostIndex.toFixed(2)}x)
               </label>
-              <input
-                type="number"
-                step="0.05"
-                min="0"
-                max="3.0"
+              <NumericDraftInput
+                min={0}
+                max={3.0}
                 value={equipmentCostIndex}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  const val = isNaN(raw) ? 0 : Math.max(0, raw);
+                onChangeValue={(val) => {
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, equipmentCostIndex: val },
+                    rateAnalysis: { ...ws.rateAnalysis, equipmentCostIndex: Math.max(0, val) },
                   }));
                 }}
                 className="w-full touch-target-48 px-2 rounded border border-[var(--md-sys-color-outline)] text-xs"
@@ -449,16 +431,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.cementPricePerBag}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, cementPricePerBag: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, cementPricePerBag: val },
                 }));
               }}
               className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
@@ -479,16 +458,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.sandPricePerM3}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, sandPricePerM3: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, sandPricePerM3: val },
                 }));
               }}
               className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
@@ -509,16 +485,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.stoneChipsPricePerM3}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, stoneChipsPricePerM3: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, stoneChipsPricePerM3: val },
                 }));
               }}
               className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
@@ -539,16 +512,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.rebarPricePerKg}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, rebarPricePerKg: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, rebarPricePerKg: val },
                 }));
               }}
               className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
@@ -573,16 +543,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                   </span>
                 )}
               </div>
-              <input
-                type="number"
-                step="any"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={activeWorkspace.rateAnalysis.rebarAllowanceKgPerM3}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? 0 : Number(e.target.value);
+                onChangeValue={(val) => {
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, rebarAllowanceKgPerM3: isNaN(val) ? 0 : val },
+                    rateAnalysis: { ...ws.rateAnalysis, rebarAllowanceKgPerM3: val },
                   }));
                 }}
                 className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
@@ -603,16 +570,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                   </span>
                 )}
               </div>
-              <input
-                type="number"
-                step="any"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={activeWorkspace.rateAnalysis.admixturePricePerKg ?? 0}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? 0 : Number(e.target.value);
+                onChangeValue={(val) => {
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, admixturePricePerKg: isNaN(val) ? 0 : val },
+                    rateAnalysis: { ...ws.rateAnalysis, admixturePricePerKg: val },
                   }));
                 }}
                 className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
@@ -638,16 +602,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
-              step="any"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.brickPricePer1000 ?? 0}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, brickPricePer1000: isNaN(val) ? 0 : val },
+                  rateAnalysis: { ...ws.rateAnalysis, brickPricePer1000: val },
                 }));
               }}
               className={`w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] ${
@@ -669,16 +630,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
               <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                 Local Sand FM 1.5 ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
               </label>
-              <input
-                type="number"
-                step="any"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={activeWorkspace.rateAnalysis.localSandPricePerM3 ?? 0}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? 0 : Number(e.target.value);
+                onChangeValue={(val) => {
                   updateActiveWorkspace((ws) => ({
                     ...ws,
-                    rateAnalysis: { ...ws.rateAnalysis, localSandPricePerM3: isNaN(val) ? 0 : val },
+                    rateAnalysis: { ...ws.rateAnalysis, localSandPricePerM3: val },
                   }));
                 }}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
@@ -689,16 +647,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
                 <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
                   Brick Khoa / Pea Gravel ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
                 </label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
+                <NumericDraftInput
+                  min={0}
                   value={activeWorkspace.rateAnalysis.brickKhoaPricePerM3 ?? 0}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? 0 : Number(e.target.value);
+                  onChangeValue={(val) => {
                     updateActiveWorkspace((ws) => ({
                       ...ws,
-                      rateAnalysis: { ...ws.rateAnalysis, brickKhoaPricePerM3: isNaN(val) ? 0 : val },
+                      rateAnalysis: { ...ws.rateAnalysis, brickKhoaPricePerM3: val },
                     }));
                   }}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
@@ -720,17 +675,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Head Mason ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/day)
             </label>
-            <input
-              type="number"
-              step="50"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.masonDailyWage}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, masonDailyWage: val },
+                  rateAnalysis: { ...ws.rateAnalysis, masonDailyWage: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -740,17 +691,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Mason Days Required
             </label>
-            <input
-              type="number"
-              step="0.05"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.masonDaysRequired}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, masonDaysRequired: val },
+                  rateAnalysis: { ...ws.rateAnalysis, masonDaysRequired: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -760,17 +707,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               General Laborer ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/day)
             </label>
-            <input
-              type="number"
-              step="50"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.laborerDailyWage}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, laborerDailyWage: val },
+                  rateAnalysis: { ...ws.rateAnalysis, laborerDailyWage: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -780,17 +723,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Laborer Days Required
             </label>
-            <input
-              type="number"
-              step="0.1"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.laborerDaysRequired}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, laborerDaysRequired: val },
+                  rateAnalysis: { ...ws.rateAnalysis, laborerDaysRequired: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -800,17 +739,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Bar Bender / Fitter ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/day)
             </label>
-            <input
-              type="number"
-              step="50"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.barBenderDailyWage}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, barBenderDailyWage: val },
+                  rateAnalysis: { ...ws.rateAnalysis, barBenderDailyWage: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -820,17 +755,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Bar Bender Days Required
             </label>
-            <input
-              type="number"
-              step="0.05"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.barBenderDaysRequired}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, barBenderDaysRequired: val },
+                  rateAnalysis: { ...ws.rateAnalysis, barBenderDaysRequired: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -850,17 +781,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Mixer Hire ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
             </label>
-            <input
-              type="number"
-              step="10"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.mixerHirePerM3}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, mixerHirePerM3: val },
+                  rateAnalysis: { ...ws.rateAnalysis, mixerHirePerM3: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -870,17 +797,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Vibrator Hire ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
             </label>
-            <input
-              type="number"
-              step="5"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.vibratorHirePerM3}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, vibratorHirePerM3: val },
+                  rateAnalysis: { ...ws.rateAnalysis, vibratorHirePerM3: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -890,17 +813,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Shuttering ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)}/m³)
             </label>
-            <input
-              type="number"
-              step="20"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.shutteringScaffoldingPerM3}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, shutteringScaffoldingPerM3: val },
+                  rateAnalysis: { ...ws.rateAnalysis, shutteringScaffoldingPerM3: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -910,17 +829,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Water & Electricity (%)
             </label>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.waterElectricityPercent}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, waterElectricityPercent: val },
+                  rateAnalysis: { ...ws.rateAnalysis, waterElectricityPercent: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono text-[var(--md-sys-color-on-surface)]"
@@ -930,17 +845,13 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Contractor Profit (%)
             </label>
-            <input
-              type="number"
-              step="1.0"
-              min="0"
+            <NumericDraftInput
+              min={0}
               value={activeWorkspace.rateAnalysis.contractorProfitPercent}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, contractorProfitPercent: val },
+                  rateAnalysis: { ...ws.rateAnalysis, contractorProfitPercent: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
@@ -950,18 +861,14 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Material Wastage (%)
             </label>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              max="20"
+            <NumericDraftInput
+              min={0}
+              max={20}
               value={activeWorkspace.rateAnalysis.wastagePercent ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, wastagePercent: val },
+                  rateAnalysis: { ...ws.rateAnalysis, wastagePercent: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
@@ -971,18 +878,14 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               VAT &amp; AIT Tax (%)
             </label>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              max="35"
+            <NumericDraftInput
+              min={0}
+              max={35}
               value={activeWorkspace.rateAnalysis.vatAitPercent ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                const val = isNaN(raw) ? 0 : Math.max(0, raw);
+              onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, vatAitPercent: val },
+                  rateAnalysis: { ...ws.rateAnalysis, vatAitPercent: Math.max(0, val) },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"

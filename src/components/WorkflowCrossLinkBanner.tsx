@@ -34,6 +34,7 @@ interface WorkflowCrossLinkBannerProps {
   onSyncBoqToInventory?: () => void;
   onSyncMixToCubeTests?: () => void;
   onGenerateRequisitionSlip?: (sourceModule: 'concrete-materials' | 'rebar-bbs' | 'masonry-finishes') => void;
+  onTransferStmToRebarBbs?: () => void;
   bearingFailed?: boolean;
   bbsSteelWeightKg?: number;
   bearingFootingWidthM?: number;
@@ -45,6 +46,7 @@ interface WorkflowCrossLinkBannerProps {
   rcColDepthMm?: number;
   rcColBarCount?: number;
   rcColBarDiaMm?: number;
+  stmRequiredTieSteelMm2?: number;
   masonryNetVolumeM3?: number;
   masonryBricksCount?: number;
   pileTotalCount?: number;
@@ -82,6 +84,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   onSyncBoqToInventory,
   onSyncMixToCubeTests,
   onGenerateRequisitionSlip,
+  onTransferStmToRebarBbs,
   bearingFailed,
   bbsSteelWeightKg,
   bearingFootingWidthM,
@@ -93,6 +96,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   rcColDepthMm,
   rcColBarCount,
   rcColBarDiaMm,
+  stmRequiredTieSteelMm2,
   masonryNetVolumeM3,
   masonryBricksCount,
   pileTotalCount,
@@ -108,6 +112,18 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   pipeMaterial,
   currencySymbol,
 }) => {
+  const effBearingWidthM = bearingFootingWidthM ?? activeWorkspace.bearing?.footingWidthM ?? 0;
+  const effBearingDepthM = bearingEmbedmentDepthM ?? activeWorkspace.bearing?.embedmentDepthM ?? 0;
+  const effBearingLoadKn = bearingAppliedLoadKn ?? activeWorkspace.bearing?.appliedColumnLoadKn ?? 0;
+  const effMixBatchVolM3 = mixBatchVolumeM3 ?? activeWorkspace.concrete?.batchVolumeM3 ?? 0;
+  const effPipeLengthM = pipeLengthM ?? activeWorkspace.pipe?.lengthM ?? 0;
+  const effPipeDiaMm = pipeDiameterMm ?? activeWorkspace.pipe?.internalDiameterMm ?? 0;
+  const effPipeMaterial = pipeMaterial ?? activeWorkspace.pipe?.pipeMaterial ?? 'uPVC';
+  const effBeamSpanM = beamSpanM ?? activeWorkspace.beam?.spanLengthM ?? 0;
+  const effPileCount =
+    pileTotalCount ??
+    Math.max(1, (activeWorkspace.pile?.pileGroupRows || 1) * (activeWorkspace.pile?.pileGroupCols || 1));
+
   // 1. Rebar BBS -> BOQ Schedule
   if (activeModule === 'rebar-bbs' && bbsSteelWeightKg && bbsSteelWeightKg > 0) {
     return (
@@ -156,7 +172,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   }
 
   // 2. Bearing Capacity -> Footing Rebar BBS & Excavation & Deep Foundation
-  if (activeModule === 'bearing-capacity' && bearingFootingWidthM && bearingEmbedmentDepthM) {
+  if (activeModule === 'bearing-capacity' && effBearingWidthM > 0 && effBearingDepthM > 0) {
     // If shallow bearing has failed (FS < 3.0 or DCR > 1.0), prioritize Deep Pile Foundation switch!
     if (bearingFailed && onTransferBearingToPile) {
       return (
@@ -173,7 +189,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
                 </span>
               </div>
               <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-                Column Load <strong>{bearingAppliedLoadKn || activeWorkspace.bearing.appliedColumnLoadKn} kN</strong> exceeds soil allowable bearing capacity. Switch to Bored Cast-in-Situ Pile Foundation to transfer loads to competent bearing strata.
+                Column Load <strong>{effBearingLoadKn} kN</strong> exceeds soil allowable bearing capacity. Switch to Bored Cast-in-Situ Pile Foundation to transfer loads to competent bearing strata.
               </div>
             </div>
           </div>
@@ -207,7 +223,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
               </span>
             </div>
             <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-              Footing <strong>{bearingFootingWidthM}m × {bearingFootingWidthM}m</strong>, Embedment <strong>{bearingEmbedmentDepthM}m</strong>, Working Load <strong>{bearingAppliedLoadKn || activeWorkspace.bearing.appliedColumnLoadKn} kN</strong>. Includes 300mm working offset &amp; 150mm bedding.
+              Footing <strong>{effBearingWidthM}m × {effBearingWidthM}m</strong>, Embedment <strong>{effBearingDepthM}m</strong>, Working Load <strong>{effBearingLoadKn} kN</strong>. Includes 300mm working offset &amp; 150mm bedding.
             </div>
           </div>
         </div>
@@ -240,7 +256,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   }
 
   // 3. ACI 211 Mix -> Concrete Materials & BOQ
-  if (activeModule === 'concrete-mix' && mixBatchVolumeM3 && mixBatchVolumeM3 > 0) {
+  if (activeModule === 'concrete-mix' && effMixBatchVolM3 > 0 && activeWorkspace.concrete.targetStrengthMpa > 0) {
     return (
       <div className="bg-gradient-to-r from-teal-900/10 via-emerald-900/10 to-transparent border border-teal-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5">
@@ -255,7 +271,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
               </span>
             </div>
             <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-              Sync <strong>{mixBatchVolumeM3} m³</strong> concrete, cement bags, fine sand, coarse stone, and admixtures directly into BOQ Takeoff.
+              Sync <strong>{effMixBatchVolM3} m³</strong> concrete, cement bags, fine sand, coarse stone, and admixtures directly into BOQ Takeoff.
             </div>
           </div>
         </div>
@@ -446,7 +462,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   }
 
   // 8. Pipe Hydraulics -> BOQ Plumbing Schedule
-  if (activeModule === 'pipe-hydraulics' && pipeLengthM && pipeLengthM > 0 && onTransferPipeToBoq) {
+  if (activeModule === 'pipe-hydraulics' && effPipeLengthM > 0 && effPipeDiaMm > 0 && onTransferPipeToBoq) {
     return (
       <div className="bg-gradient-to-r from-cyan-900/10 via-blue-900/10 to-transparent border border-cyan-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5">
@@ -461,7 +477,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
               </span>
             </div>
             <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-              Add <strong>{pipeLengthM}m</strong> pipeline ({pipeDiameterMm || 200}mm Ø, {pipeMaterial || 'PVC'}) directly to BOQ Plumbing takeoff.
+              Add <strong>{effPipeLengthM}m</strong> pipeline ({effPipeDiaMm}mm Ø, {effPipeMaterial}) directly to BOQ Plumbing takeoff.
             </div>
           </div>
         </div>
@@ -480,7 +496,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
   }
 
   // 9. Single Beam Analysis -> Rebar BBS
-  if (activeModule === 'beam-analysis' && beamSpanM && beamSpanM > 0 && onTransferBeamToRebar) {
+  if (activeModule === 'beam-analysis' && effBeamSpanM > 0 && onTransferBeamToRebar) {
     return (
       <div className="bg-gradient-to-r from-blue-900/10 via-sky-900/10 to-transparent border border-blue-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5">
@@ -495,7 +511,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
               </span>
             </div>
             <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-              Transfer span (<strong>{beamSpanM}m</strong>) and max moment <strong>{beamMaxMomentKnm ? `${beamMaxMomentKnm.toFixed(1)} kN·m` : '0 kN·m'}</strong> into Beam BBS reinforcement detailing.
+              Transfer span (<strong>{effBeamSpanM}m</strong>) and max moment <strong>{beamMaxMomentKnm ? `${beamMaxMomentKnm.toFixed(1)} kN·m` : '0 kN·m'}</strong> into Beam BBS reinforcement detailing.
             </div>
           </div>
         </div>
@@ -576,7 +592,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
               </span>
             </div>
             <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-              Transfer <strong>{pileTotalCount || 1} Piles</strong> ({pileConcreteVolumeM3.toFixed(1)} m³ concrete and drilling depth) into Substructure BOQ Schedule.
+              Transfer <strong>{effPileCount} Piles</strong> ({(pileConcreteVolumeM3 * effPileCount).toFixed(1)} m³ total shaft concrete) into Substructure BOQ Schedule.
             </div>
           </div>
         </div>
@@ -664,10 +680,12 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
 
   // 14. RC Column Design -> Rebar BBS Schedule
   if (activeModule === 'rc-column-design' && onTransferRcColumnToRebar) {
-    const colB = rcColWidthMm ?? activeWorkspace.rcColumn?.widthB_Mm ?? 400;
-    const colH = rcColDepthMm ?? activeWorkspace.rcColumn?.depthH_Mm ?? 500;
-    const colBars = rcColBarCount ?? 10;
+    const colB = rcColWidthMm ?? activeWorkspace.rcColumn?.widthB_Mm ?? 0;
+    const colH = rcColDepthMm ?? activeWorkspace.rcColumn?.depthH_Mm ?? 0;
+    const colBars = rcColBarCount ?? 0;
     const colDia = rcColBarDiaMm ?? activeWorkspace.rcColumn?.longitudinalBarDiaMm ?? 20;
+
+    if (colB <= 0 || colH <= 0) return null;
 
     return (
       <div className="bg-gradient-to-r from-indigo-900/10 via-blue-900/10 to-transparent border border-indigo-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -683,7 +701,7 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
               </span>
             </div>
             <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
-              Push <strong>{colB}×{colH} mm</strong> column with <strong>{colBars}-φ{colDia}mm</strong> longitudinal bars and ties directly into Column Rebar BBS.
+              Push <strong>{colB}×{colH} mm</strong> column with <strong>{colBars || 8}-φ{colDia}mm</strong> longitudinal bars and ties directly into Column Rebar BBS.
             </div>
           </div>
         </div>
@@ -695,6 +713,40 @@ export const WorkflowCrossLinkBanner: React.FC<WorkflowCrossLinkBannerProps> = (
         >
           <Hammer className="w-3.5 h-3.5" />
           <span>Sync Column Rebar to BBS Schedule</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+        </button>
+      </div>
+    );
+  }
+
+  // 15. Strut-and-Tie (STM) -> Rebar BBS Schedule
+  if (activeModule === 'strut-and-tie' && stmRequiredTieSteelMm2 && stmRequiredTieSteelMm2 > 0 && onTransferStmToRebarBbs) {
+    return (
+      <div className="bg-gradient-to-r from-indigo-900/10 via-sky-900/10 to-transparent border border-indigo-500/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Hammer className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
+              <span>One-Click Cross-Link: STM Tension Tie Steel → Rebar BBS Schedule</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded">
+                D-Region Detailing
+              </span>
+            </div>
+            <div className="text-[var(--md-sys-color-on-surface-variant)] text-[11px] mt-0.5">
+              Transfer required STM Tension Tie reinforcement <strong>{stmRequiredTieSteelMm2.toFixed(0)} mm²</strong> directly into Deep Beam Rebar BBS detailing.
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onTransferStmToRebarBbs}
+          className="touch-target-48 px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+        >
+          <Hammer className="w-3.5 h-3.5" />
+          <span>Send Tie Steel to Rebar BBS</span>
           <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
         </button>
       </div>

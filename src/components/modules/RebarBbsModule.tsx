@@ -11,6 +11,7 @@ import { UnitInput } from '../UnitInput';
 import { UnitValueDisplay } from '../UnitValueDisplay';
 import { AlertTriangle, FileSpreadsheet, FileDown, Layers, Plus, TableProperties, Trash2 } from 'lucide-react';
 import { BBSGenerator } from '../calculators/civil/BBSGenerator';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export { BBSGenerator };
 
@@ -224,15 +225,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 ×{qty}
               </button>
             ))}
-            <input
-              type="number"
-              min="0"
-              max="500"
+            <NumericDraftInput
+              min={0}
+              max={500}
+              allowDecimal={false}
               value={bbs.elementCount ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                updateBBS({ elementCount: Math.max(0, Math.round(isNaN(raw) ? 0 : raw)) });
-              }}
+              onChangeValue={(val) => updateBBS({ elementCount: Math.max(0, Math.round(val)) })}
               className="w-16 min-h-[36px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)] text-center"
               aria-label="Identical element batch quantity"
             />
@@ -319,15 +317,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-semibold mb-1">Bottom Bars (Tension)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="12"
+                <NumericDraftInput
+                  min={0}
+                  max={12}
+                  allowDecimal={false}
                   value={bbs.beamBotBarCount ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updateBBS({ beamBotBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updateBBS({ beamBotBarCount: Math.max(0, Math.round(val)) })}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <div className="flex items-center gap-1 mt-1">
@@ -349,15 +344,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Top Bars (Hangers)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="10"
+                <NumericDraftInput
+                  min={0}
+                  max={10}
+                  allowDecimal={false}
                   value={bbs.beamTopBarCount ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updateBBS({ beamTopBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updateBBS({ beamTopBarCount: Math.max(0, Math.round(val)) })}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
                 <div className="flex items-center gap-1 mt-1">
@@ -627,16 +619,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             />
             <div>
               <label className="block text-xs font-semibold mb-1">Longitudinal Bar Count (Nos)</label>
-              <input
-                type="number"
-                min="0"
-                max="32"
-                step="2"
+              <NumericDraftInput
+                min={0}
+                max={32}
+                allowDecimal={false}
                 value={bbs.colMainBarCount ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updateBBS({ colMainBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updateBBS({ colMainBarCount: Math.max(0, Math.round(val)) })}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <div className="flex items-center gap-1 mt-1 overflow-x-auto">
@@ -751,15 +739,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             />
             <div>
               <label className="block text-xs font-semibold mb-1">Bar Count (Min 6 for Circular)</label>
-              <input
-                type="number"
-                min="0"
-                max="32"
+              <NumericDraftInput
+                min={0}
+                max={32}
+                allowDecimal={false}
                 value={bbs.circMainBarCount ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updateBBS({ circMainBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updateBBS({ circMainBarCount: Math.max(0, Math.round(val)) })}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
             </div>
@@ -1049,29 +1034,23 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-semibold mb-1">Bottom Rebar (Nos)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="6"
+                <NumericDraftInput
+                  min={0}
+                  max={6}
+                  allowDecimal={false}
                   value={bbs.lintelBotBarCount ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updateBBS({ lintelBotBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updateBBS({ lintelBotBarCount: Math.max(0, Math.round(val)) })}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Top Rebar (Nos)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="6"
+                <NumericDraftInput
+                  min={0}
+                  max={6}
+                  allowDecimal={false}
                   value={bbs.lintelTopBarCount ?? 0}
-                  onChange={(e) => {
-                    const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                    updateBBS({ lintelTopBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
-                  }}
+                  onChangeValue={(val) => updateBBS({ lintelTopBarCount: Math.max(0, Math.round(val)) })}
                   className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                 />
               </div>
@@ -1204,15 +1183,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
             />
             <div>
               <label className="block text-xs font-semibold mb-1">Longitudinal Bar Count</label>
-              <input
-                type="number"
-                min="0"
-                max="24"
+              <NumericDraftInput
+                min={0}
+                max={24}
+                allowDecimal={false}
                 value={bbs.pileMainBarCount ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updateBBS({ pileMainBarCount: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updateBBS({ pileMainBarCount: Math.max(0, Math.round(val)) })}
                 className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <div className="flex items-center gap-1 mt-1 overflow-x-auto">
@@ -1371,14 +1347,13 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 </div>
                 <div className="sm:col-span-1">
                   <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Qty</span>
-                  <input
-                    type="number"
-                    min="0"
+                  <NumericDraftInput
+                    min={0}
+                    allowDecimal={false}
                     value={entry.count}
-                    onChange={(e) => {
+                    onChangeValue={(val) => {
                       const next = [...(bbs.batchEntries || [])];
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      next[idx] = { ...next[idx], count: Math.max(0, isNaN(raw) ? 0 : raw) };
+                      next[idx] = { ...next[idx], count: Math.max(0, Math.round(val)) };
                       updateBBS({ batchEntries: next });
                     }}
                     className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums bg-[var(--md-sys-color-surface)]"
@@ -1386,15 +1361,12 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
                 </div>
                 <div className="sm:col-span-1">
                   <span className="block text-[9px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Span (m)</span>
-                  <input
-                    type="number"
-                    step="0.2"
-                    min="0"
+                  <NumericDraftInput
+                    min={0}
                     value={entry.spanLengthM}
-                    onChange={(e) => {
+                    onChangeValue={(val) => {
                       const next = [...(bbs.batchEntries || [])];
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      next[idx] = { ...next[idx], spanLengthM: Math.max(0, isNaN(raw) ? 0 : raw) };
+                      next[idx] = { ...next[idx], spanLengthM: Math.max(0, val) };
                       updateBBS({ batchEntries: next });
                     }}
                     className="w-full px-1.5 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono tabular-nums bg-[var(--md-sys-color-surface)]"

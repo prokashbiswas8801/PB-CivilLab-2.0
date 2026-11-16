@@ -10,6 +10,7 @@ import {
 } from '../../types/civil';
 import { FrameTruss2DResult } from '../../utils/frameSolver2d';
 import { createDefaultFrameTruss2D, createPresetFrameTruss2D } from '../../utils/storage';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import {
   Network,
   Plus,
@@ -389,14 +390,11 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
             <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
               σ_allow (MPa)
             </label>
-            <input
-              type="number"
+            <NumericDraftInput
               min={0}
-              step={10}
               value={ft.allowableStressMpa ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                commitFrameState({ ...ft, allowableStressMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+              onChangeValue={(val) => {
+                commitFrameState({ ...ft, allowableStressMpa: Math.max(0, val) });
               }}
               className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs"
             />
@@ -405,14 +403,11 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
             <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
               Depth h (mm)
             </label>
-            <input
-              type="number"
+            <NumericDraftInput
               min={0}
-              step={25}
               value={ft.sectionDepthMm ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                commitFrameState({ ...ft, sectionDepthMm: Math.max(0, isNaN(raw) ? 0 : raw) });
+              onChangeValue={(val) => {
+                commitFrameState({ ...ft, sectionDepthMm: Math.max(0, val) });
               }}
               className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs"
             />
@@ -421,13 +416,11 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
             <label className="block text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] mb-1">
               Thermal ΔT (°C)
             </label>
-            <input
-              type="number"
-              step={5}
+            <NumericDraftInput
+              allowNegative={true}
               value={ft.thermalDeltaC ?? 0}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                commitFrameState({ ...ft, thermalDeltaC: isNaN(raw) ? 0 : raw });
+              onChangeValue={(val) => {
+                commitFrameState({ ...ft, thermalDeltaC: val });
               }}
               className="w-full px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono tabular-nums text-xs"
             />
@@ -492,21 +485,19 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                     </div>
                     <div className="col-span-3">
                       <label className="block text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">X (m)</label>
-                      <input
-                        type="number"
-                        step={0.5}
+                      <NumericDraftInput
+                        allowNegative={true}
                         value={node.xM}
-                        onChange={(e) => handleUpdateNode(node.id, { xM: Number(e.target.value) || 0 })}
+                        onChangeValue={(val) => handleUpdateNode(node.id, { xM: val })}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-xs"
                       />
                     </div>
                     <div className="col-span-3">
                       <label className="block text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">Y (m)</label>
-                      <input
-                        type="number"
-                        step={0.5}
+                      <NumericDraftInput
+                        allowNegative={true}
                         value={node.yM}
-                        onChange={(e) => handleUpdateNode(node.id, { yM: Number(e.target.value) || 0 })}
+                        onChangeValue={(val) => handleUpdateNode(node.id, { yM: val })}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-xs"
                       />
                     </div>
@@ -548,42 +539,33 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                     <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-[var(--md-sys-color-outline-variant)] text-[11px] font-mono">
                       <div>
                         <label className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Kx (kN/m)</label>
-                        <input
-                          type="number"
+                        <NumericDraftInput
                           min={0}
-                          step={500}
                           value={node.springKx ?? 0}
-                          onChange={(e) => {
-                            const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                            handleUpdateNode(node.id, { springKx: Math.max(0, isNaN(raw) ? 0 : raw) });
+                          onChangeValue={(val) => {
+                            handleUpdateNode(node.id, { springKx: Math.max(0, val) });
                           }}
                           className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums"
                         />
                       </div>
                       <div>
                         <label className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Ky (kN/m)</label>
-                        <input
-                          type="number"
+                        <NumericDraftInput
                           min={0}
-                          step={500}
                           value={node.springKy ?? 0}
-                          onChange={(e) => {
-                            const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                            handleUpdateNode(node.id, { springKy: Math.max(0, isNaN(raw) ? 0 : raw) });
+                          onChangeValue={(val) => {
+                            handleUpdateNode(node.id, { springKy: Math.max(0, val) });
                           }}
                           className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums"
                         />
                       </div>
                       <div>
                         <label className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Kr (kN·m/rad)</label>
-                        <input
-                          type="number"
+                        <NumericDraftInput
                           min={0}
-                          step={500}
                           value={node.springKr ?? 0}
-                          onChange={(e) => {
-                            const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                            handleUpdateNode(node.id, { springKr: Math.max(0, isNaN(raw) ? 0 : raw) });
+                          onChangeValue={(val) => {
+                            handleUpdateNode(node.id, { springKr: Math.max(0, val) });
                           }}
                           className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums"
                         />
@@ -683,78 +665,65 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 font-mono">
                     <div>
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">A (cm²)</label>
-                      <input
-                        type="number"
+                      <NumericDraftInput
                         min={0}
-                        step={5}
                         value={m.areaCm2}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          handleUpdateMember(m.id, { areaCm2: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        onChangeValue={(val) => {
+                          handleUpdateMember(m.id, { areaCm2: Math.max(0, val) });
                         }}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">I (cm⁴)</label>
-                      <input
-                        type="number"
+                      <NumericDraftInput
                         min={0}
-                        step={1000}
                         disabled={m.memberType === 'truss'}
                         value={m.memberType === 'truss' ? 0 : m.inertiaCm4}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          handleUpdateMember(m.id, { inertiaCm4: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        onChangeValue={(val) => {
+                          handleUpdateMember(m.id, { inertiaCm4: Math.max(0, val) });
                         }}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs disabled:opacity-45"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">E (GPa)</label>
-                      <input
-                        type="number"
+                      <NumericDraftInput
                         min={0}
-                        step={5}
                         value={m.elasticModulusGpa}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          handleUpdateMember(m.id, { elasticModulusGpa: Math.max(0, isNaN(raw) ? 0 : raw) });
+                        onChangeValue={(val) => {
+                          handleUpdateMember(m.id, { elasticModulusGpa: Math.max(0, val) });
                         }}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">UDL (kN/m)</label>
-                      <input
-                        type="number"
-                        step={2}
+                      <NumericDraftInput
+                        allowNegative={true}
                         value={m.udlKnPerM}
-                        onChange={(e) => handleUpdateMember(m.id, { udlKnPerM: Number(e.target.value) || 0 })}
+                        onChangeValue={(val) => handleUpdateMember(m.id, { udlKnPerM: val })}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">P (kN)</label>
-                      <input
-                        type="number"
-                        step={5}
+                      <NumericDraftInput
+                        allowNegative={true}
                         value={m.pointLoadKn}
-                        onChange={(e) => handleUpdateMember(m.id, { pointLoadKn: Number(e.target.value) || 0 })}
+                        onChangeValue={(val) => handleUpdateMember(m.id, { pointLoadKn: val })}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Ratio a/L</label>
-                      <input
-                        type="number"
+                      <NumericDraftInput
                         min={0}
                         max={1}
-                        step={0.1}
                         value={m.pointLoadRatio}
-                        onChange={(e) =>
+                        onChangeValue={(val) =>
                           handleUpdateMember(m.id, {
-                            pointLoadRatio: Math.min(1, Math.max(0, Number(e.target.value) || 0)),
+                            pointLoadRatio: Math.min(1, Math.max(0, val)),
                           })
                         }
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
@@ -831,31 +800,28 @@ export const FrameTruss2DInputs: React.FC<FrameTruss2DInputsProps> = ({
                     </div>
                     <div className="col-span-3">
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Fx (kN)</label>
-                      <input
-                        type="number"
-                        step={5}
+                      <NumericDraftInput
+                        allowNegative={true}
                         value={load.fxKn}
-                        onChange={(e) => handleUpdateNodalLoad(idx, { fxKn: Number(e.target.value) || 0 })}
+                        onChangeValue={(val) => handleUpdateNodalLoad(idx, { fxKn: val })}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
                     <div className="col-span-3">
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Fy (kN)</label>
-                      <input
-                        type="number"
-                        step={5}
+                      <NumericDraftInput
+                        allowNegative={true}
                         value={load.fyKn}
-                        onChange={(e) => handleUpdateNodalLoad(idx, { fyKn: Number(e.target.value) || 0 })}
+                        onChangeValue={(val) => handleUpdateNodalLoad(idx, { fyKn: val })}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>
                     <div className="col-span-2">
                       <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Mz</label>
-                      <input
-                        type="number"
-                        step={5}
+                      <NumericDraftInput
+                        allowNegative={true}
                         value={load.mzKnm}
-                        onChange={(e) => handleUpdateNodalLoad(idx, { mzKnm: Number(e.target.value) || 0 })}
+                        onChangeValue={(val) => handleUpdateNodalLoad(idx, { mzKnm: val })}
                         className="w-full px-1.5 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] tabular-nums text-xs"
                       />
                     </div>

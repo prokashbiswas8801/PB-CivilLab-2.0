@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import {
-  LayoutDashboard,
+  Home,
   Grid,
   Search,
   ArrowRightLeft,
@@ -36,10 +36,10 @@ const DESTINATIONS: DestinationItem[] = [
     id: 'home',
     label: 'Home',
     shortLabel: 'Home',
-    icon: LayoutDashboard,
+    icon: Home,
     shortcutHint: 'Alt+1',
     altKeyNumber: '1',
-    description: 'Dashboard & Categorized Overview',
+    description: 'BD. CivilLab Home',
   },
   {
     id: 'all',
@@ -98,6 +98,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
 }) => {
   const {
     activePage,
+    activeCalculatorId,
     setActivePage,
     savedHistory,
     isDockCollapsed,
@@ -108,23 +109,23 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   const handleSelect = useCallback(
     (destId: ActivePage | 'search') => {
       if (destId === 'home') {
-        setActivePage('home', null);
-        onNavigateHome?.();
+        if (onNavigateHome) onNavigateHome();
+        else setActivePage('home', null);
       } else if (destId === 'all') {
-        setActivePage('all', null);
-        onNavigateAll?.();
+        if (onNavigateAll) onNavigateAll();
+        else setActivePage('all', null);
       } else if (destId === 'search') {
-        setActivePage('search', null);
-        onOpenSearch?.();
+        if (onOpenSearch) onOpenSearch();
+        else setActivePage('search', null);
       } else if (destId === 'converter') {
-        setActivePage('converter', 'unit-converter');
-        onNavigateConverter?.();
+        if (onNavigateConverter) onNavigateConverter();
+        else setActivePage('converter', 'unit-converter');
       } else if (destId === 'history') {
-        setActivePage('history', null);
-        onOpenHistory?.();
+        if (onOpenHistory) onOpenHistory();
+        else setActivePage('history', null);
       } else if (destId === 'profile') {
-        setActivePage('profile', null);
-        onOpenProfile?.();
+        if (onOpenProfile) onOpenProfile();
+        else setActivePage('profile', null);
       }
     },
     [
@@ -229,7 +230,10 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
         max-h-[500px]:p-1 max-h-[500px]:gap-0.5"
       >
         {DESTINATIONS.map((dest) => {
-          const isActive = activePage === dest.id;
+          const isActive =
+            dest.id === 'converter'
+              ? activePage === 'converter' || (activePage === 'calculator' && activeCalculatorId === 'unit-converter')
+              : activePage === dest.id;
           const Icon = dest.icon;
           const hasBadge = dest.id === 'history' && savedHistory.length > 0;
 

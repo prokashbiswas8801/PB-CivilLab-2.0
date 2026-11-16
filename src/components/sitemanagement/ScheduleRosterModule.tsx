@@ -543,10 +543,8 @@ export const ScheduleRosterModule: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm(`Delete milestone "${m.title}"?`)) {
-                            deleteMilestoneTask(m.id);
-                            showToast(`Deleted ${m.title}`);
-                          }
+                          deleteMilestoneTask(m.id);
+                          showToast(`Deleted ${m.title}`);
                         }}
                         className="p-1 rounded-full text-rose-500 hover:bg-rose-100 cursor-pointer"
                         title="Delete Milestone"
@@ -694,9 +692,7 @@ export const ScheduleRosterModule: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm(`Delete task "${task.title}"?`)) {
-                          deleteEngineerTask(task.id);
-                        }
+                        deleteEngineerTask(task.id);
                       }}
                       className="p-1 rounded-full text-rose-500 hover:bg-rose-100 cursor-pointer"
                     >

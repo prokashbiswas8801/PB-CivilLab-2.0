@@ -7,6 +7,7 @@ import {
 } from '../../types/civil';
 import { PileCapacityResult } from '../../utils/calculations';
 import { createDefaultPileCapacity } from '../../utils/storage';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import {
   HardHat,
   Layers,
@@ -216,20 +217,15 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pile.diameterM}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePile({ diameterM: isNaN(val) ? 0 : val });
-              }}
+              onChangeValue={(val) => updatePile({ diameterM: val })}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
                 pile.diameterM === 0
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                   : 'border-[var(--md-sys-color-outline)]'
               }`}
-              step="any"
-              min="0"
+              min={0}
             />
           </div>
 
@@ -244,20 +240,15 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pile.lengthM}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePile({ lengthM: isNaN(val) ? 0 : val });
-              }}
+              onChangeValue={(val) => updatePile({ lengthM: val })}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
                 pile.lengthM === 0
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                   : 'border-[var(--md-sys-color-outline)]'
               }`}
-              step="any"
-              min="0"
+              min={0}
             />
           </div>
 
@@ -272,20 +263,15 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                 </span>
               )}
             </div>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pile.appliedLoadKn}
-              onChange={(e) => {
-                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePile({ appliedLoadKn: isNaN(val) ? 0 : val });
-              }}
+              onChangeValue={(val) => updatePile({ appliedLoadKn: val })}
               className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
                 pile.appliedLoadKn === 0
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                   : 'border-[var(--md-sys-color-outline)]'
               }`}
-              step="any"
-              min="0"
+              min={0}
             />
           </div>
 
@@ -293,17 +279,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
             <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
               Safety Factor (FS)
             </label>
-            <input
-              type="number"
+            <NumericDraftInput
               value={pile.factorOfSafety}
-              onChange={(e) => {
-                const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                updatePile({ factorOfSafety: Math.max(0, isNaN(raw) ? 0 : raw) });
-              }}
+              onChangeValue={(val) => updatePile({ factorOfSafety: Math.max(0, val) })}
               className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-              step="0.1"
-              min="0"
-              max="4.0"
+              min={0}
+              max={4.0}
             />
           </div>
 
@@ -328,16 +309,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Guide Casing Length (m)</label>
-                  <input
-                    type="number"
-                    min="0"
+                  <NumericDraftInput
+                    min={0}
                     max={Math.max(0, pile.lengthM)}
-                    step="0.5"
                     value={pile.casingLengthM ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      updatePile({ casingLengthM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                    }}
+                    onChangeValue={(val) => updatePile({ casingLengthM: Math.max(0, val) })}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
@@ -347,15 +323,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Marsh Funnel Viscosity (sec)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="60"
+                  <NumericDraftInput
+                    min={0}
+                    max={60}
                     value={pile.bentoniteViscositySec ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      updatePile({ bentoniteViscositySec: Math.max(0, isNaN(raw) ? 0 : raw) });
-                    }}
+                    onChangeValue={(val) => updatePile({ bentoniteViscositySec: Math.max(0, val) })}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
@@ -365,16 +337,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-semibold mb-1">Slurry Density (g/cm³)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="1.5"
-                    step="0.01"
+                  <NumericDraftInput
+                    min={0}
+                    max={1.5}
                     value={pile.bentoniteDensityGPerCc ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      updatePile({ bentoniteDensityGPerCc: Math.max(0, isNaN(raw) ? 0 : raw) });
-                    }}
+                    onChangeValue={(val) => updatePile({ bentoniteDensityGPerCc: Math.max(0, val) })}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5 block">
@@ -432,16 +399,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                       />
                     </td>
                     <td className="py-1.5 px-2 w-20">
-                      <input
-                        type="number"
-                        min="0"
+                      <NumericDraftInput
+                        min={0}
                         value={layer.thicknessM}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          updateLayer(idx, { thicknessM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                        }}
+                        onChangeValue={(val) => updateLayer(idx, { thicknessM: Math.max(0, val) })}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                        step="0.5"
                       />
                     </td>
                     <td className="py-1.5 px-2 w-24">
@@ -457,68 +419,44 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                       </select>
                     </td>
                     <td className="py-1.5 px-2 w-16">
-                      <input
-                        type="number"
-                        min="0"
+                      <NumericDraftInput
+                        min={0}
+                        allowDecimal={false}
                         value={layer.sptN ?? 0}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          updateLayer(idx, { sptN: Math.max(0, isNaN(raw) ? 0 : raw) });
-                        }}
+                        onChangeValue={(val) => updateLayer(idx, { sptN: Math.max(0, val) })}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                        step="1"
                       />
                     </td>
                     <td className="py-1.5 px-2 w-20">
-                      <input
-                        type="number"
-                        min="0"
+                      <NumericDraftInput
+                        min={0}
                         value={layer.cohesionKpa}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          updateLayer(idx, { cohesionKpa: Math.max(0, isNaN(raw) ? 0 : raw) });
-                        }}
+                        onChangeValue={(val) => updateLayer(idx, { cohesionKpa: Math.max(0, val) })}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                        step="5"
                       />
                     </td>
                     <td className="py-1.5 px-2 w-18">
-                      <input
-                        type="number"
-                        min="0"
+                      <NumericDraftInput
+                        min={0}
                         value={layer.frictionAngleDeg}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          updateLayer(idx, { frictionAngleDeg: Math.max(0, isNaN(raw) ? 0 : raw) });
-                        }}
+                        onChangeValue={(val) => updateLayer(idx, { frictionAngleDeg: Math.max(0, val) })}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                        step="1"
                       />
                     </td>
                     <td className="py-1.5 px-2 w-18">
-                      <input
-                        type="number"
-                        min="0"
+                      <NumericDraftInput
+                        min={0}
                         value={layer.unitWeightKnPerM3}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          updateLayer(idx, { unitWeightKnPerM3: Math.max(0, isNaN(raw) ? 0 : raw) });
-                        }}
+                        onChangeValue={(val) => updateLayer(idx, { unitWeightKnPerM3: Math.max(0, val) })}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                        step="0.5"
                       />
                     </td>
                     <td className="py-1.5 px-2 w-18">
-                      <input
-                        type="number"
-                        min="0"
+                      <NumericDraftInput
+                        min={0}
                         value={layer.elasticModulusEsMpa ?? 0}
-                        onChange={(e) => {
-                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                          updateLayer(idx, { elasticModulusEsMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
-                        }}
+                        onChangeValue={(val) => updateLayer(idx, { elasticModulusEsMpa: Math.max(0, val) })}
                         className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                        step="5"
                       />
                     </td>
                     <td className="py-1.5 px-2 text-right">
@@ -542,64 +480,45 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Water Table Depth ∇ (m)
               </label>
-              <input
-                type="number"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={pile.groundwaterDepthM}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ groundwaterDepthM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ groundwaterDepthM: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                step="0.5"
               />
             </div>
             <div>
               <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Tip Bearing SPT N
               </label>
-              <input
-                type="number"
-                min="0"
+              <NumericDraftInput
+                min={0}
+                allowDecimal={false}
                 value={pile.tipSptN ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ tipSptN: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ tipSptN: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                step="1"
               />
             </div>
             <div>
               <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Tip Bearing Cohesion cu (kPa)
               </label>
-              <input
-                type="number"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={pile.tipBearingCohesionKpa}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ tipBearingCohesionKpa: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ tipBearingCohesionKpa: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                step="5"
               />
             </div>
             <div>
               <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Tip Friction Angle φ (°)
               </label>
-              <input
-                type="number"
-                min="0"
+              <NumericDraftInput
+                min={0}
                 value={pile.tipBearingFrictionDeg}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ tipBearingFrictionDeg: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ tipBearingFrictionDeg: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                step="1"
               />
             </div>
           </div>
@@ -619,15 +538,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Pile Rows (m)
               </label>
-              <input
-                type="number"
-                min="0"
-                max="10"
+              <NumericDraftInput
+                min={0}
+                max={10}
+                allowDecimal={false}
                 value={pile.pileGroupRows ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                  updatePile({ pileGroupRows: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ pileGroupRows: Math.max(0, Math.round(val)) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -639,15 +555,12 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Pile Columns (n)
               </label>
-              <input
-                type="number"
-                min="0"
-                max="10"
+              <NumericDraftInput
+                min={0}
+                max={10}
+                allowDecimal={false}
                 value={pile.pileGroupCols ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                  updatePile({ pileGroupCols: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ pileGroupCols: Math.max(0, Math.round(val)) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -659,16 +572,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Center-to-Center Spacing s (m)
               </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="6.0"
+              <NumericDraftInput
+                min={0}
+                max={6.0}
                 value={pile.pileSpacingM ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ pileSpacingM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ pileSpacingM: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -701,19 +609,15 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Concrete Strength f'c (MPa)
               </label>
-              <input
-                type="number"
-                min="0"
-                max="60"
+              <NumericDraftInput
+                min={0}
+                max={60}
                 value={pile.pileConcreteFckMpa ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ pileConcreteFckMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ pileConcreteFckMpa: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
-                Allowable shaft stress: 0.25f'c (BCIS) / 0.33f'c (Precast)
+                Allowable shaft stress: 0.25f&apos;c (BCIS) / 0.33f&apos;c (Precast)
               </span>
             </div>
 
@@ -723,15 +627,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                   <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                     Steel Yield fy (MPa)
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="600"
+                  <NumericDraftInput
+                    min={0}
+                    max={600}
                     value={pile.steelYieldFyMpa ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      updatePile({ steelYieldFyMpa: Math.max(0, isNaN(raw) ? 0 : raw) });
-                    }}
+                    onChangeValue={(val) => updatePile({ steelYieldFyMpa: Math.max(0, val) })}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -743,15 +643,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
                   <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                     Pipe Wall Thickness t (mm)
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="40"
+                  <NumericDraftInput
+                    min={0}
+                    max={40}
                     value={pile.pipeWallThicknessMm ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      updatePile({ pipeWallThicknessMm: Math.max(0, isNaN(raw) ? 0 : raw) });
-                    }}
+                    onChangeValue={(val) => updatePile({ pipeWallThicknessMm: Math.max(0, val) })}
                     className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
                   />
                   <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -765,15 +661,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Permissible Settlement (mm)
               </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
+              <NumericDraftInput
+                min={0}
+                max={100}
                 value={pile.permissibleSettlementMm ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ permissibleSettlementMm: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ permissibleSettlementMm: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -785,16 +677,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Pile Cap Thickness (mm)
               </label>
-              <input
-                type="number"
-                min="0"
-                max="3000"
-                step="50"
+              <NumericDraftInput
+                min={0}
+                max={3000}
                 value={pile.pileCapThicknessMm ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ pileCapThicknessMm: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ pileCapThicknessMm: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -806,16 +693,11 @@ export const PileCapacityInputs: React.FC<PileCapacityInputsProps> = ({
               <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
                 Cap Edge Overhang (m)
               </label>
-              <input
-                type="number"
-                min="0"
-                max="1.5"
-                step="0.05"
+              <NumericDraftInput
+                min={0}
+                max={1.5}
                 value={pile.pileCapOverhangM ?? 0}
-                onChange={(e) => {
-                  const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                  updatePile({ pileCapOverhangM: Math.max(0, isNaN(raw) ? 0 : raw) });
-                }}
+                onChangeValue={(val) => updatePile({ pileCapOverhangM: Math.max(0, val) })}
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-1 block">

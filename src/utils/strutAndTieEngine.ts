@@ -210,15 +210,17 @@ export function computeStrutAndTie(
     ]);
   }
   const issues: ValidationIssue[] = [];
-  const { nodes = [], members = [], nodalLoads = [], concreteFcMpa, rebarFyMpa } = params;
+  const { nodes = [], members = [], nodalLoads = [] } = params;
+  const rawConcreteFcMpa = params.concreteFcMpa ?? 0;
+  const rawRebarFyMpa = params.rebarFyMpa ?? 0;
 
   if (nodes.length === 0 && members.length === 0 && nodalLoads.length === 0) {
     return createEnvelope<StrutAndTieResult>(
       {
         presetName: params.presetName || '',
         memberThicknessMm: params.memberThicknessMm || 0,
-        concreteFcMpa: concreteFcMpa || 0,
-        rebarFyMpa: rebarFyMpa || 0,
+        concreteFcMpa: rawConcreteFcMpa,
+        rebarFyMpa: rawRebarFyMpa,
         nodeCount: 0,
         memberCount: 0,
         strutCount: 0,
@@ -243,6 +245,9 @@ export function computeStrutAndTie(
       { handCalculationSteps: [], isZeroBaseline: true }
     );
   }
+
+  const concreteFcMpa = rawConcreteFcMpa === 0 ? 28 : rawConcreteFcMpa;
+  const rebarFyMpa = rawRebarFyMpa === 0 ? 420 : rawRebarFyMpa;
 
   if (nodes.length < 3 || members.length < 2) {
     issues.push({

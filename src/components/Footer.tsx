@@ -39,11 +39,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                 and quantity surveyors. High-fidelity formulas, real-time vector diagrams, and standards-compliant takeoff schedules.
               </p>
 
-              {/* Developer / Creator Attribution & Social Links */}
+              {/* Platform Attribution & Official Social Link */}
               <div className="pt-2 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-semibold bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-outline-variant)]">
                   <UserCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span>Created &amp; Developed by <strong>PROKASH BISWAS</strong></span>
+                  <span>Engineered by <strong>BD. CivilLab</strong></span>
                 </span>
                 <a
                   href="https://www.facebook.com/BD.CivilLab"
@@ -143,7 +143,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
               </span>
               <span>&middot;</span>
               <span className="text-[var(--md-sys-color-primary)] font-bold">
-                PROKASH BISWAS
+                Client-Side Engineering Suite
               </span>
             </div>
 
@@ -184,14 +184,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
               <div className="space-y-4 text-xs text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
                 <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-2">
                   <div className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">
-                    Lead Structural Engineer &amp; Full-Stack Architect
+                    Computational Structural &amp; Civil Engineering Architecture
                   </div>
                   <div className="font-mono text-[var(--md-sys-color-primary)] text-sm font-bold">
-                    PROKASH BISWAS
+                    BD. CivilLab Engineering Suite
                   </div>
                   <p className="text-xs">
-                    Responsible for mathematical formulation, vector diagrams, civil geotechnical modules,
-                    and design token architecture across the BD. CivilLab platform.
+                    Client-side mathematical formulation, parametric SVG diagrams, civil geotechnical modules,
+                    and design token architecture across the BD. CivilLab platform. Engineer credentials entered in Profile &amp; Preferences appear on exported reports.
                   </p>
                 </div>
 
@@ -219,7 +219,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                   <strong>2. Professional Verification Required:</strong> BD. CivilLab is intended for estimation, academic verification, preliminary sizing, and field guidance. It does not replace the statutory seal, review, or certification of a registered, licensed Professional Engineer (PE / SE).
                 </p>
                 <p>
-                  <strong>3. Limitation of Liability:</strong> Under no circumstances shall the author (PROKASH BISWAS) or BD. CivilLab be liable for direct, indirect, or consequential damages resulting from structural construction, site excavation, or procurement executed without independent engineering peer review.
+                  <strong>3. Limitation of Liability:</strong> Under no circumstances shall BD. CivilLab or its contributors be liable for direct, indirect, or consequential damages resulting from structural construction, site excavation, or procurement executed without independent engineering peer review.
                 </p>
               </div>
             )}
@@ -247,13 +247,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                 </p>
                 <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-3">
                   <div className="font-bold text-[var(--md-sys-color-on-surface)]">
-                    Primary Engineering Inquiries &amp; Social Connect
-                  </div>
-                  <div className="font-mono text-sm font-bold text-[var(--md-sys-color-primary)]">
-                    prokashbiswas8801@gmail.com
+                    Official Platform Channel &amp; Engineering Inquiries
                   </div>
                   <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                    Creator: PROKASH BISWAS (<span className="font-nikosh" lang="bn">প্রকাশ বিশ্বাস</span>)
+                    BD. CivilLab — Client-Side Civil &amp; Structural Engineering Workbench
                   </div>
                   <div className="pt-2 flex flex-wrap gap-2">
                     <a
@@ -263,15 +260,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 transition-colors"
                     >
                       <span>Official Facebook Page</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                    <a
-                      href="https://www.facebook.com/prokash.biswas.88073"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline)] font-semibold text-xs hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors"
-                    >
-                      <span>Creator FB Profile</span>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   </div>

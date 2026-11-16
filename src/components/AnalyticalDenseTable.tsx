@@ -48,7 +48,28 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
   const result = currentEnvelope.result;
   const status = currentEnvelope.status;
   const unitPreset: UnitSystemPreset = activeWorkspace.unitPreferences?.systemPreset || 'metric';
+  const isImp = unitPreset === 'imperial';
   const fmtLen = (m: number) => formatLengthByPreset(m, unitPreset, 'table');
+  const fmtForce = (kn: number) => ({
+    val: isImp ? (kn * 0.224808943).toFixed(2) : kn.toFixed(2),
+    unit: isImp ? 'kip' : 'kN',
+  });
+  const fmtMoment = (knm: number) => ({
+    val: isImp ? (knm * 0.737562149).toFixed(2) : knm.toFixed(2),
+    unit: isImp ? 'kip·ft' : 'kN·m',
+  });
+  const fmtDefl = (mm: number) => ({
+    val: isImp ? (mm / 25.4).toFixed(4) : mm.toFixed(3),
+    unit: isImp ? 'in' : 'mm',
+  });
+  const fmtStressMpa = (mpa: number) => ({
+    val: isImp ? (mpa * 145.037738).toFixed(0) : mpa.toFixed(2),
+    unit: isImp ? 'psi' : 'MPa',
+  });
+  const fmtPressureKpa = (kpa: number) => ({
+    val: isImp ? (kpa * 20.885434).toFixed(1) : kpa.toFixed(1),
+    unit: isImp ? 'psf' : 'kPa',
+  });
 
   const matchesSearch = (terms: (string | number | undefined)[]) => {
     if (!searchQuery || !searchQuery.trim()) return true;
@@ -151,40 +172,40 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Max Flexural Bending Moment</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>M_max</td>
-                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{beamRes.maxMomentKnm.toFixed(2)}</td>
-                    <td className={`${cellPadding} text-center`}>kN·m</td>
+                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{fmtMoment(beamRes.maxMomentKnm).val}</td>
+                    <td className={`${cellPadding} text-center`}>{fmtMoment(beamRes.maxMomentKnm).unit}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{(beamRes.maxMomentKnm * 1000).toLocaleString()} N·m</td>
                     <td className={`${cellPadding} text-center`}>{renderStatusBadge(beamRes.status)}</td>
                   </tr>
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Max Vertical Shear Force</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>V_max</td>
-                    <td className={`${cellPadding} text-right font-bold`}>{beamRes.maxShearKn.toFixed(2)}</td>
-                    <td className={`${cellPadding} text-center`}>kN</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{fmtForce(beamRes.maxShearKn).val}</td>
+                    <td className={`${cellPadding} text-center`}>{fmtForce(beamRes.maxShearKn).unit}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{(beamRes.maxShearKn * 1000).toLocaleString()} N</td>
                     <td className={`${cellPadding} text-center`}>—</td>
                   </tr>
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Left Support Reaction</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>R_A</td>
-                    <td className={`${cellPadding} text-right font-bold`}>{beamRes.reactionLeftKn.toFixed(2)}</td>
-                    <td className={`${cellPadding} text-center`}>kN</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{fmtForce(beamRes.reactionLeftKn).val}</td>
+                    <td className={`${cellPadding} text-center`}>{fmtForce(beamRes.reactionLeftKn).unit}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{(beamRes.reactionLeftKn * 1000).toLocaleString()} N</td>
                     <td className={`${cellPadding} text-center`}>—</td>
                   </tr>
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Right Support Reaction</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>R_B</td>
-                    <td className={`${cellPadding} text-right font-bold`}>{beamRes.reactionRightKn.toFixed(2)}</td>
-                    <td className={`${cellPadding} text-center`}>kN</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{fmtForce(beamRes.reactionRightKn).val}</td>
+                    <td className={`${cellPadding} text-center`}>{fmtForce(beamRes.reactionRightKn).unit}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{(beamRes.reactionRightKn * 1000).toLocaleString()} N</td>
                     <td className={`${cellPadding} text-center`}>—</td>
                   </tr>
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Maximum Midspan Deflection</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>δ_max</td>
-                    <td className={`${cellPadding} text-right font-bold`}>{beamRes.maxDeflectionMm.toFixed(3)}</td>
-                    <td className={`${cellPadding} text-center`}>mm</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{fmtDefl(beamRes.maxDeflectionMm).val}</td>
+                    <td className={`${cellPadding} text-center`}>{fmtDefl(beamRes.maxDeflectionMm).unit}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{(beamRes.maxDeflectionMm * 0.001).toFixed(6)} m</td>
                     <td className={`${cellPadding} text-center`}>
                       {beamRes.maxDeflectionMm <= beamRes.allowableDeflectionMm ? renderStatusBadge('nominal') : renderStatusBadge('critical')}
@@ -193,16 +214,16 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Allowable Serviceability Deflection Limit (L/360)</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>δ_allow</td>
-                    <td className={`${cellPadding} text-right font-bold`}>{beamRes.allowableDeflectionMm.toFixed(3)}</td>
-                    <td className={`${cellPadding} text-center`}>mm</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{fmtDefl(beamRes.allowableDeflectionMm).val}</td>
+                    <td className={`${cellPadding} text-center`}>{fmtDefl(beamRes.allowableDeflectionMm).unit}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{(beamRes.allowableDeflectionMm * 0.001).toFixed(6)} m</td>
                     <td className={`${cellPadding} text-center`}>Service Limit</td>
                   </tr>
                   <tr>
                     <td className={`${cellPadding} font-semibold`}>Extreme Fiber Bending Stress</td>
                     <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>f_b</td>
-                    <td className={`${cellPadding} text-right font-bold`}>{beamRes.bendingStressMpa.toFixed(2)}</td>
-                    <td className={`${cellPadding} text-center`}>MPa</td>
+                    <td className={`${cellPadding} text-right font-bold`}>{fmtStressMpa(beamRes.bendingStressMpa).val}</td>
+                    <td className={`${cellPadding} text-center`}>{fmtStressMpa(beamRes.bendingStressMpa).unit}</td>
                     <td className={`${cellPadding} text-center opacity-70`}>{(beamRes.bendingStressMpa * 1e6).toLocaleString()} Pa</td>
                     <td className={`${cellPadding} text-center`}>
                       {beamRes.bendingStressMpa <= p.allowableStressMpa ? renderStatusBadge('nominal') : renderStatusBadge('critical')}
@@ -234,18 +255,18 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <thead>
                   <tr className="bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)]">
                     <th className={cellPadding}>Station x ({unitPreset === 'metric' ? 'm' : 'ft-in'})</th>
-                    <th className={`${cellPadding} text-right`}>Shear V (kN)</th>
-                    <th className={`${cellPadding} text-right`}>Moment M (kN·m)</th>
-                    <th className={`${cellPadding} text-right`}>Deflection δ (mm)</th>
+                    <th className={`${cellPadding} text-right`}>Shear V ({isImp ? 'kip' : 'kN'})</th>
+                    <th className={`${cellPadding} text-right`}>Moment M ({isImp ? 'kip·ft' : 'kN·m'})</th>
+                    <th className={`${cellPadding} text-right`}>Deflection δ ({isImp ? 'in' : 'mm'})</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
                   {beamRes.points.filter((_, idx) => idx % Math.ceil(beamRes.points.length / 8) === 0 || idx === beamRes.points.length - 1).map((pt, i) => (
                     <tr key={i} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
                       <td className={`${cellPadding} font-bold`}>{fmtLen(pt.x)}</td>
-                      <td className={`${cellPadding} text-right`}>{pt.shearKn.toFixed(2)}</td>
-                      <td className={`${cellPadding} text-right font-semibold text-[var(--md-sys-color-primary)]`}>{pt.momentKnm.toFixed(2)}</td>
-                      <td className={`${cellPadding} text-right`}>{pt.deflectionMm.toFixed(3)}</td>
+                      <td className={`${cellPadding} text-right`}>{fmtForce(pt.shearKn).val}</td>
+                      <td className={`${cellPadding} text-right font-semibold text-[var(--md-sys-color-primary)]`}>{fmtMoment(pt.momentKnm).val}</td>
+                      <td className={`${cellPadding} text-right`}>{fmtDefl(pt.deflectionMm).val}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -292,8 +313,8 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Soil Effective Cohesion</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>c'</td>
-                  <td className={`${cellPadding} text-right font-bold`}>{p.soilCohesionKpa.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-center`}>kPa</td>
+                  <td className={`${cellPadding} text-right font-bold`}>{fmtPressureKpa(p.soilCohesionKpa).val}</td>
+                  <td className={`${cellPadding} text-center`}>{fmtPressureKpa(p.soilCohesionKpa).unit}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{(p.soilCohesionKpa * 1000).toLocaleString()} Pa</td>
                   <td className={`${cellPadding} text-center`}>φ = {p.frictionAngleDeg}°</td>
                 </tr>
@@ -310,24 +331,24 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Ultimate Bearing Capacity</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>q_ult</td>
-                  <td className={`${cellPadding} text-right font-bold`}>{bRes.ultimateBearingKpa.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-center`}>kPa</td>
+                  <td className={`${cellPadding} text-right font-bold`}>{fmtPressureKpa(bRes.ultimateBearingKpa).val}</td>
+                  <td className={`${cellPadding} text-center`}>{fmtPressureKpa(bRes.ultimateBearingKpa).unit}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{(bRes.ultimateBearingKpa * 1000).toLocaleString()} Pa</td>
                   <td className={`${cellPadding} text-center`}>Limit State</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Net Allowable Bearing Pressure</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>q_all</td>
-                  <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{bRes.allowableBearingKpa.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-center`}>kPa</td>
+                  <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>{fmtPressureKpa(bRes.allowableBearingKpa).val}</td>
+                  <td className={`${cellPadding} text-center`}>{fmtPressureKpa(bRes.allowableBearingKpa).unit}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{(bRes.allowableBearingKpa * 1000).toLocaleString()} Pa</td>
                   <td className={`${cellPadding} text-center`}>FS = {p.factorOfSafety}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Actual Applied Column Pressure</td>
                   <td className={`${cellPadding} text-center text-[var(--md-sys-color-primary)]`}>q_app</td>
-                  <td className={`${cellPadding} text-right font-bold`}>{bRes.appliedPressureKpa.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-center`}>kPa</td>
+                  <td className={`${cellPadding} text-right font-bold`}>{fmtPressureKpa(bRes.appliedPressureKpa).val}</td>
+                  <td className={`${cellPadding} text-center`}>{fmtPressureKpa(bRes.appliedPressureKpa).unit}</td>
                   <td className={`${cellPadding} text-center opacity-70`}>{(bRes.appliedPressureKpa * 1000).toLocaleString()} Pa</td>
                   <td className={`${cellPadding} text-center`}>
                     {bRes.appliedPressureKpa <= bRes.allowableBearingKpa ? renderStatusBadge('nominal') : renderStatusBadge('critical')}
@@ -379,7 +400,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <td className={`${cellPadding} text-right font-bold`}>{matRes.sandVolumeM3.toFixed(3)}</td>
                   <td className={`${cellPadding} text-right font-bold text-amber-600 dark:text-amber-400`}>{matRes.sandCft.toFixed(1)} cft</td>
                   <td className={`${cellPadding} text-right`}>{matRes.sandMassKg.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-center`}>Bulk Density: 1600 kg/m³</td>
+                  <td className={`${cellPadding} text-center`}>Bulk Density: {typeof activeWorkspace.concreteMaterials.sandBulkDensityKgPerM3 === 'number' ? activeWorkspace.concreteMaterials.sandBulkDensityKgPerM3 : 1600} kg/m³</td>
                   <td className={`${cellPadding} text-center`}>Sand ratio</td>
                 </tr>
                 <tr>
@@ -392,7 +413,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <td className={`${cellPadding} text-center`}>
                     {matRes.jhamaBricksForKhoa && matRes.jhamaBricksForKhoa > 0
                       ? `~${matRes.jhamaBricksForKhoa.toLocaleString()} Jhama Bricks (320/m³)`
-                      : `Bulk Density: ${activeWorkspace.concreteMaterials.aggregateBulkDensityKgPerM3 || 1520} kg/m³`}
+                      : `Bulk Density: ${typeof activeWorkspace.concreteMaterials.aggregateBulkDensityKgPerM3 === 'number' ? activeWorkspace.concreteMaterials.aggregateBulkDensityKgPerM3 : 1520} kg/m³`}
                   </td>
                   <td className={`${cellPadding} text-center`}>Coarse ratio</td>
                 </tr>
@@ -426,6 +447,17 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
       {/* 4. CONCRETE MIX DESIGN (ACI 211.1) */}
       {activeModule === 'concrete-mix' && (() => {
         const mixRes = result as ConcreteMixResult;
+        const cementItem = mixRes.items?.find((i) => i.category === 'cement');
+        const coarseItem = mixRes.items?.find((i) => i.category === 'coarse-aggregate');
+        const fineItem = mixRes.items?.find((i) => i.category === 'fine-aggregate');
+        const waterItem = mixRes.items?.find((i) => i.category === 'water');
+        const cementSg = cementItem?.specificGravity ?? activeWorkspace.concrete.cementSpecificGravity ?? 3.15;
+        const coarseSg = coarseItem?.specificGravity ?? activeWorkspace.concrete.coarseAggSpecificGravity ?? 2.67;
+        const fineSg = fineItem?.specificGravity ?? activeWorkspace.concrete.fineAggSpecificGravity ?? 2.62;
+        const druw = activeWorkspace.concrete.coarseAggDryRoddedDensityKgPerM3 ?? 1600;
+        const totalSolidVol = mixRes.batchVolumeM3 > 0
+          ? mixRes.items.reduce((acc, it) => acc + it.batchVolumeM3, 0)
+          : mixRes.totalSolidVolumeM3;
         return (
           <div className="border border-[var(--md-sys-color-outline-variant)] rounded-lg overflow-x-auto bg-[var(--md-sys-color-surface)]">
             <table className="w-full border-collapse text-left">
@@ -442,41 +474,41 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Batch Water Demand</td>
                   <td className={`${cellPadding} text-right font-bold`}>{mixRes.batchWaterKg.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-right`}>{(mixRes.batchWaterKg / 1000).toFixed(3)}</td>
+                  <td className={`${cellPadding} text-right`}>{(waterItem?.batchVolumeM3 ?? mixRes.batchWaterKg / 1000).toFixed(3)}</td>
                   <td className={`${cellPadding} text-center font-bold text-cyan-600 dark:text-cyan-400`}>{mixRes.batchWaterKg.toFixed(0)} L</td>
                   <td className={`${cellPadding} text-center`}>w/c = {activeWorkspace.concrete.waterCementRatio}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Cement Content</td>
                   <td className={`${cellPadding} text-right font-bold`}>{mixRes.batchCementKg.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-right`}>{(mixRes.batchCementKg / (3.15 * 1000)).toFixed(3)}</td>
+                  <td className={`${cellPadding} text-right`}>{(cementItem?.batchVolumeM3 ?? (cementSg > 0 ? mixRes.batchCementKg / (cementSg * 1000) : 0)).toFixed(3)}</td>
                   <td className={`${cellPadding} text-center font-bold text-[var(--md-sys-color-primary)]`}>
                     {(mixRes.batchCementKg / 50).toFixed(1)} bags (50kg)
                   </td>
-                  <td className={`${cellPadding} text-center`}>Sp. Gr = 3.15</td>
+                  <td className={`${cellPadding} text-center`}>Sp. Gr = {cementSg.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Dry Coarse Aggregate</td>
                   <td className={`${cellPadding} text-right font-bold`}>{mixRes.batchCoarseAggKg.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-right`}>{(mixRes.batchCoarseAggKg / (2.68 * 1000)).toFixed(3)}</td>
-                  <td className={`${cellPadding} text-center`}>{(mixRes.batchCoarseAggKg / 1520 * 35.314667).toFixed(1)} cft</td>
-                  <td className={`${cellPadding} text-center`}>Sp. Gr = 2.68</td>
+                  <td className={`${cellPadding} text-right`}>{(coarseItem?.batchVolumeM3 ?? (coarseSg > 0 ? mixRes.batchCoarseAggKg / (coarseSg * 1000) : 0)).toFixed(3)}</td>
+                  <td className={`${cellPadding} text-center`}>{(druw > 0 ? (mixRes.batchCoarseAggKg / druw) * 35.314667 : 0).toFixed(1)} cft</td>
+                  <td className={`${cellPadding} text-center`}>Sp. Gr = {coarseSg.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td className={`${cellPadding} font-semibold`}>Dry Fine Aggregate</td>
                   <td className={`${cellPadding} text-right font-bold`}>{mixRes.batchFineAggKg.toFixed(1)}</td>
-                  <td className={`${cellPadding} text-right`}>{(mixRes.batchFineAggKg / (2.62 * 1000)).toFixed(3)}</td>
-                  <td className={`${cellPadding} text-center`}>{(mixRes.batchFineAggKg / 1600 * 35.314667).toFixed(1)} cft</td>
-                  <td className={`${cellPadding} text-center`}>Sp. Gr = 2.62</td>
+                  <td className={`${cellPadding} text-right`}>{(fineItem?.batchVolumeM3 ?? (fineSg > 0 ? mixRes.batchFineAggKg / (fineSg * 1000) : 0)).toFixed(3)}</td>
+                  <td className={`${cellPadding} text-center`}>{((mixRes.batchFineAggKg / 1600) * 35.314667).toFixed(1)} cft</td>
+                  <td className={`${cellPadding} text-center`}>Sp. Gr = {fineSg.toFixed(2)}</td>
                 </tr>
                 <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold">
-                  <td className={cellPadding}>Batch Total (Target f'c = {activeWorkspace.concrete.targetStrengthMpa} MPa)</td>
+                  <td className={cellPadding}>Batch Total (Target f&apos;c = {activeWorkspace.concrete.targetStrengthMpa} MPa)</td>
                   <td className={`${cellPadding} text-right font-black`}>
                     {(mixRes.batchWaterKg + mixRes.batchCementKg + mixRes.batchCoarseAggKg + mixRes.batchFineAggKg).toFixed(1)} kg
                   </td>
-                  <td className={`${cellPadding} text-right font-black`}>1.000 m³</td>
+                  <td className={`${cellPadding} text-right font-black`}>{totalSolidVol.toFixed(3)} m³</td>
                   <td className={`${cellPadding} text-center text-xs text-emerald-600 dark:text-emerald-400 font-bold`}>
-                    Density ~ 2380 kg/m³
+                    Density ~ {mixRes.totalDensityKgPerM3.toFixed(0)} kg/m³
                   </td>
                   <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
                 </tr>
@@ -515,7 +547,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                       {it.description}
                       {it.requiresLapSplice && (
                         <span className="block text-[10px] font-mono text-[var(--md-sys-color-error)]">
-                          &gt;12m stock limit: {it.lapsCount} lap splice (+{fmtLen(it.lappingAllowanceM || 0)}) included
+                          &gt;{fmtLen(12)} stock limit: {it.lapsCount} lap splice (+{fmtLen(it.lappingAllowanceM || 0)}) included
                         </span>
                       )}
                     </td>
@@ -654,7 +686,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <td className={`${cellPadding} text-right`}>{(earthRes.looseVolumeM3 * 35.314667).toFixed(1)} cft</td>
                     <td className={`${cellPadding} text-center`}>Swell: +{((earthRes.swellFactor - 1) * 100).toFixed(0)}%</td>
                     <td className={`${cellPadding} text-center font-bold text-amber-700 dark:text-amber-300`}>
-                      {earthRes.haulTruckTripsCount10M3} loads ({earthRes.haulTruckCapacityM3 || 10}m³ truck)
+                      {earthRes.haulTruckTripsCount10M3} loads ({typeof earthRes.haulTruckCapacityM3 === 'number' ? earthRes.haulTruckCapacityM3 : 10}m³ truck)
                     </td>
                   </tr>
                   <tr>
@@ -1527,7 +1559,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <td className={`${cellPadding} text-right font-mono font-semibold`}>{pileRes.skinFrictionKn.toFixed(1)} kN</td>
                     <td className={`${cellPadding} text-center`}>Tomlinson α &amp; β Skin Friction</td>
                     <td className={`${cellPadding} text-center font-mono text-[var(--md-sys-color-on-surface-variant)]`}>
-                      {((pileRes.skinFrictionKn / pileRes.ultimateCapacityKn) * 100).toFixed(1)}% of Q_ult
+                      {(pileRes.ultimateCapacityKn > 0 ? (pileRes.skinFrictionKn / pileRes.ultimateCapacityKn) * 100 : 0).toFixed(1)}% of Q_ult
                     </td>
                     <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
                   </tr>
@@ -1536,7 +1568,7 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <td className={`${cellPadding} text-right font-mono font-semibold`}>{pileRes.endBearingKn.toFixed(1)} kN</td>
                     <td className={`${cellPadding} text-center`}>Meyerhof Deep Bearing (q_p = {pileRes.unitEndBearingKpa.toFixed(1)} kPa)</td>
                     <td className={`${cellPadding} text-center font-mono text-[var(--md-sys-color-on-surface-variant)]`}>
-                      {((pileRes.endBearingKn / pileRes.ultimateCapacityKn) * 100).toFixed(1)}% of Q_ult
+                      {(pileRes.ultimateCapacityKn > 0 ? (pileRes.endBearingKn / pileRes.ultimateCapacityKn) * 100 : 0).toFixed(1)}% of Q_ult
                     </td>
                     <td className={`${cellPadding} text-center`}>{renderStatusBadge('nominal')}</td>
                   </tr>

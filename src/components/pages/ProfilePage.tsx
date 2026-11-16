@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useCivilLab, CivilProjectItem, EngineeringThemeOption, CivilPdfPreset } from '../../context/CivilLabContext';
 import { useTheme } from '../../context/ThemeContext';
+import { getBrandLogoPngDataUrl } from '../../assets/brandLogoData';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
@@ -250,18 +251,29 @@ export const ProfilePage: React.FC = () => {
 
       // Header Block
       if (presetForm.includeHeader) {
+        let headerTextX = margin;
+        try {
+          const logoDataUrl = await getBrandLogoPngDataUrl(256);
+          if (logoDataUrl) {
+            doc.addImage(logoDataUrl, 'PNG', margin, yPos - 3, 11, 11);
+            headerTextX = margin + 14;
+          }
+        } catch {
+          // ignore
+        }
+
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
         doc.setTextColor(20, 35, 60);
-        doc.text(presetForm.customHeaderTitle, margin, yPos);
+        doc.text(presetForm.customHeaderTitle, headerTextX, yPos);
 
         yPos += 5;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(90, 105, 125);
-        doc.text(presetForm.companySubtitle || userProfile.organization || 'Verified Engineering Computations', margin, yPos);
+        doc.text(presetForm.companySubtitle || userProfile.organization || 'Verified Engineering Computations', headerTextX, yPos);
 
-        yPos += 3;
+        yPos += 4;
         doc.setDrawColor(210, 220, 230);
         doc.setLineWidth(0.4);
         doc.line(margin, yPos, margin + contentWidth, yPos);
@@ -285,8 +297,8 @@ export const ProfilePage: React.FC = () => {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(71, 85, 105);
-        doc.text(`CLIENT: ${activeProj?.clientName || '________________________'}`, margin + 4, yPos + 12);
-        doc.text(`LOCATION: ${activeProj?.location || '________________________'}`, margin + 4, yPos + 17);
+        doc.text(`CLIENT: ${activeProj?.clientName || 'Not Specified'}`, margin + 4, yPos + 12);
+        doc.text(`LOCATION: ${activeProj?.location || 'Not Specified'}`, margin + 4, yPos + 17);
         doc.text(`DATE: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`, margin + contentWidth - 45, yPos + 12);
 
         yPos += 26;
@@ -399,13 +411,13 @@ export const ProfilePage: React.FC = () => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8.5);
         doc.setTextColor(15, 23, 42);
-        doc.text(presetForm.signatoryName || userProfile.name || '________________________', sigX, bottomY + 20);
+        doc.text(presetForm.signatoryName || userProfile.name || 'Pending Signature', sigX, bottomY + 20);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.5);
         doc.setTextColor(100, 116, 139);
-        doc.text(userProfile.title || '________________________', sigX, bottomY + 24);
-        doc.text(`Reg / License: ${userProfile.licenseNo || '________________________'}`, sigX, bottomY + 28);
+        doc.text(userProfile.title || 'Engineer of Record', sigX, bottomY + 24);
+        doc.text(`Reg / License: ${userProfile.licenseNo || 'Pending License'}`, sigX, bottomY + 28);
       }
 
       // Footer
@@ -1052,10 +1064,8 @@ export const ProfilePage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              if (window.confirm(`Delete project "${proj.name}"?`)) {
-                                removeProject(proj.id);
-                                showToast(`Deleted project "${proj.name}".`);
-                              }
+                              removeProject(proj.id);
+                              showToast(`Deleted project "${proj.name}".`);
                             }}
                             className="p-1.5 rounded-lg border border-transparent hover:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-950/30 text-[var(--md-sys-color-on-surface-variant)] hover:text-red-600 cursor-pointer"
                             title="Delete project"

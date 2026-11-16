@@ -57,7 +57,7 @@ import {
   REBAR_BAR_DESIGNATIONS,
   UnitInfo,
 } from '../../utils/unitConverter';
-import { parseSmartUnitInput } from '../../utils/unitEngine';
+import { parseSmartUnitInput, getConversionFactorDetails } from '../../utils/unitEngine';
 import { ExplainConversionModal } from '../modals/ExplainConversionModal';
 import { UnitConverterDiagramSvg } from '../EngineeringDiagrams';
 
@@ -828,6 +828,16 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
   const fromSym = fromUnitObj?.symbol || converter.fromUnit;
   const toSym = toUnitObj?.symbol || converter.toUnit;
 
+  const fromFactorDetails = useMemo(
+    () => getConversionFactorDetails(converter.fromUnit, currentCategory, customUnits),
+    [converter.fromUnit, currentCategory, customUnits]
+  );
+  const toFactorDetails = useMemo(
+    () => getConversionFactorDetails(converter.toUnit, currentCategory, customUnits),
+    [converter.toUnit, currentCategory, customUnits]
+  );
+  const [hoveredUnitTooltip, setHoveredUnitTooltip] = useState<'from' | 'to' | null>(null);
+
   // Formatted Target Output String
   const heroTargetFormatted = useMemo(() => {
     if (currentConvertedValue === null) return '—';
@@ -1351,7 +1361,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 </span>
               </div>
 
-              {/* Prominent Source Unit Header + Full Dropdown Selector */}
+              {/* Prominent Source Unit Header + Full Dropdown Selector with Conversion Factor Tooltip */}
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between gap-2 px-1">
                   <div className="flex items-baseline gap-2 min-w-0">
@@ -1362,32 +1372,100 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                       — {fromUnitObj?.name || converter.fromUnit}
                     </span>
                   </div>
+                  <div
+                    className="relative shrink-0"
+                    onMouseEnter={() => setHoveredUnitTooltip('from')}
+                    onMouseLeave={() => setHoveredUnitTooltip((prev) => (prev === 'from' ? null : prev))}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setHoveredUnitTooltip((prev) => (prev === 'from' ? null : 'from'))}
+                      title={fromFactorDetails.tooltip}
+                      aria-label={`Source unit conversion factor and description: ${fromFactorDetails.factorFormula}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-primary)] hover:border-[var(--md-sys-color-primary)] cursor-pointer transition-colors"
+                    >
+                      <HelpCircle className="w-3 h-3 shrink-0" />
+                      <span>{fromFactorDetails.factorFormula}</span>
+                    </button>
+                    {hoveredUnitTooltip === 'from' && (
+                      <div
+                        role="tooltip"
+                        className="absolute right-0 bottom-full mb-2 z-50 w-72 p-3 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl text-xs space-y-1.5 animate-fadeIn pointer-events-none"
+                      >
+                        <div className="flex items-center justify-between border-b border-[var(--md-sys-color-outline-variant)] pb-1">
+                          <span className="font-bold text-[var(--md-sys-color-on-surface)]">
+                            {fromFactorDetails.unitName} ({fromFactorDetails.unitSymbol})
+                          </span>
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold uppercase">
+                            {fromFactorDetails.isBaseUnit ? 'SI Base' : 'Base Factor'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug">
+                          {fromFactorDetails.description}
+                        </p>
+                        <div className="pt-1 border-t border-[var(--md-sys-color-outline-variant)] font-mono text-[10.5px] space-y-0.5">
+                          <div className="text-[var(--md-sys-color-primary)] font-bold">
+                            {fromFactorDetails.factorFormula}
+                          </div>
+                          {!fromFactorDetails.isBaseUnit && (
+                            <div className="text-[var(--md-sys-color-on-surface-variant)]">
+                              {fromFactorDetails.inverseFormula}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <select
-                  aria-label="Source Unit (From)"
-                  value={converter.fromUnit}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      converter: { ...ws.converter, fromUnit: val },
-                    }));
-                  }}
-                  className="w-full min-h-[44px] px-4 font-mono text-xs sm:text-sm font-semibold border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+                <div
+                  className="relative"
+                  onMouseEnter={() => setHoveredUnitTooltip('from')}
+                  onMouseLeave={() => setHoveredUnitTooltip((prev) => (prev === 'from' ? null : prev))}
                 >
-                  {scopedCategoryUnits.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.symbol} — {u.name} {u.isRegional ? '★ Regional' : ''}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    aria-label="Source Unit (From)"
+                    title={fromFactorDetails.tooltip}
+                    value={converter.fromUnit}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        converter: { ...ws.converter, fromUnit: val },
+                      }));
+                    }}
+                    className="w-full min-h-[44px] px-4 rounded-xl font-mono text-xs sm:text-sm font-semibold border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors focus:border-[var(--md-sys-color-primary)]"
+                  >
+                    {scopedCategoryUnits.map((u) => {
+                      const uDetails = getConversionFactorDetails(u.id, currentCategory, customUnits);
+                      return (
+                        <option key={u.id} value={u.id} title={uDetails.tooltip}>
+                          {u.symbol} — {u.name} ({uDetails.factorFormula}){u.isRegional ? ' ★ Regional' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Informative Unit Description & Base Factor Guidance Strip */}
+                <div
+                  className="flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface)]/80 border border-[var(--md-sys-color-outline-variant)] text-[10.5px]"
+                  title={fromFactorDetails.tooltip}
+                >
+                  <span className="text-[var(--md-sys-color-on-surface-variant)] truncate">
+                    {fromFactorDetails.description}
+                  </span>
+                  <span className="font-mono font-semibold text-[var(--md-sys-color-primary)] shrink-0">
+                    {fromFactorDetails.factorFormula}
+                  </span>
+                </div>
               </div>
 
               {/* 1-Click Quick Unit Pills inside Source Card */}
               <div className="flex flex-wrap items-center gap-1.5">
                 {quickUnitPills.map((u) => {
                   const isActive = u.id === converter.fromUnit;
+                  const pillDetails = getConversionFactorDetails(u.id, currentCategory, customUnits);
                   return (
                     <button
                       key={`from-pill-${u.id}`}
@@ -1403,7 +1481,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                           ? 'bg-[var(--md-sys-color-on-surface)] text-[var(--md-sys-color-surface)] border-transparent shadow-2xs'
                           : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)]'
                       }`}
-                      title={`Set Source unit to ${u.name} (${u.symbol})`}
+                      title={pillDetails.tooltip}
                     >
                       {u.symbol}
                     </button>
@@ -1562,7 +1640,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                 </button>
               </div>
 
-              {/* Prominent Target Unit Header + Full Dropdown Selector */}
+              {/* Prominent Target Unit Header + Full Dropdown Selector with Conversion Factor Tooltip */}
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between gap-2 px-1">
                   <div className="flex items-baseline gap-2 min-w-0">
@@ -1573,32 +1651,100 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                       — {toUnitObj?.name || converter.toUnit}
                     </span>
                   </div>
+                  <div
+                    className="relative shrink-0"
+                    onMouseEnter={() => setHoveredUnitTooltip('to')}
+                    onMouseLeave={() => setHoveredUnitTooltip((prev) => (prev === 'to' ? null : prev))}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setHoveredUnitTooltip((prev) => (prev === 'to' ? null : 'to'))}
+                      title={toFactorDetails.tooltip}
+                      aria-label={`Target unit conversion factor and description: ${toFactorDetails.factorFormula}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-primary)]/40 text-[var(--md-sys-color-primary)] hover:border-[var(--md-sys-color-primary)] cursor-pointer transition-colors"
+                    >
+                      <HelpCircle className="w-3 h-3 shrink-0" />
+                      <span>{toFactorDetails.factorFormula}</span>
+                    </button>
+                    {hoveredUnitTooltip === 'to' && (
+                      <div
+                        role="tooltip"
+                        className="absolute right-0 bottom-full mb-2 z-50 w-72 p-3 rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl text-xs space-y-1.5 animate-fadeIn pointer-events-none"
+                      >
+                        <div className="flex items-center justify-between border-b border-[var(--md-sys-color-outline-variant)] pb-1">
+                          <span className="font-bold text-[var(--md-sys-color-on-surface)]">
+                            {toFactorDetails.unitName} ({toFactorDetails.unitSymbol})
+                          </span>
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold uppercase">
+                            {toFactorDetails.isBaseUnit ? 'SI Base' : 'Base Factor'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug">
+                          {toFactorDetails.description}
+                        </p>
+                        <div className="pt-1 border-t border-[var(--md-sys-color-outline-variant)] font-mono text-[10.5px] space-y-0.5">
+                          <div className="text-[var(--md-sys-color-primary)] font-bold">
+                            {toFactorDetails.factorFormula}
+                          </div>
+                          {!toFactorDetails.isBaseUnit && (
+                            <div className="text-[var(--md-sys-color-on-surface-variant)]">
+                              {toFactorDetails.inverseFormula}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <select
-                  aria-label="Target Unit (To)"
-                  value={converter.toUnit}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      converter: { ...ws.converter, toUnit: val },
-                    }));
-                  }}
-                  className="w-full min-h-[44px] px-4 font-mono text-xs sm:text-sm font-semibold border border-[var(--md-sys-color-primary)]/60 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer"
+                <div
+                  className="relative"
+                  onMouseEnter={() => setHoveredUnitTooltip('to')}
+                  onMouseLeave={() => setHoveredUnitTooltip((prev) => (prev === 'to' ? null : prev))}
                 >
-                  {scopedCategoryUnits.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.symbol} — {u.name} {u.isRegional ? '★ Regional' : ''}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    aria-label="Target Unit (To)"
+                    title={toFactorDetails.tooltip}
+                    value={converter.toUnit}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        converter: { ...ws.converter, toUnit: val },
+                      }));
+                    }}
+                    className="w-full min-h-[44px] px-4 rounded-xl font-mono text-xs sm:text-sm font-semibold border border-[var(--md-sys-color-primary)]/60 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors focus:border-[var(--md-sys-color-primary)]"
+                  >
+                    {scopedCategoryUnits.map((u) => {
+                      const uDetails = getConversionFactorDetails(u.id, currentCategory, customUnits);
+                      return (
+                        <option key={u.id} value={u.id} title={uDetails.tooltip}>
+                          {u.symbol} — {u.name} ({uDetails.factorFormula}){u.isRegional ? ' ★ Regional' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Informative Unit Description & Base Factor Guidance Strip */}
+                <div
+                  className="flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--md-sys-color-surface)]/85 border border-[var(--md-sys-color-primary)]/30 text-[10.5px]"
+                  title={toFactorDetails.tooltip}
+                >
+                  <span className="text-[var(--md-sys-color-on-surface-variant)] truncate">
+                    {toFactorDetails.description}
+                  </span>
+                  <span className="font-mono font-semibold text-[var(--md-sys-color-primary)] shrink-0">
+                    {toFactorDetails.factorFormula}
+                  </span>
+                </div>
               </div>
 
               {/* 1-Click Quick Unit Pills inside Target Card */}
               <div className="flex flex-wrap items-center gap-1.5">
                 {quickUnitPills.map((u) => {
                   const isActive = u.id === converter.toUnit;
+                  const pillDetails = getConversionFactorDetails(u.id, currentCategory, customUnits);
                   return (
                     <button
                       key={`to-pill-${u.id}`}
@@ -1614,7 +1760,7 @@ export const UnitConverterInputs: React.FC<UnitConverterInputsProps> = ({
                           ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-transparent shadow-2xs'
                           : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)]'
                       }`}
-                      title={`Set Target unit to ${u.name} (${u.symbol})`}
+                      title={pillDetails.tooltip}
                     >
                       {u.symbol}
                     </button>

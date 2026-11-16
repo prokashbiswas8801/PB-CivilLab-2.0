@@ -441,6 +441,15 @@
   background-color: var(--md-sys-color-on-surface-variant);
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes indeterminate {
   0% { transform: translateX(-100%); width: 40%; }
   50% { transform: translateX(50%); width: 60%; }
@@ -503,23 +512,37 @@
     print-color-adjust: exact !important;
   }
 
-  /* Completely hide all screen application chrome, fixed sidebars, modals, backdrops, and navigation */
-  .screen-app-container,
+  /* Hide screen application chrome when #pb-printable-report is active */
+  body.is-printing-report .screen-app-container,
+  body:has(#pb-printable-report:not(:empty)) .screen-app-container,
   #pb-print-dialog,
   .no-print,
   #modal-root,
   .modal-backdrop,
   .app-splash,
   .toast-banner,
-  header,
-  aside,
-  nav,
-  footer,
-  button,
-  input:not([type="checkbox"]):not([type="radio"]),
-  select,
-  textarea {
+  header:not(#pb-printable-report header):not(.printable-document header),
+  aside:not(#pb-printable-report aside),
+  nav:not(#pb-printable-report nav),
+  footer:not(#pb-printable-report footer):not(.printable-document footer),
+  button:not(#pb-printable-report button),
+  input:not([type="checkbox"]):not([type="radio"]):not(#pb-printable-report input),
+  select:not(#pb-printable-report select),
+  textarea:not(#pb-printable-report textarea) {
     display: none !important;
+  }
+
+  #pb-printable-report header,
+  #pb-printable-report footer,
+  .printable-document header,
+  .printable-document footer {
+    display: block !important;
+  }
+
+  #pb-printable-report .overflow-x-auto,
+  #pb-printable-report .overflow-hidden {
+    overflow: visible !important;
+    max-width: 100% !important;
   }
 
   /* Standalone A4 Print Root: expands naturally across multiple A4 sheets */
@@ -546,14 +569,24 @@
     display: none !important;
   }
 
-  /* Ensure SVG diagrams retain vector clarity on paper without dark backgrounds */
+  /* Ensure SVG diagrams retain vector clarity on paper with light backgrounds and dark text */
   svg {
-    background: transparent !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
     max-width: 100% !important;
     height: auto !important;
   }
 
-  svg text {
+  svg rect[fill="#0f172a"],
+  svg rect[fill="#020617"],
+  svg rect[fill="#1e293b"],
+  svg rect[fill="#18181b"],
+  svg rect[fill="#121110"] {
+    fill: #f8fafc !important;
+  }
+
+  svg text,
+  svg tspan {
     fill: #0f172a !important;
   }
 

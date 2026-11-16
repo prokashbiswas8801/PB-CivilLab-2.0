@@ -6,6 +6,7 @@ import {
 } from '../../types/civil';
 import { RcColumnDesignResult } from '../../utils/rcColumnEngine';
 import { createDefaultRcColumnDesign } from '../../utils/storage';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 import {
   ChevronDown,
   Layers,
@@ -55,6 +56,9 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
       ? 0
       : 2 * Math.max(0, col.barsAlongWidthB) +
         2 * Math.max(0, Math.max(0, col.barsAlongDepthH) - 2);
+
+  const minDimMm = Math.min(col.widthB_Mm, col.depthH_Mm);
+  const coverExceedsHalfDim = minDimMm > 0 && col.clearCoverMm >= minDimMm / 2;
 
   return (
     <div className="space-y-4">
@@ -161,13 +165,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                   </span>
                 )}
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={2500}
-                step={25}
                 value={col.widthB_Mm}
-                onChange={(e) => commit({ widthB_Mm: Math.max(0, Number(e.target.value) || 0) })}
+                onChangeValue={(val) => commit({ widthB_Mm: Math.max(0, val) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -181,13 +183,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                   </span>
                 )}
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={2500}
-                step={25}
                 value={col.depthH_Mm}
-                onChange={(e) => commit({ depthH_Mm: Math.max(0, Number(e.target.value) || 0) })}
+                onChangeValue={(val) => commit({ depthH_Mm: Math.max(0, val) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -196,15 +196,22 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Clear Cover (mm)
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
-                max={100}
-                step={5}
+                max={300}
                 value={col.clearCoverMm}
-                onChange={(e) => commit({ clearCoverMm: Math.max(0, Number(e.target.value) || 0) })}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
+                onChangeValue={(val) => commit({ clearCoverMm: Math.max(0, val) })}
+                className={`w-full px-2.5 py-1.5 rounded-lg border font-mono tabular-nums text-[var(--md-sys-color-on-surface)] ${
+                  coverExceedsHalfDim
+                    ? 'border-rose-500 bg-rose-500/10 ring-1 ring-rose-500/40'
+                    : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]'
+                }`}
               />
+              {coverExceedsHalfDim && (
+                <div className="text-[10px] font-mono text-rose-600 dark:text-rose-400 mt-0.5">
+                  Cover ({col.clearCoverMm}mm) ≥ min(b,h)/2 ({(minDimMm / 2).toFixed(0)}mm).
+                </div>
+              )}
             </div>
 
             <div>
@@ -216,13 +223,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                   </span>
                 )}
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={18.0}
-                step={0.1}
                 value={col.unsupportedLengthLu_M}
-                onChange={(e) => commit({ unsupportedLengthLu_M: Math.max(0, Number(e.target.value) || 0) })}
+                onChangeValue={(val) => commit({ unsupportedLengthLu_M: Math.max(0, val) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -231,13 +236,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Restraint Factor k
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={2.5}
-                step={0.05}
                 value={col.effectiveLengthFactorK}
-                onChange={(e) => commit({ effectiveLengthFactorK: Math.max(0, Number(e.target.value) || 0) })}
+                onChangeValue={(val) => commit({ effectiveLengthFactorK: Math.max(0, val) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -246,16 +249,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
               <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                 Sustained Ratio β_dns
               </label>
-              <input
-                type="number"
+              <NumericDraftInput
                 min={0}
                 max={1}
-                step={0.1}
                 value={col.sustainedLoadRatioBetaDns ?? 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  commit({ sustainedLoadRatioBetaDns: isNaN(val) ? 0 : val });
-                }}
+                onChangeValue={(val) => commit({ sustainedLoadRatioBetaDns: Math.max(0, Math.min(1, val)) })}
                 className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
               />
             </div>
@@ -290,13 +288,11 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Concrete f&apos;c (MPa)
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
                   max={80}
-                  step={1}
                   value={col.concreteFcMpa}
-                  onChange={(e) => commit({ concreteFcMpa: Math.max(0, Number(e.target.value) || 0) })}
+                  onChangeValue={(val) => commit({ concreteFcMpa: Math.max(0, val) })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -338,13 +334,12 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Bars on b-Face (n_x)
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
+                  allowDecimal={false}
                   min={0}
                   max={8}
-                  step={1}
                   value={col.barsAlongWidthB}
-                  onChange={(e) => commit({ barsAlongWidthB: Math.max(0, Number(e.target.value) || 0) })}
+                  onChangeValue={(val) => commit({ barsAlongWidthB: Math.max(0, Math.round(val)) })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -353,13 +348,12 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Bars on h-Face (n_y)
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
+                  allowDecimal={false}
                   min={0}
                   max={8}
-                  step={1}
                   value={col.barsAlongDepthH}
-                  onChange={(e) => commit({ barsAlongDepthH: Math.max(0, Number(e.target.value) || 0) })}
+                  onChangeValue={(val) => commit({ barsAlongDepthH: Math.max(0, Math.round(val)) })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -378,13 +372,12 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                     <option value={10}>Ø10</option>
                     <option value={12}>Ø12</option>
                   </select>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
                     max={400}
-                    step={25}
+                    baseUnit="mm"
                     value={col.tieSpacingMm}
-                    onChange={(e) => commit({ tieSpacingMm: Math.max(0, Number(e.target.value) || 0) })}
+                    onChangeValue={(val) => commit({ tieSpacingMm: Math.max(0, val) })}
                     className="w-1/2 px-2 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -452,11 +445,10 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                     </span>
                   )}
                 </label>
-                <input
-                  type="number"
-                  step={50}
+                <NumericDraftInput
+                  allowNegative={true}
                   value={col.axialLoadPu_Kn}
-                  onChange={(e) => commit({ axialLoadPu_Kn: Number(e.target.value) })}
+                  onChangeValue={(val) => commit({ axialLoadPu_Kn: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -470,12 +462,10 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                     </span>
                   )}
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
-                  step={10}
                   value={col.momentMux_Knm}
-                  onChange={(e) => commit({ momentMux_Knm: Number(e.target.value) })}
+                  onChangeValue={(val) => commit({ momentMux_Knm: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>
@@ -484,12 +474,10 @@ export const RcColumnInputs: React.FC<RcColumnInputsProps> = ({
                 <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                   Minor Moment M_uy (kN·m)
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
                   min={0}
-                  step={10}
                   value={col.momentMuy_Knm}
-                  onChange={(e) => commit({ momentMuy_Knm: Number(e.target.value) })}
+                  onChangeValue={(val) => commit({ momentMuy_Knm: val })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
                 />
               </div>

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 import { formatFeetInches } from '../../../utils/unitConverter';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 
 import { CivilWorkspace, SurveyingParameters } from '../../../types/civil';
 
@@ -819,10 +820,9 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
 
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">1 Katha =</span>
-                <input
-                  type="number"
+                <NumericDraftInput
                   value={customKathaSqFt}
-                  onChange={(e) => setCustomKathaSqFt(Number(e.target.value) || 720)}
+                  onChangeValue={(val) => setCustomKathaSqFt(val)}
                   className="w-16 px-1.5 py-1 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]"
                 />
                 <span className="text-xs font-mono">sq.ft</span>
@@ -845,31 +845,25 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="block text-[11px] font-mono mb-1">Side A ({inputUnit})</label>
-                        <input
-                          type="number"
-                          step="0.5"
+                        <NumericDraftInput
                           value={sideA}
-                          onChange={(e) => setSideA(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setSideA(val)}
                           className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </div>
                       <div>
                         <label className="block text-[11px] font-mono mb-1">Side B ({inputUnit})</label>
-                        <input
-                          type="number"
-                          step="0.5"
+                        <NumericDraftInput
                           value={sideB}
-                          onChange={(e) => setSideB(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setSideB(val)}
                           className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </div>
                       <div>
                         <label className="block text-[11px] font-mono mb-1">Side C ({inputUnit})</label>
-                        <input
-                          type="number"
-                          step="0.5"
+                        <NumericDraftInput
                           value={sideC}
-                          onChange={(e) => setSideC(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setSideC(val)}
                           className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </div>
@@ -885,41 +879,33 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div>
                         <label className="block text-[10px] font-mono mb-1">North Side ({inputUnit})</label>
-                        <input
-                          type="number"
-                          step="0.5"
+                        <NumericDraftInput
                           value={quadSide1}
-                          onChange={(e) => setQuadSide1(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setQuadSide1(val)}
                           className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-mono mb-1">East Side ({inputUnit})</label>
-                        <input
-                          type="number"
-                          step="0.5"
+                        <NumericDraftInput
                           value={quadSide2}
-                          onChange={(e) => setQuadSide2(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setQuadSide2(val)}
                           className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-mono mb-1">South Side ({inputUnit})</label>
-                        <input
-                          type="number"
-                          step="0.5"
+                        <NumericDraftInput
                           value={quadSide3}
-                          onChange={(e) => setQuadSide3(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setQuadSide3(val)}
                           className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-mono mb-1">West Side ({inputUnit})</label>
-                        <input
-                          type="number"
-                          step="0.5"
+                        <NumericDraftInput
                           value={quadSide4}
-                          onChange={(e) => setQuadSide4(Number(e.target.value) || 0)}
+                          onChangeValue={(val) => setQuadSide4(val)}
                           className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </div>
@@ -929,11 +915,9 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                       <label className="block text-xs font-semibold mb-1 text-[var(--md-sys-color-primary)]">
                         Corner-to-Corner Diagonal Tie Line ({inputUnit})
                       </label>
-                      <input
-                        type="number"
-                        step="0.5"
+                      <NumericDraftInput
                         value={quadDiagonal}
-                        onChange={(e) => setQuadDiagonal(Number(e.target.value) || 0)}
+                        onChangeValue={(val) => setQuadDiagonal(val)}
                         className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)]"
                       />
                       <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] mt-1 block">
@@ -965,11 +949,10 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                           <span className="w-8 font-bold text-[var(--md-sys-color-primary)]">P{idx + 1}</span>
                           <div className="flex items-center gap-1 flex-1">
                             <span className="text-[10px]">X:</span>
-                            <input
-                              type="number"
+                            <NumericDraftInput
+                              allowNegative={true}
                               value={pt.x}
-                              onChange={(e) => {
-                                const val = Number(e.target.value) || 0;
+                              onChangeValue={(val) => {
                                 setPolygonPoints(polygonPoints.map((p) => (p.id === pt.id ? { ...p, x: val } : p)));
                               }}
                               className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
@@ -977,11 +960,10 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                           </div>
                           <div className="flex items-center gap-1 flex-1">
                             <span className="text-[10px]">Y:</span>
-                            <input
-                              type="number"
+                            <NumericDraftInput
+                              allowNegative={true}
                               value={pt.y}
-                              onChange={(e) => {
-                                const val = Number(e.target.value) || 0;
+                              onChangeValue={(val) => {
                                 setPolygonPoints(polygonPoints.map((p) => (p.id === pt.id ? { ...p, y: val } : p)));
                               }}
                               className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
@@ -1154,11 +1136,10 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
               <span className="text-xs font-mono font-semibold text-[var(--md-sys-color-on-surface)]">
                 Initial Benchmark (BM) RL:
               </span>
-              <input
-                type="number"
-                step="0.001"
+              <NumericDraftInput
+                allowNegative={true}
                 value={initialBenchmarkRL}
-                onChange={(e) => setInitialBenchmarkRL(Number(e.target.value) || 0)}
+                onChangeValue={(val) => setInitialBenchmarkRL(val)}
                 className="w-24 px-2 py-1 text-xs font-mono font-bold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-right"
               />
               <span className="text-xs font-mono">m</span>
@@ -1262,46 +1243,34 @@ export const SurveyingSuite: React.FC<SurveyingSuiteProps> = ({
                       </td>
 
                       <td className="py-2 px-2 bg-blue-50/30 dark:bg-blue-950/10">
-                        <input
-                          type="number"
-                          step="0.001"
+                        <NumericDraftInput
+                          allowEmpty={true}
                           placeholder="-"
                           value={row.backsight ?? ''}
-                          onChange={(e) =>
-                            handleUpdateLevelingRow(row.id, {
-                              backsight: e.target.value === '' ? undefined : Number(e.target.value),
-                            })
-                          }
+                          onEmpty={() => handleUpdateLevelingRow(row.id, { backsight: undefined })}
+                          onChangeValue={(val) => handleUpdateLevelingRow(row.id, { backsight: val })}
                           className="w-20 px-1.5 py-1 text-xs font-semibold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-blue-700 dark:text-blue-300"
                         />
                       </td>
 
                       <td className="py-2 px-2">
-                        <input
-                          type="number"
-                          step="0.001"
+                        <NumericDraftInput
+                          allowEmpty={true}
                           placeholder="-"
                           value={row.intermediateSight ?? ''}
-                          onChange={(e) =>
-                            handleUpdateLevelingRow(row.id, {
-                              intermediateSight: e.target.value === '' ? undefined : Number(e.target.value),
-                            })
-                          }
+                          onEmpty={() => handleUpdateLevelingRow(row.id, { intermediateSight: undefined })}
+                          onChangeValue={(val) => handleUpdateLevelingRow(row.id, { intermediateSight: val })}
                           className="w-20 px-1.5 py-1 text-xs rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
                         />
                       </td>
 
                       <td className="py-2 px-2 bg-amber-50/30 dark:bg-amber-950/10">
-                        <input
-                          type="number"
-                          step="0.001"
+                        <NumericDraftInput
+                          allowEmpty={true}
                           placeholder="-"
                           value={row.foresight ?? ''}
-                          onChange={(e) =>
-                            handleUpdateLevelingRow(row.id, {
-                              foresight: e.target.value === '' ? undefined : Number(e.target.value),
-                            })
-                          }
+                          onEmpty={() => handleUpdateLevelingRow(row.id, { foresight: undefined })}
+                          onChangeValue={(val) => handleUpdateLevelingRow(row.id, { foresight: val })}
                           className="w-20 px-1.5 py-1 text-xs font-semibold rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-amber-700 dark:text-amber-300"
                         />
                       </td>

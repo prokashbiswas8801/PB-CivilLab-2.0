@@ -20,6 +20,7 @@ import {
   TrendingDown,
   Compass,
 } from 'lucide-react';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface ContinuousBeamInputsProps {
   activeWorkspace: CivilWorkspace;
@@ -243,23 +244,20 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
               </span>
             )}
           </div>
-          <input
-            type="number"
+          <NumericDraftInput
             value={cb.allowableStressMpa}
-            onChange={(e) => {
-              const val = e.target.value === '' ? 0 : Number(e.target.value);
+            onChangeValue={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, allowableStressMpa: isNaN(val) ? 0 : val },
+                continuousBeam: { ...cb, allowableStressMpa: Math.max(0, val) },
               }));
             }}
+            min={0}
             className={`w-full touch-target-48 px-2.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
               cb.allowableStressMpa === 0
                 ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                 : 'border-[var(--md-sys-color-outline)]'
             }`}
-            step="any"
-            min="0"
           />
         </div>
       </div>
@@ -277,23 +275,20 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
               </span>
             )}
           </div>
-          <input
-            type="number"
+          <NumericDraftInput
             value={cb.sectionDepthMm}
-            onChange={(e) => {
-              const val = e.target.value === '' ? 0 : Number(e.target.value);
+            onChangeValue={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, sectionDepthMm: isNaN(val) ? 0 : val },
+                continuousBeam: { ...cb, sectionDepthMm: Math.max(0, val) },
               }));
             }}
+            min={0}
             className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
               cb.sectionDepthMm === 0
                 ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                 : 'border-[var(--md-sys-color-outline)]'
             }`}
-            step="any"
-            min="0"
           />
         </div>
 
@@ -308,23 +303,20 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
               </span>
             )}
           </div>
-          <input
-            type="number"
+          <NumericDraftInput
             value={cb.sectionWidthMm}
-            onChange={(e) => {
-              const val = e.target.value === '' ? 0 : Number(e.target.value);
+            onChangeValue={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, sectionWidthMm: isNaN(val) ? 0 : val },
+                continuousBeam: { ...cb, sectionWidthMm: Math.max(0, val) },
               }));
             }}
+            min={0}
             className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
               cb.sectionWidthMm === 0
                 ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                 : 'border-[var(--md-sys-color-outline)]'
             }`}
-            step="any"
-            min="0"
           />
         </div>
 
@@ -339,23 +331,20 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
               </span>
             )}
           </div>
-          <input
-            type="number"
+          <NumericDraftInput
             value={cb.concreteGradeFckMpa}
-            onChange={(e) => {
-              const val = e.target.value === '' ? 0 : Number(e.target.value);
+            onChangeValue={(val) => {
               updateActiveWorkspace((ws) => ({
                 ...ws,
-                continuousBeam: { ...cb, concreteGradeFckMpa: isNaN(val) ? 0 : val },
+                continuousBeam: { ...cb, concreteGradeFckMpa: Math.max(0, val) },
               }));
             }}
+            min={0}
             className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
               cb.concreteGradeFckMpa === 0
                 ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                 : 'border-[var(--md-sys-color-outline)]'
             }`}
-            step="any"
-            min="0"
           />
         </div>
 
@@ -420,20 +409,15 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                       </span>
                     )}
                   </div>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={span.lengthM}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? 0 : Number(e.target.value);
-                      updateSpan(sIdx, { lengthM: isNaN(val) ? 0 : val });
-                    }}
+                    onChangeValue={(val) => updateSpan(sIdx, { lengthM: Math.max(0, val) })}
+                    min={0}
                     className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
                       span.lengthM === 0
                         ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                         : 'border-[var(--md-sys-color-outline)]'
                     }`}
-                    step="any"
-                    min="0"
                   />
                   <input
                     type="range"
@@ -457,20 +441,15 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                       </span>
                     )}
                   </div>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={span.udlKnPerM}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? 0 : Number(e.target.value);
-                      updateSpan(sIdx, { udlKnPerM: isNaN(val) ? 0 : val });
-                    }}
+                    onChangeValue={(val) => updateSpan(sIdx, { udlKnPerM: Math.max(0, val) })}
+                    min={0}
                     className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
                       span.udlKnPerM === 0
                         ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                         : 'border-[var(--md-sys-color-outline)]'
                     }`}
-                    step="any"
-                    min="0"
                   />
                   <input
                     type="range"
@@ -498,20 +477,15 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                       </span>
                     )}
                   </div>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={span.pointLoadKn}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? 0 : Number(e.target.value);
-                      updateSpan(sIdx, { pointLoadKn: isNaN(val) ? 0 : val });
-                    }}
+                    onChangeValue={(val) => updateSpan(sIdx, { pointLoadKn: Math.max(0, val) })}
+                    min={0}
                     className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
                       span.pointLoadKn === 0
                         ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                         : 'border-[var(--md-sys-color-outline)]'
                     }`}
-                    step="any"
-                    min="0"
                   />
                   <input
                     type="range"
@@ -535,20 +509,17 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                       </span>
                     )}
                   </div>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={span.pointLoadPositionM}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? 0 : Number(e.target.value);
-                      updateSpan(sIdx, { pointLoadPositionM: isNaN(val) ? 0 : val });
-                    }}
+                    onChangeValue={(val) => updateSpan(sIdx, { pointLoadPositionM: Math.max(0, val) })}
+                    min={0}
                     className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
-                      span.pointLoadPositionM === 0
+                      span.lengthM > 0 && span.pointLoadPositionM > span.lengthM
+                        ? 'border-rose-600 bg-rose-500/10 ring-1 ring-rose-500/50 text-rose-700 dark:text-rose-300'
+                        : span.pointLoadPositionM === 0
                         ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                         : 'border-[var(--md-sys-color-outline)]'
                     }`}
-                    step="any"
-                    min="0"
                   />
                   <input
                     type="range"
@@ -560,6 +531,11 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                     onChange={(e) => updateSpan(sIdx, { pointLoadPositionM: Number(e.target.value) })}
                     className="w-full h-1.5 mt-1.5 accent-[var(--md-sys-color-primary)] cursor-pointer"
                   />
+                  {span.lengthM > 0 && span.pointLoadPositionM > span.lengthM && (
+                    <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 mt-1">
+                      Load pos ({span.pointLoadPositionM} m) exceeds span length ({span.lengthM} m).
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -576,20 +552,15 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                       </span>
                     )}
                   </div>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     value={span.triangularLoadKnPerM || 0}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? 0 : Number(e.target.value);
-                      updateSpan(sIdx, { triangularLoadKnPerM: isNaN(val) ? 0 : val });
-                    }}
+                    onChangeValue={(val) => updateSpan(sIdx, { triangularLoadKnPerM: Math.max(0, val) })}
+                    min={0}
                     className={`w-full px-2 py-1.5 rounded border font-mono text-xs bg-[var(--md-sys-color-surface)] ${
                       (span.triangularLoadKnPerM || 0) === 0
                         ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                         : 'border-[var(--md-sys-color-outline)]'
                     }`}
-                    step="any"
-                    min="0"
                   />
                 </div>
                 <div>
@@ -613,13 +584,11 @@ export const ContinuousBeamInputs: React.FC<ContinuousBeamInputsProps> = ({
                 <label className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
                   Moment of Inertia I (cm⁴)
                 </label>
-                <input
-                  type="number"
+                <NumericDraftInput
                   value={span.momentOfInertiaCm4}
-                  onChange={(e) => updateSpan(sIdx, { momentOfInertiaCm4: Math.max(0, Number(e.target.value) || 0) })}
+                  onChangeValue={(val) => updateSpan(sIdx, { momentOfInertiaCm4: Math.max(0, val) })}
+                  min={0}
                   className="w-full px-2 py-1.5 rounded border border-[var(--md-sys-color-outline)] font-mono text-xs bg-[var(--md-sys-color-surface)]"
-                  step="5000"
-                  min="0"
                 />
               </div>
             </div>

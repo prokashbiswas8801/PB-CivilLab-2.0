@@ -63,9 +63,9 @@ export const AppSplash: React.FC<AppSplashProps> = ({ onComplete, minDurationMs 
           <div className="h-full bg-[var(--md-sys-color-primary)] rounded-full animate-indeterminate" />
         </div>
 
-        {/* Developer Attribution & Bypass */}
+        {/* Platform Attribution & Bypass */}
         <div className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)] opacity-80 pt-2 space-y-2">
-          <div>Developed &amp; Designed by <strong>PROKASH BISWAS</strong></div>
+          <div><strong>BD. CivilLab</strong> Engineering Suite</div>
           <button
             type="button"
             onClick={() => {

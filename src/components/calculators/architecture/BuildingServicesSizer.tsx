@@ -34,6 +34,7 @@ import {
 import { exportToCSV, generateEngineeringPDF } from '../../../utils/exportEngine';
 import { DcrGaugeSuite } from '../../DcrCapacityGauge';
 import { StepByStepPanel } from '../../StepByStepPanel';
+import { NumericDraftInput } from '../../ui/NumericDraftInput';
 
 export type ServiceTab = 'water-reservoirs' | 'septic-system';
 
@@ -662,11 +663,12 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Floors
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
+                      allowDecimal={false}
                       value={numFloors}
-                      onChange={(e) => setNumFloors(Math.max(0, Number(e.target.value) || 0))}
+                      highlightZero
+                      onChangeValue={(v) => setNumFloors(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -674,11 +676,12 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Units/Floor
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
+                      allowDecimal={false}
                       value={unitsPerFloor}
-                      onChange={(e) => setUnitsPerFloor(Math.max(0, Number(e.target.value) || 0))}
+                      highlightZero
+                      onChangeValue={(v) => setUnitsPerFloor(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -686,11 +689,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Persons/Unit
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
                       value={personsPerUnit}
-                      onChange={(e) => setPersonsPerUnit(Math.max(0, Number(e.target.value) || 0))}
+                      highlightZero
+                      onChangeValue={(v) => setPersonsPerUnit(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -701,11 +704,12 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Permanent Occupants
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
+                      allowDecimal={false}
                       value={directOccupants}
-                      onChange={(e) => setDirectOccupants(Math.max(0, Number(e.target.value) || 0))}
+                      highlightZero
+                      onChangeValue={(v) => setDirectOccupants(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -713,11 +717,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Floating Visitors
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
+                      allowDecimal={false}
                       value={floatingPopulation}
-                      onChange={(e) => setFloatingPopulation(Math.max(0, Number(e.target.value) || 0))}
+                      onChangeValue={(v) => setFloatingPopulation(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -730,13 +734,13 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Demand Rate (LPCD)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
                     value={lpcd}
-                    onChange={(e) => {
+                    highlightZero
+                    onChangeValue={(v) => {
                       setOccupancyPreset('custom');
-                      setLpcd(Math.max(0, Number(e.target.value) || 0));
+                      setLpcd(Math.max(0, v));
                     }}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
@@ -745,12 +749,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Storage Buffer (Days)
                   </label>
-                  <input
-                    type="number"
-                    step="0.5"
+                  <NumericDraftInput
                     min={0}
                     value={storageDays}
-                    onChange={(e) => setStorageDays(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setStorageDays(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -793,14 +796,12 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[10px] font-medium text-[var(--md-sys-color-on-surface-variant)]">
                       Fire Flow (L/min)
                     </label>
-                    <input
-                      type="number"
-                      step="25"
+                    <NumericDraftInput
                       min={0}
                       value={firePumpFlowLpm}
-                      onChange={(e) => {
+                      onChangeValue={(v) => {
                         setFireReserveAutoMode(true);
-                        setFirePumpFlowLpm(Math.max(0, Number(e.target.value)));
+                        setFirePumpFlowLpm(Math.max(0, v));
                       }}
                       className="w-full text-xs font-mono tabular-nums px-2 py-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
@@ -809,14 +810,12 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[10px] font-medium text-[var(--md-sys-color-on-surface-variant)]">
                       Manual Fire Reserve (L)
                     </label>
-                    <input
-                      type="number"
-                      step="1000"
+                    <NumericDraftInput
                       min={0}
                       value={waterCalc.fireReserveL}
-                      onChange={(e) => {
+                      onChangeValue={(v) => {
                         setFireReserveAutoMode(false);
-                        setFireReserveL(Math.max(0, Number(e.target.value)));
+                        setFireReserveL(Math.max(0, v));
                       }}
                       className="w-full text-xs font-mono tabular-nums px-2 py-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
@@ -849,12 +848,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     UGWR Water Depth (m)
                   </label>
-                  <input
-                    type="number"
-                    step="0.2"
+                  <NumericDraftInput
                     min={0}
                     value={ugwrWaterDepthM}
-                    onChange={(e) => setUgwrWaterDepthM(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setUgwrWaterDepthM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -862,12 +860,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     OHT Water Depth (m)
                   </label>
-                  <input
-                    type="number"
-                    step="0.2"
+                  <NumericDraftInput
                     min={0}
                     value={ohtWaterDepthM}
-                    onChange={(e) => setOhtWaterDepthM(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setOhtWaterDepthM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -879,12 +876,10 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     OHT Fill Target (Hrs)
                   </label>
-                  <input
-                    type="number"
-                    step="0.5"
+                  <NumericDraftInput
                     min={0}
                     value={pumpFillHours}
-                    onChange={(e) => setPumpFillHours(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(v) => setPumpFillHours(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -892,12 +887,10 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Total Head Static+Fric (m)
                   </label>
-                  <input
-                    type="number"
-                    step="1"
+                  <NumericDraftInput
                     min={0}
                     value={totalHeadM}
-                    onChange={(e) => setTotalHeadM(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(v) => setTotalHeadM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1160,11 +1153,12 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Users (Population)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
+                    allowDecimal={false}
                     value={septicUsers}
-                    onChange={(e) => setSepticUsers(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setSepticUsers(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1172,11 +1166,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Sewage Rate (LPCD)
                   </label>
-                  <input
-                    type="number"
+                  <NumericDraftInput
                     min={0}
                     value={sewageRateLpcd}
-                    onChange={(e) => setSewageRateLpcd(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setSewageRateLpcd(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1187,12 +1181,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                     Detention Period (Hrs)
                   </label>
-                  <input
-                    type="number"
-                    step="6"
+                  <NumericDraftInput
                     min={0}
                     value={detentionHours}
-                    onChange={(e) => setDetentionHours(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setDetentionHours(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1225,12 +1218,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     Liquid Depth (m)
                   </label>
-                  <input
-                    type="number"
-                    step="0.1"
+                  <NumericDraftInput
                     min={0}
                     value={septicDepthM}
-                    onChange={(e) => setSepticDepthM(Math.max(0, Number(e.target.value) || 0))}
+                    highlightZero
+                    onChangeValue={(v) => setSepticDepthM(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1238,13 +1230,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                   <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                     L : W Ratio (2.0–4.0)
                   </label>
-                  <input
-                    type="number"
-                    step="0.2"
+                  <NumericDraftInput
                     min={0}
                     max={4.5}
                     value={septicLwRatio}
-                    onChange={(e) => setSepticLwRatio(Math.max(0, Number(e.target.value) || 0))}
+                    onChangeValue={(v) => setSepticLwRatio(Math.max(0, v))}
                     className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                   />
                 </div>
@@ -1283,12 +1273,11 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Percolation (min/25mm)
                     </label>
-                    <input
-                      type="number"
+                    <NumericDraftInput
                       min={0}
                       max={90}
                       value={soilPercolationMinPer25mm}
-                      onChange={(e) => handlePercolationMinChange(Number(e.target.value))}
+                      onChangeValue={(v) => handlePercolationMinChange(v)}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>
@@ -1296,12 +1285,10 @@ export const BuildingServicesSizer: React.FC<BuildingServicesSizerProps> = ({
                     <label className="text-[11px] font-medium text-[var(--md-sys-color-on-surface)]">
                       Pit Internal Dia (m)
                     </label>
-                    <input
-                      type="number"
-                      step="0.2"
+                    <NumericDraftInput
                       min={0}
                       value={soakPitDiaM}
-                      onChange={(e) => setSoakPitDiaM(Math.max(0, Number(e.target.value) || 0))}
+                      onChangeValue={(v) => setSoakPitDiaM(Math.max(0, v))}
                       className="w-full text-xs font-mono tabular-nums px-2.5 py-1.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)]"
                     />
                   </div>

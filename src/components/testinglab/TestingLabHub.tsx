@@ -49,9 +49,13 @@ import {
   exportLabTestCertificatePdf,
   getDefaultChecklistStates,
   getDefaultInputsForTest,
+  getSamplePresetInputsForTest,
 } from '../../utils/testingLabEngine';
 import { generateUUID } from '../../utils/storage';
+import { triggerSafeDomPrint } from '../../utils/exportEngine';
 import { formatFeetInches } from '../../utils/unitConverter';
+import { resolveUnitAndCategory } from '../../utils/unitEngine';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 export interface TestingLabHubProps {
   activeWorkspace: CivilWorkspace;
@@ -135,8 +139,8 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
     return domainTests[0];
   }, [labState.activeTestId, activeDomain.id, domainTests]);
 
-  const [sampleRef, setSampleRef] = useState('SMP-01 / LOT-A');
-  const [locationGrid, setLocationGrid] = useState('Grid A1–C4 / Ground Slab');
+  const [sampleRef, setSampleRef] = useState('');
+  const [locationGrid, setLocationGrid] = useState('');
   const [remarks, setRemarks] = useState('');
   const [showSavedDrawer, setShowSavedDrawer] = useState(false);
   const [logFilterDomain, setLogFilterDomain] = useState<'all' | TestingLabDomainId>('all');
@@ -239,7 +243,22 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
         [activeTest.id]: getDefaultChecklistStates(activeTest),
       },
     }));
-    onNotify?.(`Reset ${activeTest.code} inputs to worked example baseline.`);
+    onNotify?.(`Reset ${activeTest.code} inputs to 0 baseline.`);
+  };
+
+  const loadSampleTestPreset = () => {
+    onUpdateTestingLab((prev) => ({
+      ...prev,
+      draftInputsByTestId: {
+        ...prev.draftInputsByTestId,
+        [activeTest.id]: getSamplePresetInputsForTest(activeTest),
+      },
+      draftChecklistsByTestId: {
+        ...prev.draftChecklistsByTestId,
+        [activeTest.id]: getDefaultChecklistStates(activeTest),
+      },
+    }));
+    onNotify?.(`Loaded sample worked example for ${activeTest.code}.`);
   };
 
   const updateChecklistItem = (itemId: string, status: ChecklistItemStatus) => {
@@ -375,8 +394,6 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
   };
 
   const handlePrintA4 = async () => {
-    const printEl = document.getElementById('pb-printable-report');
-    if (!printEl) return;
     const html = await buildPrintableLabCertificateHtml({
       test: activeTest,
       inputs: currentInputs,
@@ -388,17 +405,7 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
       userProfile,
       checklistStates: activeTest.checklistItems ? currentChecklistStates : undefined,
     });
-    printEl.innerHTML = html;
-    printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
-    document.body.classList.add('is-printing-report');
-    const cleanUp = () => {
-      printEl.innerHTML = '';
-      printEl.className = 'hidden print:block bg-white text-slate-900';
-      document.body.classList.remove('is-printing-report');
-      window.removeEventListener('afterprint', cleanUp);
-    };
-    window.addEventListener('afterprint', cleanUp);
-    setTimeout(() => window.print(), 60);
+    triggerSafeDomPrint(html);
   };
 
   const handleLoadRecord = (rec: TestingLabSavedRecord) => {
@@ -955,14 +962,24 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                 </span>
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={resetInputsToExample}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Worked Example</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={resetInputsToExample}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset to Zero</span>
+              </button>
+              <button
+                type="button"
+                onClick={loadSampleTestPreset}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Load Sample Test Data</span>
+              </button>
+            </div>
           </div>
 
           {/* Sample Identification Fields */}
@@ -975,6 +992,7 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                 type="text"
                 value={sampleRef}
                 onChange={(e) => setSampleRef(e.target.value)}
+                placeholder="e.g. SMP-01 / LOT-A"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
               />
             </div>
@@ -986,6 +1004,7 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                 type="text"
                 value={locationGrid}
                 onChange={(e) => setLocationGrid(e.target.value)}
+                placeholder="e.g. Grid A1–C4 / Ground Slab"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
               />
             </div>
@@ -1154,16 +1173,15 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                             <span className="text-emerald-600 dark:text-emerald-400">OK</span>
                           )}
                         </div>
-                        <input
-                          type="number"
-                          min={10}
+                        <NumericDraftInput
+                          min={0}
                           max={70}
                           step={1}
                           value={val}
-                          onChange={(e) => {
-                            const nextVal = parseFloat(e.target.value);
+                          highlightZero
+                          onChangeValue={(nextVal) => {
                             const nextArr = [...vals];
-                            nextArr[idx] = Number.isFinite(nextVal) ? nextVal : 10;
+                            nextArr[idx] = nextVal;
                             syncGrid(nextArr);
                           }}
                           className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs font-bold tabular-nums text-slate-900 dark:text-white"
@@ -1307,13 +1325,13 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                         <tr key={r.key} className={idx === 6 ? 'bg-slate-50/70 dark:bg-slate-800/30' : ''}>
                           <td className="py-1.5 px-3 font-mono font-semibold text-slate-800 dark:text-slate-100">{r.label}</td>
                           <td className="py-1.5 px-3">
-                            <input
-                              type="number"
+                            <NumericDraftInput
                               min={0}
                               max={1000}
-                              step={0.5}
                               value={r.wt}
-                              onChange={(e) => updateInput(r.key, parseFloat(e.target.value))}
+                              baseUnit="g"
+                              highlightZero
+                              onChangeValue={(v) => updateInput(r.key, v)}
                               className="w-24 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs font-bold tabular-nums text-slate-900 dark:text-white"
                             />
                           </td>
@@ -1367,15 +1385,22 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
                 {activeTest.calculatorInputs.map((field) => {
-                  const currentVal = currentInputs[field.key] ?? field.defaultValue;
+                  const currentVal = typeof currentInputs[field.key] === 'number' && Number.isFinite(currentInputs[field.key]) ? currentInputs[field.key] : 0;
                   return (
                     <div
                       key={field.key}
                       className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40"
                     >
-                      <label className="block text-xs font-semibold text-slate-800 dark:text-slate-100 mb-1.5">
-                        {renderBilingual(field.label, langMode, { inline: true })}
-                      </label>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <label className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
+                          {renderBilingual(field.label, langMode, { inline: true })}
+                        </label>
+                        {!field.options?.length && currentVal === 0 && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                            0 BASELINE
+                          </span>
+                        )}
+                      </div>
                       {field.options && field.options.length > 0 ? (
                         <select
                           value={currentVal}
@@ -1394,18 +1419,21 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
                         </select>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <input
-                            type="number"
+                          <NumericDraftInput
                             value={currentVal}
-                            min={field.min}
+                            min={field.min ?? 0}
                             max={field.max}
-                            step={field.step ?? 'any'}
-                            onChange={(e) => updateInput(field.key, parseFloat(e.target.value))}
+                            allowNegative={typeof field.min === 'number' && field.min < 0}
+                            baseUnit={field.unit}
+                            highlightZero
+                            onChangeValue={(v) => updateInput(field.key, v)}
                             className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-sm font-bold tabular-nums text-slate-900 dark:text-white"
                           />
-                          <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400 w-16 text-right shrink-0">
-                            {field.unit}
-                          </span>
+                          {!resolveUnitAndCategory(field.unit) && (
+                            <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400 w-16 text-right shrink-0">
+                              {field.unit}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2318,13 +2346,13 @@ export const TestingLabHub: React.FC<TestingLabHubProps> = ({
               {/* Bespoke Marshall Wearing Course vs DBM & Extraction Audit (LAB-HWY-04) */}
               {activeTest.id === 'hwy-marshall-stability' && (() => {
                 const cCode = Math.round(currentInputs.courseTypeCode ?? 1);
-                const gmm = Math.max(2.0, currentInputs.riceGravityGmm ?? 2.48);
-                const gmb = Math.max(1.5, currentInputs.bulkGravityGmb ?? 2.382);
-                const va = ((gmm - gmb) / gmm) * 100;
-                const w1 = Math.max(100, currentInputs.mixSampleW1G ?? 1200);
-                const w2 = Math.max(0, currentInputs.extractedAggW2G ?? 1138);
-                const ash = Math.max(0, currentInputs.mineralAshG ?? 1.6);
-                const pb = ((w1 - w2 + ash) / w1) * 100;
+                const gmm = currentInputs.riceGravityGmm ?? 0;
+                const gmb = currentInputs.bulkGravityGmb ?? 0;
+                const va = gmm > 0 ? ((gmm - gmb) / gmm) * 100 : 0;
+                const w1 = Math.max(0, currentInputs.mixSampleW1G ?? 0);
+                const w2 = Math.max(0, currentInputs.extractedAggW2G ?? 0);
+                const ash = Math.max(0, currentInputs.mineralAshG ?? 0);
+                const pb = w1 > 0 ? ((w1 - w2 + ash) / w1) * 100 : 0;
                 const specs = [
                   { code: 1, name: 'Wearing Course (AC / BC)', stab: '≥ 9.0 kN', flow: '2.0–4.0 mm', va: '3.0%–5.0%', pbSpec: '5.0%–6.0%' },
                   { code: 2, name: 'Dense Bituminous Macadam (DBM)', stab: '≥ 8.2 kN', flow: '2.0–4.0 mm', va: '3.0%–6.0%', pbSpec: '4.0%–5.0%' },

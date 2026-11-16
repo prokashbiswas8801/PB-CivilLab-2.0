@@ -388,7 +388,10 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
   const maxW = Math.max(0.1, wLeft, wRight);
 
   // Serviceability limit state check
-  const allowableDeflMm = result.allowableDeflectionMm || (L_main * 1000) / (result.deflectionLimitFactor || 360);
+  const deflLimitFactor = typeof result.deflectionLimitFactor === 'number' && Number.isFinite(result.deflectionLimitFactor) && result.deflectionLimitFactor > 0 ? result.deflectionLimitFactor : 360;
+  const allowableDeflMm = typeof result.allowableDeflectionMm === 'number' && Number.isFinite(result.allowableDeflectionMm) && result.allowableDeflectionMm > 0
+    ? result.allowableDeflectionMm
+    : (L_main * 1000) / deflLimitFactor;
   const deflRatio = result.maxDeflectionMm / Math.max(0.001, allowableDeflMm);
   const deflStatusColor = deflRatio <= 0.8 ? '#10b981' : deflRatio <= 1.0 ? '#f59e0b' : '#ef4444';
   const deflStatusText =
@@ -396,7 +399,7 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
       ? 'PASS · Serviceability Satisfied'
       : deflRatio <= 1.0
         ? 'ATTENTION · High Deflection'
-        : `EXCEEDED · Deflection > L/${result.deflectionLimitFactor || 360}`;
+        : `EXCEEDED · Deflection > L/${deflLimitFactor}`;
 
   const inflectionPoints = result.inflectionPointsM || [];
   const maxDeflLocM = result.maxDeflectionLocationM ?? L_tot / 2;
@@ -464,7 +467,7 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
         <g
           {...bindHover({
             title: 'Serviceability Deflection Check',
-            formula: `EI·y(x) = ∬M(x)dx² ≤ L/${result.deflectionLimitFactor || 360}`,
+            formula: `EI·y(x) = ∬M(x)dx² ≤ L/${deflLimitFactor}`,
             substitution: `δ_max = ${result.maxDeflectionMm.toFixed(2)} mm ≤ ${allowableDeflMm.toFixed(1)} mm (${(deflRatio * 100).toFixed(1)}%)`,
             codeRef: `${result.governingCode || 'BNBC 2020'} Serviceability Limit`,
             description: 'Double-integrated Euler-Bernoulli elastic deflection check against structural serviceability limit.',
@@ -708,34 +711,45 @@ export const BeamDiagramSvg: React.FC<{ params: BeamParameters; result: BeamAnal
         )}
 
         {/* Beam Cross Section Vignette with Hover Tooltip */}
-        <g
-          transform={`translate(${width - 110}, 105)`}
-          {...bindHover({
-            title: 'Reinforced Concrete Beam Section',
-            formula: 'M_n = A_s · f_y · (d - a/2)',
-            substitution: `Section = ${(params as any).sectionWidthMm || 250} × ${params.sectionDepthMm || 450} mm`,
-            codeRef: 'ACI 318-19 / BNBC 2020 Ch 6',
-            description: 'Cross-section flexural profile and transverse shear stirrup ties.',
-          })}
-        >
-          <rect x={0} y={0} width={100} height={190} rx={6} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
-          <text x={50} y={18} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-            SECTION
-          </text>
-          <rect x={15} y={28} width={70} height={120} rx={3} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
-          <rect x={20} y={33} width={60} height={110} rx={2} fill="none" stroke="var(--md-sys-color-tertiary)" strokeWidth="1.2" strokeDasharray="2 1" />
-          <circle cx={26} cy={39} r={3} fill="var(--md-sys-color-on-surface)" />
-          <circle cx={74} cy={39} r={3} fill="var(--md-sys-color-on-surface)" />
-          <circle cx={26} cy={137} r={4} fill="var(--md-sys-color-primary)" />
-          <circle cx={50} cy={137} r={4} fill="var(--md-sys-color-primary)" />
-          <circle cx={74} cy={137} r={4} fill="var(--md-sys-color-primary)" />
-          <text x={50} y={160} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">
-            {(params as any).sectionWidthMm || 250} × {params.sectionDepthMm || 450} mm
-          </text>
-          <text x={50} y={174} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">
-            DCR: {(result.utilizationRatio * 100).toFixed(0)}%
-          </text>
-        </g>
+        {(() => {
+          const bMm = typeof (params as any).sectionWidthMm === 'number' && Number.isFinite((params as any).sectionWidthMm) ? (params as any).sectionWidthMm : 0;
+          const dMm = typeof params.sectionDepthMm === 'number' && Number.isFinite(params.sectionDepthMm) ? params.sectionDepthMm : 0;
+          const aspect = bMm > 0 && dMm > 0 ? Math.max(0.35, Math.min(1.2, bMm / dMm)) : 0.58;
+          const secH = Math.min(120, Math.max(46, dMm > 0 ? Math.min(120, (dMm / 600) * 110 + 30) : 84));
+          const secW = Math.min(76, Math.max(30, secH * aspect));
+          const secX = 50 - secW / 2;
+          const secY = 28 + (120 - secH) / 2;
+          return (
+            <g
+              transform={`translate(${width - 110}, 105)`}
+              {...bindHover({
+                title: 'Reinforced Concrete Beam Section',
+                formula: 'M_n = A_s · f_y · (d - a/2)',
+                substitution: `Section = ${bMm > 0 ? bMm : '—'} × ${dMm > 0 ? dMm : '—'} mm`,
+                codeRef: 'ACI 318-19 / BNBC 2020 Ch 6',
+                description: 'Cross-section flexural profile and transverse shear stirrup ties.',
+              })}
+            >
+              <rect x={0} y={0} width={100} height={190} rx={6} fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
+              <text x={50} y={18} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+                SECTION
+              </text>
+              <rect x={secX} y={secY} width={secW} height={secH} rx={3} fill="var(--md-sys-color-surface-container-highest)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
+              <rect x={secX + 4} y={secY + 4} width={Math.max(12, secW - 8)} height={Math.max(12, secH - 8)} rx={2} fill="none" stroke="var(--md-sys-color-tertiary)" strokeWidth="1.2" strokeDasharray="2 1" />
+              <circle cx={secX + 9} cy={secY + 9} r={2.8} fill="var(--md-sys-color-on-surface)" />
+              <circle cx={secX + secW - 9} cy={secY + 9} r={2.8} fill="var(--md-sys-color-on-surface)" />
+              <circle cx={secX + 9} cy={secY + secH - 9} r={3.6} fill="var(--md-sys-color-primary)" />
+              <circle cx={50} cy={secY + secH - 9} r={3.6} fill="var(--md-sys-color-primary)" />
+              <circle cx={secX + secW - 9} cy={secY + secH - 9} r={3.6} fill="var(--md-sys-color-primary)" />
+              <text x={50} y={160} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--md-sys-color-on-surface-variant)">
+                {bMm > 0 ? bMm : '—'} × {dMm > 0 ? dMm : '—'} mm
+              </text>
+              <text x={50} y={174} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--md-sys-color-primary)">
+                DCR: {(result.utilizationRatio * 100).toFixed(0)}%
+              </text>
+            </g>
+          );
+        })()}
 
         {/* Interactive Inspection Crosshair */}
         {hoverData && (
@@ -815,10 +829,17 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
   const toDepthM = (py: number) => params.embedmentDepthM + ((py - footingBaseY) / plotH) * (maxDepthM - params.embedmentDepthM);
 
   const fs = result.effectiveSafetyFactor;
-  const isPassingFs = fs >= 2.5;
-  const isMarginalFs = fs >= 2.0 && fs < 2.5;
-  const fsColor = isPassingFs ? '#10b981' : isMarginalFs ? '#f59e0b' : '#ef4444';
-  const fsLabel = isPassingFs ? 'SAFE (FS ≥ 2.5)' : isMarginalFs ? 'MARGINAL (2.0 ≤ FS < 2.5)' : 'UNSAFE (FS < 2.0)';
+  const hasAppliedLoad = params.appliedColumnLoadKn > 0;
+  const isPassingFs = hasAppliedLoad && fs >= 2.5;
+  const isMarginalFs = hasAppliedLoad && fs >= 2.0 && fs < 2.5;
+  const fsColor = !hasAppliedLoad ? '#64748b' : isPassingFs ? '#10b981' : isMarginalFs ? '#f59e0b' : '#ef4444';
+  const fsLabel = !hasAppliedLoad
+    ? 'STANDBY (NO APPLIED LOAD P = 0)'
+    : isPassingFs
+      ? 'SAFE (FS ≥ 2.5)'
+      : isMarginalFs
+        ? 'MARGINAL (2.0 ≤ FS < 2.5)'
+        : 'UNSAFE (FS < 2.0)';
 
   // Water table relative position
   const waterDepthM = params.waterTableDepthM;
@@ -904,61 +925,78 @@ export const BearingDiagramSvg: React.FC<{ params: BearingParameters; result: Be
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className={`p-3 rounded-xl border ${result.solverMethodUsed === 'meyerhof' || !result.solverMethodUsed ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)]' : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'} space-y-1.5`}>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-[var(--md-sys-color-on-surface)]">Meyerhof (1963)</span>
-                {(result.solverMethodUsed === 'meyerhof' || !result.solverMethodUsed) && (
-                  <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">ACTIVE</span>
-                )}
-              </div>
-              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
-                q_ult = c·Nc·sc·dc + q·Nq·sq·dq + 0.5·γ·B·Nγ·sγ·dγ
-              </div>
-              <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                {result.methodComparison?.meyerhofKpa ?? result.allowableBearingKpa.toFixed(1)} <span className="text-xs font-normal">kPa (q_all)</span>
-              </div>
-              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                BNBC-2020 Clause 3.9 Standard Method
-              </div>
-            </div>
+          {(() => {
+            const solverNorm = (result.solverMethodUsed || '').toLowerCase();
+            const isTerzaghi = solverNorm.includes('terzaghi');
+            const isHansen = solverNorm.includes('hansen');
+            const isMeyerhof = !isTerzaghi && !isHansen;
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className={`p-3 rounded-xl border ${isMeyerhof ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)]' : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'} space-y-1.5`}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-[var(--md-sys-color-on-surface)]">Meyerhof (1963)</span>
+                    {isMeyerhof && (
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">ACTIVE</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                    q_ult = c·Nc·sc·dc + q·Nq·sq·dq + 0.5·γ·B·Nγ·sγ·dγ
+                  </div>
+                  <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                    {typeof result.methodComparison?.meyerhofKpa === 'number'
+                      ? result.methodComparison.meyerhofKpa.toFixed(1)
+                      : result.allowableBearingKpa.toFixed(1)}{' '}
+                    <span className="text-xs font-normal">kPa (q_all)</span>
+                  </div>
+                  <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                    BNBC-2020 Clause 3.9 Standard Method
+                  </div>
+                </div>
 
-            <div className={`p-3 rounded-xl border ${result.solverMethodUsed === 'terzaghi' ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)]' : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'} space-y-1.5`}>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-[var(--md-sys-color-on-surface)]">Terzaghi (1943)</span>
-                {result.solverMethodUsed === 'terzaghi' && (
-                  <span className="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-600 dark:text-sky-400 text-[10px] font-bold">ACTIVE</span>
-                )}
-              </div>
-              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
-                q_ult = 1.3·c·Nc + q·Nq + 0.4·γ·B·Nγ (Square)
-              </div>
-              <div className="text-lg font-bold font-mono text-sky-600 dark:text-sky-400">
-                {result.methodComparison?.terzaghiKpa ?? (result.allowableBearingKpa * 0.95).toFixed(1)} <span className="text-xs font-normal">kPa (q_all)</span>
-              </div>
-              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                Classical General Shear Failure Theory
-              </div>
-            </div>
+                <div className={`p-3 rounded-xl border ${isTerzaghi ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)]' : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'} space-y-1.5`}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-[var(--md-sys-color-on-surface)]">Terzaghi (1943)</span>
+                    {isTerzaghi && (
+                      <span className="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-600 dark:text-sky-400 text-[10px] font-bold">ACTIVE</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                    q_ult = 1.3·c·Nc + q·Nq + 0.4·γ·B·Nγ (Square)
+                  </div>
+                  <div className="text-lg font-bold font-mono text-sky-600 dark:text-sky-400">
+                    {typeof result.methodComparison?.terzaghiKpa === 'number'
+                      ? result.methodComparison.terzaghiKpa.toFixed(1)
+                      : '—'}{' '}
+                    <span className="text-xs font-normal">kPa (q_all)</span>
+                  </div>
+                  <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                    Classical General Shear Failure Theory
+                  </div>
+                </div>
 
-            <div className={`p-3 rounded-xl border ${result.solverMethodUsed === 'hansen' ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)]' : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'} space-y-1.5`}>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-[var(--md-sys-color-on-surface)]">Hansen (1970)</span>
-                {result.solverMethodUsed === 'hansen' && (
-                  <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[10px] font-bold">ACTIVE</span>
-                )}
+                <div className={`p-3 rounded-xl border ${isHansen ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)]' : 'border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'} space-y-1.5`}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-[var(--md-sys-color-on-surface)]">Hansen (1970)</span>
+                    {isHansen && (
+                      <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[10px] font-bold">ACTIVE</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                    q_ult = c·Nc·sc·dc·ic + q·Nq·sq·dq·iq + 0.5·γ·B·Nγ·sγ·dγ·iγ
+                  </div>
+                  <div className="text-lg font-bold font-mono text-purple-600 dark:text-purple-400">
+                    {typeof result.methodComparison?.hansenKpa === 'number'
+                      ? result.methodComparison.hansenKpa.toFixed(1)
+                      : '—'}{' '}
+                    <span className="text-xs font-normal">kPa (q_all)</span>
+                  </div>
+                  <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                    Comprehensive Multi-Factor Formulation
+                  </div>
+                </div>
               </div>
-              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
-                q_ult = c·Nc·sc·dc·ic + q·Nq·sq·dq·iq + 0.5·γ·B·Nγ·sγ·dγ·iγ
-              </div>
-              <div className="text-lg font-bold font-mono text-purple-600 dark:text-purple-400">
-                {result.methodComparison?.hansenKpa ?? (result.allowableBearingKpa * 1.02).toFixed(1)} <span className="text-xs font-normal">kPa (q_all)</span>
-              </div>
-              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
-                Comprehensive Multi-Factor Formulation
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
       ) : activeTab === 'breakdown' ? (
         /* Code Breakdown Tab */
@@ -1593,7 +1631,21 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
 
   // Circular Conduit geometry rendering
   if (isCircular) {
-    const D = params.diameterM || result.diameterM || 1.2;
+    const D = typeof params.diameterM === 'number' && Number.isFinite(params.diameterM) && params.diameterM > 0
+      ? params.diameterM
+      : (result.diameterM || 0);
+    if (D <= 0) {
+      return (
+        <ZeroBaselineBlueprintSvg
+          width={width}
+          height={height}
+          variant="channel"
+          title="ZERO CONDUIT DIAMETER BASELINE"
+          callout={`D = 0'-0" (0.00' / 0.00 m)`}
+          subtitle="Enter conduit diameter to compute circular Manning flow"
+        />
+      );
+    }
     const y = Math.min(D, params.flowDepthM);
     const radiusPx = 80;
     const scale = (radiusPx * 2) / D;
@@ -1764,7 +1816,10 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
   // Trapezoidal / Rectangular Channel
   const bedY = 195;
   const isRectangular = params.shape === 'rectangular' || params.sideSlopeZ === 0;
-  const totalDepth = params.flowDepthM + (params.freeboardRequirementM || 0.3);
+  const freeboardM = typeof params.freeboardRequirementM === 'number' && Number.isFinite(params.freeboardRequirementM)
+    ? Math.max(0, params.freeboardRequirementM)
+    : 0;
+  const totalDepth = params.flowDepthM + freeboardM;
   const sideSlope = isRectangular ? 0 : params.sideSlopeZ;
   const topWidthTotal = params.bottomWidthM + 2 * sideSlope * totalDepth;
   const scale = Math.min(110 / Math.max(0.5, totalDepth), 340 / Math.max(1, topWidthTotal));
@@ -1916,20 +1971,20 @@ export const ChannelHydraulicsSvg: React.FC<{ params: ChannelParameters; result:
         </g>
 
         {/* Freeboard Dimension with Tooltip */}
-        {(params.freeboardRequirementM || 0) > 0 && (
+        {freeboardM > 0 && (
           <g
             {...bindHover({
               title: 'Canal Bank Freeboard (FB)',
               formula: 'FB = √(c · y) ≈ 0.20 to 0.60 m (USBR Recommendation)',
-              substitution: `FB = ${(params.freeboardRequirementM || 0.3).toFixed(2)} m above max water stage`,
+              substitution: `FB = ${freeboardM.toFixed(2)} m above max water stage`,
               codeRef: 'USBR Design of Small Canals',
               description: 'Vertical safety margin preventing wave overtopping and bank erosion.',
             })}
           >
-            <title>{`Freeboard: ${(params.freeboardRequirementM || 0.3).toFixed(2)}m`}</title>
+            <title>{`Freeboard: ${freeboardM.toFixed(2)}m`}</title>
             <line x1={centerX + bankTopHalfPx + 15} y1={bedY - totalDepthPx} x2={centerX + bankTopHalfPx + 15} y2={bedY - yPx} stroke="var(--md-sys-color-tertiary)" strokeWidth="1.2" />
             <text x={centerX + bankTopHalfPx + 20} y={bedY - yPx - (totalDepthPx - yPx) / 2 + 3} fontSize="8" fontWeight="600" fill="var(--md-sys-color-tertiary)">
-              FB: {fmtD(params.freeboardRequirementM || 0.3)}
+              FB: {fmtD(freeboardM)}
             </text>
           </g>
         )}
@@ -2127,7 +2182,7 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
 
         {/* Bottom Mix & Water / Khoa Strip */}
         <text x={50} y={222} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
-          Mix {params.ratioCement}:{params.ratioSand}:{params.ratioAggregate} · Water: {result.waterDemandLiters.toFixed(0)} L (w/c {(params.waterCementRatio || 0.45).toFixed(2)})
+          Mix {params.ratioCement}:{params.ratioSand}:{params.ratioAggregate} · Water: {result.waterDemandLiters.toFixed(0)} L (w/c {(typeof params.waterCementRatio === 'number' && Number.isFinite(params.waterCementRatio) ? params.waterCementRatio : 0).toFixed(2)})
           {result.jhamaBricksForKhoa && result.jhamaBricksForKhoa > 0
             ? ` · Jhama Bricks for Khoa: ~${result.jhamaBricksForKhoa.toLocaleString()} nos (320/m³)`
             : ''}
@@ -2189,7 +2244,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             {...bindHover({
               title: 'Continuous Beam Rebar Arrangement',
               formula: 'W = d² / 162.2 kg/m · L_cut = L_clear - 2·cover + 2·hooks - bends',
-              substitution: `Bottom: ${params.beamBotBarCount || 3}-Ø${params.beamMainBarDiaMm || 16} · Stirrups: Ø${params.beamStirrupDiaMm || 8}@${params.beamStirrupSpacingMm || 150}mm c/c`,
+              substitution: `Bottom: ${params.beamBotBarCount ?? 0}-Ø${params.beamMainBarDiaMm ?? 0} · Stirrups: Ø${params.beamStirrupDiaMm ?? 0}@${params.beamStirrupSpacingMm ?? 0}mm c/c`,
               codeRef: 'BNBC 2020 Part 6 / ACI 318 §25',
               description: 'Tension bottom steel at midspan, top hanger bars, and shear stirrups.',
             })}
@@ -2206,7 +2261,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
               <line key={i} x1={x} y1={22} x2={x} y2={112} stroke="var(--md-sys-color-tertiary)" strokeWidth="1.8" strokeDasharray={i === 0 || i === 7 ? 'none' : '4 2'} />
             ))}
             <text x={10} y={142} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-B1: {params.beamBotBarCount || 3}-Ø{params.beamMainBarDiaMm || 16} Bot · MK-B2: {params.beamTopBarCount || 2}-Ø{params.beamMainBarDiaMm || 16} Top · MK-S1: Ø{params.beamStirrupDiaMm || 8}@{params.beamStirrupSpacingMm || 150}
+              MK-B1: {params.beamBotBarCount ?? 0}-Ø{params.beamMainBarDiaMm ?? 0} Bot · MK-B2: {params.beamTopBarCount ?? 0}-Ø{params.beamMainBarDiaMm ?? 0} Top · MK-S1: Ø{params.beamStirrupDiaMm ?? 0}@{params.beamStirrupSpacingMm ?? 0}
             </text>
           </g>
         )}
@@ -2246,7 +2301,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             {...bindHover({
               title: 'Rectangular Column Rebar & Seismic Ties',
               formula: 'Tie Length L_tie = 2(b - 2c) + 2(h - 2c) + 2·max(75,10d) - 12d',
-              substitution: `${params.colMainBarCount || 8}-Ø${params.colMainBarDiaMm || 16} Longitudinal + Ø${params.tieBarDiaMm || 10} Ties @ ${params.tieSpacingMm || 150}mm c/c`,
+              substitution: `${params.colMainBarCount ?? 0}-Ø${params.colMainBarDiaMm ?? 0} Longitudinal + Ø${params.tieBarDiaMm ?? 0} Ties @ ${params.tieSpacingMm ?? 0}mm c/c`,
               codeRef: 'ACI 318-19 Seismic Detailing / BNBC Ch 6',
               description: 'Longitudinal bars resist axial + bi-axial bending; seismic 135° ties confine core.',
             })}
@@ -2263,34 +2318,43 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
               <circle key={i} cx={x} cy={y} r={6.5} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />
             ))}
             <text x={70} y={158} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-C1: {params.colMainBarCount || 8}-Ø{params.colMainBarDiaMm || 16} Long. + MK-C2: Ø{params.tieBarDiaMm || 10} Tie @ {params.tieSpacingMm || 150} (135°)
+              MK-C1: {params.colMainBarCount ?? 0}-Ø{params.colMainBarDiaMm ?? 0} Long. + MK-C2: Ø{params.tieBarDiaMm ?? 0} Tie @ {params.tieSpacingMm ?? 0} (135°)
             </text>
           </g>
         )}
 
-        {currentType === 'column-circ' && (
-          <g
-            transform="translate(120, 40)"
-            {...bindHover({
-              title: 'Circular Column Spiral Reinforcement',
-              formula: 'L_turn = √[(π·D_core)² + pitch²] · Total = N_turns·L_turn + 2.5πD_core',
-              substitution: `${params.circMainBarCount || 8}-Ø${params.circMainBarDiaMm || 20} + Spiral Ø${params.spiralTieDiaMm || 10} @ ${params.spiralPitchMm || 75}mm pitch`,
-              codeRef: 'ACI 318 §10.7.6.5 Spiral Confinement',
-              description: 'Continuous helical spiral increases concrete ductility and column toughness.',
-            })}
-          >
-            <title>Circular Spiral Column Section</title>
-            <circle cx={70} cy={70} r={66} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
-            <circle cx={70} cy={70} r={50} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" strokeDasharray="6 3" />
-            {Array.from({ length: Math.min(12, Math.max(6, params.circMainBarCount || 8)) }).map((_, i, arr) => {
-              const rad = (i * 2 * Math.PI) / arr.length;
-              return <circle key={i} cx={70 + 50 * Math.cos(rad)} cy={70 + 50 * Math.sin(rad)} r={6} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />;
-            })}
-            <text x={70} y={158} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-CC1: {params.circMainBarCount || 8}-Ø{params.circMainBarDiaMm || 20} + MK-CC2: Spiral Ø{params.spiralTieDiaMm || 10} @ {params.spiralPitchMm || 75}mm
-            </text>
-          </g>
-        )}
+        {currentType === 'column-circ' && (() => {
+          const circCount = Math.min(12, Math.max(0, Math.round(params.circMainBarCount ?? 0)));
+          return (
+            <g
+              transform="translate(120, 40)"
+              {...bindHover({
+                title: 'Circular Column Spiral Reinforcement',
+                formula: 'L_turn = √[(π·D_core)² + pitch²] · Total = N_turns·L_turn + 2.5πD_core',
+                substitution: `${circCount}-Ø${params.circMainBarDiaMm ?? 0} + Spiral Ø${params.spiralTieDiaMm ?? 0} @ ${params.spiralPitchMm ?? 0}mm pitch`,
+                codeRef: 'ACI 318 §10.7.6.5 Spiral Confinement',
+                description: 'Continuous helical spiral increases concrete ductility and column toughness.',
+              })}
+            >
+              <title>Circular Spiral Column Section</title>
+              <circle cx={70} cy={70} r={66} fill="var(--md-sys-color-surface-container-low)" stroke="var(--md-sys-color-outline)" strokeWidth="2" />
+              <circle cx={70} cy={70} r={50} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" strokeDasharray="6 3" />
+              {circCount > 0 ? (
+                Array.from({ length: circCount }).map((_, i, arr) => {
+                  const rad = (i * 2 * Math.PI) / arr.length;
+                  return <circle key={i} cx={70 + 50 * Math.cos(rad)} cy={70 + 50 * Math.sin(rad)} r={6} fill="var(--md-sys-color-primary)" stroke="#ffffff" strokeWidth="1" />;
+                })
+              ) : (
+                <text x={70} y={74} textAnchor="middle" fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">
+                  0 longitudinal bars
+                </text>
+              )}
+              <text x={70} y={158} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
+                MK-CC1: {circCount}-Ø{params.circMainBarDiaMm ?? 0} + MK-CC2: Spiral Ø{params.spiralTieDiaMm ?? 0} @ {params.spiralPitchMm ?? 0}mm
+              </text>
+            </g>
+          );
+        })()}
 
         {currentType === 'footing' && (
           <g
@@ -2298,7 +2362,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             {...bindHover({
               title: 'Isolated Footing Bottom Mat Mesh',
               formula: 'W = d² / 162.2 kg/m · L_cut = (B - 2c) + 2·(D - 2c) - 4d',
-              substitution: `Bi-directional mesh Ø${params.footingBarDiaMm || 16} @ ${params.footingBarSpacingMm || 150}mm c/c`,
+              substitution: `Bi-directional mesh Ø${params.footingBarDiaMm ?? 0} @ ${params.footingBarSpacingMm ?? 0}mm c/c`,
               codeRef: 'BNBC 2020 Foundation Rebar',
               description: 'Orthogonal bottom mat with 90° L-upbends resisting cantilever flexural tension.',
             })}
@@ -2312,7 +2376,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
               <line key={`v-${i}`} x1={x} y1={12} x2={x} y2={123} stroke="var(--md-sys-color-tertiary)" strokeWidth="2.5" />
             ))}
             <text x={145} y={152} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-F1/F2: Bi-directional mesh Ø{params.footingBarDiaMm || 16} @ {params.footingBarSpacingMm || 150}mm c/c
+              MK-F1/F2: Bi-directional mesh Ø{params.footingBarDiaMm ?? 0} @ {params.footingBarSpacingMm ?? 0}mm c/c
             </text>
           </g>
         )}
@@ -2323,7 +2387,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             {...bindHover({
               title: 'Staircase Waist Slab Main Reinforcement',
               formula: 'L_inclined = √(Going² + Rise²) · W = d² / 162.2',
-              substitution: `Main Ø${params.stairMainBarDiaMm || 12} @ ${params.stairMainBarSpacingMm || 150}mm c/c`,
+              substitution: `Main Ø${params.stairMainBarDiaMm ?? 0} @ ${params.stairMainBarSpacingMm ?? 0}mm c/c`,
               codeRef: 'BNBC 2020 Part 6 Staircase Standard',
               description: 'Inclined longitudinal bars carrying flight gravity load into landing beams.',
             })}
@@ -2332,7 +2396,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             <polyline points="0,125 180,42 290,42 290,14 180,14 0,97" fill="var(--md-sys-color-surface-container-high)" stroke="var(--md-sys-color-outline)" strokeWidth="1.5" />
             <line x1={8} y1={112} x2={285} y2={28} stroke="var(--md-sys-color-primary)" strokeWidth="3" />
             <text x={140} y={152} textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-ST1: Waist Main Ø{params.stairMainBarDiaMm || 12} @ {params.stairMainBarSpacingMm || 150}mm c/c
+              MK-ST1: Waist Main Ø{params.stairMainBarDiaMm ?? 0} @ {params.stairMainBarSpacingMm ?? 0}mm c/c
             </text>
           </g>
         )}
@@ -2343,7 +2407,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             {...bindHover({
               title: 'Lintel Beam & Cantilever Sunshade (Chajja)',
               formula: 'Chajja Tension Top Bar L_cut = P_chajja + L_d(50d) + nose - bends',
-              substitution: `Lintel ${params.lintelLengthM ?? 2.1}m + Chajja ${(params.chajjaProjectionM ?? 0.6).toFixed(2)}m overhang`,
+              substitution: `Lintel ${params.lintelLengthM ?? 0}m + Chajja ${(params.chajjaProjectionM ?? 0).toFixed(2)}m overhang`,
               codeRef: 'BNBC 2020 Cantilever Overhang Detailing',
               description: 'Top tension cantilever bars anchored into the lintel core to prevent overhang cracking.',
             })}
@@ -2364,7 +2428,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
               ))
             )}
             <text x={15} y={152} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-L1/L2: Lintel Ø{params.lintelMainBarDiaMm ?? 12} · MK-CH1: Chajja Cantilever Ø{params.chajjaMainBarDiaMm ?? 10}@{params.chajjaMainBarSpacingMm ?? 150}
+              MK-L1/L2: Lintel Ø{params.lintelMainBarDiaMm ?? 0} · MK-CH1: Chajja Cantilever Ø{params.chajjaMainBarDiaMm ?? 0}@{params.chajjaMainBarSpacingMm ?? 0}
             </text>
           </g>
         )}
@@ -2374,8 +2438,8 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             transform="translate(45, 42)"
             {...bindHover({
               title: 'Bored Cast-in-Situ Pile Reinforcement Cage',
-              formula: 'Longitudinal L > 12m triggers 50d Tension Lap Splice + Helical Spiral',
-              substitution: `Ø${params.pileDiaMm ?? 500}mm Pile × ${params.pileLengthM ?? 18}m · ${params.pileMainBarCount ?? 7}-Ø${params.pileMainBarDiaMm ?? 16}`,
+              formula: `Longitudinal L > ${fmtD(params.commercialBarStockLengthM ?? 12)} triggers ${params.lappingFactorD ?? 50}d Tension Lap Splice + Helical Spiral`,
+              substitution: `Ø${params.pileDiaMm ?? 0}mm Pile × ${params.pileLengthM ?? 0}m · ${params.pileMainBarCount ?? 0}-Ø${params.pileMainBarDiaMm ?? 0}`,
               codeRef: 'BNBC 2020 Part 6 Sec 3.10 Foundation Piles',
               description: 'Full-depth cylindrical cage with pile-cap dowel embedment, spiral hooping & stiffener rings.',
             })}
@@ -2401,7 +2465,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
               <ellipse key={idx} cx={rx} cy={71} rx={6} ry={34} fill="none" stroke="var(--md-sys-color-secondary)" strokeWidth="2.2" />
             ))}
             <text x={15} y={142} fontSize="9" fontWeight="600" fill="var(--md-sys-color-primary)">
-              MK-P1: {params.pileMainBarCount ?? 7}-Ø{params.pileMainBarDiaMm ?? 16} (L={fmtD(params.pileLengthM ?? 18)}) · MK-P2: Spiral Ø{params.pileSpiralDiaMm ?? 8}@{params.pileSpiralPitchMm ?? 150}
+              MK-P1: {params.pileMainBarCount ?? 0}-Ø{params.pileMainBarDiaMm ?? 0} (L={fmtD(params.pileLengthM ?? 0)}) · MK-P2: Spiral Ø{params.pileSpiralDiaMm ?? 0}@{params.pileSpiralPitchMm ?? 0}
             </text>
           </g>
         )}
@@ -2425,7 +2489,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
           <line x1={16} y1={85} x2={214} y2={85} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
           <text x={16} y={101} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Total Cut Length: {fmtD(result.totalBarsLengthM)}</text>
           <text x={16} y={116} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">
-            12m Stock Bars: {result.commercialBarStock?.total12mBarsCount ?? 0} nos
+            {fmtD(params.commercialBarStockLengthM ?? 12)} Stock Bars: {result.commercialBarStock?.total12mBarsCount ?? 0} nos
           </text>
           <text
             x={16}
@@ -2435,7 +2499,7 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
             fill={result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0 ? 'var(--md-sys-color-error)' : 'var(--md-sys-color-primary)'}
           >
             {result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0
-              ? `⚠ ${result.lapSpliceAlerts.length} mark(s) >12m (${params.lappingFactorD || 50}d lap added)`
+              ? `⚠ ${result.lapSpliceAlerts.length} mark(s) >${fmtD(params.commercialBarStockLengthM ?? 12)} (${params.lappingFactorD ?? 50}d lap)`
               : `Formula: W = D² / 162.2 kg/m`}
           </text>
         </g>
@@ -2584,7 +2648,7 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
     <div ref={containerRef} className="relative w-full">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none font-mono" role="img">
         <text x={40} y={24} fontSize="10.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">
-          MASONRY WALL ELEVATION &amp; DEDUCTIONS (NET: {result.netWallAreaM2} m² · {result.bricksPerM3Effective ?? 463} BRICKS/m³)
+          MASONRY WALL ELEVATION &amp; DEDUCTIONS (NET: {result.netWallAreaM2} m² · {result.bricksPerM3Effective ?? 0} BRICKS/m³)
         </text>
 
         {/* Wall & Openings Group with Tooltips */}
@@ -2594,7 +2658,7 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
             {...bindHover({
               title: 'Gross Wall Masonry Volume & Face Area',
               formula: 'V_gross = L_wall × H_wall × T_wall · A_gross = L_wall × H_wall',
-              substitution: `${params.wallLengthM}m × ${params.wallHeightM}m × ${(params.wallThicknessM || 0.25).toFixed(3)}m = ${result.netWallVolumeM3.toFixed(2)} m³ net (A_gross = ${(params.wallLengthM * params.wallHeightM).toFixed(2)} m²)`,
+              substitution: `${params.wallLengthM}m × ${params.wallHeightM}m × ${(typeof params.wallThicknessM === 'number' ? params.wallThicknessM : 0).toFixed(3)}m = ${result.netWallVolumeM3.toFixed(2)} m³ net (A_gross = ${(params.wallLengthM * params.wallHeightM).toFixed(2)} m²)`,
               codeRef: 'BNBC 2020 Part 6 Masonry / PWD Specification',
               description: 'Gross vertical facade area before deduction of door, window, ventilator, and lintel voids.',
             })}
@@ -2608,37 +2672,56 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
             <rect x={25} y={26} width={220} height={11} fill="var(--md-sys-color-secondary-container)" stroke="var(--md-sys-color-secondary)" strokeWidth="1.2" />
           )}
 
-          {/* Door Opening Void */}
-          <g
-            transform="translate(35, 40)"
-            {...bindHover({
-              title: 'Door & Lintel Aperture Deduction (Net Takeoff)',
-              formula: 'A_deduct = Σ(W × H × Count) · V_deduct = A_deduct × T_wall',
-              substitution: `Total Deductions = ${result.totalOpeningAreaM2.toFixed(2)} m² across ${params.openings?.length || 0} scheduled items`,
-              codeRef: 'BNBC 2020 / IS 1200 Part 3 Deduction Standard',
-              description: 'Clear architectural opening and lintel voids subtracted from gross wall volume.',
-            })}
-          >
-            <title>Door Opening Deduction</title>
-            <rect x={0} y={0} width={50} height={90} fill="var(--md-sys-color-surface)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
-            <text x={7} y={45} fontSize="9" fontWeight="600" fill="var(--md-sys-color-on-surface)">DOOR</text>
-          </g>
-
-          {/* Window Opening Void */}
-          <g
-            transform="translate(160, 40)"
-            {...bindHover({
-              title: 'Window Aperture Deduction (Net Takeoff)',
-              formula: 'A_deduct = W_window × H_window × N_windows',
-              substitution: `Scheduled Deductions = ${result.totalOpeningAreaM2.toFixed(2)} m² from gross facade`,
-              codeRef: 'BNBC 2020 / PWD Works Specification',
-              description: 'Standard opening deduction for windows and lintels.',
-            })}
-          >
-            <title>Window Opening Deduction</title>
-            <rect x={0} y={0} width={70} height={55} fill="var(--md-sys-color-surface)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
-            <text x={12} y={30} fontSize="9" fontWeight="600" fill="var(--md-sys-color-on-surface)">WINDOW</text>
-          </g>
+          {/* Dynamic Architectural Opening Deductions */}
+          {(!params.openings || params.openings.length === 0) ? (
+            <g>
+              <rect
+                x={wallW / 2 - 115}
+                y={wallH / 2 - 14}
+                width={230}
+                height={28}
+                rx={5}
+                fill="var(--md-sys-color-surface)"
+                fillOpacity="0.88"
+                stroke="var(--md-sys-color-outline-variant)"
+                strokeWidth="1"
+              />
+              <text x={wallW / 2} y={wallH / 2 + 3} textAnchor="middle" fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-on-surface-variant)">
+                Solid Wall — No Scheduled Openings
+              </text>
+            </g>
+          ) : (() => {
+            const visibleOps = params.openings.slice(0, 6);
+            const pxPerM_X = wallW / Math.max(0.5, params.wallLengthM);
+            const pxPerM_Y = wallH / Math.max(0.5, params.wallHeightM);
+            const slotW = wallW / visibleOps.length;
+            return visibleOps.map((op, idx) => {
+              const rawW = Math.max(18, Math.min(slotW - 10, op.widthM * pxPerM_X));
+              const rawH = Math.max(16, Math.min(wallH - 14, op.heightM * pxPerM_Y));
+              const opX = Math.max(6, idx * slotW + (slotW - rawW) / 2);
+              const isDoor = op.type === 'door';
+              const opY = isDoor ? wallH - rawH : Math.max(10, (wallH - rawH) * 0.45);
+              return (
+                <g
+                  key={op.id || idx}
+                  transform={`translate(${opX}, ${opY})`}
+                  {...bindHover({
+                    title: `${(op.name || op.type || 'Opening').toUpperCase()} Aperture Deduction`,
+                    formula: 'A_deduct = W × H × Count',
+                    substitution: `${op.widthM.toFixed(2)}m × ${op.heightM.toFixed(2)}m × ${op.count} = ${(op.widthM * op.heightM * op.count).toFixed(2)} m²`,
+                    codeRef: 'BNBC 2020 / IS 1200 Part 3 Deduction Standard',
+                    description: 'Scheduled wall opening subtracted from gross masonry facade area.',
+                  })}
+                >
+                  <title>{`${op.name || op.type}: ${op.widthM}m × ${op.heightM}m (×${op.count})`}</title>
+                  <rect x={0} y={0} width={rawW} height={rawH} fill="var(--md-sys-color-surface)" stroke="var(--md-sys-color-on-surface)" strokeWidth="1.5" />
+                  <text x={rawW / 2} y={rawH / 2 + 3} textAnchor="middle" fontSize="8" fontWeight="700" fill="var(--md-sys-color-on-surface)">
+                    {(op.name || op.type || 'OP').toUpperCase().slice(0, 8)} {op.count > 1 ? `×${op.count}` : ''}
+                  </text>
+                </g>
+              );
+            });
+          })()}
         </g>
 
         {/* Brick Estimator & Mortar Summary Card with Tooltip */}
@@ -2705,32 +2788,35 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
   }
 
   // Derive representative cross-section geometry (b, h, s, isEmbankment)
-  let repWidthB = 2.0;
-  let repDepthH = 1.5;
-  let repSlopeS = 0.5;
+  let repWidthB = 0;
+  let repDepthH = 0;
+  let repSlopeS = 0;
   let isFillEmbankment = false;
   let repCrossSlopePct = 0;
 
   if (params.calculationType === 'pit-excavation') {
-    repDepthH = Math.max(0.2, params.pitDepthM || 1.5);
-    repSlopeS = Math.max(0, params.pitSideSlopeH || 0);
-    repWidthB = Math.max(0.5, (params.pitTopWidthM || 3) - 2 * repSlopeS * repDepthH);
+    repDepthH = Math.max(0, typeof params.pitDepthM === 'number' && Number.isFinite(params.pitDepthM) ? params.pitDepthM : 0);
+    repSlopeS = Math.max(0, typeof params.pitSideSlopeH === 'number' && Number.isFinite(params.pitSideSlopeH) ? params.pitSideSlopeH : 0);
+    const topW = typeof params.pitTopWidthM === 'number' && Number.isFinite(params.pitTopWidthM) ? params.pitTopWidthM : 0;
+    repWidthB = Math.max(0.2, topW - 2 * repSlopeS * repDepthH);
   } else if (params.calculationType === 'trapezoidal-trench') {
-    repWidthB = Math.max(0.5, params.trenchBottomWidthM || 1.0);
-    repDepthH = Math.max(0.2, params.trenchDepthM || 1.5);
-    repSlopeS = Math.max(0, params.trenchSideSlopeH || 0.5);
+    repWidthB = Math.max(0, typeof params.trenchBottomWidthM === 'number' && Number.isFinite(params.trenchBottomWidthM) ? params.trenchBottomWidthM : 0);
+    repDepthH = Math.max(0, typeof params.trenchDepthM === 'number' && Number.isFinite(params.trenchDepthM) ? params.trenchDepthM : 0);
+    repSlopeS = Math.max(0, typeof params.trenchSideSlopeH === 'number' && Number.isFinite(params.trenchSideSlopeH) ? params.trenchSideSlopeH : 0);
   } else {
-    repWidthB = Math.max(1.0, params.formationWidthM || 6.5);
-    repSlopeS = Math.max(0, params.sideSlopeS ?? 1.5);
+    repWidthB = Math.max(0, typeof params.formationWidthM === 'number' && Number.isFinite(params.formationWidthM) ? params.formationWidthM : 0);
+    repSlopeS = Math.max(0, typeof params.sideSlopeS === 'number' && Number.isFinite(params.sideSlopeS) ? params.sideSlopeS : 0);
     if (stations && stations.length > 0) {
       const maxFill = Math.max(...stations.map((st) => st.fillHeightM));
       const maxCut = Math.max(...stations.map((st) => st.cutDepthM));
       isFillEmbankment = maxFill >= maxCut;
       const peakSt = stations.find((st) => (isFillEmbankment ? st.fillHeightM === maxFill : st.cutDepthM === maxCut)) || stations[0];
-      repDepthH = Math.max(0.3, isFillEmbankment ? peakSt.fillHeightM : peakSt.cutDepthM);
+      repDepthH = Math.max(0, isFillEmbankment ? peakSt.fillHeightM : peakSt.cutDepthM);
       repCrossSlopePct = peakSt.groundCrossSlopePct || 0;
     } else {
-      repDepthH = Math.max(0.3, params.depthStation2M || params.depthStation1M || 1.2);
+      const d2 = typeof params.depthStation2M === 'number' && Number.isFinite(params.depthStation2M) ? params.depthStation2M : 0;
+      const d1 = typeof params.depthStation1M === 'number' && Number.isFinite(params.depthStation1M) ? params.depthStation1M : 0;
+      repDepthH = Math.max(0, Math.max(d1, d2));
     }
   }
 
@@ -2864,7 +2950,7 @@ export const EarthworkDiagramSvg: React.FC<{ params: EarthworkParameters; result
             <text x={10} y={56} fontSize="14.5" fontWeight="700" fill="var(--md-sys-color-tertiary)">{result.looseVolumeM3.toFixed(1)}</text>
             <text x={10} y={72} fontSize="10" fill="var(--md-sys-color-on-surface)">m³ Hauling</text>
             <text x={10} y={120} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-on-surface)">{result.haulTruckTripsCount10M3} Trucks</text>
-            <text x={10} y={134} fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">@ {result.haulTruckCapacityM3 || 10} m³/trip</text>
+            <text x={10} y={134} fontSize="8.5" fill="var(--md-sys-color-on-surface-variant)">@ {typeof result.haulTruckCapacityM3 === 'number' ? result.haulTruckCapacityM3 : 0} m³/trip</text>
           </g>
 
           <g
@@ -3002,7 +3088,7 @@ export const UnitConverterDiagramSvg: React.FC<{
             {...bindHover({
               title: 'Authoritative Scalar Conversion Ratio',
               formula: 'Value_target = (Value_input × Ratio_from) / Ratio_to',
-              substitution: `1 ${fromUnit} = ${(outputVal / (inputVal || 1)).toPrecision(6)} ${toUnit}`,
+              substitution: `1 ${fromUnit} = ${inputVal !== 0 ? (outputVal / inputVal).toPrecision(6) : '0'} ${toUnit}`,
               codeRef: 'BNBC 2020 Appendix / ASTM E380 Conversion Standard',
               description: 'Zero-drift IEEE-754 precision scalar transformation preserving exact physical quantity.',
             })}
@@ -3528,7 +3614,7 @@ export const ContinuousBeamDiagramSvg: React.FC<{
 
   const maxV = Math.max(0.1, result.maxShearKn);
   const maxM = Math.max(0.1, Math.max(result.maxSaggingMomentKnm, result.maxHoggingMomentKnm));
-  const maxD = Math.max(0.01, result.maxDeflectionMm || result.codeChecks.maxDeflectionEstimateMm || 1);
+  const maxD = Math.max(0.01, result.maxDeflectionMm || result.codeChecks.maxDeflectionEstimateMm || 0);
 
   // Vertical layout centers based on activeTab
   const elevY = activeTab === 'all' ? 70 : 80;
@@ -4470,10 +4556,17 @@ export const PileCapacityDiagramSvg: React.FC<{
   const pileW = Math.max(20, Math.min(48, (pileDiameter / 1.2) * 36));
 
   const fs = result.effectiveSafetyFactor;
-  const isPassingFs = fs >= 2.5;
-  const isMarginalFs = fs >= 2.0 && fs < 2.5;
-  const fsColor = isPassingFs ? '#10b981' : isMarginalFs ? '#f59e0b' : '#ef4444';
-  const fsLabel = isPassingFs ? 'SAFE (FS ≥ 2.5)' : isMarginalFs ? 'MARGINAL (2.0 ≤ FS < 2.5)' : 'UNSAFE (FS < 2.0)';
+  const hasAppliedPileLoad = result.appliedLoadKn > 0;
+  const isPassingFs = hasAppliedPileLoad && fs >= 2.5;
+  const isMarginalFs = hasAppliedPileLoad && fs >= 2.0 && fs < 2.5;
+  const fsColor = !hasAppliedPileLoad ? '#64748b' : isPassingFs ? '#10b981' : isMarginalFs ? '#f59e0b' : '#ef4444';
+  const fsLabel = !hasAppliedPileLoad
+    ? 'STANDBY (P = 0 kN)'
+    : isPassingFs
+      ? 'SAFE (FS ≥ 2.5)'
+      : isMarginalFs
+        ? 'MARGINAL (2.0 ≤ FS < 2.5)'
+        : 'UNSAFE (FS < 2.0)';
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!svgRef.current) return;
@@ -4493,7 +4586,7 @@ export const PileCapacityDiagramSvg: React.FC<{
           layerName: matchingContrib.layerName,
           fsKpa: matchingContrib.unitFrictionKpa,
           sigmaV0: matchingContrib.effectiveStressKpa,
-          sptN: matchingContrib.sptN || 15,
+          sptN: typeof matchingContrib.sptN === 'number' && Number.isFinite(matchingContrib.sptN) ? matchingContrib.sptN : 0,
         });
       }
     } else {
@@ -4760,7 +4853,7 @@ export const PileCapacityDiagramSvg: React.FC<{
                   {...bindHover({
                     title: `Borehole Stratum: ${layer.layerName}`,
                     formula: layer.soilType === 'clay' ? "f_s = α × c_u (Tomlinson α-method)" : "f_s = β × σ'v0 = K_s × σ'v0 × tan(δ) (Burland β-method)",
-                    substitution: `${layer.depthFromM}m to ${layer.depthToM}m · ${layer.soilType.toUpperCase()} · Unit Friction fs = ${layer.unitFrictionKpa} kPa · SPT N = ${layer.sptN || 15}`,
+                    substitution: `${layer.depthFromM}m to ${layer.depthToM}m · ${layer.soilType.toUpperCase()} · Unit Friction fs = ${layer.unitFrictionKpa} kPa · SPT N = ${typeof layer.sptN === 'number' && Number.isFinite(layer.sptN) ? layer.sptN : 0}`,
                     codeRef: 'BNBC 2020 Clause 3.10.3 / Tomlinson Method',
                     description: 'Subsoil stratum contributing to cumulative cylindrical shaft skin friction resistance.',
                   })}
@@ -4777,10 +4870,18 @@ export const PileCapacityDiagramSvg: React.FC<{
                   {/* SPT N-Value Bar Chart on the Left (active in friction-spt tab) */}
                   {activeTab === 'friction-spt' && (
                     <g transform={`translate(150, ${yTop + 4})`}>
-                      <rect x={0} y={0} width={Math.min(60, (layer.sptN || 10) * 1.5)} height={lH - 8} fill="#3b82f6" opacity="0.25" rx="2" />
-                      <text x={Math.min(60, (layer.sptN || 10) * 1.5) + 4} y={(lH - 8) / 2 + 3} fontSize="7.5" fontWeight="700" fill="#2563eb">
-                        N = {layer.sptN || 10}
-                      </text>
+                      {(() => {
+                        const sptVal = typeof layer.sptN === 'number' && Number.isFinite(layer.sptN) ? layer.sptN : 0;
+                        const barW = Math.min(60, Math.max(0, sptVal * 1.5));
+                        return (
+                          <>
+                            <rect x={0} y={0} width={barW} height={Math.max(4, lH - 8)} fill="#3b82f6" opacity="0.25" rx="2" />
+                            <text x={barW + 4} y={Math.max(8, (lH - 8) / 2 + 3)} fontSize="7.5" fontWeight="700" fill="#2563eb">
+                              N = {sptVal}
+                            </text>
+                          </>
+                        );
+                      })()}
                     </g>
                   )}
                 </g>

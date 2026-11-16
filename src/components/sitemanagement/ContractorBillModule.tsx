@@ -28,6 +28,7 @@ import { useCivilLab } from '../../context/CivilLabContext';
 import { ContractorRABill } from '../../types/siteManagement';
 import { CivilWorkspace, TakeoffLineItem } from '../../types/civil';
 import { loadPersistedState } from '../../utils/storage';
+import { NumericDraftInput } from '../ui/NumericDraftInput';
 
 const COMMON_TRADES = [
   'RCC Structural Civil Labor',
@@ -309,10 +310,8 @@ export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ acti
 
   // Delete bill handler
   const handleDelete = (id: string, no: string) => {
-    if (confirm(`Are you sure you want to delete ${no}? This cannot be undone.`)) {
-      deleteRABill(id);
-      showToast(`Deleted ${no}.`);
-    }
+    deleteRABill(id);
+    showToast(`Deleted ${no}.`);
   };
 
   // Export CSV
@@ -922,12 +921,12 @@ export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ acti
                     <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                       Agreed Rate (৳)
                     </label>
-                    <input
-                      type="number"
-                      step="any"
+                    <NumericDraftInput
+                      allowEmpty={true}
                       required
                       value={contractRate}
-                      onChange={(e) => setContractRate(e.target.value === '' ? '' : Number(e.target.value))}
+                      onEmpty={() => setContractRate('')}
+                      onChangeValue={(val) => setContractRate(val)}
                       className="w-full px-3 py-1.5 rounded-full text-xs bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] tabular-nums"
                     />
                   </div>
@@ -936,11 +935,11 @@ export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ acti
                     <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                       Previous Qty
                     </label>
-                    <input
-                      type="number"
-                      step="any"
+                    <NumericDraftInput
+                      allowEmpty={true}
                       value={previousMeasuredQty}
-                      onChange={(e) => setPreviousMeasuredQty(e.target.value === '' ? '' : Number(e.target.value))}
+                      onEmpty={() => setPreviousMeasuredQty('')}
+                      onChangeValue={(val) => setPreviousMeasuredQty(val)}
                       className="w-full px-3 py-1.5 rounded-full text-xs bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] tabular-nums"
                     />
                   </div>
@@ -949,12 +948,12 @@ export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ acti
                     <label className="block text-[11px] font-medium text-[var(--md-sys-color-on-surface-variant)] mb-1">
                       Current Bill Qty
                     </label>
-                    <input
-                      type="number"
-                      step="any"
+                    <NumericDraftInput
+                      allowEmpty={true}
                       required
                       value={currentMeasuredQty}
-                      onChange={(e) => setCurrentMeasuredQty(e.target.value === '' ? '' : Number(e.target.value))}
+                      onEmpty={() => setCurrentMeasuredQty('')}
+                      onChangeValue={(val) => setCurrentMeasuredQty(val)}
                       className="w-full px-3 py-1.5 rounded-full text-xs bg-[var(--md-sys-color-surface)] border border-purple-500/40 font-bold tabular-nums"
                     />
                   </div>
@@ -1002,11 +1001,11 @@ export const ContractorBillModule: React.FC<ContractorBillModuleProps> = ({ acti
                   <label className="block text-xs font-semibold text-[var(--md-sys-color-on-surface)] mb-1.5">
                     Advance Deducted (৳)
                   </label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumericDraftInput
+                    allowEmpty={true}
                     value={advanceDeducted}
-                    onChange={(e) => setAdvanceDeducted(e.target.value === '' ? '' : Number(e.target.value))}
+                    onEmpty={() => setAdvanceDeducted('')}
+                    onChangeValue={(val) => setAdvanceDeducted(val)}
                     className="w-full px-4 py-2 rounded-full text-xs bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] tabular-nums"
                   />
                 </div>

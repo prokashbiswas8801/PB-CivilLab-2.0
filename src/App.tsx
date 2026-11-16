@@ -319,6 +319,15 @@ import {
   REBAR_BBS_WORKED_EXAMPLES,
   MASONRY_WORKED_EXAMPLES,
   EARTHWORK_WORKED_EXAMPLES,
+  BEARING_WORKED_EXAMPLES,
+  PILE_WORKED_EXAMPLES,
+  CONCRETE_MIX_WORKED_EXAMPLES,
+  OPEN_CHANNEL_WORKED_EXAMPLES,
+  PIPE_HYDRAULICS_WORKED_EXAMPLES,
+  FRAME_TRUSS_WORKED_EXAMPLES,
+  SECTION_ANALYZER_WORKED_EXAMPLES,
+  RC_COLUMN_WORKED_EXAMPLES,
+  STRUT_AND_TIE_WORKED_EXAMPLES,
   ALL_WORKED_EXAMPLES,
   parseStructuralDeepLink,
   buildWorkedExampleUrl,
@@ -374,7 +383,7 @@ export default function App() {
 
   // Multi-Tab State
   const [openTabs, setOpenTabs] = useState<WorkspaceTabItem[]>([
-    { id: 'dashboard', type: 'dashboard', title: 'Dashboard' },
+    { id: 'dashboard', type: 'dashboard', title: 'Home' },
     {
       id: 'tab-beam-analysis',
       type: 'module',
@@ -640,6 +649,87 @@ export default function App() {
                   : ws.earthwork,
               };
             }
+            if (targetMod === 'bearing-capacity') {
+              return {
+                ...ws,
+                activeModule: 'bearing-capacity',
+                bearing: matchedExample?.module === 'bearing-capacity'
+                  ? { ...ws.bearing, ...matchedExample.params }
+                  : ws.bearing,
+              };
+            }
+            if (targetMod === 'pile-capacity') {
+              return {
+                ...ws,
+                activeModule: 'pile-capacity',
+                pile: matchedExample?.module === 'pile-capacity'
+                  ? { ...(ws.pile || createDefaultPileCapacity()), ...matchedExample.params }
+                  : ws.pile || createDefaultPileCapacity(),
+              };
+            }
+            if (targetMod === 'concrete-mix') {
+              return {
+                ...ws,
+                activeModule: 'concrete-mix',
+                concrete: matchedExample?.module === 'concrete-mix'
+                  ? { ...ws.concrete, ...matchedExample.params }
+                  : ws.concrete,
+              };
+            }
+            if (targetMod === 'open-channel') {
+              return {
+                ...ws,
+                activeModule: 'open-channel',
+                channel: matchedExample?.module === 'open-channel'
+                  ? { ...ws.channel, ...matchedExample.params }
+                  : ws.channel,
+              };
+            }
+            if (targetMod === 'pipe-hydraulics') {
+              return {
+                ...ws,
+                activeModule: 'pipe-hydraulics',
+                pipe: matchedExample?.module === 'pipe-hydraulics'
+                  ? { ...(ws.pipe || createDefaultPipeHydraulics()), ...matchedExample.params }
+                  : ws.pipe || createDefaultPipeHydraulics(),
+              };
+            }
+            if (targetMod === 'frame-truss-2d') {
+              return {
+                ...ws,
+                activeModule: 'frame-truss-2d',
+                frameTruss2d: matchedExample?.module === 'frame-truss-2d'
+                  ? matchedExample.params
+                  : ws.frameTruss2d || createDefaultFrameTruss2D(),
+              };
+            }
+            if (targetMod === 'section-analyzer') {
+              return {
+                ...ws,
+                activeModule: 'section-analyzer',
+                sectionAnalyzer: matchedExample?.module === 'section-analyzer'
+                  ? { ...(ws.sectionAnalyzer || createDefaultSectionAnalyzer()), ...matchedExample.params }
+                  : ws.sectionAnalyzer || createDefaultSectionAnalyzer(),
+              };
+            }
+            if (targetMod === 'rc-column-design') {
+              return {
+                ...ws,
+                activeModule: 'rc-column-design',
+                rcColumn: matchedExample?.module === 'rc-column-design'
+                  ? { ...(ws.rcColumn || createDefaultRcColumnDesign()), ...matchedExample.params }
+                  : ws.rcColumn || createDefaultRcColumnDesign(),
+              };
+            }
+            if (targetMod === 'strut-and-tie') {
+              return {
+                ...ws,
+                activeModule: 'strut-and-tie',
+                strutAndTie: matchedExample?.module === 'strut-and-tie'
+                  ? { ...(ws.strutAndTie || createDefaultStrutAndTie()), ...matchedExample.params }
+                  : ws.strutAndTie || createDefaultStrutAndTie(),
+              };
+            }
             const baseCb = matchedExample?.module === 'continuous-beam'
               ? matchedExample.params
               : ws.continuousBeam || defaultContinuousBeam;
@@ -753,26 +843,46 @@ export default function App() {
     [appState.userProfile]
   );
 
-  // Synchronize CivilLabContext.userProfile (edited in ProfilePage) into appState.userProfile & activeWorkspace.engineerOfRecord
+  const prevSyncedProfileNameRef = useRef<string>(
+    typeof appState.userProfile?.fullName === 'string' ? appState.userProfile.fullName.trim() : ''
+  );
+
+  // Synchronize CivilLabContext.userProfile (edited in ProfilePage) into appState.userProfile & all related workspaces' engineerOfRecord
   useEffect(() => {
-    const cp = civilLab.userProfile;
+    const cp = civilLab?.userProfile;
+    if (!cp || typeof cp !== 'object') return;
+
+    const sanitizeProfileField = (val: unknown): string => {
+      if (typeof val !== 'string') return '';
+      const cleaned = val.trim().replace(/\s+/g, ' ');
+      return cleaned === 'undefined' || cleaned === 'null' ? '' : cleaned;
+    };
+
+    const nextFullName = sanitizeProfileField(cp.name);
+    const nextTitle = sanitizeProfileField(cp.title);
+    const nextOrg = sanitizeProfileField(cp.organization);
+    const nextLic = sanitizeProfileField(cp.licenseNo);
+    const nextEmail = typeof cp.email === 'string' ? cp.email.trim() : '';
+    const nextPhone = sanitizeProfileField(cp.phone);
+    const nextAddress = sanitizeProfileField(cp.location);
+    const isProfileCleared =
+      !nextFullName && !nextTitle && !nextOrg && !nextLic && !nextEmail && !nextPhone && !nextAddress;
+    const isNameCleared = nextFullName.length === 0;
+
+    const nextInitials = nextFullName
+      ? nextFullName
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part[0]?.toUpperCase() || '')
+          .join('')
+      : '';
+
+    const syncTimestamp = new Date().toISOString();
+
     setAppState((prev) => {
       const cur = prev.userProfile || createDefaultUserProfile();
-      const nextFullName = (cp.name || '').trim();
-      const nextTitle = (cp.title || '').trim();
-      const nextOrg = (cp.organization || '').trim();
-      const nextLic = (cp.licenseNo || '').trim();
-      const nextEmail = (cp.email || '').trim();
-      const nextPhone = (cp.phone || '').trim();
-      const nextAddress = (cp.location || '').trim();
-      const nextInitials = nextFullName
-        ? nextFullName
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0]?.toUpperCase() || '')
-            .join('')
-        : '';
+      const prevProfileName = typeof cur.fullName === 'string' ? cur.fullName.trim() : '';
 
       const sameProfile =
         cur.fullName === nextFullName &&
@@ -781,14 +891,48 @@ export default function App() {
         (cur.licenseNumber || '') === nextLic &&
         (cur.email || '') === nextEmail &&
         (cur.phone || '') === nextPhone &&
-        (cur.address || '') === nextAddress;
+        (cur.address || '') === nextAddress &&
+        (!isNameCleared || !cur.initials);
 
-      const activeWs = prev.workspaces.find((w) => w.id === prev.activeWorkspaceId);
-      const sameWsEor = !activeWs || activeWs.engineerOfRecord === nextFullName;
+      const currentWorkspaces = Array.isArray(prev.workspaces) ? prev.workspaces : [];
+      let workspacesChanged = false;
 
-      if (sameProfile && sameWsEor) {
+      const updatedWorkspaces = currentWorkspaces.map((ws) => {
+        const rawEor = typeof ws.engineerOfRecord === 'string' ? ws.engineerOfRecord : '';
+        const currentEor = rawEor.trim();
+        const isActiveWs = ws.id === prev.activeWorkspaceId;
+        const matchesPrevProfile = prevProfileName.length > 0 && currentEor === prevProfileName;
+        const isOrphanedPreseeded =
+          isNameCleared && /prokash\s*biswas|lead structural engineer/i.test(currentEor);
+        const isBlankOrWhitespace = currentEor.length === 0;
+        const isRelatedWorkspace =
+          isActiveWs || matchesPrevProfile || isOrphanedPreseeded || isBlankOrWhitespace;
+
+        if (!isRelatedWorkspace) {
+          return ws;
+        }
+
+        const targetEor = isNameCleared || isProfileCleared ? '' : nextFullName;
+        if (rawEor !== targetEor) {
+          workspacesChanged = true;
+          return {
+            ...ws,
+            engineerOfRecord: targetEor,
+            updatedAt: syncTimestamp,
+          };
+        }
+        return ws;
+      });
+
+      if (sameProfile && !workspacesChanged) {
         return prev;
       }
+
+      const resolvedInitials = nextFullName
+        ? prevProfileName === nextFullName && cur.initials
+          ? cur.initials
+          : nextInitials
+        : '';
 
       return {
         ...prev,
@@ -801,15 +945,35 @@ export default function App() {
           email: nextEmail,
           phone: nextPhone,
           address: nextAddress,
-          initials: nextFullName ? (cur.initials || nextInitials) : '',
+          initials: resolvedInitials,
         },
-        workspaces: prev.workspaces.map((ws) =>
-          ws.id === prev.activeWorkspaceId
-            ? { ...ws, engineerOfRecord: nextFullName, updatedAt: new Date().toISOString() }
-            : ws
-        ),
+        workspaces: updatedWorkspaces,
       };
     });
+
+    const prevSyncedName = prevSyncedProfileNameRef.current;
+    const wbEng =
+      typeof workbench.projectMetadata?.engineerName === 'string'
+        ? workbench.projectMetadata.engineerName.trim()
+        : '';
+
+    if (isNameCleared || isProfileCleared) {
+      if (
+        wbEng !== '' &&
+        (wbEng === prevSyncedName || /prokash\s*biswas|lead structural engineer/i.test(wbEng))
+      ) {
+        workbench.updateProjectMetadata({ engineerName: '' });
+      }
+    } else if (
+      wbEng === '' ||
+      (prevSyncedName.length > 0 && wbEng === prevSyncedName)
+    ) {
+      if (wbEng !== nextFullName) {
+        workbench.updateProjectMetadata({ engineerName: nextFullName });
+      }
+    }
+
+    prevSyncedProfileNameRef.current = nextFullName;
   }, [
     civilLab.userProfile.name,
     civilLab.userProfile.title,
@@ -831,6 +995,85 @@ export default function App() {
   );
 
   const activeModule = activeWorkspace.activeModule;
+
+  // Synchronize initial persisted CivilLab page state with openTabs / isDashboardView on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search) {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (
+        urlParams.get('verify') ||
+        urlParams.get('token') ||
+        urlParams.get('docToken') ||
+        urlParams.get('verifyDoc') ||
+        parseStructuralDeepLink(window.location.search)
+      ) {
+        return;
+      }
+    }
+
+    if (civilLab.activePage === 'calculator' || civilLab.activePage === 'converter') {
+      const targetMod: EngineeringModuleId =
+        civilLab.activePage === 'converter'
+          ? 'unit-converter'
+          : ((civilLab.activeCalculatorId as EngineeringModuleId) || activeWorkspace.activeModule);
+      if (targetMod && MODULE_META[targetMod]) {
+        setIsDashboardView(false);
+        const tabId = `tab-${targetMod}`;
+        setOpenTabs((prev) => {
+          const existing = prev.find((t) => t.id === tabId || t.moduleId === targetMod);
+          if (existing) {
+            setActiveTabId(existing.id);
+            return prev;
+          }
+          const toolMeta = TOOL_REGISTRY_MAP[targetMod];
+          setActiveTabId(tabId);
+          return [
+            ...prev,
+            {
+              id: tabId,
+              type: 'module',
+              moduleId: targetMod,
+              title: toolMeta?.shortLabel || MODULE_META[targetMod]?.shortLabel || targetMod,
+              shortCode: toolMeta?.shortCode,
+            },
+          ];
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep browser document.title aligned with active view ('Home' when on Home view)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (verifiedOfficeDocRecord) {
+      document.title = 'Verified Document — BD. CivilLab';
+      return;
+    }
+    if (verifiedReportRecord) {
+      document.title = 'Verified Report — BD. CivilLab';
+      return;
+    }
+    if (
+      civilLab.activePage === 'home' ||
+      (isDashboardView &&
+        !['all', 'search', 'converter', 'history', 'profile', 'calculator'].includes(civilLab.activePage))
+    ) {
+      document.title = 'Home — BD. CivilLab';
+    } else if (civilLab.activePage === 'all') {
+      document.title = 'All Tools — BD. CivilLab';
+    } else if (civilLab.activePage === 'search') {
+      document.title = 'Search — BD. CivilLab';
+    } else if (civilLab.activePage === 'history') {
+      document.title = 'History — BD. CivilLab';
+    } else if (civilLab.activePage === 'profile') {
+      document.title = 'Profile — BD. CivilLab';
+    } else {
+      const modTitle =
+        TOOL_REGISTRY_MAP[activeModule]?.shortLabel || MODULE_META[activeModule]?.shortLabel || 'Workbench';
+      document.title = `${modTitle} — BD. CivilLab`;
+    }
+  }, [civilLab.activePage, isDashboardView, activeModule, verifiedOfficeDocRecord, verifiedReportRecord]);
 
   // Active Unit Converter Computation
   const activeConversionResult = useMemo(() => {
@@ -1191,6 +1434,7 @@ export default function App() {
       rcColDepthMm?: number;
       rcColBarCount?: number;
       rcColBarDiaMm?: number;
+      stmRequiredTieSteelMm2?: number;
     } = {
       surveyingLandAreaSqM: activeWorkspace.surveying?.computedAreaSqM || 0,
     };
@@ -1235,6 +1479,12 @@ export default function App() {
         res.rcColDepthMm = cRes.depthH_Mm;
         res.rcColBarCount = cRes.totalBarCount;
         res.rcColBarDiaMm = cRes.longitudinalBarDiaMm;
+      }
+    }
+    if (activeModule === 'strut-and-tie') {
+      const stmRes = currentEnvelope.result as StrutAndTieResult | undefined;
+      if (stmRes && stmRes.totalRequiredTieSteelMm2 > 0) {
+        res.stmRequiredTieSteelMm2 = stmRes.totalRequiredTieSteelMm2;
       }
     }
     return res;
@@ -1353,6 +1603,13 @@ export default function App() {
         navigateToModule('unit-converter');
         return;
       }
+      setOpenTabs((prev) =>
+        prev.map((tab) =>
+          tab.id === 'dashboard' && tab.title !== 'Home'
+            ? { ...tab, title: 'Home' }
+            : tab
+        )
+      );
       setActiveTabId('dashboard');
       setIsDashboardView(true);
       setMobileDrawerOpen(false);
@@ -1600,9 +1857,14 @@ export default function App() {
       rebarBbs: {
         ...ws.rebarBbs,
         elementType: 'footing',
+        elementCount: Math.max(1, ws.rebarBbs.elementCount || 1),
+        rebarDensityKgPerM3: ws.rebarBbs.rebarDensityKgPerM3 || 7850,
+        clearCoverMm: ws.rebarBbs.clearCoverMm || 75,
         footingWidthM: b,
         footingLengthM: b,
         footingThicknessMm,
+        footingBarDiaMm: ws.rebarBbs.footingBarDiaMm || 16,
+        footingBarSpacingMm: ws.rebarBbs.footingBarSpacingMm || 150,
       },
       earthwork: {
         ...ws.earthwork,
@@ -1685,6 +1947,9 @@ export default function App() {
       rebarBbs: {
         ...ws.rebarBbs,
         elementType: 'beam',
+        elementCount: Math.max(1, ws.rebarBbs.elementCount || 1),
+        rebarDensityKgPerM3: ws.rebarBbs.rebarDensityKgPerM3 || 7850,
+        clearCoverMm: ws.rebarBbs.clearCoverMm || 25,
         beamLengthM: span,
         beamDepthMm: depthMm,
         beamWidthMm: widthMm,
@@ -1732,6 +1997,9 @@ export default function App() {
       rebarBbs: {
         ...ws.rebarBbs,
         elementType: 'beam',
+        elementCount: Math.max(1, ws.rebarBbs.elementCount || 1),
+        rebarDensityKgPerM3: ws.rebarBbs.rebarDensityKgPerM3 || 7850,
+        clearCoverMm: ws.rebarBbs.clearCoverMm || 25,
         beamLengthM: spanL,
         beamDepthMm: depthMm,
         beamWidthMm: widthMm,
@@ -1761,20 +2029,65 @@ export default function App() {
       rebarBbs: {
         ...ws.rebarBbs,
         elementType: 'column',
-        clearCoverMm: col.clearCoverMm,
-        colLengthMm: col.depthH_Mm,
-        colWidthMm: col.widthB_Mm,
-        colHeightM: col.unsupportedLengthLu_M,
-        colMainBarDiaMm: col.longitudinalBarDiaMm,
+        elementCount: Math.max(1, ws.rebarBbs.elementCount || 1),
+        rebarDensityKgPerM3: ws.rebarBbs.rebarDensityKgPerM3 || 7850,
+        clearCoverMm: col.clearCoverMm || 40,
+        colLengthMm: col.depthH_Mm || 400,
+        colWidthMm: col.widthB_Mm || 400,
+        colHeightM: col.unsupportedLengthLu_M || 3.2,
+        colMainBarDiaMm: col.longitudinalBarDiaMm || 20,
         colMainBarCount: totalBars,
-        tieBarDiaMm: col.tieBarDiaMm,
-        tieSpacingMm: col.tieSpacingMm,
+        tieBarDiaMm: col.tieBarDiaMm || 10,
+        tieSpacingMm: col.tieSpacingMm || 200,
       },
     }));
     navigateToModule('rebar-bbs');
     triggerCelebration(
       'RC Column Rebar Synced to BBS',
       `Synced ${col.widthB_Mm}×${col.depthH_Mm}mm column (${col.unsupportedLengthLu_M}m height) with ${totalBars}-Ø${col.longitudinalBarDiaMm}mm main bars & Ø${col.tieBarDiaMm}@${col.tieSpacingMm}mm ties to Column Rebar BBS.`,
+      'celebrate'
+    );
+  };
+
+  const handleTransferStmToRebarBbs = () => {
+    const stm = activeWorkspace.strutAndTie || defaultStrutAndTie;
+    const stmEnv = (activeModule === 'strut-and-tie' ? currentEnvelope : computeStrutAndTie(stm)) as CalculationEnvelope<StrutAndTieResult>;
+    const reqAs = stmEnv.result?.totalRequiredTieSteelMm2 || 1500;
+    const barDiaMm = reqAs >= 2500 ? 25 : 20;
+    const singleBarArea = (Math.PI * barDiaMm * barDiaMm) / 4;
+    const botBarCount = Math.max(4, Math.ceil(reqAs / singleBarArea));
+    const topBarCount = Math.max(2, Math.ceil(botBarCount * 0.4));
+    const xs = stm.nodes.map((n) => n.xM);
+    const ys = stm.nodes.map((n) => n.yM);
+    const spanFromNodesM = xs.length >= 2 ? Math.max(...xs) - Math.min(...xs) : 0;
+    const depthFromNodesM = ys.length >= 2 ? Math.max(...ys) - Math.min(...ys) : 0;
+    const spanLengthM = Number((spanFromNodesM > 0 ? spanFromNodesM : 3.2).toFixed(2));
+    const depthMm = Math.round((depthFromNodesM > 0 ? depthFromNodesM : 1.2) * 1000);
+    const widthMm = stm.memberThicknessMm || 400;
+
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      activeModule: 'rebar-bbs',
+      rebarBbs: {
+        ...ws.rebarBbs,
+        elementType: 'beam',
+        elementCount: Math.max(1, ws.rebarBbs.elementCount || 1),
+        rebarDensityKgPerM3: ws.rebarBbs.rebarDensityKgPerM3 || 7850,
+        clearCoverMm: 40,
+        beamLengthM: spanLengthM,
+        beamDepthMm: depthMm,
+        beamWidthMm: widthMm,
+        beamMainBarDiaMm: barDiaMm,
+        beamBotBarCount: botBarCount,
+        beamTopBarCount: topBarCount,
+        beamStirrupDiaMm: 12,
+        beamStirrupSpacingMm: 150,
+      },
+    }));
+    navigateToModule('rebar-bbs');
+    triggerCelebration(
+      'STM Deep Beam Tie Steel Synced to BBS',
+      `Synced ${widthMm}×${depthMm}mm deep beam (${spanLengthM}m span) with ${botBarCount}-Ø${barDiaMm}mm bottom tie bars (As,prov = ${Math.round(botBarCount * singleBarArea)} mm² ≥ As,req = ${Math.round(reqAs)} mm²) to Rebar BBS.`,
       'celebrate'
     );
   };
@@ -2471,13 +2784,30 @@ export default function App() {
   };
 
   const handleSaveProfile = (updatedProfile: UserProfile) => {
-    const cleanName = (updatedProfile.fullName || '').trim();
-    const cleanTitle = (updatedProfile.designation || '').trim();
-    const cleanOrg = (updatedProfile.organization || '').trim();
-    const cleanLic = (updatedProfile.licenseNumber || '').trim();
-    const cleanEmail = (updatedProfile.email || '').trim();
-    const cleanPhone = (updatedProfile.phone || '').trim();
-    const cleanAddr = (updatedProfile.address || '').trim();
+    if (!updatedProfile || typeof updatedProfile !== 'object') return;
+
+    const sanitizeField = (val: unknown): string => {
+      if (typeof val !== 'string') return '';
+      const cleaned = val.trim().replace(/\s+/g, ' ');
+      return cleaned === 'undefined' || cleaned === 'null' ? '' : cleaned;
+    };
+
+    const cleanName = sanitizeField(updatedProfile.fullName);
+    const cleanTitle = sanitizeField(updatedProfile.designation);
+    const cleanOrg = sanitizeField(updatedProfile.organization);
+    const cleanLic = sanitizeField(updatedProfile.licenseNumber);
+    const cleanEmail = typeof updatedProfile.email === 'string' ? updatedProfile.email.trim() : '';
+    const cleanPhone = sanitizeField(updatedProfile.phone);
+    const cleanAddr = sanitizeField(updatedProfile.address);
+
+    const computedInitials = cleanName
+      ? cleanName
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part[0]?.toUpperCase() || '')
+          .join('')
+      : '';
 
     const normalizedProfile: UserProfile = {
       ...updatedProfile,
@@ -2488,18 +2818,41 @@ export default function App() {
       email: cleanEmail,
       phone: cleanPhone,
       address: cleanAddr,
-      initials: cleanName ? (updatedProfile.initials || '').trim().toUpperCase() : '',
+      initials: cleanName
+        ? sanitizeField(updatedProfile.initials).toUpperCase() || computedInitials
+        : '',
     };
 
-    setAppState((prev) => ({
-      ...prev,
-      userProfile: normalizedProfile,
-      workspaces: prev.workspaces.map((ws) =>
-        ws.id === prev.activeWorkspaceId
-          ? { ...ws, engineerOfRecord: cleanName, updatedAt: new Date().toISOString() }
-          : ws
-      ),
-    }));
+    const saveTimestamp = new Date().toISOString();
+
+    setAppState((prev) => {
+      const prevProfileName =
+        typeof prev.userProfile?.fullName === 'string' ? prev.userProfile.fullName.trim() : '';
+      const isNameCleared = cleanName.length === 0;
+      const currentWorkspaces = Array.isArray(prev.workspaces) ? prev.workspaces : [];
+
+      return {
+        ...prev,
+        userProfile: normalizedProfile,
+        workspaces: currentWorkspaces.map((ws) => {
+          const rawEor = typeof ws.engineerOfRecord === 'string' ? ws.engineerOfRecord : '';
+          const currentEor = rawEor.trim();
+          const isActiveWs = ws.id === prev.activeWorkspaceId;
+          const matchesPrevProfile = prevProfileName.length > 0 && currentEor === prevProfileName;
+          const isOrphanedPreseeded =
+            isNameCleared && /prokash\s*biswas|lead structural engineer/i.test(currentEor);
+          const isBlankOrWhitespace = currentEor.length === 0;
+
+          if (!isActiveWs && !matchesPrevProfile && !isOrphanedPreseeded && !isBlankOrWhitespace) {
+            return ws;
+          }
+
+          return rawEor !== cleanName
+            ? { ...ws, engineerOfRecord: cleanName, updatedAt: saveTimestamp }
+            : ws;
+        }),
+      };
+    });
 
     civilLab.updateUserProfile({
       name: cleanName,
@@ -2515,6 +2868,22 @@ export default function App() {
         ? `${cleanName}${cleanTitle ? `, ${cleanTitle.split(' ')[0]}` : ''}`
         : '',
     });
+
+    const prevSyncedName = prevSyncedProfileNameRef.current;
+    const wbEng =
+      typeof workbench.projectMetadata?.engineerName === 'string'
+        ? workbench.projectMetadata.engineerName.trim()
+        : '';
+    if (
+      cleanName === ''
+        ? wbEng === prevSyncedName || /prokash\s*biswas|lead structural engineer/i.test(wbEng)
+        : wbEng === '' || (prevSyncedName.length > 0 && wbEng === prevSyncedName)
+    ) {
+      if (wbEng !== cleanName) {
+        workbench.updateProjectMetadata({ engineerName: cleanName });
+      }
+    }
+    prevSyncedProfileNameRef.current = cleanName;
 
     setToastBanner(
       cleanName
@@ -2587,9 +2956,30 @@ export default function App() {
 
   const handleApplyPreset = (preset: EngineeringPreset) => {
     const { payload } = preset;
+    const currentMod = activeWorkspace.activeModule;
+    const currentModPopulated =
+      (currentMod === 'concrete-materials' && Boolean(payload.concreteMaterials)) ||
+      (currentMod === 'concrete-mix' && Boolean(payload.concreteMix)) ||
+      (currentMod === 'rate-analysis' && Boolean(payload.rateAnalysis)) ||
+      (currentMod === 'boq-estimator' && Boolean(payload.boq)) ||
+      (currentMod === 'beam-analysis' && Boolean(payload.beam)) ||
+      (currentMod === 'continuous-beam' && Boolean(payload.continuousBeam)) ||
+      (currentMod === 'frame-truss-2d' && Boolean(payload.frameTruss2d)) ||
+      (currentMod === 'section-analyzer' && Boolean(payload.sectionAnalyzer)) ||
+      (currentMod === 'rc-column-design' && Boolean(payload.rcColumn)) ||
+      (currentMod === 'strut-and-tie' && Boolean(payload.strutAndTie)) ||
+      (currentMod === 'bearing-capacity' && Boolean(payload.bearing)) ||
+      (currentMod === 'pile-capacity' && Boolean(payload.pile)) ||
+      (currentMod === 'open-channel' && Boolean(payload.channel)) ||
+      (currentMod === 'pipe-hydraulics' && Boolean(payload.pipe)) ||
+      (currentMod === 'rebar-bbs' && Boolean(payload.rebarBbs)) ||
+      (currentMod === 'masonry-finishes' && Boolean(payload.masonry)) ||
+      (currentMod === 'earthwork-alignment' && Boolean(payload.earthwork)) ||
+      (currentMod === 'surveying-suite' && Boolean(payload.surveying));
+
     updateActiveWorkspace((ws) => {
       const nextWs: CivilWorkspace = { ...ws };
-      if (payload.targetModule) {
+      if (payload.targetModule && !currentModPopulated) {
         nextWs.activeModule = payload.targetModule;
       }
       if (payload.concreteMaterials) {
@@ -2648,6 +3038,9 @@ export default function App() {
       }
       return nextWs;
     });
+    if (payload.targetModule && !currentModPopulated) {
+      navigateToModule(payload.targetModule);
+    }
     setToastBanner(`Applied preset "${preset.name}" to current workspace.`);
   };
 
@@ -2756,16 +3149,14 @@ export default function App() {
   };
 
   const handleClearAllBOQItems = () => {
-    if (window.confirm(`Clear all ${activeWorkspace.boq.items.length} takeoff items from "${activeWorkspace.name}"?`)) {
-      updateActiveWorkspace((ws) => ({
-        ...ws,
-        boq: {
-          ...ws.boq,
-          items: [],
-        },
-      }));
-      setToastBanner('Cleared all takeoff items from project.');
-    }
+    updateActiveWorkspace((ws) => ({
+      ...ws,
+      boq: {
+        ...ws.boq,
+        items: [],
+      },
+    }));
+    setToastBanner('Cleared all takeoff items from project.');
   };
 
   // Apply Calculated Unit Rate from Rate Analysis to BOQ
@@ -2974,7 +3365,7 @@ export default function App() {
         inputs,
         evaluation,
         sampleRef: labState?.savedRecords?.[0]?.sampleRef || 'LAB-SMP-001',
-        locationGrid: labState?.savedRecords?.[0]?.locationGrid || activeWorkspace.siteLocation || '________________________',
+        locationGrid: labState?.savedRecords?.[0]?.locationGrid || activeWorkspace.siteLocation || 'Not Specified',
         remarks: '',
         workspace: activeWorkspace,
         userProfile,
@@ -3035,12 +3426,12 @@ export default function App() {
           <div>
             <div class="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Project Identification</div>
             <div class="font-bold text-sm text-slate-900 mt-0.5">${activeWorkspace.name || 'Untitled Project'} [${activeWorkspace.projectCode || 'PRJ-001'}]</div>
-            <div class="text-slate-600 mt-0.5">Location: ${activeWorkspace.siteLocation || '________________________'} · Currency: ${activeWorkspace.currency}</div>
+            <div class="text-slate-600 mt-0.5">Location: ${activeWorkspace.siteLocation || 'Not Specified'} · Currency: ${activeWorkspace.currency}</div>
           </div>
           <div class="text-right">
             <div class="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Certified Prepared By</div>
-            <div class="font-bold text-sm text-slate-900 mt-0.5">${userProfile.fullName || activeWorkspace.engineerOfRecord || '________________________'}</div>
-            <div class="text-slate-600 mt-0.5">${userProfile.organization || '________________________'} · Reg: ${userProfile.licenseNumber || '________________________'}</div>
+            <div class="font-bold text-sm text-slate-900 mt-0.5">${userProfile.fullName || activeWorkspace.engineerOfRecord || 'Pending Signature'}</div>
+            <div class="text-slate-600 mt-0.5">${userProfile.organization || 'Independent Practice'} · Reg: ${userProfile.licenseNumber || 'Pending License'}</div>
           </div>
         </div>
 
@@ -3107,20 +3498,20 @@ export default function App() {
             <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
               <div class="text-[9px] font-mono font-bold uppercase text-slate-500">1. Prepared By (Design)</div>
               <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
-              <div class="text-[11px] font-bold text-slate-900">${userProfile.fullName || activeWorkspace.engineerOfRecord || '________________________'}</div>
+              <div class="text-[11px] font-bold text-slate-900">${userProfile.fullName || activeWorkspace.engineerOfRecord || 'Pending Signature'}</div>
               <div class="text-[9.5px] font-mono text-slate-600">Design Engineer · Date: ${nowStr.split(',')[0]}</div>
             </div>
             <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
               <div class="text-[9px] font-mono font-bold uppercase text-slate-500">2. Checked By (QA / Peer Review)</div>
               <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
-              <div class="text-[11px] font-bold text-slate-900">________________________</div>
-              <div class="text-[9.5px] font-mono text-slate-600">QA/QC Verification · Date: ____/____/20__</div>
+              <div class="text-[11px] font-bold text-slate-900">Pending QA Reviewer</div>
+              <div class="text-[9.5px] font-mono text-slate-600">QA/QC Verification · Date: Pending</div>
             </div>
             <div class="border border-slate-300 rounded p-3 bg-slate-50/50">
               <div class="text-[9px] font-mono font-bold uppercase text-slate-500">3. Approved By (EOR)</div>
               <div class="h-10 border-b border-dashed border-slate-400 my-1.5"></div>
               <div class="text-[11px] font-bold text-slate-900">${userProfile.initials || 'EOR'} STAMP &amp; SEAL</div>
-              <div class="text-[9.5px] font-mono text-slate-600">Reg: ${userProfile.licenseNumber || '________________________'} · Final Sign-Off</div>
+              <div class="text-[9.5px] font-mono text-slate-600">Reg: ${userProfile.licenseNumber || 'Pending License'} · Final Sign-Off</div>
             </div>
           </div>
           <div class="flex items-center justify-between text-[10px] font-mono text-slate-600">
@@ -3140,20 +3531,24 @@ export default function App() {
     setToastBanner('Injecting verification QR code into certified A4 report...');
     await getOrGenerateReportQr().catch(() => null);
     await renderQuickPrintSheetToEl(printEl);
+    printEl.setAttribute('data-print-ready', 'true');
     document.body.classList.add('is-printing-report');
 
     const cleanUp = () => {
-      if (printEl) {
-        printEl.innerHTML = '';
-        printEl.className = 'hidden print:block bg-white text-slate-900';
-      }
-      document.body.classList.remove('is-printing-report');
       window.removeEventListener('afterprint', cleanUp);
+      setTimeout(() => {
+        if (printEl) {
+          printEl.removeAttribute('data-print-ready');
+          printEl.innerHTML = '';
+          printEl.className = 'hidden print:block bg-white text-slate-900';
+        }
+        document.body.classList.remove('is-printing-report');
+      }, 600);
     };
     window.addEventListener('afterprint', cleanUp);
     setTimeout(() => {
       window.print();
-    }, 50);
+    }, 100);
   };
 
   const handleDirectDownloadPdf = () => {
@@ -3198,21 +3593,44 @@ export default function App() {
     }
   };
 
-  // Browser Print event listeners for Ctrl+P
+  // Browser Print event listeners for Ctrl+P and direct module window.print() triggers
   useEffect(() => {
-    const handleBeforePrint = async () => {
+    const handleBeforePrint = () => {
       const printEl = document.getElementById('pb-printable-report');
-      if (printEl && (!printEl.innerHTML || !printEl.innerHTML.trim())) {
-        await renderQuickPrintSheetToEl(printEl);
+      if (!printEl) return;
+
+      // If PrintPreviewModal, ArchitectureSubmittal, or QuickPrint already populated #pb-printable-report, keep it
+      if (printEl.getAttribute('data-print-ready') === 'true' || printEl.innerHTML.trim().length > 0) {
+        document.body.classList.add('is-printing-report');
+        return;
       }
+
+      // Check if the active module has a dedicated printable sheet (e.g., Office Docs, Requisition, RA Bill, Testing Lab)
+      const modulePrintable = document.querySelector(
+        '.screen-app-container .printable-document, .screen-app-container .print\\:block'
+      ) as HTMLElement | null;
+
+      if (modulePrintable && modulePrintable.innerHTML.trim().length > 0) {
+        printEl.innerHTML = `<div class="p-6 bg-white text-slate-900 font-sans leading-relaxed">${modulePrintable.innerHTML}</div>`;
+        printEl.className = 'print:block bg-white text-slate-900 p-6 font-sans m-0 leading-relaxed';
+        document.body.classList.add('is-printing-report');
+        return;
+      }
+
+      // Otherwise synchronously populate with the active module's certified engineering sheet
+      void renderQuickPrintSheetToEl(printEl);
+      document.body.classList.add('is-printing-report');
     };
     const handleAfterPrint = () => {
-      const printEl = document.getElementById('pb-printable-report');
-      if (printEl) {
-        printEl.innerHTML = '';
-        printEl.className = 'hidden print:block bg-white text-slate-900';
-      }
-      document.body.classList.remove('is-printing-report');
+      setTimeout(() => {
+        const printEl = document.getElementById('pb-printable-report');
+        if (printEl) {
+          printEl.removeAttribute('data-print-ready');
+          printEl.innerHTML = '';
+          printEl.className = 'hidden print:block bg-white text-slate-900';
+        }
+        document.body.classList.remove('is-printing-report');
+      }, 600);
     };
 
     window.addEventListener('beforeprint', handleBeforePrint);
@@ -3878,18 +4296,16 @@ export default function App() {
       return;
     }
     const targetName = name || appState.workspaces.find((w) => w.id === id)?.name || 'workspace';
-    if (window.confirm(`Delete workspace "${targetName}"? This action cannot be undone.`)) {
-      setAppState((prev) => {
-        const remaining = prev.workspaces.filter((w) => w.id !== id);
-        const nextActive = prev.activeWorkspaceId === id ? remaining[0].id : prev.activeWorkspaceId;
-        return {
-          ...prev,
-          workspaces: remaining,
-          activeWorkspaceId: nextActive,
-        };
-      });
-      setToastBanner(`Deleted workspace "${targetName}".`);
-    }
+    setAppState((prev) => {
+      const remaining = prev.workspaces.filter((w) => w.id !== id);
+      const nextActive = prev.activeWorkspaceId === id ? remaining[0].id : prev.activeWorkspaceId;
+      return {
+        ...prev,
+        workspaces: remaining,
+        activeWorkspaceId: nextActive,
+      };
+    });
+    setToastBanner(`Deleted workspace "${targetName}".`);
   };
 
   const handleExportStateJson = () => {
@@ -3992,18 +4408,13 @@ export default function App() {
 
   const handleClearHistory = () => {
     const isProjectOnly = historyScope === 'active-project';
-    const msg = isProjectOnly
-      ? `Clear calculation history records for active project "${activeWorkspace.name}"?`
-      : 'Clear all calculation history records across all projects?';
-    if (window.confirm(msg)) {
-      setAppState((prev) => ({
-        ...prev,
-        calculationHistory: isProjectOnly
-          ? prev.calculationHistory.filter((item) => item.workspaceId !== activeWorkspace.id)
-          : [],
-      }));
-      setToastBanner('Cleared calculation history ledger.');
-    }
+    setAppState((prev) => ({
+      ...prev,
+      calculationHistory: isProjectOnly
+        ? prev.calculationHistory.filter((item) => item.workspaceId !== activeWorkspace.id)
+        : [],
+    }));
+    setToastBanner('Cleared calculation history ledger.');
   };
 
   const handleLoadSampleHistory = () => {
@@ -4035,21 +4446,17 @@ export default function App() {
   };
 
   const handleResetToClean = () => {
-    if (window.confirm('Reset all workspaces to a clean slate? This will create a clean initial project with 0 takeoff items and 0 history records.')) {
-      const fresh = clearAndResetStorage('clean');
-      setAppState(fresh);
-      setToastBanner('Reset storage to clean initial state.');
-      refreshIdbStats();
-    }
+    const fresh = clearAndResetStorage('clean');
+    setAppState(fresh);
+    setToastBanner('Reset storage to clean initial state.');
+    refreshIdbStats();
   };
 
   const handleLoadDemoDataset = () => {
-    if (window.confirm('Load sample Padma River Viaduct engineering dataset? This will load pre-configured takeoff and analysis records.')) {
-      const demo = clearAndResetStorage('demo');
-      setAppState(demo);
-      setToastBanner('Loaded Padma River Viaduct engineering demo dataset.');
-      refreshIdbStats();
-    }
+    const demo = clearAndResetStorage('demo');
+    setAppState(demo);
+    setToastBanner('Loaded Padma River Viaduct engineering demo dataset.');
+    refreshIdbStats();
   };
 
   // Filtered BOQ items computed only when in boq-estimator module
@@ -4198,6 +4605,8 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 'info'
               );
             }}
+            onNavigateHome={() => navigateToDashboard('home')}
+            isHomeActive={civilLab.activePage === 'home' && isDashboardView}
           />
           {/* IDE/CAD Multi-Tab Workspace Header */}
           <WorkspaceTabs
@@ -4218,11 +4627,13 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
           <Sidebar
             isMobileOpen={mobileDrawerOpen}
             onCloseMobile={() => setMobileDrawerOpen(false)}
+            onOpenMobile={() => setMobileDrawerOpen(true)}
             isCollapsed={appState.sidebarCollapsed}
             onToggleCollapse={handleToggleSidebar}
             activeModule={activeModule}
             activeSubAction={activeModule === 'testing-lab-qaqc' ? activeWorkspace.testingLab?.activeDomainId : undefined}
             isDashboardActive={isDashboardView}
+            isHomeActive={civilLab.activePage === 'home' && isDashboardView}
             onSelectDashboard={() => navigateToDashboard('home')}
             onSelectModule={(id, subAction) => navigateToModule(id, subAction)}
             onOpenArchitectureModal={(tab) => {
@@ -4235,6 +4646,10 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
             }}
             onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
             onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
+            onOpenProfileModal={handleOpenProfileModal}
+            unitSystemPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'}
+            onSelectUnitPreset={handleSelectUnitPreset}
+            engineerDisplayName={userProfile.fullName}
           />
 
           {/* Main Content Area — Independently Scrollable */}
@@ -4253,7 +4668,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 </div>
                 <div className="text-right text-xs font-mono text-gray-700">
                   <div>Project: <strong>{activeWorkspace.name}</strong> [{activeWorkspace.projectCode}]</div>
-                  <div>Location: <strong>{activeWorkspace.siteLocation || '________________________'}</strong></div>
+                  <div>Location: <strong>{activeWorkspace.siteLocation || 'Not Specified'}</strong></div>
                   <div>Module: <strong>{MODULE_META[activeModule].label}</strong></div>
                   <div>Code Standard: {MODULE_META[activeModule].codeStandard}</div>
                   <div>Date: {new Date().toLocaleDateString()}</div>
@@ -4261,7 +4676,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               </div>
               <div className="mt-4 pt-3 border-t border-gray-300 flex justify-between items-center text-xs font-mono">
                 <div>
-                  Engineer of Record: <strong>{userProfile.fullName || activeWorkspace.engineerOfRecord || '________________________'}</strong>
+                  Engineer of Record: <strong>{userProfile.fullName || activeWorkspace.engineerOfRecord || 'Not Specified'}</strong>
                   {userProfile.licenseNumber && ` · PE Lic: ${userProfile.licenseNumber}`}
                   {userProfile.organization && ` · ${userProfile.organization}`}
                 </div>
@@ -4298,6 +4713,10 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 onOpenSiteQcModal={() => setSiteQcModalOpen(true)}
                 onDirectDownloadPdf={handleDirectDownloadPdf}
                 onOpenPrintPreview={handleOpenPrintPreview}
+                onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+                onOpenVerifySubmittal={() => setVerifySubmittalModalOpen(true)}
+                onSelectUnitPreset={handleSelectUnitPreset}
+                calculationHistory={appState.calculationHistory}
               />
             ) : civilLab.activePage === 'all' ? (
               <AllToolsPage
@@ -4397,30 +4816,28 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               <div className="flex flex-wrap items-center gap-2">
                 {renderStatusBadge()}
 
-                {(activeModule === 'beam-analysis' ||
-                  activeModule === 'continuous-beam' ||
-                  activeModule === 'rate-analysis' ||
-                  activeModule === 'boq-estimator' ||
-                  activeModule === 'concrete-materials' ||
-                  activeModule === 'rebar-bbs' ||
-                  activeModule === 'masonry-finishes' ||
-                  activeModule === 'earthwork-alignment') && (() => {
-                  const currentExList: WorkedExampleEntry[] =
-                    activeModule === 'beam-analysis'
-                      ? BEAM_WORKED_EXAMPLES
-                      : activeModule === 'continuous-beam'
-                        ? CONTINUOUS_BEAM_WORKED_EXAMPLES
-                        : activeModule === 'rate-analysis'
-                          ? RATE_ANALYSIS_WORKED_EXAMPLES
-                          : activeModule === 'boq-estimator'
-                            ? BOQ_ESTIMATOR_WORKED_EXAMPLES
-                            : activeModule === 'concrete-materials'
-                              ? CONCRETE_MATERIALS_WORKED_EXAMPLES
-                              : activeModule === 'rebar-bbs'
-                                ? REBAR_BBS_WORKED_EXAMPLES
-                                : activeModule === 'masonry-finishes'
-                                  ? MASONRY_WORKED_EXAMPLES
-                                  : EARTHWORK_WORKED_EXAMPLES;
+                {(() => {
+                  const workedExamplesMap: Partial<Record<EngineeringModuleId, WorkedExampleEntry[]>> = {
+                    'beam-analysis': BEAM_WORKED_EXAMPLES,
+                    'continuous-beam': CONTINUOUS_BEAM_WORKED_EXAMPLES,
+                    'rate-analysis': RATE_ANALYSIS_WORKED_EXAMPLES,
+                    'boq-estimator': BOQ_ESTIMATOR_WORKED_EXAMPLES,
+                    'concrete-materials': CONCRETE_MATERIALS_WORKED_EXAMPLES,
+                    'rebar-bbs': REBAR_BBS_WORKED_EXAMPLES,
+                    'masonry-finishes': MASONRY_WORKED_EXAMPLES,
+                    'earthwork-alignment': EARTHWORK_WORKED_EXAMPLES,
+                    'bearing-capacity': BEARING_WORKED_EXAMPLES,
+                    'pile-capacity': PILE_WORKED_EXAMPLES,
+                    'concrete-mix': CONCRETE_MIX_WORKED_EXAMPLES,
+                    'open-channel': OPEN_CHANNEL_WORKED_EXAMPLES,
+                    'pipe-hydraulics': PIPE_HYDRAULICS_WORKED_EXAMPLES,
+                    'frame-truss-2d': FRAME_TRUSS_WORKED_EXAMPLES,
+                    'section-analyzer': SECTION_ANALYZER_WORKED_EXAMPLES,
+                    'rc-column-design': RC_COLUMN_WORKED_EXAMPLES,
+                    'strut-and-tie': STRUT_AND_TIE_WORKED_EXAMPLES,
+                  };
+                  const currentExList = workedExamplesMap[activeModule];
+                  if (!currentExList || currentExList.length === 0) return null;
 
                   return (
                     <div className="relative" ref={workedExamplesRef}>
@@ -4529,6 +4946,60 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                                     earthwork: { ...ws.earthwork, ...ex.params },
                                   }));
                                   window.history.replaceState({}, '', buildWorkedExampleUrl('earthwork-alignment', ex.id));
+                                } else if (ex.module === 'bearing-capacity') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    bearing: { ...ws.bearing, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('bearing-capacity', ex.id));
+                                } else if (ex.module === 'pile-capacity') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    pile: { ...(ws.pile || createDefaultPileCapacity()), ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('pile-capacity', ex.id));
+                                } else if (ex.module === 'concrete-mix') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    concrete: { ...ws.concrete, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('concrete-mix', ex.id));
+                                } else if (ex.module === 'open-channel') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    channel: { ...ws.channel, ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('open-channel', ex.id));
+                                } else if (ex.module === 'pipe-hydraulics') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    pipe: { ...(ws.pipe || createDefaultPipeHydraulics()), ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('pipe-hydraulics', ex.id));
+                                } else if (ex.module === 'frame-truss-2d') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    frameTruss2d: ex.params,
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('frame-truss-2d', ex.id));
+                                } else if (ex.module === 'section-analyzer') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    sectionAnalyzer: { ...(ws.sectionAnalyzer || createDefaultSectionAnalyzer()), ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('section-analyzer', ex.id));
+                                } else if (ex.module === 'rc-column-design') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    rcColumn: { ...(ws.rcColumn || createDefaultRcColumnDesign()), ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('rc-column-design', ex.id));
+                                } else if (ex.module === 'strut-and-tie') {
+                                  updateActiveWorkspace((ws) => ({
+                                    ...ws,
+                                    strutAndTie: { ...(ws.strutAndTie || createDefaultStrutAndTie()), ...ex.params },
+                                  }));
+                                  window.history.replaceState({}, '', buildWorkedExampleUrl('strut-and-tie', ex.id));
                                 }
                                 triggerCelebration(
                                   `Loaded Example: ${ex.title}`,
@@ -4635,6 +5106,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 onSyncBoqToInventory={handleSyncBoqToInventory}
                 onSyncMixToCubeTests={handleSyncMixToCubeTests}
                 onGenerateRequisitionSlip={handleGenerateRequisitionFromModule}
+                onTransferStmToRebarBbs={handleTransferStmToRebarBbs}
                 currencySymbol={getCurrencySymbol(activeWorkspace.currency)}
                 bbsSteelWeightKg={crossLinkMetrics.bbsSteelWeightKg}
                 matConcreteVolumeM3={crossLinkMetrics.matConcreteVolumeM3}
@@ -4649,6 +5121,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 earthworkBankVolumeM3={crossLinkMetrics.earthworkBankVolumeM3}
                 rateAnalysisUnitRate={crossLinkMetrics.rateAnalysisUnitRate}
                 continuousBeamMaxMomentKnm={crossLinkMetrics.continuousBeamMaxMomentKnm}
+                stmRequiredTieSteelMm2={crossLinkMetrics.stmRequiredTieSteelMm2}
               />
             </div>
 
@@ -5413,7 +5886,10 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
 
                 {/* 3. Interactive Analytical Engineering Diagram Container (Graphical & Both modes) */}
                 {(analyticalViewMode === 'graphical' || analyticalViewMode === 'both') && (
-                  <div className="analytical-diagram-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs overflow-hidden">
+                  <div
+                    data-diagram-export="active-module"
+                    className="analytical-diagram-container rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-xs overflow-hidden"
+                  >
                     <div className="flex items-center justify-between mb-3 border-b border-[var(--md-sys-color-outline-variant)] pb-2">
                       <div className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] flex items-center gap-1.5">
                         <SlidersHorizontal className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
@@ -6132,6 +6608,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               envelope={currentEnvelope}
               moduleLabel={MODULE_META[activeModule]?.label}
               codeStandard={MODULE_META[activeModule]?.codeStandard}
+              onOpenPrintPreview={handleOpenPrintPreview}
               onComplete={() => {
                 triggerCelebration(
                   'PDF Exported Successfully',
@@ -6172,6 +6649,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
           canRedo={redoStack.length > 0}
           savedCalculations={appState.calculationHistory}
           boqItems={activeWorkspace.boq.items}
+          onNavigateHome={() => navigateToDashboard('home')}
         />
       </div>
       )}
