@@ -259,35 +259,91 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
             </div>
           )}
 
-          {/* Section 1: Page Geometry & Export Unit Format Overrides */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] font-mono">
-              <Settings className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-              <span>Page Geometry & Export Unit System</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase">
-                  Export Unit Format
-                </label>
-                <select
-                  value={modalPreset.exportUnitPreset || 'workspace'}
-                  onChange={(e) =>
-                    setModalPreset({
-                      ...modalPreset,
-                      exportUnitPreset: e.target.value as 'workspace' | 'metric' | 'imperial' | 'regional',
-                    })
-                  }
-                  className="w-full h-10 px-2.5 text-xs font-bold rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]"
-                >
-                  <option value="workspace">Workspace Active Units</option>
-                  <option value="metric">SI Metric (m, kN, MPa)</option>
-                  <option value="imperial">Imperial (ft-in, kip, psi)</option>
-                  <option value="regional">Regional BD (ft-in, CFT, Katha)</option>
-                </select>
+          {/* Section 1: Export Unit Preset Segmented Selector & Page Geometry */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] font-mono flex items-center gap-2">
+                  <Settings className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                  <span>Target Measurement Unit System (Tables, Schedules &amp; Formulas)</span>
+                </span>
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-primary)] font-semibold">
+                  {(modalPreset.exportUnitPreset || 'workspace') === 'regional'
+                    ? 'Dual Reference (Target + SI)'
+                    : 'Target Unit Only'}
+                </span>
               </div>
 
+              <div
+                role="radiogroup"
+                aria-label="Export Unit System Preset"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 rounded-xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
+              >
+                {[
+                  {
+                    id: 'workspace' as const,
+                    label: 'Workspace',
+                    units:
+                      activeWorkspace.unitPreferences?.systemPreset === 'imperial'
+                        ? 'Active · Imperial'
+                        : activeWorkspace.unitPreferences?.systemPreset === 'regional'
+                          ? 'Active · Regional'
+                          : 'Active · SI Metric',
+                  },
+                  {
+                    id: 'metric' as const,
+                    label: 'SI Metric',
+                    units: 'm · mm · kN · MPa',
+                  },
+                  {
+                    id: 'imperial' as const,
+                    label: 'Imperial',
+                    units: 'ft-in · kip · psi',
+                  },
+                  {
+                    id: 'regional' as const,
+                    label: 'Regional BD',
+                    units: 'ft-in · CFT · Katha',
+                  },
+                ].map((opt) => {
+                  const isActive = (modalPreset.exportUnitPreset || 'workspace') === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      onClick={() =>
+                        setModalPreset({
+                          ...modalPreset,
+                          exportUnitPreset: opt.id,
+                        })
+                      }
+                      className={`px-3 py-2.5 rounded-lg text-left transition-all cursor-pointer border ${
+                        isActive
+                          ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-[var(--md-sys-color-primary)] shadow-xs'
+                          : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]'
+                      }`}
+                    >
+                      <div className="text-xs font-bold leading-tight whitespace-nowrap truncate">
+                        {opt.label}
+                      </div>
+                      <div
+                        className={`text-[10px] font-mono tabular-nums mt-1 whitespace-nowrap truncate ${
+                          isActive
+                            ? 'text-[var(--md-sys-color-on-primary)]/90'
+                            : 'text-[var(--md-sys-color-on-surface-variant)]'
+                        }`}
+                      >
+                        {opt.units}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase">
                   Paper Size

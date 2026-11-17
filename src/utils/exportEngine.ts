@@ -366,7 +366,23 @@ export function convertValueAndUnitForExport(
         ? parseFloat(rawValue.trim())
         : NaN;
 
-  if (!Number.isFinite(numVal) || !u || u === '-' || u === 'ratio' || u === '%' || u === 'deg' || u === 'type' || u === 'code' || u === 'factor') {
+  if (
+    !Number.isFinite(numVal) ||
+    !u ||
+    u === '-' ||
+    u === 'ratio' ||
+    u === '%' ||
+    u === 'deg' ||
+    u === 'type' ||
+    u === 'code' ||
+    u === 'factor'
+  ) {
+    if (typeof rawValue === 'string' && targetSystem !== 'metric') {
+      return {
+        value: convertEmbeddedUnitsInText(rawValue, targetSystem),
+        unit: rawUnit,
+      };
+    }
     return { value: rawValue, unit: rawUnit };
   }
 
@@ -378,7 +394,7 @@ export function convertValueAndUnitForExport(
   };
 
   if (targetSystem === 'metric') {
-    // Normalize any imperial/regional units back to SI
+    // Target unit only for SI Metric
     if (u === 'ft') return { value: fmt(numVal * 0.3048, 3), unit: 'm' };
     if (u === 'in') return { value: fmt(numVal * 25.4, 1), unit: 'mm' };
     if (u === 'sq ft' || u === 'ft^2' || u === 'ft²') return { value: fmt(numVal * 0.092903, 2), unit: 'm^2' };
@@ -390,9 +406,10 @@ export function convertValueAndUnitForExport(
   }
 
   if (targetSystem === 'imperial') {
+    // Target unit only for Imperial (clean single-unit tabular values)
     switch (u) {
       case 'm':
-        return { value: `${formatFeetInches(numVal, { isMeters: true })} (${fmt(numVal * 3.28084, 2)} ft)`, unit: 'ft-in' };
+        return { value: formatFeetInches(numVal, { isMeters: true }), unit: 'ft-in' };
       case 'mm':
         return { value: fmt(numVal / 25.4, 2), unit: 'in' };
       case 'cm':
@@ -400,6 +417,12 @@ export function convertValueAndUnitForExport(
       case 'm^2':
       case 'm²':
         return { value: fmt(numVal * 10.76391, 2), unit: 'sq ft' };
+      case 'mm^2':
+      case 'mm²':
+        return { value: fmt(numVal / 645.16, 2), unit: 'in^2' };
+      case 'cm^2':
+      case 'cm²':
+        return { value: fmt(numVal / 6.4516, 2), unit: 'in^2' };
       case 'cm^4':
       case 'cm⁴':
         return { value: fmt(numVal * 0.024025, 2), unit: 'in^4' };
@@ -422,6 +445,7 @@ export function convertValueAndUnitForExport(
         return { value: fmt(numVal * 145.0377, 0), unit: 'ksi' };
       case 'kPa':
       case 'kN/m^2':
+      case 'kN/m²':
         return { value: fmt(numVal * 20.8854, 1), unit: 'psf' };
       case 'kN/m^3':
       case 'kN/m³':
@@ -445,40 +469,257 @@ export function convertValueAndUnitForExport(
     }
   }
 
-  // targetSystem === 'regional' (Bangladesh Field Standard: ft-in, sq ft / Katha, CFT, psi, kg/MT)
+  // targetSystem === 'regional' (Bangladesh Field Standard with dual SI reference)
   switch (u) {
     case 'm':
-      return { value: `${formatFeetInches(numVal, { isMeters: true })} (${fmt(numVal * 3.28084, 2)} ft)`, unit: 'ft-in' };
+      return {
+        value: `${formatFeetInches(numVal, { isMeters: true })} (${fmt(numVal, 2)} m)`,
+        unit: 'ft-in (m)',
+      };
     case 'mm':
-      return { value: `${fmt(numVal / 25.4, 2)}" (${fmt(numVal, 0)} mm)`, unit: 'in (mm)' };
+      return {
+        value: `${fmt(numVal / 25.4, 2)}" (${fmt(numVal, 0)} mm)`,
+        unit: 'in (mm)',
+      };
     case 'cm':
-      return { value: fmt(numVal / 2.54, 2), unit: 'in' };
+      return {
+        value: `${fmt(numVal / 2.54, 2)}" (${fmt(numVal, 1)} cm)`,
+        unit: 'in (cm)',
+      };
     case 'm^2':
     case 'm²': {
       const sqft = numVal * 10.76391;
       if (sqft >= 720) {
-        return { value: `${fmt(sqft, 1)} sq ft (${fmt(sqft / 720, 2)} Katha)`, unit: 'sq ft / Katha' };
+        return {
+          value: `${fmt(sqft, 1)} sq ft (${fmt(sqft / 720, 2)} Katha)`,
+          unit: 'sq ft / Katha',
+        };
       }
-      return { value: fmt(sqft, 2), unit: 'sq ft' };
+      return {
+        value: `${fmt(sqft, 2)} sq ft (${fmt(numVal, 2)} m^2)`,
+        unit: 'sq ft (m^2)',
+      };
     }
     case 'm^3':
     case 'm³':
-      return { value: fmt(numVal * 35.31467, 2), unit: 'CFT' };
+      return {
+        value: `${fmt(numVal * 35.31467, 2)} CFT (${fmt(numVal, 2)} m^3)`,
+        unit: 'CFT (m^3)',
+      };
     case 'MPa':
-      return { value: `${fmt(numVal * 145.0377, 0)} psi (${fmt(numVal, 1)} MPa)`, unit: 'psi (MPa)' };
+      return {
+        value: `${fmt(numVal * 145.0377, 0)} psi (${fmt(numVal, 1)} MPa)`,
+        unit: 'psi (MPa)',
+      };
     case 'kPa':
-      return { value: `${fmt(numVal * 0.0208854, 2)} tsf (${fmt(numVal, 1)} kPa)`, unit: 'tsf (kPa)' };
+    case 'kN/m^2':
+    case 'kN/m²':
+      return {
+        value: `${fmt(numVal * 0.0208854, 2)} tsf (${fmt(numVal, 1)} kPa)`,
+        unit: 'tsf (kPa)',
+      };
     case 'm^3/s':
     case 'm³/s':
-      return { value: fmt(numVal * 35.31467, 2), unit: 'cusec (cfs)' };
+      return {
+        value: `${fmt(numVal * 35.31467, 2)} cusec (${fmt(numVal, 2)} m^3/s)`,
+        unit: 'cusec (m^3/s)',
+      };
     default:
       return { value: rawValue, unit: rawUnit };
   }
 }
 
 /**
+ * Converts embedded `<number> <unit>` tokens inside formula substitution strings,
+ * formula results, takeoff summary values, and composite schedule cells.
+ */
+export function convertEmbeddedUnitsInText(
+  text: string,
+  targetSystem: 'metric' | 'imperial' | 'regional'
+): string {
+  if (!text || targetSystem === 'metric') return text;
+
+  const isRegional = targetSystem === 'regional';
+  let result = text;
+
+  // 1. Compound dimensions like "300 x 600 mm" or "300×600 mm"
+  result = result.replace(
+    /(\d+(?:\.\d+)?)\s*([x×])\s*(\d+(?:\.\d+)?)\s*mm\b/gi,
+    (_, a, sep, b) => {
+      const aIn = (parseFloat(a) / 25.4).toFixed(2);
+      const bIn = (parseFloat(b) / 25.4).toFixed(2);
+      return isRegional
+        ? `${aIn}" ${sep} ${bIn}" (${a}${sep}${b} mm)`
+        : `${aIn} ${sep} ${bIn} in`;
+    }
+  );
+
+  // 2. Moments: kN·m, kN.m, kNm
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*(?:kN[·.]m|kNm)\b/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const kipFt = (val * 0.737562).toFixed(2);
+      return isRegional ? `${kipFt} kip·ft (${n} kN·m)` : `${kipFt} kip·ft`;
+    }
+  );
+
+  // 3. Distributed loads: kN/m
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*kN\/m\b(?![^23²³])/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const kipPerFt = (val * 0.0685218).toFixed(3);
+      return isRegional ? `${kipPerFt} kip/ft (${n} kN/m)` : `${kipPerFt} kip/ft`;
+    }
+  );
+
+  // 4. Forces: kN
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*kN\b(?![·./])/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const kip = (val * 0.224809).toFixed(2);
+      return isRegional ? `${kip} kip (${n} kN)` : `${kip} kip`;
+    }
+  );
+
+  // 5. Stress: MPa & kPa
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*MPa\b/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const psi = Math.round(val * 145.0377);
+      return isRegional ? `${psi} psi (${n} MPa)` : `${psi} psi`;
+    }
+  );
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*kPa\b/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      if (isRegional) {
+        return `${(val * 0.0208854).toFixed(2)} tsf (${n} kPa)`;
+      }
+      return `${(val * 20.8854).toFixed(1)} psf`;
+    }
+  );
+
+  // 6. Discharge: m³/s or m^3/s
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*m(?:\^3|³)\/s\b/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const cfs = (val * 35.31467).toFixed(2);
+      return isRegional ? `${cfs} cusec (${n} m³/s)` : `${cfs} cfs`;
+    }
+  );
+
+  // 7. Volume: m³ or m^3
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*m(?:\^3|³)\b(?!\/)/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const cft = (val * 35.31467).toFixed(2);
+      return isRegional ? `${cft} CFT (${n} m³)` : `${cft} CFT`;
+    }
+  );
+
+  // 8. Area: m² or m^2, mm² or mm^2
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*m(?:\^2|²)\b/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const sqft = val * 10.76391;
+      if (isRegional && sqft >= 720) {
+        return `${sqft.toFixed(1)} sq ft (${(sqft / 720).toFixed(2)} Katha)`;
+      }
+      return isRegional ? `${sqft.toFixed(2)} sq ft (${n} m²)` : `${sqft.toFixed(2)} sq ft`;
+    }
+  );
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*mm(?:\^2|²)\b/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const sqin = (val / 645.16).toFixed(2);
+      return isRegional ? `${sqin} in² (${n} mm²)` : `${sqin} in²`;
+    }
+  );
+
+  // 9. Mass: kg/m, kg
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*kg\/m\b(?![^3³])/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const lbFt = (val * 0.671969).toFixed(3);
+      return isRegional ? `${n} kg/m (${lbFt} lb/ft)` : `${lbFt} lb/ft`;
+    }
+  );
+  if (!isRegional) {
+    result = result.replace(
+      /(-?\d+(?:\.\d+)?)\s*kg\b(?!\/)/g,
+      (_, n) => `${(parseFloat(n) * 2.20462).toFixed(1)} lbs`
+    );
+  }
+
+  // 10. Length: mm and m
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*mm\b(?![^234²³⁴])/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const inches = (val / 25.4).toFixed(2);
+      return isRegional ? `${inches}" (${n} mm)` : `${inches} in`;
+    }
+  );
+  result = result.replace(
+    /(-?\d+(?:\.\d+)?)\s*m\b(?![a-zA-Z0-9^²³⁴/])/g,
+    (_, n) => {
+      const val = parseFloat(n);
+      const ftIn = formatFeetInches(val, { isMeters: true });
+      return isRegional ? `${ftIn} (${n} m)` : ftIn;
+    }
+  );
+
+  return result;
+}
+
+/**
+ * Extracts a canonical SI unit token from a takeoff table column header if present,
+ * e.g. "Cut Length (m)" -> "m", "Cut Vol (m^3)" -> "m^3", "Total Wt (kg)" -> "kg".
+ */
+function extractUnitFromHeader(header: string): string | null {
+  if (!header) return null;
+  const match = header.match(/\(([^)]+)\)/);
+  if (!match) return null;
+  const token = match[1].trim();
+  const known = [
+    'm',
+    'mm',
+    'cm',
+    'm^2',
+    'm²',
+    'm^3',
+    'm³',
+    'kg',
+    'kg/m',
+    'kN',
+    'kN/m',
+    'kN.m',
+    'kN·m',
+    'kNm',
+    'MPa',
+    'kPa',
+    'm/s',
+    'm^3/s',
+    'm³/s',
+    'L/s',
+  ];
+  return known.includes(token) ? token : null;
+}
+
+/**
  * Converts an entire `EngineeringReportData` payload into the user's selected export unit preset
  * ('workspace' | 'metric' | 'imperial' | 'regional').
+ * Converts all tables, itemized takeoff schedules, summary totals, and step-by-step formula derivations.
  */
 export function applyExportUnitConversionToReport(
   reportData: EngineeringReportData,
@@ -488,16 +729,20 @@ export function applyExportUnitConversionToReport(
   const effectiveSystem: 'metric' | 'imperial' | 'regional' =
     exportUnitPreset === 'workspace'
       ? (workspace?.unitPreferences?.systemPreset as 'metric' | 'imperial' | 'regional') ||
-        (reportData.projectMeta.unitSystem === 'Imperial' ? 'imperial' : 'metric')
+        (reportData.projectMeta.unitSystem === 'Imperial'
+          ? 'imperial'
+          : reportData.projectMeta.unitSystem === 'Regional'
+            ? 'regional'
+            : 'metric')
       : exportUnitPreset;
 
   const unitLabelMap: Record<'metric' | 'imperial' | 'regional', string> = {
     metric: 'SI Metric (m, kN, MPa)',
     imperial: 'Imperial (ft-in, kip, psi)',
-    regional: 'Regional BD (ft-in, CFT, psi)',
+    regional: 'Regional BD (ft-in, CFT, Katha)',
   };
 
-  if (effectiveSystem === 'metric' && reportData.projectMeta.unitSystem === 'SI') {
+  if (effectiveSystem === 'metric') {
     return {
       ...reportData,
       projectMeta: {
@@ -518,14 +763,9 @@ export function applyExportUnitConversionToReport(
 
   const convertedOutputs = (reportData.outputs || []).map((out) => {
     const conv = convertValueAndUnitForExport(out.value, out.unit, effectiveSystem);
-    let convertedLimit = out.limit;
-    if (out.limit && effectiveSystem !== 'metric') {
-      // Replace embedded metric numbers in limit strings like "12.50 mm (L/360)" or "25 MPa"
-      convertedLimit = out.limit
-        .replace(/(\d+(?:\.\d+)?)\s*mm/g, (_, n) => `${(parseFloat(n) / 25.4).toFixed(2)} in`)
-        .replace(/(\d+(?:\.\d+)?)\s*MPa/g, (_, n) => `${(parseFloat(n) * 145.0377).toFixed(0)} psi`)
-        .replace(/(\d+(?:\.\d+)?)\s*m\b/g, (_, n) => `${(parseFloat(n) * 3.28084).toFixed(2)} ft`);
-    }
+    const convertedLimit = out.limit
+      ? convertEmbeddedUnitsInText(out.limit, effectiveSystem)
+      : out.limit;
     return {
       ...out,
       value: conv.value,
@@ -534,15 +774,94 @@ export function applyExportUnitConversionToReport(
     };
   });
 
+  const originalHeaders = reportData.takeoffHeaders || [];
+
+  // Convert takeoff rows using column header unit context + embedded unit parser
+  const convertedTakeoffRows = reportData.takeoffRows
+    ? reportData.takeoffRows.map((row) => {
+        const convertCell = (
+          cellVal: string | number | undefined,
+          colIdx: number
+        ): string | number | undefined => {
+          if (cellVal === undefined || cellVal === null) return cellVal;
+          const headerUnit = extractUnitFromHeader(originalHeaders[colIdx] || '');
+          const strVal = String(cellVal).trim();
+          const isNumeric = /^-?\d+(\.\d+)?$/.test(strVal);
+
+          // If row.col3 is an explicit unit column (like in BOQ or Rate Analysis) and col4/col5 is quantity
+          if (headerUnit && isNumeric) {
+            // For regional mass (kg), keep kg in schedule columns if header is kg
+            if (effectiveSystem === 'regional' && (headerUnit === 'kg' || headerUnit === 'kg/m')) {
+              return cellVal;
+            }
+            return convertValueAndUnitForExport(parseFloat(strVal), headerUnit, effectiveSystem).value;
+          }
+
+          if (typeof cellVal === 'string') {
+            return convertEmbeddedUnitsInText(cellVal, effectiveSystem);
+          }
+          return cellVal;
+        };
+
+        return {
+          col1: String(convertCell(row.col1, 0) ?? row.col1),
+          col2: String(convertCell(row.col2, 1) ?? row.col2),
+          col3: String(convertCell(row.col3, 2) ?? row.col3),
+          col4: convertCell(row.col4, 3) ?? row.col4,
+          col5: convertCell(row.col5, 4) ?? row.col5,
+          col6: convertCell(row.col6, 5),
+          col7: convertCell(row.col7, 6),
+        };
+      })
+    : undefined;
+
   const convertedHeaders = reportData.takeoffHeaders
     ? reportData.takeoffHeaders.map((h) => {
-        if (effectiveSystem === 'metric') return h;
+        if (effectiveSystem === 'imperial') {
+          return h
+            .replace(/\(m\)/g, '(ft-in)')
+            .replace(/\(mm\)/g, '(in)')
+            .replace(/\(m\^3\)|\(m³\)/g, '(CFT)')
+            .replace(/\(m\^2\)|\(m²\)/g, '(sq ft)')
+            .replace(/\(MPa\)/g, '(psi)')
+            .replace(/\(kPa\)/g, '(psf)')
+            .replace(/\(kN\)/g, '(kip)')
+            .replace(/\(kN[·.]m\)|\(kNm\)/g, '(kip·ft)')
+            .replace(/\(kg\/m\)/g, '(lb/ft)')
+            .replace(/\(kg\)/g, '(lbs)');
+        }
+        // Regional BD headers
         return h
-          .replace(/\(m\)/g, '(ft)')
-          .replace(/\(m\^3\)|\(m³\)/g, '(CFT)')
-          .replace(/\(m\^2\)|\(m²\)/g, '(sq ft)')
-          .replace(/\(MPa\)/g, '(psi)');
+          .replace(/\(m\)/g, '(ft-in / m)')
+          .replace(/\(mm\)/g, '(in / mm)')
+          .replace(/\(m\^3\)|\(m³\)/g, '(CFT / m³)')
+          .replace(/\(m\^2\)|\(m²\)/g, '(sq ft / m²)')
+          .replace(/\(MPa\)/g, '(psi / MPa)')
+          .replace(/\(kPa\)/g, '(tsf / kPa)');
       })
+    : undefined;
+
+  const convertedTakeoffSummary = reportData.takeoffSummary
+    ? reportData.takeoffSummary.map((item) => ({
+        label: convertEmbeddedUnitsInText(item.label, effectiveSystem),
+        value:
+          typeof item.value === 'string'
+            ? convertEmbeddedUnitsInText(item.value, effectiveSystem)
+            : item.value,
+      }))
+    : undefined;
+
+  const convertedFormulaSteps = reportData.stepByStepFormulas
+    ? reportData.stepByStepFormulas.map((step) => ({
+        ...step,
+        substitution: step.substitution
+          ? convertEmbeddedUnitsInText(step.substitution, effectiveSystem)
+          : step.substitution,
+        result: convertEmbeddedUnitsInText(step.result, effectiveSystem),
+        remarks: step.remarks
+          ? convertEmbeddedUnitsInText(step.remarks, effectiveSystem)
+          : step.remarks,
+      }))
     : undefined;
 
   return {
@@ -554,6 +873,9 @@ export function applyExportUnitConversionToReport(
     inputs: convertedInputs,
     outputs: convertedOutputs,
     takeoffHeaders: convertedHeaders,
+    takeoffRows: convertedTakeoffRows,
+    takeoffSummary: convertedTakeoffSummary,
+    stepByStepFormulas: convertedFormulaSteps,
   };
 }
 

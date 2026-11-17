@@ -11,6 +11,7 @@ import {
 import { TESTING_LAB_TEST_MAP } from '../data/testingLabCatalog';
 import { CivilWorkspace, UserProfile } from '../types/civil';
 import {
+  convertEmbeddedUnitsInText,
   convertValueAndUnitForExport,
   ExportUnitPreset,
   sanitizeEngineeringSymbols,
@@ -3402,8 +3403,12 @@ export async function exportLabTestCertificatePdf(params: {
     const govEqs = test.mathSection.formulas.map((f) => `Eq (${f.name.en}): ${f.equation}`);
     const stepLines = [
       ...govEqs.map((g) => sanitizeEngineeringSymbols(g)),
-      ...evaluation.steps.map((s) => sanitizeEngineeringSymbols(s)),
-      `Interpretation: ${sanitizeEngineeringSymbols(evaluation.verdictDetail.en)}`,
+      ...evaluation.steps.map((s) =>
+        sanitizeEngineeringSymbols(convertEmbeddedUnitsInText(s, effectiveUnitSystem))
+      ),
+      `Interpretation: ${sanitizeEngineeringSymbols(
+        convertEmbeddedUnitsInText(evaluation.verdictDetail.en, effectiveUnitSystem)
+      )}`,
       ...(remarks.trim() ? [`Engineer Remarks: ${sanitizeEngineeringSymbols(remarks.trim())}`] : []),
     ];
     for (const line of stepLines) {

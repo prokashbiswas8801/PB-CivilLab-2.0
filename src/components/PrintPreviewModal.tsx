@@ -632,26 +632,86 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                 <span>Export Units &amp; Page Geometry</span>
               </div>
 
-              {/* Export Unit Format Selector */}
-              <div>
-                <label className="block text-[11px] font-bold text-[var(--md-sys-color-primary)] mb-1 font-mono uppercase">
-                  Export &amp; Print Unit System
-                </label>
-                <select
-                  value={settings.exportUnitPreset || 'workspace'}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      exportUnitPreset: e.target.value as PrintUnitPreset,
-                    })
-                  }
-                  className="w-full px-2.5 py-2 text-xs font-bold rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] font-mono cursor-pointer"
+              {/* Segmented Export & Print Unit Preset Selector */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[var(--md-sys-color-primary)] font-mono uppercase">
+                    Target Unit System
+                  </span>
+                  <span className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                    {(settings.exportUnitPreset || 'workspace') === 'regional'
+                      ? 'Dual Ref'
+                      : 'Target Only'}
+                  </span>
+                </div>
+
+                <div
+                  role="radiogroup"
+                  aria-label="Export and Print Unit System"
+                  className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
                 >
-                  <option value="workspace">Workspace Active Units</option>
-                  <option value="metric">SI Metric (m, kN, MPa)</option>
-                  <option value="imperial">Imperial (ft-in, kip, psi)</option>
-                  <option value="regional">Regional BD (ft-in, CFT, Katha)</option>
-                </select>
+                  {[
+                    {
+                      id: 'workspace' as PrintUnitPreset,
+                      label: 'Workspace',
+                      units:
+                        activeWorkspace.unitPreferences?.systemPreset === 'imperial'
+                          ? 'Active · Imperial'
+                          : activeWorkspace.unitPreferences?.systemPreset === 'regional'
+                            ? 'Active · Regional'
+                            : 'Active · SI Metric',
+                    },
+                    {
+                      id: 'metric' as PrintUnitPreset,
+                      label: 'SI Metric',
+                      units: 'm · mm · kN · MPa',
+                    },
+                    {
+                      id: 'imperial' as PrintUnitPreset,
+                      label: 'Imperial',
+                      units: 'ft-in · kip · psi',
+                    },
+                    {
+                      id: 'regional' as PrintUnitPreset,
+                      label: 'Regional BD',
+                      units: 'ft-in · CFT · Katha',
+                    },
+                  ].map((opt) => {
+                    const isActive = (settings.exportUnitPreset || 'workspace') === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isActive}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            exportUnitPreset: opt.id,
+                          })
+                        }
+                        className={`px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer border ${
+                          isActive
+                            ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] border-[var(--md-sys-color-primary)] shadow-2xs'
+                            : 'bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold leading-tight whitespace-nowrap truncate">
+                          {opt.label}
+                        </div>
+                        <div
+                          className={`text-[9.5px] font-mono tabular-nums mt-0.5 whitespace-nowrap truncate ${
+                            isActive
+                              ? 'text-[var(--md-sys-color-on-primary)]/90'
+                              : 'text-[var(--md-sys-color-on-surface-variant)]'
+                          }`}
+                        >
+                          {opt.units}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
@@ -1108,28 +1168,132 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                   )}
 
                   {/* ========================================================
-                      SECTION 7: DETAILED BREAKDOWN & STEP TABLE
+                      SECTION 7: DETAILED BREAKDOWN & STEP TABLE (UNIT-CONVERTED)
                       ======================================================== */}
                   {settings.sections.detailedBreakdown && (
                     <section className="space-y-2 print-avoid-break">
                       <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-blue-900 border-b border-slate-300 pb-1">
-                        4. Detailed Breakdown &amp; Itemized Schedule
+                        4. {convertedReportData.takeoffTitle || 'Detailed Breakdown & Itemized Schedule'} ({convertedReportData.projectMeta.unitSystem})
                       </h3>
-                      {renderModuleDetailedTable(activeModule, activeWorkspace, currentEnvelope.result)}
+                      {convertedReportData.takeoffRows &&
+                      convertedReportData.takeoffRows.length > 0 &&
+                      convertedReportData.takeoffHeaders ? (
+                        <div className="space-y-2">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs font-mono tabular-nums border border-slate-300">
+                              <thead className="bg-blue-50 text-blue-900">
+                                <tr>
+                                  {convertedReportData.takeoffHeaders.map((hdr, hIdx) => (
+                                    <th
+                                      key={hIdx}
+                                      className={`p-2 border-b border-slate-300 ${
+                                        hIdx >= 3 ? 'text-right' : hIdx === 2 ? 'text-center' : 'text-left'
+                                      }`}
+                                    >
+                                      {hdr}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                {convertedReportData.takeoffRows.map((row, rIdx) => {
+                                  const cols = [
+                                    row.col1,
+                                    row.col2,
+                                    row.col3,
+                                    row.col4,
+                                    row.col5,
+                                    row.col6,
+                                    row.col7,
+                                  ].slice(0, convertedReportData.takeoffHeaders!.length);
+                                  return (
+                                    <tr key={rIdx}>
+                                      {cols.map((cell, cIdx) => (
+                                        <td
+                                          key={cIdx}
+                                          className={`p-2 ${
+                                            cIdx === 0
+                                              ? 'font-bold text-slate-900'
+                                              : cIdx >= 3
+                                                ? 'text-right font-semibold text-slate-800'
+                                                : cIdx === 2
+                                                  ? 'text-center text-slate-600'
+                                                  : 'text-slate-800'
+                                          }`}
+                                        >
+                                          {cell !== undefined && cell !== null ? String(cell) : '-'}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          {convertedReportData.takeoffSummary &&
+                            convertedReportData.takeoffSummary.length > 0 && (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                                {convertedReportData.takeoffSummary.map((sum, sIdx) => (
+                                  <div
+                                    key={sIdx}
+                                    className="p-2 rounded bg-blue-50/70 border border-blue-200 font-mono text-xs"
+                                  >
+                                    <div className="text-[10px] text-slate-600">{sum.label}</div>
+                                    <div className="font-bold text-blue-900 tabular-nums mt-0.5">
+                                      {String(sum.value)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                        </div>
+                      ) : (
+                        renderModuleDetailedTable(activeModule, activeWorkspace, currentEnvelope.result)
+                      )}
                     </section>
                   )}
 
                   {/* ========================================================
-                      SECTION 8: MATHEMATICAL EQUATIONS & CALCULATION TRACE
+                      SECTION 8: MATHEMATICAL EQUATIONS & CALCULATION TRACE (UNIT-CONVERTED)
                       ======================================================== */}
                   {settings.sections.mathematicalEquations && (
                     <section className="print-avoid-break space-y-2 p-3 bg-slate-50 border border-slate-200 rounded">
-                      <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-800">
-                        4. Governing Mathematical Equations &amp; Formulas
+                      <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-blue-900 border-b border-slate-200 pb-1">
+                        5. Governing Mathematical Equations &amp; Step-by-Step Derivations ({convertedReportData.projectMeta.unitSystem})
                       </h3>
-                      <div className="text-xs font-mono space-y-1.5 text-slate-700">
-                        {renderModuleEquations(activeModule, moduleMeta.codeStandard)}
-                      </div>
+                      {convertedReportData.stepByStepFormulas &&
+                      convertedReportData.stepByStepFormulas.length > 0 ? (
+                        <div className="space-y-2 text-xs font-mono tabular-nums text-slate-800">
+                          {convertedReportData.stepByStepFormulas.map((step, sIdx) => (
+                            <div
+                              key={sIdx}
+                              className="p-2 bg-white border border-slate-200 rounded space-y-0.5"
+                            >
+                              <div className="flex items-center justify-between gap-2 font-bold text-blue-900">
+                                <span>
+                                  Step {step.stepNumber ?? sIdx + 1}: {step.title}
+                                </span>
+                                {step.codeRef && (
+                                  <span className="text-[10px] text-slate-500 font-normal">
+                                    [{step.codeRef}]
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-slate-700">Equation: {step.equation}</div>
+                              {step.substitution && (
+                                <div className="text-slate-600">
+                                  Substitution: {step.substitution}
+                                </div>
+                              )}
+                              <div className="font-bold text-slate-900">Result: {step.result}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs font-mono space-y-1.5 text-slate-700">
+                          {renderModuleEquations(activeModule, moduleMeta.codeStandard)}
+                        </div>
+                      )}
                     </section>
                   )}
 
