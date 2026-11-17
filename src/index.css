@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ==========================================================================
    NIKOSH BENGALI TYPOGRAPHY SPECIFICATION (OFFICIAL BD STANDARDS)
@@ -74,42 +75,40 @@
   :root,
   .theme-obsidian-gold,
   [data-theme="obsidian-gold"],
-  .theme-cad-charcoal,
-  .theme-blueprint-navy,
-  .dark {
+  .theme-cad-charcoal {
     --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
     --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
-    /* THEME 1: Obsidian Gold (Default Dark Workbench) */
-    --md-sys-color-background: #121110;
+    /* THEME 1: Obsidian Gold (Atelier Dark Workbench) */
+    --md-sys-color-background: #0C0B0A;
     --md-sys-color-on-background: #FAF7F2;
-    --md-sys-color-surface: #1C1917;
-    --md-sys-color-surface-dim: #0C0B0A;
-    --md-sys-color-surface-bright: #27221E;
-    --md-sys-color-surface-container-lowest: #080707;
-    --md-sys-color-surface-container-low: #181514;
-    --md-sys-color-surface-container: #24201D;
-    --md-sys-color-surface-container-high: #2C2723;
-    --md-sys-color-surface-container-highest: #38322C;
+    --md-sys-color-surface: #161412;
+    --md-sys-color-surface-dim: #080706;
+    --md-sys-color-surface-bright: #26221E;
+    --md-sys-color-surface-container-lowest: #060505;
+    --md-sys-color-surface-container-low: #12100E;
+    --md-sys-color-surface-container: #1F1C19;
+    --md-sys-color-surface-container-high: #292420;
+    --md-sys-color-surface-container-highest: #352F29;
     --md-sys-color-on-surface: #FAF7F2;
-    --md-sys-color-on-surface-variant: #A8A29E;
-    --md-sys-color-outline: #38322C;
-    --md-sys-color-outline-variant: #28231F;
+    --md-sys-color-on-surface-variant: #B5ADA4;
+    --md-sys-color-outline: #3B332C;
+    --md-sys-color-outline-variant: #2A241F;
 
-    --md-sys-color-primary: #F59E0B; /* Luminous Amber Gold */
-    --md-sys-color-on-primary: #1C1917;
-    --md-sys-color-primary-container: #78350F;
-    --md-sys-color-on-primary-container: #FEF3C7;
+    --md-sys-color-primary: #F59E0B; /* Luminous 24k Amber Gold */
+    --md-sys-color-on-primary: #14110E;
+    --md-sys-color-primary-container: #452208;
+    --md-sys-color-on-primary-container: #FDE68A;
 
-    --md-sys-color-secondary: #E11D48; /* Crimson Rose */
+    --md-sys-color-secondary: #F43F5E; /* Crimson Rose */
     --md-sys-color-on-secondary: #FFFFFF;
-    --md-sys-color-secondary-container: #881337;
+    --md-sys-color-secondary-container: #4C0519;
     --md-sys-color-on-secondary-container: #FFE4E6;
 
-    --md-sys-color-tertiary: #10B981; /* High-contrast Emerald */
+    --md-sys-color-tertiary: #10B981; /* Emerald */
     --md-sys-color-on-tertiary: #022C22;
     --md-sys-color-tertiary-container: #064E3B;
     --md-sys-color-on-tertiary-container: #A7F3D0;
@@ -129,10 +128,92 @@
     --md-sys-color-success-container: #064E3B;
     --md-sys-color-on-success-container: #D1FAE5;
 
+    /* Architectural Surface, 3D Bevel, Blueprint Grid & Ambient Lighting */
+    --theme-ambient-primary: rgba(245, 158, 11, 0.13);
+    --theme-ambient-secondary: rgba(244, 63, 94, 0.08);
+    --theme-grid-major: rgba(245, 158, 11, 0.065);
+    --theme-grid-minor: rgba(250, 247, 242, 0.022);
+    --theme-glass-bg: rgba(22, 20, 18, 0.82);
+    --theme-glass-border: rgba(245, 158, 11, 0.22);
+    --theme-bevel-highlight: rgba(254, 243, 199, 0.12);
+    --theme-bevel-shadow: rgba(0, 0, 0, 0.65);
+    --theme-card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), 0 2px 8px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(254, 243, 199, 0.10);
+    --theme-card-hover-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.8), 0 0 22px -4px rgba(245, 158, 11, 0.18), inset 0 1px 0 0 rgba(245, 158, 11, 0.32);
+    --theme-accent-glow: rgba(245, 158, 11, 0.28);
+
     color-scheme: dark;
   }
 
-  /* THEME 2: Terracotta Studio (Espresso Dark Earthen Masonry) */
+  /* THEME 2: Royal Blueprint (Structural CAD Cobalt & Cyan Dark) */
+  .theme-blueprint-navy,
+  [data-theme="blueprint-navy"] {
+    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+
+    --md-sys-color-background: #07101E;
+    --md-sys-color-on-background: #F0F7FF;
+    --md-sys-color-surface: #0D1B30;
+    --md-sys-color-surface-dim: #040A14;
+    --md-sys-color-surface-bright: #172E52;
+    --md-sys-color-surface-container-lowest: #030811;
+    --md-sys-color-surface-container-low: #0A1526;
+    --md-sys-color-surface-container: #132642;
+    --md-sys-color-surface-container-high: #1A3256;
+    --md-sys-color-surface-container-highest: #23406C;
+    --md-sys-color-on-surface: #F0F7FF;
+    --md-sys-color-on-surface-variant: #9CB8DD;
+    --md-sys-color-outline: #254370;
+    --md-sys-color-outline-variant: #193052;
+
+    --md-sys-color-primary: #38BDF8; /* Electric CAD Cyan */
+    --md-sys-color-on-primary: #041326;
+    --md-sys-color-primary-container: #0C3866;
+    --md-sys-color-on-primary-container: #E0F2FE;
+
+    --md-sys-color-secondary: #3B82F6; /* Structural Cobalt */
+    --md-sys-color-on-secondary: #FFFFFF;
+    --md-sys-color-secondary-container: #1E3A8A;
+    --md-sys-color-on-secondary-container: #DBEAFE;
+
+    --md-sys-color-tertiary: #2DD4BF; /* Vector Teal */
+    --md-sys-color-on-tertiary: #042F2E;
+    --md-sys-color-tertiary-container: #115E59;
+    --md-sys-color-on-tertiary-container: #CCFBF1;
+
+    --md-sys-color-accent-purple: #A78BFA;
+    --md-sys-color-accent-rose: #FB7185;
+    --md-sys-color-accent-amber: #FBBF24;
+    --md-sys-color-accent-emerald: #34D399;
+    --md-sys-color-accent-cyan: #38BDF8;
+
+    --md-sys-color-error: #FB7185;
+    --md-sys-color-on-error: #4C0519;
+    --md-sys-color-error-container: #881337;
+    --md-sys-color-on-error-container: #FFE4E6;
+
+    --md-sys-color-success: #34D399;
+    --md-sys-color-success-container: #064E3B;
+    --md-sys-color-on-success-container: #D1FAE5;
+
+    --theme-ambient-primary: rgba(56, 189, 248, 0.16);
+    --theme-ambient-secondary: rgba(59, 130, 246, 0.12);
+    --theme-grid-major: rgba(56, 189, 248, 0.085);
+    --theme-grid-minor: rgba(147, 197, 253, 0.03);
+    --theme-glass-bg: rgba(13, 27, 48, 0.82);
+    --theme-glass-border: rgba(56, 189, 248, 0.26);
+    --theme-bevel-highlight: rgba(186, 230, 253, 0.15);
+    --theme-bevel-shadow: rgba(2, 6, 16, 0.75);
+    --theme-card-shadow: 0 12px 32px -10px rgba(2, 8, 20, 0.78), 0 2px 8px -2px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(186, 230, 253, 0.13);
+    --theme-card-hover-shadow: 0 16px 38px -8px rgba(2, 8, 20, 0.85), 0 0 24px -4px rgba(56, 189, 248, 0.22), inset 0 1px 0 0 rgba(56, 189, 248, 0.38);
+    --theme-accent-glow: rgba(56, 189, 248, 0.32);
+
+    color-scheme: dark;
+  }
+
+  /* THEME 3: Terracotta Studio (Espresso Dark Earthen Masonry) */
   .theme-terracotta-studio,
   [data-theme="terracotta-studio"] {
     --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -141,29 +222,29 @@
     --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
     --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
-    --md-sys-color-background: #161210;
+    --md-sys-color-background: #140F0D;
     --md-sys-color-on-background: #FFFBEB;
-    --md-sys-color-surface: #211B18;
-    --md-sys-color-surface-dim: #100D0B;
-    --md-sys-color-surface-bright: #2E2521;
-    --md-sys-color-surface-container-lowest: #0A0807;
-    --md-sys-color-surface-container-low: #1B1614;
-    --md-sys-color-surface-container: #2B231F;
-    --md-sys-color-surface-container-high: #362C27;
-    --md-sys-color-surface-container-highest: #433630;
+    --md-sys-color-surface: #1F1714;
+    --md-sys-color-surface-dim: #0E0A09;
+    --md-sys-color-surface-bright: #30241F;
+    --md-sys-color-surface-container-lowest: #090605;
+    --md-sys-color-surface-container-low: #191310;
+    --md-sys-color-surface-container: #2A1F1B;
+    --md-sys-color-surface-container-high: #352823;
+    --md-sys-color-surface-container-highest: #44332C;
     --md-sys-color-on-surface: #FFFBEB;
-    --md-sys-color-on-surface-variant: #D6C7B2;
-    --md-sys-color-outline: #433630;
-    --md-sys-color-outline-variant: #332924;
+    --md-sys-color-on-surface-variant: #D6C4B0;
+    --md-sys-color-outline: #46342D;
+    --md-sys-color-outline-variant: #332520;
 
-    --md-sys-color-primary: #EA580C; /* Terracotta Burnt Orange */
-    --md-sys-color-on-primary: #FFFFFF;
-    --md-sys-color-primary-container: #7C2D12;
+    --md-sys-color-primary: #F97316; /* Kiln Terracotta Orange */
+    --md-sys-color-on-primary: #180B04;
+    --md-sys-color-primary-container: #5C2209;
     --md-sys-color-on-primary-container: #FFEDD5;
 
-    --md-sys-color-secondary: #EAB308; /* Warm Rich Gold */
-    --md-sys-color-on-secondary: #451A03;
-    --md-sys-color-secondary-container: #713F12;
+    --md-sys-color-secondary: #EAB308; /* Warm Rich Brass */
+    --md-sys-color-on-secondary: #291502;
+    --md-sys-color-secondary-container: #59330A;
     --md-sys-color-on-secondary-container: #FEF9C3;
 
     --md-sys-color-tertiary: #22C55E; /* Forest Green */
@@ -177,7 +258,7 @@
     --md-sys-color-accent-emerald: #22C55E;
     --md-sys-color-accent-cyan: #38BDF8;
 
-    --md-sys-color-error: #EF4444;
+    --md-sys-color-error: #F87171;
     --md-sys-color-on-error: #450A0A;
     --md-sys-color-error-container: #7F1D1D;
     --md-sys-color-on-error-container: #FECACA;
@@ -186,10 +267,92 @@
     --md-sys-color-success-container: #14532D;
     --md-sys-color-on-success-container: #DCFCE7;
 
+    --theme-ambient-primary: rgba(249, 115, 22, 0.14);
+    --theme-ambient-secondary: rgba(234, 179, 8, 0.09);
+    --theme-grid-major: rgba(249, 115, 22, 0.068);
+    --theme-grid-minor: rgba(255, 237, 213, 0.024);
+    --theme-glass-bg: rgba(31, 23, 20, 0.83);
+    --theme-glass-border: rgba(249, 115, 22, 0.24);
+    --theme-bevel-highlight: rgba(255, 237, 213, 0.13);
+    --theme-bevel-shadow: rgba(10, 6, 4, 0.72);
+    --theme-card-shadow: 0 10px 30px -10px rgba(8, 4, 2, 0.75), 0 2px 8px -2px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 237, 213, 0.11);
+    --theme-card-hover-shadow: 0 16px 36px -8px rgba(8, 4, 2, 0.85), 0 0 22px -4px rgba(249, 115, 22, 0.20), inset 0 1px 0 0 rgba(249, 115, 22, 0.35);
+    --theme-accent-glow: rgba(249, 115, 22, 0.30);
+
     color-scheme: dark;
   }
 
-  /* THEME 3: Editorial Parchment (Serif Light Archival Print) */
+  /* THEME 4: Emerald Botanical (Geotech Jade & Burnished Brass Dark) */
+  .theme-emerald-botanical,
+  [data-theme="emerald-botanical"],
+  .theme-emerald-matrix {
+    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
+
+    --md-sys-color-background: #061410;
+    --md-sys-color-on-background: #ECFDF5;
+    --md-sys-color-surface: #0C221B;
+    --md-sys-color-surface-dim: #030B08;
+    --md-sys-color-surface-bright: #15382D;
+    --md-sys-color-surface-container-lowest: #020806;
+    --md-sys-color-surface-container-low: #091914;
+    --md-sys-color-surface-container: #123027;
+    --md-sys-color-surface-container-high: #193E32;
+    --md-sys-color-surface-container-highest: #214E3F;
+    --md-sys-color-on-surface: #ECFDF5;
+    --md-sys-color-on-surface-variant: #9EE6C9;
+    --md-sys-color-outline: #235343;
+    --md-sys-color-outline-variant: #173A2F;
+
+    --md-sys-color-primary: #10B981; /* Luminous Jade Emerald */
+    --md-sys-color-on-primary: #022C22;
+    --md-sys-color-primary-container: #064E3B;
+    --md-sys-color-on-primary-container: #D1FAE5;
+
+    --md-sys-color-secondary: #F59E0B; /* Warm Polished Brass */
+    --md-sys-color-on-secondary: #2B1202;
+    --md-sys-color-secondary-container: #632D0C;
+    --md-sys-color-on-secondary-container: #FEF3C7;
+
+    --md-sys-color-tertiary: #34D399; /* Mint Green */
+    --md-sys-color-on-tertiary: #022C22;
+    --md-sys-color-tertiary-container: #065F46;
+    --md-sys-color-on-tertiary-container: #A7F3D0;
+
+    --md-sys-color-accent-purple: #C084FC;
+    --md-sys-color-accent-rose: #FB7185;
+    --md-sys-color-accent-amber: #FBBF24;
+    --md-sys-color-accent-emerald: #10B981;
+    --md-sys-color-accent-cyan: #2DD4BF;
+
+    --md-sys-color-error: #FB7185;
+    --md-sys-color-on-error: #4C0519;
+    --md-sys-color-error-container: #9F1239;
+    --md-sys-color-on-error-container: #FFE4E6;
+
+    --md-sys-color-success: #34D399;
+    --md-sys-color-success-container: #065F46;
+    --md-sys-color-on-success-container: #D1FAE5;
+
+    --theme-ambient-primary: rgba(16, 185, 129, 0.15);
+    --theme-ambient-secondary: rgba(245, 158, 11, 0.09);
+    --theme-grid-major: rgba(16, 185, 129, 0.075);
+    --theme-grid-minor: rgba(167, 243, 208, 0.025);
+    --theme-glass-bg: rgba(12, 34, 27, 0.83);
+    --theme-glass-border: rgba(16, 185, 129, 0.25);
+    --theme-bevel-highlight: rgba(209, 250, 229, 0.14);
+    --theme-bevel-shadow: rgba(2, 10, 7, 0.75);
+    --theme-card-shadow: 0 10px 30px -10px rgba(2, 10, 7, 0.78), 0 2px 8px -2px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(209, 250, 229, 0.12);
+    --theme-card-hover-shadow: 0 16px 36px -8px rgba(2, 10, 7, 0.88), 0 0 22px -4px rgba(16, 185, 129, 0.22), inset 0 1px 0 0 rgba(16, 185, 129, 0.36);
+    --theme-accent-glow: rgba(16, 185, 129, 0.30);
+
+    color-scheme: dark;
+  }
+
+  /* THEME 5: Editorial Parchment (Archival Vellum Light) */
   .theme-editorial-parchment,
   [data-theme="editorial-parchment"],
   .theme-calcpad-paper {
@@ -199,20 +362,20 @@
     --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
     --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
-    --md-sys-color-background: #F7F4EF; /* Cream Archival Parchment */
+    --md-sys-color-background: #F5F1E8; /* Cream Archival Parchment */
     --md-sys-color-on-background: #1C1917;
     --md-sys-color-surface: #FFFFFF;
-    --md-sys-color-surface-dim: #E8E4DC;
+    --md-sys-color-surface-dim: #E8E2D5;
     --md-sys-color-surface-bright: #FFFFFF;
     --md-sys-color-surface-container-lowest: #FFFFFF;
-    --md-sys-color-surface-container-low: #F3EFE9;
-    --md-sys-color-surface-container: #EFECE6;
-    --md-sys-color-surface-container-high: #E6E1D7;
-    --md-sys-color-surface-container-highest: #DAD4C8;
+    --md-sys-color-surface-container-low: #FAF7F0;
+    --md-sys-color-surface-container: #F0EBE1;
+    --md-sys-color-surface-container-high: #E6DFD3;
+    --md-sys-color-surface-container-highest: #DBD2C3;
     --md-sys-color-on-surface: #1C1917;
     --md-sys-color-on-surface-variant: #57534E;
-    --md-sys-color-outline: #D6D0C4;
-    --md-sys-color-outline-variant: #E2DDD2;
+    --md-sys-color-outline: #CFC6B6;
+    --md-sys-color-outline-variant: #E2DBD0;
 
     --md-sys-color-primary: #9F1239; /* Crimson Ruby Red */
     --md-sys-color-on-primary: #FFFFFF;
@@ -244,49 +407,60 @@
     --md-sys-color-success-container: #DCFCE7;
     --md-sys-color-on-success-container: #14532D;
 
+    --theme-ambient-primary: rgba(159, 18, 57, 0.07);
+    --theme-ambient-secondary: rgba(180, 83, 9, 0.08);
+    --theme-grid-major: rgba(120, 93, 60, 0.075);
+    --theme-grid-minor: rgba(120, 93, 60, 0.028);
+    --theme-glass-bg: rgba(255, 253, 249, 0.86);
+    --theme-glass-border: rgba(159, 18, 57, 0.18);
+    --theme-bevel-highlight: rgba(255, 255, 255, 0.95);
+    --theme-bevel-shadow: rgba(120, 100, 80, 0.14);
+    --theme-card-shadow: 0 8px 24px -6px rgba(68, 52, 36, 0.09), 0 2px 6px -1px rgba(68, 52, 36, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+    --theme-card-hover-shadow: 0 14px 32px -6px rgba(68, 52, 36, 0.14), 0 0 18px -4px rgba(159, 18, 57, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 1);
+    --theme-accent-glow: rgba(159, 18, 57, 0.18);
+
     color-scheme: light;
   }
 
-  /* THEME 4: Solar Amber (Sun-Drenched High Contrast Light) */
+  /* THEME 6: Solar Daylight (Alabaster & Structural Cobalt Light) */
   .theme-solar-amber,
   [data-theme="solar-amber"],
-  .theme-site-daylight,
-  .sunlight-mode {
+  .theme-site-daylight {
     --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
     --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
 
-    --md-sys-color-background: #FFFFFF;
-    --md-sys-color-on-background: #090D16;
-    --md-sys-color-surface: #F8FAFC;
-    --md-sys-color-surface-dim: #EEF2F6;
+    --md-sys-color-background: #F3F7FC;
+    --md-sys-color-on-background: #0F172A;
+    --md-sys-color-surface: #FFFFFF;
+    --md-sys-color-surface-dim: #E6EEF8;
     --md-sys-color-surface-bright: #FFFFFF;
     --md-sys-color-surface-container-lowest: #FFFFFF;
     --md-sys-color-surface-container-low: #F8FAFC;
-    --md-sys-color-surface-container: #F1F5F9;
-    --md-sys-color-surface-container-high: #E2E8F0;
-    --md-sys-color-surface-container-highest: #CBD5E1;
-    --md-sys-color-on-surface: #090D16;
+    --md-sys-color-surface-container: #EDF3FA;
+    --md-sys-color-surface-container-high: #E2EBF5;
+    --md-sys-color-surface-container-highest: #CFDCEB;
+    --md-sys-color-on-surface: #0F172A;
     --md-sys-color-on-surface-variant: #475569;
-    --md-sys-color-outline: #CBD5E1;
-    --md-sys-color-outline-variant: #E2E8F0;
+    --md-sys-color-outline: #C3D2E5;
+    --md-sys-color-outline-variant: #DCE6F2;
 
-    --md-sys-color-primary: #D9460F; /* High-Energy Safety Vermilion */
+    --md-sys-color-primary: #1D4ED8; /* Structural Cobalt Blue */
     --md-sys-color-on-primary: #FFFFFF;
-    --md-sys-color-primary-container: #FFEDD5;
-    --md-sys-color-on-primary-container: #7C2D12;
+    --md-sys-color-primary-container: #DBEAFE;
+    --md-sys-color-on-primary-container: #1E3A8A;
 
-    --md-sys-color-secondary: #047857; /* Deep Forest Emerald */
+    --md-sys-color-secondary: #EA580C; /* Safety Vermilion */
     --md-sys-color-on-secondary: #FFFFFF;
-    --md-sys-color-secondary-container: #D1FAE5;
-    --md-sys-color-on-secondary-container: #065F46;
+    --md-sys-color-secondary-container: #FFEDD5;
+    --md-sys-color-on-secondary-container: #7C2D12;
 
-    --md-sys-color-tertiary: #16A34A; /* Leaf Green */
+    --md-sys-color-tertiary: #047857; /* Survey Emerald */
     --md-sys-color-on-tertiary: #FFFFFF;
-    --md-sys-color-tertiary-container: #DCFCE7;
-    --md-sys-color-on-tertiary-container: #14532D;
+    --md-sys-color-tertiary-container: #D1FAE5;
+    --md-sys-color-on-tertiary-container: #065F46;
 
     --md-sys-color-accent-purple: #7E22CE;
     --md-sys-color-accent-rose: #E11D48;
@@ -303,65 +477,19 @@
     --md-sys-color-success-container: #DCFCE7;
     --md-sys-color-on-success-container: #14532D;
 
+    --theme-ambient-primary: rgba(29, 78, 216, 0.085);
+    --theme-ambient-secondary: rgba(234, 88, 12, 0.065);
+    --theme-grid-major: rgba(29, 78, 216, 0.065);
+    --theme-grid-minor: rgba(29, 78, 216, 0.025);
+    --theme-glass-bg: rgba(255, 255, 255, 0.86);
+    --theme-glass-border: rgba(29, 78, 216, 0.18);
+    --theme-bevel-highlight: rgba(255, 255, 255, 0.98);
+    --theme-bevel-shadow: rgba(15, 23, 42, 0.08);
+    --theme-card-shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04), inset 0 1px 0 0 rgba(255, 255, 255, 0.98);
+    --theme-card-hover-shadow: 0 14px 32px -6px rgba(15, 23, 42, 0.13), 0 0 18px -4px rgba(29, 78, 216, 0.14), inset 0 1px 0 0 rgba(255, 255, 255, 1);
+    --theme-accent-glow: rgba(29, 78, 216, 0.20);
+
     color-scheme: light;
-  }
-
-  /* THEME 5: Emerald Botanical (Evergreen & Polished Brass Dark) */
-  .theme-emerald-botanical,
-  [data-theme="emerald-botanical"],
-  .theme-emerald-matrix {
-    --font-sans: 'Inter', 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Georgia', 'Nikosh', 'Times New Roman', serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    --font-bangla: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
-    --font-nikosh: 'Nikosh', 'SolaimanLipi', system-ui, sans-serif;
-
-    --md-sys-color-background: #071712;
-    --md-sys-color-on-background: #ECFDF5;
-    --md-sys-color-surface: #0D241D;
-    --md-sys-color-surface-dim: #040D0A;
-    --md-sys-color-surface-bright: #14382D;
-    --md-sys-color-surface-container-lowest: #020705;
-    --md-sys-color-surface-container-low: #0A1C16;
-    --md-sys-color-surface-container: #133027;
-    --md-sys-color-surface-container-high: #1A3D32;
-    --md-sys-color-surface-container-highest: #214E3F;
-    --md-sys-color-on-surface: #ECFDF5;
-    --md-sys-color-on-surface-variant: #A7F3D0;
-    --md-sys-color-outline: #214E3F;
-    --md-sys-color-outline-variant: #183B30;
-
-    --md-sys-color-primary: #10B981; /* Luminous Jade Emerald */
-    --md-sys-color-on-primary: #022C22;
-    --md-sys-color-primary-container: #065F46;
-    --md-sys-color-on-primary-container: #D1FAE5;
-
-    --md-sys-color-secondary: #F59E0B; /* Warm Polished Brass */
-    --md-sys-color-on-secondary: #451A03;
-    --md-sys-color-secondary-container: #78350F;
-    --md-sys-color-on-secondary-container: #FEF3C7;
-
-    --md-sys-color-tertiary: #34D399; /* Mint Green */
-    --md-sys-color-on-tertiary: #022C22;
-    --md-sys-color-tertiary-container: #065F46;
-    --md-sys-color-on-tertiary-container: #A7F3D0;
-
-    --md-sys-color-accent-purple: #C084FC;
-    --md-sys-color-accent-rose: #FB7185;
-    --md-sys-color-accent-amber: #FBBF24;
-    --md-sys-color-accent-emerald: #10B981;
-    --md-sys-color-accent-cyan: #06B6D4;
-
-    --md-sys-color-error: #FB7185;
-    --md-sys-color-on-error: #4C0519;
-    --md-sys-color-error-container: #9F1239;
-    --md-sys-color-on-error-container: #FFE4E6;
-
-    --md-sys-color-success: #34D399;
-    --md-sys-color-success-container: #065F46;
-    --md-sys-color-on-success-container: #D1FAE5;
-
-    color-scheme: dark;
   }
 
   /* Global Typography Hierarchy: Clean Modern Sans-Serif for UI & Monospace for Numbers/Calculations */
@@ -776,7 +904,7 @@
 }
 
 /* Sunlight / Jobsite High-Contrast Mode (Direct Sunlight Glare Readability) */
-.sunlight-mode {
+html.sunlight-mode {
   --md-sys-color-background: #ffffff !important;
   --md-sys-color-on-background: #000000 !important;
   --md-sys-color-surface: #ffffff !important;
@@ -786,9 +914,9 @@
   --md-sys-color-surface-container-high: #e2e8f0 !important;
   --md-sys-color-surface-container-highest: #cbd5e1 !important;
   --md-sys-color-on-surface: #000000 !important;
-  --md-sys-color-on-surface-variant: #000000 !important;
+  --md-sys-color-on-surface-variant: #0f172a !important;
   --md-sys-color-outline: #000000 !important;
-  --md-sys-color-outline-variant: #000000 !important;
+  --md-sys-color-outline-variant: #334155 !important;
   --md-sys-color-primary: #002b80 !important;
   --md-sys-color-on-primary: #ffffff !important;
   --md-sys-color-primary-container: #dbeafe !important;
@@ -800,16 +928,15 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.sunlight-mode input,
-.sunlight-mode select,
-.sunlight-mode textarea,
-.sunlight-mode button {
+html.sunlight-mode input,
+html.sunlight-mode select,
+html.sunlight-mode textarea {
   border-width: 2px !important;
   border-color: #000000 !important;
   color: #000000 !important;
 }
 
-.sunlight-mode svg text {
+html.sunlight-mode svg text {
   fill: #000000 !important;
   font-weight: 800 !important;
   stroke: #ffffff !important;
@@ -817,32 +944,66 @@
   paint-order: stroke fill;
 }
 
-.sunlight-mode svg path,
-.sunlight-mode svg line,
-.sunlight-mode svg polyline,
-.sunlight-mode svg rect,
-.sunlight-mode svg circle {
+html.sunlight-mode svg path,
+html.sunlight-mode svg line,
+html.sunlight-mode svg polyline,
+html.sunlight-mode svg rect,
+html.sunlight-mode svg circle {
   stroke-width: 2.2px !important;
 }
 
-.sunlight-mode .dcr-gauge-track {
+html.sunlight-mode .dcr-gauge-track {
   border: 2px solid #000000 !important;
   background-color: #e2e8f0 !important;
 }
 
-.sunlight-mode .touch-target-48 {
+html.sunlight-mode .touch-target-48 {
   min-height: 48px !important;
   min-width: 48px !important;
 }
 
-.sunlight-mode .border-[var(--md-sys-color-outline-variant)],
-.sunlight-mode .border-[var(--md-sys-color-outline)] {
-  border-color: #000000 !important;
+/* ==========================================================================
+   ARCHITECTURAL THEME ATMOSPHERE, 3D BEVELS, GLASSMORPHIC DEPTH & MICRO-GRIDS
+   ========================================================================== */
+
+/* 1. Workspace Atmospheric Backdrop (Blueprint Micro-Grid + Ambient Radial Glow) */
+.screen-app-container {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--md-sys-color-background);
+  background-image:
+    radial-gradient(circle at 12% 8%, var(--theme-ambient-primary, rgba(245, 158, 11, 0.12)) 0%, transparent 46%),
+    radial-gradient(circle at 88% 92%, var(--theme-ambient-secondary, rgba(244, 63, 94, 0.08)) 0%, transparent 50%),
+    linear-gradient(to right, var(--theme-grid-major, rgba(245, 158, 11, 0.06)) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--theme-grid-major, rgba(245, 158, 11, 0.06)) 1px, transparent 1px),
+    linear-gradient(to right, var(--theme-grid-minor, rgba(255, 255, 255, 0.02)) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--theme-grid-minor, rgba(255, 255, 255, 0.02)) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    80px 80px,
+    80px 80px,
+    16px 16px,
+    16px 16px;
+  background-position: center center;
+  transition: background-color 280ms ease, color 220ms ease;
 }
 
-/* ==========================================================================
-   BESPOKE TECHNICAL WORKBENCH DISCIPLINE (AutoCAD / Linear / Raycast Aesthetic)
-   ========================================================================== */
+/* 2. Glassmorphic Navigation Chrome (Topbar, Sidebar, Floating Docks & Popovers) */
+.theme-glass-panel {
+  background-color: var(--theme-glass-bg, var(--md-sys-color-surface));
+  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  box-shadow: var(--theme-card-shadow);
+}
+
+/* 3. 3D Tactile Specular Elevation for Workbench Cards & Panels */
+.screen-app-container main .rounded-2xl.border,
+.screen-app-container main .rounded-3xl.border,
+.screen-app-container main .rounded-xl.border.bg-\[var\(--md-sys-color-surface\)\] {
+  box-shadow: var(--theme-card-shadow);
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), box-shadow 220ms ease, border-color 200ms ease, background-color 200ms ease;
+}
 
 /* ==========================================================================
    PILL-SHAPED DATA ENTRY ARCHITECTURE & HIGH-CONTRAST ACCENTS
@@ -852,6 +1013,7 @@
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select {
   border-radius: 9999px !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 1px 0 0 var(--theme-bevel-highlight, rgba(255, 255, 255, 0.06));
 }
 
 /* Multiline Textareas Generous Pill Geometry (1.5rem) */
@@ -864,7 +1026,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
 select:focus,
 textarea:focus {
   outline: none !important;
-  box-shadow: 0 0 0 2px var(--md-sys-color-primary) !important;
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary), 0 0 14px -2px var(--theme-accent-glow, rgba(245, 158, 11, 0.25)) !important;
 }
 
 /* 2. Precision Tabular Numerals — Vertical Alignment for Engineering Sheets */
@@ -894,16 +1056,20 @@ th,
 .m3-card-interactive {
   cursor: pointer;
   user-select: none;
+  box-shadow: var(--theme-card-shadow);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.22s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 .m3-card-interactive:hover {
   border-color: var(--md-sys-color-primary);
   background-color: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--theme-card-hover-shadow);
+  transform: translateY(-2px);
 }
 .dark .m3-card-interactive:hover {
   border-color: var(--md-sys-color-primary);
 }
 .m3-card-interactive:active {
-  transform: scale(0.995);
+  transform: scale(0.995) translateY(0);
 }
 
 /* Tactile Micro-Interactions & Haptic-Like Transitions */
@@ -912,20 +1078,23 @@ th,
 }
 .btn-tactile:hover {
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px -2px var(--theme-accent-glow, rgba(245, 158, 11, 0.25));
 }
 .btn-tactile:active {
   transform: scale(0.96) translateY(0);
 }
 
 .card-tactile {
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  box-shadow: var(--theme-card-shadow);
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.22s ease, border-color 0.2s ease;
 }
 .card-tactile:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: var(--theme-card-hover-shadow);
 }
 .dark .card-tactile:hover {
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--theme-card-hover-shadow);
 }
 
 /* Celebration Sparkle & Checkmark Pulse Animation */

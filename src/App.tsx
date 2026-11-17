@@ -2754,13 +2754,15 @@ export default function App() {
     setToastBanner(`Restored ${record.title}`);
   };
 
+  // Keep CivilLabContext userProfile.theme synchronized with activeEngineeringTheme
+  useEffect(() => {
+    if (civilLab.userProfile.theme !== activeEngineeringTheme) {
+      civilLab.updateUserProfile({ theme: activeEngineeringTheme });
+    }
+  }, [activeEngineeringTheme]);
+
   const handleThemeChange = (pref: ThemePreference) => {
     setAppState((prev) => ({ ...prev, themePreference: pref }));
-    if (pref === 'dark') {
-      setEngTheme('obsidian-gold');
-    } else if (pref === 'light') {
-      setEngTheme('editorial-parchment');
-    }
   };
 
   const handleSelectWorkspace = (id: string) => {

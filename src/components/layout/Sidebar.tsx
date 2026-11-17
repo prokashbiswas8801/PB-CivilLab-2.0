@@ -430,7 +430,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return (
       <div
         ref={containerRef}
-        className="relative flex flex-col h-full bg-[var(--md-sys-color-surface)] border-r border-[var(--md-sys-color-outline-variant)] select-none"
+        className="relative flex flex-col h-full theme-glass-panel border-r border-[var(--md-sys-color-outline-variant)] select-none"
       >
         {/* 1. TOP BRAND HEADER */}
         <div
@@ -901,40 +901,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Theme Popover Menu (Upward) */}
           {themePopoverOpen && (
             <div
-              className={`absolute bottom-full mb-2 z-50 w-60 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 space-y-1 ${
+              className={`absolute bottom-full mb-2 z-50 w-72 rounded-3xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 backdrop-blur-2xl shadow-2xl p-2.5 space-y-1.5 ${
                 railMode ? 'left-16' : 'left-2.5 right-2.5 w-auto'
               }`}
             >
-              <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)]">
-                Workbench Theme
+              <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
+                <span>Architectural Themes</span>
+                <span className="text-[9px] text-[var(--md-sys-color-primary)]">6 Curated</span>
               </div>
-              {availableThemes.map((t) => {
-                const isActive = t.id === theme;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setTheme(t.id);
-                      setThemePopoverOpen(false);
-                    }}
-                    className={`w-full px-2 py-1.5 rounded-xl flex items-center justify-between text-left transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
-                        : 'hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="w-3 h-3 rounded-full border border-black/20 shrink-0"
-                        style={{ backgroundColor: t.colors.accent }}
-                      />
-                      <span className="text-xs truncate">{t.name}</span>
-                    </div>
-                    {isActive && <Check className="w-3.5 h-3.5 shrink-0" />}
-                  </button>
-                );
-              })}
+              <div className="space-y-1 max-h-72 overflow-y-auto custom-scrollbar pr-0.5">
+                {availableThemes.map((t) => {
+                  const isActive = t.id === theme;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setTheme(t.id);
+                        setThemePopoverOpen(false);
+                      }}
+                      className={`w-full px-2.5 py-2 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
+                        isActive
+                          ? 'bg-[var(--md-sys-color-primary-container)]/35 border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] font-bold shadow-xs'
+                          : 'border-transparent hover:border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {/* Mini Live Blueprint Surface Swatch */}
+                        <div
+                          className="w-8 h-8 rounded-xl border shrink-0 flex items-center justify-center relative overflow-hidden shadow-2xs"
+                          style={{
+                            backgroundColor: t.colors.bg,
+                            borderColor: t.colors.border,
+                            backgroundImage: `
+                              radial-gradient(circle at 25% 25%, ${t.colors.ambientGlow} 0%, transparent 70%),
+                              linear-gradient(to right, ${t.colors.gridLine} 1px, transparent 1px),
+                              linear-gradient(to bottom, ${t.colors.gridLine} 1px, transparent 1px)
+                            `,
+                            backgroundSize: '100% 100%, 6px 6px, 6px 6px',
+                          }}
+                        >
+                          <div className="flex -space-x-1">
+                            <span
+                              className="w-3 h-3 rounded-full border border-black/30"
+                              style={{ backgroundColor: t.colors.accent }}
+                            />
+                            <span
+                              className="w-3 h-3 rounded-full border border-black/30"
+                              style={{ backgroundColor: t.colors.secondary }}
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold truncate flex items-center gap-1.5">
+                            <span className="truncate">{t.name}</span>
+                          </div>
+                          <div className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
+                            {t.subtitle} · {t.mode.toUpperCase()}
+                          </div>
+                        </div>
+                      </div>
+                      {isActive && <Check className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

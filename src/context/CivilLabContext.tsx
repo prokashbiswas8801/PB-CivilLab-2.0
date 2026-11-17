@@ -15,10 +15,11 @@ export type ActivePage =
 
 export type EngineeringThemeOption =
   | 'obsidian-gold'
+  | 'blueprint-navy'
   | 'terracotta-studio'
+  | 'emerald-botanical'
   | 'editorial-parchment'
-  | 'solar-amber'
-  | 'emerald-botanical';
+  | 'solar-amber';
 
 export interface CivilProjectItem {
   id: string;

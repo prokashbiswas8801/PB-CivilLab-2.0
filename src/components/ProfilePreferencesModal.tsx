@@ -662,19 +662,19 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                   </div>
                 </div>
 
-                {/* Technical Engineering Themes (4 Bespoke CAD Modes) */}
-                <div className="p-3.5 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+                {/* Architectural Engineering Themes (6 Curated Dark & Light Modes) */}
+                <div className="p-3.5 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">
-                        Workbench Engineering Themes (5 Colorful Presets)
+                        Architectural Theme Studio (6 Curated Dark &amp; Light Presets)
                       </span>
                       <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-                        Switch between Cyber Charcoal, Royal Blueprint, Creative CalcPad, Solar Amber, and Emerald Studio.
+                        Switch between Obsidian Gold, Royal Blueprint, Terracotta Studio, Emerald Botanical, Editorial Parchment, and Solar Daylight.
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {availableThemes.map((t) => {
                       const isSel = t.id === activeEngineeringTheme;
                       return (
@@ -682,13 +682,25 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                           key={t.id}
                           type="button"
                           onClick={() => setEngineeringTheme(t.id)}
-                          className={`p-2.5 rounded text-left border transition-all cursor-pointer ${
+                          className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer card-tactile ${
                             isSel
-                              ? 'border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-xs'
-                              : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]'
+                              ? 'border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] shadow-md'
+                              : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)]/50 bg-[var(--md-sys-color-surface)]'
                           }`}
                         >
-                          <div className="flex items-center justify-between mb-1.5">
+                          <div
+                            className="h-11 rounded-lg border mb-2 px-2.5 flex items-center justify-between relative overflow-hidden"
+                            style={{
+                              backgroundColor: t.colors.bg,
+                              borderColor: t.colors.border,
+                              backgroundImage: `
+                                radial-gradient(circle at 20% 25%, ${t.colors.ambientGlow} 0%, transparent 65%),
+                                linear-gradient(to right, ${t.colors.gridLine} 1px, transparent 1px),
+                                linear-gradient(to bottom, ${t.colors.gridLine} 1px, transparent 1px)
+                              `,
+                              backgroundSize: '100% 100%, 10px 10px, 10px 10px',
+                            }}
+                          >
                             <div className="flex -space-x-1">
                               {t.colors.palette.map((col, idx) => (
                                 <span
@@ -698,15 +710,28 @@ export const ProfilePreferencesModal: React.FC<ProfilePreferencesModalProps> = (
                                 />
                               ))}
                             </div>
+                            <span
+                              className="text-[8.5px] font-mono font-bold uppercase px-1.5 py-0.5 rounded"
+                              style={{
+                                backgroundColor: t.colors.accent,
+                                color: t.mode === 'dark' ? '#0C0B0A' : '#FFFFFF',
+                              }}
+                            >
+                              {t.mode}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">
+                                {t.name}
+                              </div>
+                              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
+                                {t.subtitle}
+                              </div>
+                            </div>
                             {isSel && (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                              <CheckCircle2 className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
                             )}
-                          </div>
-                          <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)]">
-                            {t.name}
-                          </div>
-                          <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] font-mono">
-                            {t.subtitle}
                           </div>
                         </button>
                       );

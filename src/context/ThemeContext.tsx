@@ -2,10 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 
 export type EngineeringTheme =
   | 'obsidian-gold'
+  | 'blueprint-navy'
   | 'terracotta-studio'
+  | 'emerald-botanical'
   | 'editorial-parchment'
-  | 'solar-amber'
-  | 'emerald-botanical';
+  | 'solar-amber';
 
 export interface ThemeDefinition {
   id: EngineeringTheme;
@@ -24,7 +25,12 @@ export interface ThemeDefinition {
     text: string;
     muted: string;
     palette: string[]; // 4 preview swatches: [bg, surface, primary, secondary]
+    ambientGlow: string;
+    gridLine: string;
+    glassSurface: string;
+    bevelHighlight: string;
   };
+  surfaceBadges: string[];
   gridPattern: boolean;
   highContrast: boolean;
   description: string;
@@ -34,122 +40,174 @@ export const ENGINEERING_THEMES: Record<EngineeringTheme, ThemeDefinition> = {
   'obsidian-gold': {
     id: 'obsidian-gold',
     name: 'Obsidian Gold',
-    subtitle: 'Default Dark',
+    subtitle: 'Atelier Dark',
     mode: 'dark',
     colors: {
-      bg: '#121110',
-      surface: '#1C1917',
-      card: '#24201D',
-      border: '#38322C',
-      accent: '#F59E0B', // Radiant Gold / Amber
-      secondary: '#E11D48', // Crimson Rose
+      bg: '#0C0B0A',
+      surface: '#161412',
+      card: '#1F1C19',
+      border: '#38312B',
+      accent: '#F59E0B', // Radiant 24k Amber Gold
+      secondary: '#F43F5E', // Crimson Rose
       tertiary: '#10B981', // Emerald
       success: '#10B981',
       text: '#FAF7F2',
       muted: '#A8A29E',
-      palette: ['#121110', '#1C1917', '#F59E0B', '#E11D48'],
+      palette: ['#0C0B0A', '#1F1C19', '#F59E0B', '#F43F5E'],
+      ambientGlow: 'rgba(245, 158, 11, 0.16)',
+      gridLine: 'rgba(245, 158, 11, 0.07)',
+      glassSurface: 'rgba(28, 25, 22, 0.82)',
+      bevelHighlight: 'rgba(254, 243, 199, 0.14)',
     },
-    gridPattern: false,
+    surfaceBadges: ['Gold Bevel', 'Micro-Grid', 'Smoked Glass'],
+    gridPattern: true,
     highContrast: true,
-    description: 'Bespoke obsidian charcoal dark workspace with high-contrast amber gold and crimson accents.',
+    description: 'Bespoke architectural obsidian workbench with 24k amber gold specular bevels and smoked glass elevation.',
+  },
+  'blueprint-navy': {
+    id: 'blueprint-navy',
+    name: 'Royal Blueprint',
+    subtitle: 'CAD Cobalt Dark',
+    mode: 'dark',
+    colors: {
+      bg: '#07101E',
+      surface: '#0D1B30',
+      card: '#132642',
+      border: '#233F6B',
+      accent: '#38BDF8', // Electric CAD Cyan
+      secondary: '#3B82F6', // Structural Cobalt
+      tertiary: '#2DD4BF', // Teal Vector
+      success: '#10B981',
+      text: '#F0F7FF',
+      muted: '#93B4DB',
+      palette: ['#07101E', '#132642', '#38BDF8', '#3B82F6'],
+      ambientGlow: 'rgba(56, 189, 248, 0.18)',
+      gridLine: 'rgba(56, 189, 248, 0.09)',
+      glassSurface: 'rgba(13, 27, 48, 0.84)',
+      bevelHighlight: 'rgba(186, 230, 253, 0.16)',
+    },
+    surfaceBadges: ['CAD Blueprint', 'Cyan HUD', '3D Depth'],
+    gridPattern: true,
+    highContrast: true,
+    description: 'Precision structural CAD midnight sapphire with electric cyan coordinate grids and translucent HUD panels.',
   },
   'terracotta-studio': {
     id: 'terracotta-studio',
     name: 'Terracotta Studio',
-    subtitle: 'Espresso Dark',
+    subtitle: 'Espresso Clay Dark',
     mode: 'dark',
     colors: {
-      bg: '#161210',
-      surface: '#211B18',
-      card: '#2B231F',
-      border: '#433630',
-      accent: '#EA580C', // Burnt Terracotta
-      secondary: '#EAB308', // Warm Gold
-      tertiary: '#22C55E', // Green
+      bg: '#140F0D',
+      surface: '#1F1714',
+      card: '#2A1F1B',
+      border: '#46342D',
+      accent: '#F97316', // Kiln Terracotta Orange
+      secondary: '#EAB308', // Burnished Brass
+      tertiary: '#22C55E', // Sage Green
       success: '#22C55E',
       text: '#FFFBEB',
-      muted: '#D6C7B2',
-      palette: ['#161210', '#211B18', '#EA580C', '#EAB308'],
+      muted: '#D6C4B0',
+      palette: ['#140F0D', '#2A1F1B', '#F97316', '#EAB308'],
+      ambientGlow: 'rgba(249, 115, 22, 0.16)',
+      gridLine: 'rgba(249, 115, 22, 0.07)',
+      glassSurface: 'rgba(31, 23, 20, 0.84)',
+      bevelHighlight: 'rgba(255, 237, 213, 0.14)',
     },
-    gridPattern: false,
-    highContrast: true,
-    description: 'Rich espresso and earthen clay palette tailored for heavy civil masonry & structural design.',
-  },
-  'editorial-parchment': {
-    id: 'editorial-parchment',
-    name: 'Editorial Parchment',
-    subtitle: 'Serif Light',
-    mode: 'light',
-    colors: {
-      bg: '#F7F4EF',
-      surface: '#FFFFFF',
-      card: '#EFECE6',
-      border: '#D6D0C4',
-      accent: '#9F1239', // Crimson Ruby
-      secondary: '#B45309', // Amber Ochre
-      tertiary: '#15803D', // Forest Green
-      success: '#15803D',
-      text: '#1C1917',
-      muted: '#57534E',
-      palette: ['#F7F4EF', '#FFFFFF', '#9F1239', '#B45309'],
-    },
+    surfaceBadges: ['Clay 3D Bevel', 'Warm Glow', 'Bronze Trim'],
     gridPattern: true,
     highContrast: true,
-    description: 'High-elegance archival print aesthetic with cream paper, ruby accents, and authoritative typography.',
-  },
-  'solar-amber': {
-    id: 'solar-amber',
-    name: 'Solar Amber',
-    subtitle: 'Sun-Drenched Light',
-    mode: 'light',
-    colors: {
-      bg: '#FFFFFF',
-      surface: '#F8FAFC',
-      card: '#F1F5F9',
-      border: '#CBD5E1',
-      accent: '#D9460F', // Safety Vermilion
-      secondary: '#047857', // Forest Emerald
-      tertiary: '#16A34A', // Leaf Green
-      success: '#16A34A',
-      text: '#090D16',
-      muted: '#475569',
-      palette: ['#FFFFFF', '#F8FAFC', '#D9460F', '#047857'],
-    },
-    gridPattern: false,
-    highContrast: true,
-    description: 'Maximum contrast sun-drenched daytime palette engineered for outdoor jobsites and tablet use.',
+    description: 'Rich roasted espresso and kiln-fired terracotta clay with tactile 3D card depth and warm studio illumination.',
   },
   'emerald-botanical': {
     id: 'emerald-botanical',
     name: 'Emerald Botanical',
-    subtitle: 'Evergreen & Brass',
+    subtitle: 'Geotech Jade Dark',
     mode: 'dark',
     colors: {
-      bg: '#071712',
-      surface: '#0D241D',
-      card: '#133027',
+      bg: '#061410',
+      surface: '#0C221B',
+      card: '#123027',
       border: '#214E3F',
-      accent: '#10B981', // Jade Emerald
-      secondary: '#F59E0B', // Polished Brass
-      tertiary: '#34D399', // Mint
+      accent: '#10B981', // Luminous Jade Emerald
+      secondary: '#F59E0B', // Burnished Brass
+      tertiary: '#34D399', // Mint Contour
       success: '#34D399',
       text: '#ECFDF5',
-      muted: '#A7F3D0',
-      palette: ['#071712', '#0D241D', '#10B981', '#F59E0B'],
+      muted: '#99E6C9',
+      palette: ['#061410', '#123027', '#10B981', '#F59E0B'],
+      ambientGlow: 'rgba(16, 185, 129, 0.17)',
+      gridLine: 'rgba(16, 185, 129, 0.08)',
+      glassSurface: 'rgba(12, 34, 27, 0.84)',
+      bevelHighlight: 'rgba(209, 250, 229, 0.15)',
     },
+    surfaceBadges: ['Topo Grid', 'Jade Glass', 'Brass Accent'],
     gridPattern: true,
     highContrast: true,
-    description: 'Deep botanical evergreen & brass workbench inspired by environmental & hydraulic civil engineering.',
+    description: 'Deep geotechnical forest obsidian with luminous jade glassmorphic overlays and polished brass instruments.',
+  },
+  'editorial-parchment': {
+    id: 'editorial-parchment',
+    name: 'Editorial Parchment',
+    subtitle: 'Archival Vellum Light',
+    mode: 'light',
+    colors: {
+      bg: '#F5F1E8',
+      surface: '#FFFFFF',
+      card: '#FAF7F0',
+      border: '#D5CDBE',
+      accent: '#9F1239', // Venetian Crimson Ruby
+      secondary: '#B45309', // Archival Ochre Gold
+      tertiary: '#15803D', // Botanical Ink Green
+      success: '#15803D',
+      text: '#1C1917',
+      muted: '#57534E',
+      palette: ['#F5F1E8', '#FFFFFF', '#9F1239', '#B45309'],
+      ambientGlow: 'rgba(180, 83, 9, 0.10)',
+      gridLine: 'rgba(120, 93, 60, 0.075)',
+      glassSurface: 'rgba(255, 253, 249, 0.88)',
+      bevelHighlight: 'rgba(255, 255, 255, 0.95)',
+    },
+    surfaceBadges: ['Vellum Grid', 'Paper Stack 3D', 'Ruby Ink'],
+    gridPattern: true,
+    highContrast: true,
+    description: 'Warm architectural drafting vellum with millimeter grid lines, 3D paper-stack shadows, and crimson ruby ink.',
+  },
+  'solar-amber': {
+    id: 'solar-amber',
+    name: 'Solar Daylight',
+    subtitle: 'Alabaster & Cobalt Light',
+    mode: 'light',
+    colors: {
+      bg: '#F3F7FC',
+      surface: '#FFFFFF',
+      card: '#F8FAFC',
+      border: '#C5D3E6',
+      accent: '#1D4ED8', // Structural Cobalt Blue
+      secondary: '#EA580C', // Safety Vermilion
+      tertiary: '#047857', // Survey Emerald
+      success: '#16A34A',
+      text: '#0F172A',
+      muted: '#475569',
+      palette: ['#F3F7FC', '#FFFFFF', '#1D4ED8', '#EA580C'],
+      ambientGlow: 'rgba(29, 78, 216, 0.10)',
+      gridLine: 'rgba(29, 78, 216, 0.065)',
+      glassSurface: 'rgba(255, 255, 255, 0.88)',
+      bevelHighlight: 'rgba(255, 255, 255, 0.98)',
+    },
+    surfaceBadges: ['Daylight CAD', 'Porcelain 3D', 'Cobalt & Orange'],
+    gridPattern: true,
+    highContrast: true,
+    description: 'High-clarity architectural alabaster with structural cobalt blue, safety vermilion, and crisp porcelain 3D depth.',
   },
 };
 
-const THEME_STORAGE_KEY = 'bd_civillab_active_theme_v4';
+const THEME_STORAGE_KEY = 'bd_civillab_active_theme_v5';
 
-// Helper to map any legacy theme id to a v4 theme id
-function normalizeTheme(id: string | null | undefined): EngineeringTheme {
+// Helper to map any legacy theme id to one of the 6 curated themes
+export function normalizeTheme(id: string | null | undefined): EngineeringTheme {
   if (!id) return 'obsidian-gold';
   if (id in ENGINEERING_THEMES) return id as EngineeringTheme;
-  if (id === 'cad-charcoal' || id === 'blueprint-navy' || id === 'dark') return 'obsidian-gold';
+  if (id === 'cad-charcoal' || id === 'dark') return 'obsidian-gold';
   if (id === 'calcpad-paper' || id === 'light') return 'editorial-parchment';
   if (id === 'site-daylight') return 'solar-amber';
   if (id === 'emerald-matrix') return 'emerald-botanical';
@@ -171,7 +229,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [theme, setThemeState] = useState<EngineeringTheme>(() => {
     if (typeof window === 'undefined') return 'obsidian-gold';
     try {
-      const stored = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem('pb_civillab_active_theme_v4') || localStorage.getItem('pb_civillab_active_theme_v3');
+      const stored =
+        localStorage.getItem(THEME_STORAGE_KEY) ||
+        localStorage.getItem('bd_civillab_active_theme_v4') ||
+        localStorage.getItem('pb_civillab_active_theme_v4') ||
+        localStorage.getItem('pb_civillab_active_theme_v3');
       return normalizeTheme(stored);
     } catch {
       return 'obsidian-gold';
@@ -185,6 +247,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setThemeState(validTheme);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, validTheme);
+      localStorage.setItem('bd_civillab_active_theme_v4', validTheme);
     } catch {
       // Ignore
     }
@@ -205,29 +268,28 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Remove any previous theme classes (including legacy)
     root.classList.remove(
       'theme-obsidian-gold',
+      'theme-blueprint-navy',
       'theme-terracotta-studio',
       'theme-editorial-parchment',
       'theme-solar-amber',
       'theme-emerald-botanical',
       'theme-cad-charcoal',
-      'theme-blueprint-navy',
       'theme-calcpad-paper',
       'theme-site-daylight',
       'theme-emerald-matrix',
       'dark',
-      'sunlight-mode'
+      'light'
     );
 
     // Apply active theme class and data-theme attribute
     root.classList.add(`theme-${theme}`);
     root.setAttribute('data-theme', theme);
+    root.setAttribute('data-theme-mode', themeConfig.mode);
 
     if (themeConfig.mode === 'dark') {
       root.classList.add('dark');
-    }
-
-    if (theme === 'solar-amber') {
-      root.classList.add('sunlight-mode');
+    } else {
+      root.classList.add('light');
     }
 
     // Update <meta name="theme-color">

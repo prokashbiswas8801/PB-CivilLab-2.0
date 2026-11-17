@@ -63,8 +63,9 @@ export const Topbar: React.FC<TopbarProps> = ({
   isHomeActive = false,
 }) => {
   const workbench = useWorkbench();
-  const { theme, themeConfig, setTheme, availableThemes } = useTheme();
+  const { theme, themeConfig, setTheme, cycleNextTheme, availableThemes } = useTheme();
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+  const [themeFilterMode, setThemeFilterMode] = useState<'all' | 'dark' | 'light'>('all');
   const themeDropdownRef = useRef<HTMLDivElement>(null);
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -120,7 +121,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
   return (
-    <header className="sticky top-0 z-40 h-12 w-full bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] px-3 md:px-4 flex items-center justify-between gap-3 select-none">
+    <header className="sticky top-0 z-40 h-12 w-full theme-glass-panel border-b border-[var(--md-sys-color-outline-variant)] px-3 md:px-4 flex items-center justify-between gap-3 select-none">
       {/* Left Zone: Mobile Hamburger + Brand Lockup */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
@@ -336,72 +337,240 @@ export const Topbar: React.FC<TopbarProps> = ({
           </button>
         )}
 
-        {/* Engineering 4-Theme Switcher */}
+        {/* Interactive 6-Theme Architectural Studio Gallery Popover */}
         <div className="relative" ref={themeDropdownRef}>
           <button
             type="button"
             onClick={() => setThemeDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] text-xs font-mono transition-colors cursor-pointer"
-            title="Switch Engineering Workbench Theme"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono transition-all cursor-pointer btn-tactile ${
+              themeDropdownOpen
+                ? 'border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/30 text-[var(--md-sys-color-on-surface)] ring-2 ring-[var(--md-sys-color-primary)]/30'
+                : 'border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface)]'
+            }`}
+            title="Open Architectural Theme Studio (6 Handcrafted Dark & Light Themes)"
           >
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/30"
-              style={{ backgroundColor: themeConfig.colors.accent }}
+            <Palette className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+            <div className="flex -space-x-1 shrink-0">
+              <span
+                className="w-2.5 h-2.5 rounded-full border border-black/30 shadow-2xs"
+                style={{ backgroundColor: themeConfig.colors.bg }}
+              />
+              <span
+                className="w-2.5 h-2.5 rounded-full border border-black/30 shadow-2xs"
+                style={{ backgroundColor: themeConfig.colors.accent }}
+              />
+              <span
+                className="w-2.5 h-2.5 rounded-full border border-black/30 shadow-2xs"
+                style={{ backgroundColor: themeConfig.colors.secondary }}
+              />
+            </div>
+            <span className="hidden sm:inline font-bold tracking-tight">{themeConfig.name}</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] transition-transform duration-200 ${
+                themeDropdownOpen ? 'rotate-180 text-[var(--md-sys-color-primary)]' : ''
+              }`}
             />
-            <span className="hidden sm:inline font-semibold">{themeConfig.name}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)]" />
           </button>
 
           {themeDropdownOpen && (
-            <div className="absolute right-0 mt-1.5 w-64 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-2 z-50 space-y-1">
-              <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)]">
-                Engineering Theme Presets
+            <div className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-1rem)] max-w-[490px] rounded-3xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 backdrop-blur-2xl shadow-2xl p-3.5 z-50 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+              {/* Popover Header + Filter Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[var(--md-sys-color-outline-variant)]">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                    <span className="text-xs font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)]">
+                      Architectural Theme Studio
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+                      6 Curated
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                    Blueprint micro-grids, 3D specular bevels &amp; ambient studio lighting
+                  </p>
+                </div>
+
+                {/* Filter Pills: All / Dark / Light */}
+                <div className="flex items-center gap-1 bg-[var(--md-sys-color-surface-container-low)] p-0.5 rounded-full border border-[var(--md-sys-color-outline-variant)] self-start sm:self-auto">
+                  {(['all', 'dark', 'light'] as const).map((modeOpt) => {
+                    const active = themeFilterMode === modeOpt;
+                    return (
+                      <button
+                        key={modeOpt}
+                        type="button"
+                        onClick={() => setThemeFilterMode(modeOpt)}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase transition-all cursor-pointer flex items-center gap-1 ${
+                          active
+                            ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-2xs'
+                            : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
+                        }`}
+                      >
+                        {modeOpt === 'dark' && <Moon className="w-2.5 h-2.5" />}
+                        {modeOpt === 'light' && <Sun className="w-2.5 h-2.5" />}
+                        <span>{modeOpt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {availableThemes.map((t) => {
-                const isActive = t.id === theme;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setTheme(t.id);
-                      onSelectTheme(t.mode === 'dark' ? 'dark' : 'light');
-                      setThemeDropdownOpen(false);
-                    }}
-                    className={`w-full text-left p-2 rounded flex items-center justify-between transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]'
-                        : 'hover:bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="flex -space-x-1 shrink-0">
-                        {t.colors.palette.map((col, idx) => (
-                          <span
-                            key={idx}
-                            className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-xs"
-                            style={{ backgroundColor: col }}
-                          />
-                        ))}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
-                          <span>{t.name}</span>
-                          <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
-                            {t.subtitle}
-                          </span>
+
+              {/* 2-Column Live Surface Preview Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[68vh] overflow-y-auto custom-scrollbar pr-0.5">
+                {availableThemes
+                  .filter((t) => themeFilterMode === 'all' || t.mode === themeFilterMode)
+                  .map((t) => {
+                    const isActive = t.id === theme;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setTheme(t.id);
+                          onSelectTheme(t.mode === 'dark' ? 'dark' : 'light');
+                          setThemeDropdownOpen(false);
+                        }}
+                        className={`group/tcard relative text-left rounded-2xl p-2.5 border transition-all cursor-pointer flex flex-col justify-between ${
+                          isActive
+                            ? 'border-[var(--md-sys-color-primary)] ring-2 ring-[var(--md-sys-color-primary)]/35 bg-[var(--md-sys-color-surface-container)] shadow-lg'
+                            : 'border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/60 bg-[var(--md-sys-color-surface-container-low)]/70 hover:bg-[var(--md-sys-color-surface-container)]'
+                        }`}
+                      >
+                        {/* Live Miniature Architectural Surface & 3D Glass Preview Canvas */}
+                        <div
+                          className="w-full h-20 rounded-xl relative overflow-hidden border mb-2.5 p-2 flex flex-col justify-between transition-transform duration-200 group-hover/tcard:scale-[1.01]"
+                          style={{
+                            backgroundColor: t.colors.bg,
+                            borderColor: t.colors.border,
+                            backgroundImage: `
+                              radial-gradient(circle at 18% 20%, ${t.colors.ambientGlow} 0%, transparent 60%),
+                              linear-gradient(to right, ${t.colors.gridLine} 1px, transparent 1px),
+                              linear-gradient(to bottom, ${t.colors.gridLine} 1px, transparent 1px)
+                            `,
+                            backgroundSize: '100% 100%, 14px 14px, 14px 14px',
+                          }}
+                        >
+                          {/* Top Mini HUD Bar inside Preview */}
+                          <div className="flex items-center justify-between z-10">
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase tracking-wider border"
+                              style={{
+                                backgroundColor: t.colors.glassSurface,
+                                borderColor: t.colors.border,
+                                color: t.colors.text,
+                                boxShadow: `inset 0 1px 0 0 ${t.colors.bevelHighlight}`,
+                              }}
+                            >
+                              {t.subtitle}
+                            </span>
+
+                            <span
+                              className="px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold uppercase flex items-center gap-1"
+                              style={{
+                                backgroundColor: t.colors.accent,
+                                color: t.mode === 'dark' ? '#0C0B0A' : '#FFFFFF',
+                              }}
+                            >
+                              {t.mode === 'dark' ? 'DARK' : 'LIGHT'}
+                            </span>
+                          </div>
+
+                          {/* Miniature 3D Beveled Glass Card inside Preview */}
+                          <div
+                            className="rounded-lg p-1.5 border flex items-center justify-between gap-2 z-10"
+                            style={{
+                              backgroundColor: t.colors.card,
+                              borderColor: t.colors.border,
+                              boxShadow: `0 4px 10px -2px rgba(0,0,0,0.35), inset 0 1px 0 0 ${t.colors.bevelHighlight}`,
+                            }}
+                          >
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: t.colors.accent }}
+                                />
+                                <div
+                                  className="h-1.5 w-14 rounded-full"
+                                  style={{ backgroundColor: t.colors.text, opacity: 0.85 }}
+                                />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div
+                                  className="h-1 w-10 rounded-full"
+                                  style={{ backgroundColor: t.colors.secondary, opacity: 0.9 }}
+                                />
+                                <div
+                                  className="h-1 w-6 rounded-full"
+                                  style={{ backgroundColor: t.colors.tertiary || t.colors.success, opacity: 0.85 }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* 4-Swatch Palette Stack */}
+                            <div className="flex -space-x-1 shrink-0">
+                              {t.colors.palette.map((swatch, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-2xs"
+                                  style={{ backgroundColor: swatch }}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] truncate">
-                          {t.description}
+
+                        {/* Card Title, Description & Surface Badges */}
+                        <div className="space-y-1.5 w-full">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="text-xs font-extrabold text-[var(--md-sys-color-on-surface)] truncate">
+                              {t.name}
+                            </span>
+                            {isActive ? (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shrink-0">
+                                <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                Active
+                              </span>
+                            ) : (
+                              <span className="text-[9.5px] font-mono text-[var(--md-sys-color-on-surface-variant)] opacity-0 group-hover/tcard:opacity-100 transition-opacity">
+                                Apply →
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] line-clamp-2 leading-snug">
+                            {t.description}
+                          </p>
+
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {t.surfaceBadges.map((badge, bIdx) => (
+                              <span
+                                key={bIdx}
+                                className="px-1.5 py-0.5 rounded-md text-[8.5px] font-mono font-semibold bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]"
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    {isActive && (
-                      <Check className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0 ml-2" />
-                    )}
-                  </button>
-                );
-              })}
+                      </button>
+                    );
+                  })}
+              </div>
+
+              {/* Popover Footer */}
+              <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex items-center justify-between text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                <span>
+                  Active: <strong className="text-[var(--md-sys-color-primary)]">{themeConfig.name}</strong> ({themeConfig.mode.toUpperCase()})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => cycleNextTheme()}
+                  className="px-2.5 py-1 rounded-full border border-[var(--md-sys-color-outline)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] font-bold cursor-pointer transition-colors"
+                >
+                  Cycle Next Theme ↻
+                </button>
+              </div>
             </div>
           )}
         </div>

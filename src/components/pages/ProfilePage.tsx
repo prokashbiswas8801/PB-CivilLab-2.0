@@ -44,7 +44,7 @@ export const ProfilePage: React.FC = () => {
     pdfPreset,
     updatePdfPreset,
   } = useCivilLab();
-  const { setTheme } = useTheme();
+  const { theme: activeTheme, setTheme, availableThemes } = useTheme();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('engineer');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
@@ -439,54 +439,6 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const themes: Array<{ id: EngineeringThemeOption; name: string; desc: string; bg: string; text: string; border: string; swatches: string[] }> = [
-    {
-      id: 'obsidian-gold',
-      name: 'Obsidian Gold',
-      desc: 'Default dark workbench with amber gold and crimson accents',
-      bg: 'bg-[#1C1917]',
-      text: 'text-[#FAF7F2]',
-      border: 'border-[#F59E0B]/60',
-      swatches: ['#121110', '#1C1917', '#F59E0B', '#E11D48'],
-    },
-    {
-      id: 'terracotta-studio',
-      name: 'Terracotta Studio',
-      desc: 'Espresso dark with burnt orange & warm gold for masonry & structural design',
-      bg: 'bg-[#211B18]',
-      text: 'text-[#FFFBEB]',
-      border: 'border-[#EA580C]/60',
-      swatches: ['#161210', '#211B18', '#EA580C', '#EAB308'],
-    },
-    {
-      id: 'editorial-parchment',
-      name: 'Editorial Parchment',
-      desc: 'Archival cream paper with crimson ruby & amber accents in serif typography',
-      bg: 'bg-[#FFFFFF]',
-      text: 'text-[#1C1917]',
-      border: 'border-[#9F1239]/60',
-      swatches: ['#F7F4EF', '#FFFFFF', '#9F1239', '#B45309'],
-    },
-    {
-      id: 'solar-amber',
-      name: 'Solar Amber',
-      desc: 'Sun-drenched daytime mode with safety vermilion & forest emerald for field use',
-      bg: 'bg-[#F8FAFC]',
-      text: 'text-[#090D16]',
-      border: 'border-[#D9460F]/60',
-      swatches: ['#FFFFFF', '#F8FAFC', '#D9460F', '#047857'],
-    },
-    {
-      id: 'emerald-botanical',
-      name: 'Emerald Botanical',
-      desc: 'Evergreen & polished brass workbench for hydraulic & geotechnical engineering',
-      bg: 'bg-[#0D241D]',
-      text: 'text-[#ECFDF5]',
-      border: 'border-[#10B981]/60',
-      swatches: ['#071712', '#0D241D', '#10B981', '#F59E0B'],
-    },
-  ];
-
   return (
     <div className="space-y-6 pb-24">
       {/* Page Header */}
@@ -751,47 +703,103 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Theme Selector Cards */}
-            <div className="space-y-2">
-              <label className="text-xs font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                <span>Visual Theme Aesthetic</span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                {themes.map((t) => {
-                  const isSelected = prefForm.theme === t.id;
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                  <span>Architectural Theme Studio (6 Curated Dark &amp; Light Surfaces)</span>
+                </label>
+                <span className="text-[11px] font-mono text-[var(--md-sys-color-primary)] font-bold">
+                  Active: {availableThemes.find((t) => t.id === activeTheme)?.name || 'Obsidian Gold'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {availableThemes.map((t) => {
+                  const isSelected = activeTheme === t.id || prefForm.theme === t.id;
                   return (
                     <div
                       key={t.id}
                       onClick={() => {
                         setPrefForm({ ...prefForm, theme: t.id });
-                        setTheme(t.id as any);
+                        setTheme(t.id);
                         updateUserProfile({ theme: t.id });
                       }}
-                      className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
+                      className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer card-tactile ${
                         isSelected
-                          ? 'border-[var(--md-sys-color-primary)] shadow-md bg-[var(--md-sys-color-primary-container)]/15'
+                          ? 'border-[var(--md-sys-color-primary)] shadow-lg bg-[var(--md-sys-color-primary-container)]/15'
                           : 'border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-xs text-[var(--md-sys-color-on-surface)] truncate">{t.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-extrabold text-xs text-[var(--md-sys-color-on-surface)] truncate">
+                            {t.name}
+                          </span>
+                          <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] uppercase">
+                            {t.mode}
+                          </span>
+                        </div>
                         {isSelected && <Check className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />}
                       </div>
-                      <div className={`h-10 rounded-xl ${t.bg} ${t.border} border p-2 mb-2 flex items-center justify-between px-2.5`}>
-                        <div className="flex -space-x-1.5 shrink-0">
-                          {t.swatches.map((color, idx) => (
-                            <span
-                              key={idx}
-                              className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-xs"
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
+
+                      {/* Live Miniature Architectural Surface Preview */}
+                      <div
+                        className="h-16 rounded-xl border p-2 mb-2.5 flex items-center justify-between px-3 relative overflow-hidden"
+                        style={{
+                          backgroundColor: t.colors.bg,
+                          borderColor: t.colors.border,
+                          backgroundImage: `
+                            radial-gradient(circle at 20% 25%, ${t.colors.ambientGlow} 0%, transparent 65%),
+                            linear-gradient(to right, ${t.colors.gridLine} 1px, transparent 1px),
+                            linear-gradient(to bottom, ${t.colors.gridLine} 1px, transparent 1px)
+                          `,
+                          backgroundSize: '100% 100%, 12px 12px, 12px 12px',
+                        }}
+                      >
+                        <div
+                          className="px-2.5 py-1.5 rounded-lg border flex items-center gap-2"
+                          style={{
+                            backgroundColor: t.colors.card,
+                            borderColor: t.colors.border,
+                            boxShadow: `0 4px 10px -2px rgba(0,0,0,0.3), inset 0 1px 0 0 ${t.colors.bevelHighlight}`,
+                          }}
+                        >
+                          <div className="flex -space-x-1.5 shrink-0">
+                            {t.colors.palette.map((color, idx) => (
+                              <span
+                                key={idx}
+                                className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-xs"
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
                         </div>
-                        <span className={`text-[10px] font-mono font-bold ${t.text}`}>Serif CAD</span>
+                        <span
+                          className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border"
+                          style={{
+                            backgroundColor: t.colors.glassSurface,
+                            borderColor: t.colors.border,
+                            color: t.colors.text,
+                          }}
+                        >
+                          {t.subtitle}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug line-clamp-2">
-                        {t.desc}
+
+                      <p className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug line-clamp-2 mb-2">
+                        {t.description}
                       </p>
+
+                      <div className="flex flex-wrap gap-1">
+                        {t.surfaceBadges.map((b, i) => (
+                          <span
+                            key={i}
+                            className="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)]"
+                          >
+                            {b}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
