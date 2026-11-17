@@ -1841,154 +1841,401 @@ export const TOOL_DOCUMENTATION: Record<string, ToolDocumentation> = {
   },
 
   // =========================================================================
-  // 20. AUTOCAD VIEWPORT SCALES (CAD-01)
+  // 20. AUTOCAD VIEWPORT SCALES, PLOTTING & SHEET SET HUB (CAD-01)
   // =========================================================================
   'cad-viewport': {
     id: 'cad-viewport',
-    title: 'AutoCAD Layout Viewport Scale & Zoom XP Factors',
-    shortLabel: 'CAD Viewport Scales',
-    discipline: 'Computer-Aided Drafting (CAD)',
-    standardUsed: 'ISO 216 / Metric Drawing Scales (1:50, 1:100, 1:200)',
+    title: 'AutoCAD, Excel & MS Project Engineering Hub — Viewport, Plotting & Sheet Set Mechanics',
+    shortLabel: 'CAD Viewport & Plotting Hub',
+    discipline: 'Computer-Aided Drafting (CAD), Computational Excel & Construction Scheduling',
+    standardUsed: 'ISO 128 / ISO 5455 / AIA CAD Layer Guidelines / BNBC 2020 Drawing Submittal Standards',
     overview:
-      'The AutoCAD Viewport Scale Calculator determines the exact "Zoom XP" command factors and annotation scales for presenting full-size 1:1 ModelSpace drawings inside PaperSpace sheet layouts (A1, A2, A3). Using incorrect viewport scales causes dimension text mismatches, inaccurate printed drawing scales, and rejected permit submittals.',
+      'The AutoCAD, Excel & MS Project Engineering Hub is an all-in-one 8-tab workstation for civil, structural, and planning engineers. Its Viewport & Plotting Mechanics module computes exact Paper Space Zoom XP factors, Model Space text/title heights, DIMSCALE/LTSCALE parameters, and physical ground coverage on ISO A0–A4 sheets across all 5 drawing units (mm, cm, m, inch, feet), alongside an interactive 7-step setup walkthrough, CTB/STB Monochrome Pen Table (ACI Colors 1–9 & 250–254), and Sheet Set Manager (SSM) automation.',
     capabilities: [
-      'Computes exact Zoom XP factor for metric drawings drawn in millimeters, centimeters, or meters',
-      'Calculates viewport scale ratio for standard architectural scales (1:10, 1:20, 1:50, 1:100, 1:200, 1:500)',
-      'Calculates physical model coverage area fitted inside standard ISO paper sheets (A1, A2, A3, A4)',
-      'Generates exact AutoCAD command sequence (e.g. Z -> Enter -> 1/100XP -> Enter)',
+      'Real-time Zoom XP factor, Model Space body/title text height, DIMSCALE, and LTSCALE calculator for mm, cm, m, inch, and feet',
+      'Physical ground-area coverage calculator for ISO A0, A1, A2, A3, and A4 sheets after titleblock margins',
+      'Interactive 7-step Drawing & Viewport Mechanics walkthrough (-DWGUNITS, PAGESETUP, MVIEW, ZOOM nXP, VPLOCK, PSLTSCALE, CANNOSCALE)',
+      'Standard Structural & Architectural Monochrome CTB Pen Weight Table (0.05 mm hatch pens to 0.60 mm titleblock borders)',
+      'Direct access to 28+ deep-dive AutoCAD commands, 5 Plugin Suites (YQArch, YQPrime, Lee Mac, RebarCAD, Civil 3D), 8 AutoLISP (.lsp) scripts, Survey CSV-to-CAD .SCR generator, Excel VBA/Matrix Studio, 25-Chapter Master Guidebook, and MS Project EVM & CPM Calculator',
     ],
     howItWorks: {
       methodology:
-        'In AutoCAD, PaperSpace layouts are measured in millimeters (1 unit = 1 mm on paper). When ModelSpace is drawn in millimeters, Zoom XP = 1/Scale (e.g. 1/100XP for 1:100). When ModelSpace is drawn in meters (1 unit = 1 m), Zoom XP = 1000/Scale (e.g. 1000/100XP = 10XP).',
+        'In AutoCAD, Paper Space layout sheets are plotted at 1:1 in millimeters (1 Paper Space unit = 1 mm on physical paper). When Model Space is drawn at 1:1 in an arbitrary unit (where 1 Model Unit = U millimeters: mm=1, cm=10, m=1000, inch=25.4, feet=304.8), the viewport camera scaling factor required to achieve a target printed ratio of 1:S is U / S (entered as [U/S]XP). Text and dimension objects placed in non-annotative Model Space must be scaled up by the reciprocal factor (S / U) so they shrink back to the exact ISO 128 target height (2.5 mm body text, 5.0 mm title text) on the printed sheet.',
       governingEquations: [
         {
-          name: 'Zoom XP Factor (Model in mm)',
-          formula: 'Zoom_XP = 1 / Drawing_Scale_Denominator',
-          description: 'Standard formula when ModelSpace units are millimeters.',
+          name: 'General Viewport Zoom XP Factor',
+          formula: 'Zoom_XP = Unit_Factor_mm / Target_Scale_Denominator',
+          description:
+            'Computes the exact Paper Space viewport magnification factor (where Unit_Factor_mm = 1 for mm, 10 for cm, 1000 for m, 25.4 for inch, 304.8 for feet).',
+          variables: [
+            'Unit_Factor_mm: Millimeters per 1 Model Space drawing unit',
+            'Target_Scale_Denominator: Scale denominator S in 1:S (e.g., 100 for 1:100)',
+          ],
         },
         {
-          name: 'Zoom XP Factor (Model in meters)',
-          formula: 'Zoom_XP = 1000 / Drawing_Scale_Denominator',
-          description: 'Formula when ModelSpace 1 unit represents 1.0 meter.',
+          name: 'Model Space Text Height & DIMSCALE',
+          formula: 'H_model = H_paper_mm × (Target_Scale_Denominator / Unit_Factor_mm)',
+          description:
+            'Determines the required Model Space text height so that plotted text measures exactly H_paper_mm (e.g., 2.5 mm) on the printed sheet.',
+          variables: [
+            'H_paper_mm: Desired plotted text height on paper in mm (typically 2.5 mm or 3.5 mm)',
+            'DIMSCALE: Overall dimension multiplier = Target_Scale_Denominator / Unit_Factor_mm',
+          ],
+        },
+        {
+          name: 'Printable Ground Coverage on Sheet',
+          formula: 'Ground_Span = Playable_Paper_mm × (Target_Scale_Denominator / Unit_Factor_mm)',
+          description:
+            'Calculates the real-world building or site length that fits inside the usable viewport window of an ISO A0–A4 sheet.',
         },
       ],
-      codeStandards: ['ISO 128 (Technical Drawings - Presentation)', 'AIA CAD Layer Guidelines'],
-      assumptions: ['PaperSpace layout sheet is set to 1:1 plotting in millimeters'],
+      codeStandards: [
+        'ISO 128 & ISO 5455 (Technical Drawings — Presentation & Scales)',
+        'AIA CAD Layer Guidelines & ISO 13567',
+        'BNBC 2020 / RAJUK / CDA Engineering Drawing Submittal Standards',
+      ],
+      assumptions: [
+        'Paper Space Page Setup Manager (PAGESETUP) plot scale is strictly set to 1:1 (1 mm = 1 unit).',
+        'PSLTSCALE and MSLTSCALE system variables are set to 1 for automatic dashed-line scaling across viewports.',
+      ],
     },
     stepByStepUsage: [
       {
         step: 1,
-        title: 'Select ModelSpace Unit',
-        instruction: 'Indicate whether you drew your building in Millimeters (mm), Meters (m), or Inches (in).',
+        title: 'Select Model Space Drawing Unit (-DWGUNITS)',
+        instruction:
+          'Choose whether your 1:1 Model Space geometry is drafted in Millimeters (mm), Centimeters (cm), Meters (m), Inches (in), or Decimal Feet (ft).',
       },
       {
         step: 2,
-        title: 'Choose Target Drawing Scale',
-        instruction: 'Pick your desired printed sheet scale (e.g. 1:50 for detailing; 1:100 for floor plans; 1:500 for master site plans).',
+        title: 'Select Target Scale Ratio & ISO Paper Size',
+        instruction:
+          'Pick a standard architectural/structural ratio (1:10 to 1:1000 or custom) and target paper sheet (A0–A4) to inspect exact ground coverage in meters and drawing units.',
       },
       {
         step: 3,
-        title: 'Execute Command in AutoCAD',
-        instruction: 'Double click inside your layout viewport and type the exact generated command: "Z", then Enter, then "1/100XP", then Enter. Lock your viewport immediately.',
+        title: 'Copy Zoom XP Command & Lock Viewport',
+        instruction:
+          'Double-click inside your Paper Space layout viewport (MSPACE), run ZOOM -> [XP Factor]XP, return to PSPACE, and immediately lock the viewport (MVIEW -> Lock -> On).',
+      },
+      {
+        step: 4,
+        title: 'Configure Monochrome CTB & Sheet Set Manager',
+        instruction:
+          'Assign ACI Colors 1–7 to graduated physical lineweights (0.15 mm to 0.50 mm) with Color 8/9 screening for grids and hatches, and use FIELD + PUBLISH for batch PDF plotting.',
       },
     ],
     proTipsAndBestPractices: [
-      'Always Lock Viewports: After scaling your viewport, immediately select the viewport border in PaperSpace, right-click, and set "Display Locked = Yes" to prevent accidental mouse-wheel zooming.',
-      'Annotative Scaling: Enable the "Annotative" property on text and dimensions so they automatically maintain a crisp 2.5mm printed height regardless of viewport scale.',
+      'Always Lock Scaled Viewports: Immediately set Display Locked = Yes after running ZOOM nXP so panning inside the viewport never destroys your calibrated drawing scale.',
+      'Consistent Linetypes Across Multiple Scales: Set LTSCALE = 1, PSLTSCALE = 1, and MSLTSCALE = 1 so centerlines and hidden lines plot with identical dash lengths in both 1:100 plans and 1:20 detail viewports.',
+      'True Color vs. Index Color in CTB: ACI Colors 1–255 obey CTB monochrome conversion, whereas True Colors (RGB) bypass CTB and print in full color—use RGB only for company logos and watermarks.',
     ],
     limitationsAndNotes: [
-      'Layout page setup printer driver must be set to 1:1 plot scale (1 mm = 1 unit).',
+      'If your titleblock is scaled in Model Space instead of 1:1 Paper Space, multiply the Paper Space plot scale accordingly or migrate the titleblock to a Paper Space Layout tab.',
     ],
   },
 
   // =========================================================================
-  // 21. AUTOCAD SHORTCUTS & LISP (CAD-02)
+  // 21. AUTOCAD COMMANDS, PLUGINS, AUTOLISP & SURVEY CSV-TO-CAD (CAD-02)
   // =========================================================================
   'cad-shortcuts': {
     id: 'cad-shortcuts',
-    title: 'AutoCAD Professional Command Aliases & Speed Drafting Hub',
-    shortLabel: 'CAD Shortcuts Hub',
-    discipline: 'Computer-Aided Drafting (CAD)',
-    standardUsed: 'AutoCAD Native Shortcut Registry / acad.pgp',
+    title: 'AutoCAD Deep-Dive Commands, Plugin Suites (YQArch/Lee Mac), AutoLISP & Survey CSV-to-CAD',
+    shortLabel: 'CAD Commands, Plugins & LISP',
+    discipline: 'Computer-Aided Drafting (CAD) & Geomatics Automation',
+    standardUsed: 'Autodesk AutoCAD 2018–2026 / AutoLISP Visual LISP / Total Station Survey Standards',
     overview:
-      'The AutoCAD Command Aliases & Speed Drafting Hub is a searchable cheat-sheet of over 60 essential keyboard shortcuts, function key toggles, and AutoLISP script snippets used by professional civil draftsmen. Memorizing keyboard aliases reduces mouse cursor travel distance by over 70%, doubling drafting speed.',
+      'A comprehensive drafting and automation suite combining 28+ essential civil/architectural AutoCAD commands with internal mechanics and step-by-step workflows, 5 industry plugin dictionaries (YQArch, YQPrime, Lee Mac LISP, RebarCAD/AutoRebar, Civil 3D), 8 production-ready AutoLISP (.lsp) scripts with one-click .LSP download, Dynamic Blocks & DATAEXTRACTION to BOQ workflows, and an interactive Survey Total Station CSV-to-CAD Script (.SCR) Generator.',
     capabilities: [
-      'Searchable registry categorized by Draw, Modify, Dimension, View, and System Toggles',
-      'Covers rapid navigation shortcuts (F3 Osnap, F8 Ortho, QSELECT, PURGE, OVERKILL)',
-      'Includes handy AutoLISP code snippets for total rebar length summing and batch text numbering',
+      '28+ Essential AutoCAD Commands with expandable internal mechanics, step-by-step execution sequences, related system variables (OSNAPZ, PEDITACCEPT, HPMAXLINES), and engineering pro tips',
+      '5 Plugin & Add-on Suites: YQArch (SD, WW, WD, ZZ, MQT, XW,AA), YQPrime (BBEAM, BCOL, T2E), Lee Mac (NUMINC, TLEN, BCOUNT, ALIGNTEXT, MACATT), RebarCAD (BAR, BARMARK, BBS, LAP), and Civil 3D (COGO, EG SURFACE, ALIGNMENT, CORRIDOR)',
+      '8 Downloadable AutoLISP (.lsp) Scripts: TLEN, AREATABLE, AUTOGRID, EXPORTXYZ, ZZERO, BEAMTAG, SLOPEARROW, and COUNTBLOCKS',
+      'Interactive Survey Total Station CSV-to-CAD (.SCR) Generator supporting PENZD and PNEZD formats, automated layer creation, 3D point nodes, elevation/code text annotations, and 3D boundary polylines',
     ],
     howItWorks: {
       methodology:
-        'Aliases mirror native AutoCAD acad.pgp definitions. Users can filter by keyword or category to instantly locate command triggers.',
-      governingEquations: [],
-      codeStandards: ['Autodesk AutoCAD Command Reference'],
-      assumptions: ['Standard QWERTY keyboard layout running AutoCAD 2018 through 2026'],
+        'AutoCAD commands, AutoLISP routines, and .SCR script files interact directly with the DWG entity database (DXF group codes) and system variable registry. AutoLISP functions use (ssget) selection filters and (vlax-curve-*) geometry evaluators to batch-calculate lengths, areas, and coordinates, while .SCR scripts stream sequential command-line instructions with OSMODE = 0 so running Osnaps never corrupt imported Total Station survey coordinates.',
+      governingEquations: [
+        {
+          name: 'Survey Coordinate Mapping to AutoCAD WCS',
+          formula: 'AutoCAD (X, Y, Z) = (Easting E, Northing N, Reduced_Level RL)',
+          description:
+            'Total Station PNEZD files list Northing (Y) before Easting (X). When plotting in AutoCAD WCS, Easting must map to X and Northing must map to Y.',
+        },
+        {
+          name: '3D Slope Inflation Error (OSNAPZ = 0)',
+          formula: 'L_3D = sqrt((X2 - X1)^2 + (Y2 - Y1)^2 + (Z2 - Z1)^2)',
+          description:
+            'Snapping between points with non-zero Z elevations inflates 2D plan dimensions unless OSNAPZ = 1 or ZZERO.lsp / FLATTEN is executed.',
+        },
+      ],
+      codeStandards: [
+        'Autodesk AutoCAD Command & System Variable Reference',
+        'Visual LISP / ActiveX COM Interface (vl-load-com)',
+        'Survey Geodetic & UTM / BTM Coordinate Conventions',
+      ],
+      assumptions: [
+        'AutoLISP routines require full AutoCAD (2015–2026) or AutoCAD LT 2024+ with LISP support enabled.',
+        'Survey CSV inputs use comma, space, or tab delimiters with numeric Easting, Northing, and Elevation columns.',
+      ],
     },
     stepByStepUsage: [
       {
         step: 1,
-        title: 'Search by Action',
-        instruction: 'Type what you want to do (e.g. "trim", "fillet", "rotate", "align", "purge") in the search box.',
+        title: 'Explore Command Mechanics & Plugin Suites',
+        instruction:
+          'Filter the 28+ AutoCAD commands or switch between YQArch, YQPrime, Lee Mac, RebarCAD, and Civil 3D to view step-by-step keyboard sequences.',
       },
       {
         step: 2,
-        title: 'Use One-Hand Left-Keyboard Shortcuts',
-        instruction: 'Notice high-speed aliases: C (Circle), CO (Copy), EX (Extend), TR (Trim), MI (Mirror), MA (Match Properties).',
+        title: 'Download & Load AutoLISP (.lsp) Routines',
+        instruction:
+          'Click "Download .LSP" on any of the 8 routines (e.g., TLEN.lsp or AREATABLE.lsp), type APPLOAD in AutoCAD, load the file, or add it to your Startup Suite.',
+      },
+      {
+        step: 3,
+        title: 'Generate Survey Total Station .SCR Script',
+        instruction:
+          'Paste your field Total Station CSV data in the Survey CSV-to-CAD tab, choose PENZD or PNEZD column order, and click "Download .SCR File" to run via SCRIPT in AutoCAD.',
       },
     ],
     proTipsAndBestPractices: [
-      'OVERKILL: Always run the OVERKILL command on engineering drawings before exporting or calculating takeoffs to delete duplicate overlapping rebar lines.',
-      'PURGE & AUDIT: Run PURGE (all nested items) and AUDIT weekly to eliminate unused layers and reduce DWG file size by up to 80%.',
+      'Always Set OSNAPZ = 1 on Topographic Drawings: Prevents accidental 3D Z-coordinate snapping when measuring 2D horizontal building offsets over survey contours.',
+      'Pre-Clean Before Quantity Takeoffs: Run OVERKILL (tolerance 1 mm) followed by -PURGE -> Regapps and AUDIT before running TLEN or DATAEXTRACTION so overlapping lines never double-count BOQ quantities.',
+      'Disable OSMODE in Scripts: The generated Survey .SCR script automatically sets OSMODE 0 before plotting points and restores OSMODE 4135 afterward so nearby endpoints never hijack survey coordinates.',
     ],
-    limitationsAndNotes: ['Custom corporate acad.pgp files may override default letter aliases.'],
+    limitationsAndNotes: [
+      'Ensure YQArch is installed in a root folder path without spaces (e.g., C:\\YQArch) and added to AutoCAD Options -> Files -> Support File Search Path.',
+    ],
   },
 
   // =========================================================================
-  // 22. STRUCTURAL EXCEL FORMULAS (CAD-03)
+  // 22. STRUCTURAL EXCEL FORMULAS, VBA MACROS & MATRIX STUDIO (CAD-03)
   // =========================================================================
   'cad-excel': {
     id: 'cad-excel',
-    title: 'Structural Engineering Excel & Spreadsheet Formulas',
-    shortLabel: 'Excel Formula Hub',
-    discipline: 'Computational Engineering',
-    standardUsed: 'ISO Structural Calc Sheet Standards / Excel Functions',
+    title: 'Civil & Structural Excel Formula Library, VBA UDF Macros, Power Query & Matrix Solver',
+    shortLabel: 'Excel Formulas, VBA & Matrix Hub',
+    discipline: 'Computational Civil Engineering & Quantity Surveying',
+    standardUsed: 'IS 1200 /CPWD MB & RA Bill Standards / BS 8666 Bar Bending / Microsoft Excel 365',
     overview:
-      'The Structural Engineering Excel Hub provides copy-pasteable formulas for 2D linear stress interpolation, bar bending mass matrices, shear/moment envelope generation, and dynamic BOQ aggregation. Excel remains the most ubiquitous tool in civil consulting offices; using robust error-checked formulas prevents circular references and calculation mistakes.',
+      'The Excel Engineering Studio equips structural designers, quantity surveyors, and billing engineers with 14+ error-proof spreadsheet formulas, 4 downloadable VBA Macro / User-Defined Function (.bas) modules, and step-by-step guides for solving 3×3 or 6×6 structural stiffness matrices ([K]{u}={F}), automating multi-sheet Power Query BOQ consolidation, and running Goal Seek / Evolutionary Solver optimization.',
     capabilities: [
-      'Linear & Bilinear Interpolation formulas for soil bearing factors and wind velocity pressures',
-      'Dynamic rebar weight lookup matrix formulas using INDEX/MATCH and XLOOKUP',
-      'Formulas for multi-tier conditional tax, VAT, and contingency calculation',
-      'Text extraction formulas for parsing civil dimensions (e.g. 10x20) into length and width',
+      '14+ Civil & Structural Excel Formulas: 1D/2D Bilinear Code Table Interpolation, BS 8666 Bar Bending Schedule (BBS) Deducts, RA Bill Mobilization & Retention Recovery, Dynamic Array Rebar Weight Summary, and Concrete Mix Absolute Volume',
+      '4 Copy-Ready & Downloadable VBA (.bas) Modules: =SpellBDT() Taka/Crore/Lakh Currency Speller, =FtInToFeet() & =FtInToMeters() Architectural String Parser, Batch BOQ PDF Exporter, and =RebarUnitWeight() & =LinearInterp() UDFs',
+      'Step-by-step Stiffness Matrix Solver guide using MINVERSE and MMULT for frame/truss nodal displacements',
+      'Power Query (Get & Transform) multi-sheet BOQ merger and What-If Goal Seek / Solver Add-in footing optimization guide',
     ],
     howItWorks: {
       methodology:
-        'Formulas use standard Microsoft Excel / Google Sheets syntax incorporating IFERROR, INDEX, MATCH, and SUMPRODUCT to handle engineering calculation arrays.',
+        'Engineering formulas leverage dynamic lookup arrays (INDEX/MATCH, XLOOKUP, SUMPRODUCT, LET) to eliminate hard-coded constants and circular references. Structural matrix equations [K]{u} = {F} are solved directly in Excel cells using =MMULT(MINVERSE(K_range), F_range), while custom VBA UDFs parse non-standard architectural strings (such as 12\'-6.5") into IEEE 754 floating-point numbers.',
       governingEquations: [
         {
-          name: 'Linear Interpolation Formula in Excel',
-          formula: '=y1 + (x_target - x1) * (y2 - y1) / (x2 - x1)',
-          description: 'Standard formula for interpolating intermediate code table coefficients.',
+          name: '1D Linear Interpolation for Code Coefficients',
+          formula: 'y = y1 + (x - x1) × (y2 - y1) / (x2 - x1)',
+          description:
+            'Interpolates intermediate BNBC/ACI/IS code table values using automatic bracket detection via MATCH(x_target, x_range, 1).',
+        },
+        {
+          name: 'BS 8666 Bar Bending Cut Length & Unit Mass',
+          formula: 'L_cut = L_total + N_hooks × (10d) - N_90deg × (2d) - N_45deg × (1d);  w = d^2 / 162.2 (kg/m)',
+          description:
+            'Accounts for plastic neutral-axis elongation at 90° and 45° bends and standard seismic hook extensions.',
+        },
+        {
+          name: 'Structural Stiffness Matrix Inversion',
+          formula: '{u} = [K]^(-1) {F}  =>  =MMULT(MINVERSE(K_matrix), F_vector)',
+          description:
+            'Solves simultaneous nodal equilibrium equations for unknown displacements {u} given non-singular stiffness matrix [K] (MDETERM(K) ≠ 0).',
         },
       ],
-      codeStandards: ['Microsoft Excel 2016-365 / Google Sheets'],
-      assumptions: ['Standard comma-separated argument notation in English Excel installations'],
+      codeStandards: [
+        'BS 8666 / IS 2502 (Scheduling, Dimensioning & Bending of Reinforcement)',
+        'IS 1200 / PWD / CPWD Measurement Book (MB) & Running Account (RA) Bill Formats',
+        'Microsoft Excel 2016–365 Dynamic Array & VBA 7.1 Engine',
+      ],
+      assumptions: [
+        'Workbooks containing VBA UDF modules must be saved as Excel Macro-Enabled Workbook (.xlsm).',
+        'Stiffness matrix [K] must have proper boundary conditions applied so MDETERM(K) is non-zero.',
+      ],
     },
     stepByStepUsage: [
       {
         step: 1,
-        title: 'Select Formula Type',
-        instruction: 'Choose calculation need: Interpolation, Rebar Matrix, or BOQ Summation.',
+        title: 'Copy Engineering Worksheet Formulas',
+        instruction:
+          'Browse or search the 14+ civil/structural formulas, inspect the input/output example, and click "Copy Formula" to paste directly into your calculation sheet.',
       },
       {
         step: 2,
-        title: 'Copy & Paste into Cell',
-        instruction: 'Copy formula and replace cell coordinate references (e.g. A1, B1) with your worksheet ranges.',
+        title: 'Install VBA UDF Modules (.bas)',
+        instruction:
+          'Switch to the "VBA Macros & UDFs" sub-tab, copy or download the .bas module, press ALT + F11 in Excel -> Insert -> Module, paste the code, and save as .xlsm.',
+      },
+      {
+        step: 3,
+        title: 'Run Matrix Solver, Power Query, or Goal Seek',
+        instruction:
+          'Open the "Matrix Solver, Power Query & Solver" sub-tab to follow the 3-step workflows for MMULT/MINVERSE, multi-sheet BOQ consolidation, and Goal Seek design automation.',
       },
     ],
     proTipsAndBestPractices: [
-      'Always wrap engineering formulas in =IFERROR(formula, "-") to prevent ugly #N/A and #DIV/0! errors from breaking printout summaries.',
+      'Use SUBTOTAL(9, range) Instead of SUM in BOQs: SUBTOTAL(9, ...) automatically ignores other SUBTOTAL rows inside the same column, eliminating the #1 cause of double-counted Grand Totals in multi-page tenders.',
+      'Lock Formula Cells Before Issuing Tender Sheets: Unlock only user-input cells (Ctrl+1 -> Protection -> Unchecked Locked) and protect the worksheet so bidders cannot accidentally overwrite rate formulas.',
+      'Reconcile Theoretical vs. Actual Rebar Wastage: Use the Material Reconciliation variance formula to flag rolling margin anomalies (> ±2.5%) and excessive site cutting scrap (> 3–5%).',
     ],
-    limitationsAndNotes: ['Formulas assume standard decimal point notation.'],
+    limitationsAndNotes: [
+      'In Excel 2019 and earlier, array formulas such as MMULT and MINVERSE must be committed with Ctrl + Shift + Enter (CSE).',
+    ],
+  },
+
+  // =========================================================================
+  // 22B. 25-CHAPTER MASTER SOFTWARE GUIDEBOOK (CAD-04)
+  // =========================================================================
+  'cad-guidebook': {
+    id: 'cad-guidebook',
+    title: '25-Chapter Master Engineering Guidebook: AutoCAD, Microsoft Excel & MS Project',
+    shortLabel: '25-Chapter Master Guidebook',
+    discipline: 'Civil, Structural & Construction Management Software Mastery',
+    standardUsed: 'AutoCAD 2026 / Microsoft Excel 365 / Microsoft Project Professional (PMI PMBOK / CPM)',
+    overview:
+      'The 25-Chapter Master Software Guidebook is an encyclopedia of operational mechanics, step-by-step usage guidelines, command/formula syntax, and field pro tips across the three core software pillars of civil engineering: AutoCAD (Chapters 1–9), Microsoft Excel (Chapters 1–8), and Microsoft Project (Chapters 1–8). Every sub-topic features expandable technical deep-dives and instant global search.',
+    capabilities: [
+      'AutoCAD (9 Chapters): Drawing Setup & Coordinate Systems, 2D Drafting & Geometry, Modification & Editing, Precision Snaps & Selection, Layer & Property Management, Blocks/Attributes/Xrefs, Annotation & Dimensioning, Layouts/Viewports/Plotting, and Data Extraction/Cleanup/Automation',
+      'Microsoft Excel (8 Chapters): Civil & Construction Sheets (BOQ, MB, RA Bill, BBS, Rate Analysis, Material Reconciliation, Mix Design, Earthwork), Lookup/Reference, Logical/Conditional, Math/Matrix, Text/Date/Dynamic Arrays, Data Validation/Solver, Pivot Tables/KPI Dashboards, and Power Query/VBA/Page Setup',
+      'Microsoft Project (8 Chapters): Project Setup & Calendars, WBS & Tasks, Dependencies & Scheduling Logic (FS/SS/FF/SF, Critical Path, Total/Free Slack), Resource Management, Resource Assignment & Leveling, Cost Management & Cash Flow, Baselines/Tracking/EVM, and Views/Reports/S-Curves',
+      'Global instant search and pillar/chapter filters across all 25 chapters and 90+ engineering topics',
+    ],
+    howItWorks: {
+      methodology:
+        'Each chapter breaks down software features into four structured layers: (1) Command/Formula Syntax badges, (2) Executive Summary, (3) Internal Software Mechanics explaining how the engine processes geometry, arrays, or CPM networks under the hood, and (4) Step-by-Step Usage Guidelines paired with a Senior Engineer Pro Tip.',
+      governingEquations: [
+        {
+          name: 'AutoCAD Linetype & Annotative Synchronization',
+          formula: 'LTSCALE = 1, PSLTSCALE = 1, MSLTSCALE = 1, CANNOSCALE = 1:N',
+          description:
+            'Ensures dashed lines, hatches, dimensions, and multileaders scale identically across Model Space and multiple Paper Space viewports.',
+        },
+        {
+          name: 'Earthwork Average End-Area & Prismoidal Volume (Excel Ch. 1)',
+          formula: 'V_avg = ((A1 + A2) / 2) × L;   V_prism = (L / 6) × (A1 + 4×Am + A2)',
+          description:
+            'Standard highway and canal embankment cut/fill volume equations implemented in Excel earthwork sheets.',
+        },
+      ],
+      codeStandards: [
+        'ISO 128 / AIA CAD Layer Standards',
+        'IS 1200 / BS 8666 / CPWD Engineering Estimation & Billing Standards',
+        'PMI PMBOK Guide & AACE International CPM Scheduling Practices',
+      ],
+      assumptions: [
+        'Commands and keyboard shortcuts apply to standard Windows installations of AutoCAD, Excel, and MS Project.',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Filter by Software Pillar or Chapter',
+        instruction:
+          'Select "AutoCAD (9 Ch.)", "Microsoft Excel (8 Ch.)", or "MS Project (8 Ch.)" at the top of the Master Guidebook, or pick a specific chapter from the dropdown.',
+      },
+      {
+        step: 2,
+        title: 'Search Any Command, Function, or Topic',
+        instruction:
+          'Type any command or keyword (e.g., "-DWGUNITS", "XCLIP", "XLOOKUP", "SUMPRODUCT", "Bar Bending", "Earned Value", "S-Curve") into the global search bar.',
+      },
+      {
+        step: 3,
+        title: 'Expand Topic Cards for Step-by-Step Guidelines',
+        instruction:
+          'Click any topic header (or use "Expand All Topics") to read the internal mechanics, numbered step-by-step instructions, and field pro tip.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Standardize Templates Across All 3 Pillars: Save a calibrated AutoCAD .DWT template, an Excel .XLTM BOQ/BBS template, and an MS Project Enterprise Calendar template so new projects start with zero setup friction.',
+    ],
+    limitationsAndNotes: [
+      'Dynamic array functions (LET, LAMBDA, FILTER, SORT, SORTBY, UNIQUE, SEQUENCE) require Microsoft Excel 2021 or Excel 365.',
+    ],
+  },
+
+  // =========================================================================
+  // 22C. MICROSOFT PROJECT EVM & CPM SCHEDULING STUDIO (CAD-05)
+  // =========================================================================
+  'cad-msproject': {
+    id: 'cad-msproject',
+    title: 'Microsoft Project (MS Project) Earned Value Management (EVM) & Critical Path (CPM) Studio',
+    shortLabel: 'MS Project EVM & CPM Studio',
+    discipline: 'Construction Project Management, Planning & Delay Analysis',
+    standardUsed: 'PMI PMBOK Guide / ANSI/EIA-748 Earned Value / CPM Network Logic',
+    overview:
+      'The MS Project EVM & CPM Studio combines an interactive Earned Value Management (EVM) cost/schedule forecasting calculator and a Critical Path Method (CPM) Forward/Backward Pass node analyzer with all 8 comprehensive chapters of the Microsoft Project Construction Scheduling Guidebook.',
+    capabilities: [
+      'Interactive Earned Value (EVM) Calculator: Computes PV (BCWS), EV (BCWP), AC (ACWP), SV, CV, SPI, CPI, 3 EAC Forecasting Models (Standard CPI, Typical Remaining, Composite SPI×CPI), ETC, VAC, and TCPI',
+      'Interactive CPM Task Node & Float Analyzer: Computes Early Finish (EF), Late Start (LS), Total Slack (TS), Free Slack (FS), and Critical Path status from Early Start (ES), Duration (D), Late Finish (LF), and Successor ES',
+      'Full 8-Chapter MS Project Guidebook covering Calendars, WBS, FS/SS/FF/SF Dependencies, Work/Material/Cost Resources, Resource Leveling, Cash Flow S-Curves, Baseline 0–10 Tracking, and Executive Reporting',
+    ],
+    howItWorks: {
+      methodology:
+        'Earned Value Management integrates project scope, baseline budget (BAC), and calendar schedule around the Status Date to quantify schedule and cost performance objectively. Simultaneously, the Critical Path Method (CPM) executes a Forward Pass to establish the earliest possible task dates (ES, EF) and a Backward Pass from the project completion milestone to establish the latest permissible dates (LS, LF) without delaying handover.',
+      governingEquations: [
+        {
+          name: 'Schedule & Cost Variance and Performance Indices',
+          formula: 'SV = EV - PV;   CV = EV - AC;   SPI = EV / PV;   CPI = EV / AC',
+          description:
+            'SPI < 1.0 indicates the project is behind schedule; CPI < 1.0 indicates the project is over budget relative to physical work completed.',
+        },
+        {
+          name: 'Estimate at Completion (EAC) & To-Complete Performance Index (TCPI)',
+          formula: 'EAC_cpi = BAC / CPI;   EAC_comp = AC + (BAC - EV) / (CPI × SPI);   TCPI = (BAC - EV) / (BAC - AC)',
+          description:
+            'Forecasts final total project cost at completion and the required cost efficiency (TCPI) on remaining work to stay within the original BAC.',
+        },
+        {
+          name: 'CPM Forward Pass, Backward Pass, Total Slack & Free Slack',
+          formula: 'EF = ES + D;   LS = LF - D;   Total_Slack = LF - EF = LS - ES;   Free_Slack = ES_succ - EF',
+          description:
+            'Tasks with Total Slack <= 0 lie on the Critical Path and directly govern the project completion date.',
+        },
+      ],
+      codeStandards: [
+        'PMI PMBOK Guide (Project Management Body of Knowledge)',
+        'ANSI/EIA-748 Earned Value Management Systems Standard',
+        'AACE International Recommended Practice 10S-90 & 29R-03 (Forensic Schedule Analysis)',
+      ],
+      assumptions: [
+        'Baseline 0 (Save Baseline) has been locked with assigned resource/cost rates prior to entering actual progress.',
+        'Every non-milestone task in the CPM network has at least one Predecessor and one Successor (closed network logic).',
+      ],
+    },
+    stepByStepUsage: [
+      {
+        step: 1,
+        title: 'Enter Budget at Completion (BAC) & Status Date Progress',
+        instruction:
+          'Input your total project BAC and either Planned % vs. Physical Earned % or direct PV (BCWS) and EV (BCWP) amounts along with Actual Cost (AC/ACWP).',
+      },
+      {
+        step: 2,
+        title: 'Evaluate SPI, CPI, EAC Forecasts & TCPI',
+        instruction:
+          'Inspect the live Schedule/Cost Health badges, compare the 3 EAC forecasting models, and check whether TCPI exceeds 1.10 (indicating an unrecoverable budget target without scope/rate revision).',
+      },
+      {
+        step: 3,
+        title: 'Analyze CPM Task Float & Browse the 8 MS Project Chapters',
+        instruction:
+          'Enter ES, Duration, LF, and Successor ES in the CPM Node Analyzer to verify Total Slack vs. Free Slack, and expand the 8 MS Project chapters below for step-by-step scheduling workflows.',
+      },
+    ],
+    proTipsAndBestPractices: [
+      'Always Track Physical % Complete for EVM: Standard % Complete measures elapsed duration, which inflates EV if a contractor spends days with low output; Physical % Complete ties EV strictly to measured site quantities (m³ poured, tons erected).',
+      'Never Leave Open-Ended Tasks: Every task between Project Start and Handover Milestone must have both a Predecessor and a Successor—otherwise MS Project pushes its Late Finish to the end of the project, creating fake slack and hiding true critical paths.',
+    ],
+    limitationsAndNotes: [
+      'Negative Total Slack occurs when a hard constraint (Must Finish On / Deadline) is earlier than the Forward Pass Early Finish.',
+    ],
   },
 
   // =========================================================================

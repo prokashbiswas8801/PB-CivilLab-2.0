@@ -1,13 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Laptop } from 'lucide-react';
-import { CadExcelHub } from '../calculators/hub/CadExcelHub';
+import { CadExcelHub, CadHubTabId } from '../calculators/hub/CadExcelHub';
 import { AboutThisToolButton } from '../ui';
 
 interface CadUtilitiesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'viewport' | 'shortcuts' | 'excel';
+  initialTab?: CadHubTabId;
 }
 
 export const CadUtilitiesModal: React.FC<CadUtilitiesModalProps> = ({
@@ -42,10 +42,10 @@ export const CadUtilitiesModal: React.FC<CadUtilitiesModalProps> = ({
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  Interactive AutoCAD &amp; Excel Engineering Hub
+                  AutoCAD, Excel &amp; MS Project Engineering Hub
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Scale &amp; Viewport Zoom Calculator, Shortcuts, AutoLISP Scripts &amp; Engineering Formula Library
+                  25-Chapter Guidebook, Viewport &amp; CTB Math, YQArch/Lee Mac Plugins, AutoLISP, Survey CSV-to-CAD, Excel VBA &amp; MS Project EVM/CPM
                 </p>
               </div>
             </div>
@@ -53,10 +53,14 @@ export const CadUtilitiesModal: React.FC<CadUtilitiesModalProps> = ({
             <div className="flex items-center gap-2">
               <AboutThisToolButton
                 toolId={
-                  initialTab === 'shortcuts'
+                  initialTab === 'shortcuts' || initialTab === 'plugins' || initialTab === 'lisp' || initialTab === 'survey'
                     ? 'cad-shortcuts'
                     : initialTab === 'excel'
                     ? 'cad-excel'
+                    : initialTab === 'guidebook'
+                    ? 'cad-guidebook'
+                    : initialTab === 'msproject'
+                    ? 'cad-msproject'
                     : 'cad-viewport'
                 }
                 targetId="cad-hub-doc"

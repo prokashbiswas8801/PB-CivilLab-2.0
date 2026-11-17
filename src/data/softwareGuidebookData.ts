@@ -122,14 +122,15 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
       {
         id: 'acad-2-3',
         title: 'Fills, Regions & Masks: HATCH, GRADIENT, BOUNDARY, REGION, WIPEOUT',
-        commandsOrFormulas: ['HATCH (H)', 'HATCHEDIT (HE)', 'HPGAPTOL', 'BOUNDARY (BO)', 'REGION (REG)', 'MASSPROP', 'WIPEOUT'],
-        summary: 'Apply concrete/brick section patterns, extract room polylines, compute section moment of inertia (Ixx/Iyy), and mask busy backgrounds.',
+        commandsOrFormulas: ['HATCH (H)', 'GRADIENT (GD)', 'HATCHEDIT (HE)', 'HPGAPTOL', 'BOUNDARY (BO)', 'REGION (REG)', 'MASSPROP', 'WIPEOUT'],
+        summary: 'Apply concrete/brick section patterns, presentation gradients, room polylines, section moment of inertia (Ixx/Iyy), and background masks.',
         mechanics:
-          'Associative `HATCH` links its boundary loop to surrounding walls so stretching a wall automatically updates the hatch area. `REGION` converts closed 2D loops into solid planar faces capable of Boolean operations (`UNION`, `SUBTRACT`, `INTERSECT`) and engineering structural property extraction (`MASSPROP`).',
+          'Associative `HATCH` and `GRADIENT` link their boundary loop to surrounding walls so stretching a wall automatically updates the fill area. `REGION` converts closed 2D loops into solid planar faces capable of Boolean operations (`UNION`, `SUBTRACT`, `INTERSECT`) and engineering structural property extraction (`MASSPROP`).',
         guidelines: [
           'Always place Hatches on a dedicated layer (`A-HATC` or `S-CONC-HATC` set to Color 8 or 252) so one click on `LAYOFF` hides all hatches during heavy drafting.',
           'Check `Create Separate Hatches` in the Hatch Ribbon when hatching 10 columns or rooms at once—so deleting one room hatch later doesn’t delete all 10!',
-          'Use `Set Origin` inside Hatch to anchor floor tile grids (`600×600`) to a specific doorway corner.',
+          'Use `GRADIENT` (`GD`) with smooth 1-color or 2-color transitions for architectural elevation sky/glass rendering, water bodies, and landscape presentation plans.',
+          'Use `BOUNDARY` (`BO`) -> `Pick Points` inside any enclosed room to generate a single closed Polyline for instant area and perimeter measurement.',
           'To compute exact Centroid, Area, and Moment of Inertia ($I_{xx}, I_{yy}$) of any irregular composite shear wall or girder section: convert the outline to a `REGION` (`REG`), move its centroid to `0,0`, and type `MASSPROP`!',
           'Set `WIPEOUTFRAME = 2` so wipeout borders are selectable on screen but never plot on PDF.'
         ],
@@ -219,19 +220,20 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
     topics: [
       {
         id: 'acad-4-1',
-        title: 'OSNAP Modes (F3) & Temporary Override Snaps',
-        commandsOrFormulas: ['OSNAP (OS / F3)', 'M2P (Mid Between 2 Points)', 'TK (Temporary Tracking)', 'FROM', 'OSNAPZ'],
-        summary: 'Configure the optimal everyday running Object Snaps and invoke single-shot overrides (`Shift + Right-Click`) for crowded joints.',
+        title: 'OSNAP Modes (F3): Endpoint, Midpoint, Center, Node, Quadrant, Intersection, Extension, Perpendicular, Tangent, Nearest',
+        commandsOrFormulas: ['OSNAP (OS / F3)', 'END / MID / CEN / NOD / QUA', 'INT / EXT / PER / TAN / NEA', 'M2P (Mid Between 2 Points)', 'TK (Temporary Tracking)'],
+        summary: 'Configure the 10 precision Object Snaps and invoke single-shot overrides (`Shift + Right-Click`) for crowded structural and survey joints.',
         mechanics:
-          'Turning on every single Object Snap simultaneously (`Nearest` + `Perpendicular` + `Endpoint` + `Center`) causes cursor "snap fighting" where AutoCAD grabs `Nearest` instead of the true `Endpoint`. Keep only 5–6 core snaps active in `OSNAP` (`F3`) and invoke special snaps via `Shift + Right-Click`.',
+          'Turning on every single Object Snap simultaneously (`Nearest` + `Perpendicular` + `Endpoint` + `Center`) causes cursor "snap fighting" where AutoCAD grabs `Nearest` instead of the true `Endpoint`. Keep 5–6 core snaps active in `OSNAP` (`F3`) and invoke special snaps on demand.',
         guidelines: [
-          'Recommended Daily Running Osnaps (`OS`): `Endpoint`, `Midpoint`, `Center`, `Geometric Center`, `Intersection`, `Extension`, and `Perpendicular`.',
-          'Keep `Nearest` (`NEA`) and `Tangent` (`TAN`) OFF in running Osnaps—invoke them on demand via `Shift + Right-Click` (or typing `NEA` / `TAN` mid-command).',
-          'Use `Geometric Center` (`GCE`) to snap instantly to the centroid of any closed rectangular column or irregular polygon room.',
-          'Type `FROM` mid-command -> Click a column corner -> Type `@500,300` to start a line at a precise offset from that corner.',
-          'Type `M2P` mid-command and click two opposite walls to snap to the exact centerline between them.'
+          '`Endpoint (END)`, `Midpoint (MID)`, `Center (CEN)` & `Intersection (INT)`: Keep these 4 enabled at all times for general structural and architectural geometry.',
+          '`Node (NOD)`: Snaps specifically to AutoCAD `POINT` entities (Survey Total Station points) and dimension definition points—enable `Node` whenever connecting or labeling imported survey points!',
+          '`Quadrant (QUA)`: Snaps to the $0^\\circ, 90^\\circ, 180^\\circ, 270^\\circ$ cardinal rim points of a `CIRCLE`, `ARC`, or `ELLIPSE` (ideal for dimensioning outer pile/column diameters or circular water tanks).',
+          '`Extension (EXT)` & `Perpendicular (PER)`: Projects a temporary dashed path beyond the end of a line/arc (`EXT`) or locks a $90^\\circ$ normal drop onto a wall/beam (`PER`).',
+          '`Tangent (TAN)` & `Nearest (NEA)`: Keep `NEA` and `TAN` OFF in running Osnaps (`F3`) so they never hijack Endpoint snaps—invoke them mid-command via `Shift + Right-Click`!',
+          '`M2P` (Mid Between 2 Points): Type `M2P` during any command and click two opposite room corners to snap dead-center in the room.'
         ],
-        proTip: 'Hold `TAB` while hovering over a dense beam-rebar intersection to cycle visually through every available Osnap point (`Endpoint`, `Midpoint`, `Center`, `Perpendicular`) before clicking!'
+        proTip: 'Hold `TAB` while hovering over a dense beam-rebar intersection to cycle visually through every available Osnap point (`Endpoint`, `Midpoint`, `Center`, `Perpendicular`, `Quadrant`) before clicking!'
       },
       {
         id: 'acad-4-2',
@@ -361,13 +363,13 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
       {
         id: 'acad-6-3',
         title: 'Block Attributes: ATTDEF, ATTEDIT, EATTEDIT, ATTSYNC, BURST',
-        commandsOrFormulas: ['ATTDEF (ATT)', 'EATTEDIT', 'BATTMAN', 'ATTSYNC', 'BURST', 'ATTREQ', 'ATTDIA'],
+        commandsOrFormulas: ['ATTDEF (ATT)', 'ATTEDIT (ATE)', 'EATTEDIT', 'BATTMAN', 'ATTSYNC', 'BURST', 'ATTREQ', 'ATTDIA'],
         summary: 'Embed structured database tags (Column ID, Pile RL, Door Mark, Drawing Revision) inside blocks for automated schedules.',
         mechanics:
           '`ATTDEF` creates a variable text field inside a block definition. Every inserted block instance stores its own unique string values while sharing the same block geometry.',
         guidelines: [
           'Type `ATTDEF` inside `BEDIT` to define Tag (`DOOR_NO` — no spaces!), Prompt (`Enter Door Mark:`), and Default (`D-01`), and check `Lock position = Yes`.',
-          'Double-click any attributed block to open the Enhanced Attribute Editor (`EATTEDIT`), or hold `CTRL` and double-click an attribute text to edit it inline on screen!',
+          'Double-click any attributed block to open the Enhanced Attribute Editor (`EATTEDIT`), or type `-ATTEDIT` (`ATE`) to batch-edit attribute values, heights, or angles across multiple blocks at once via command line!',
           'Run `BATTMAN` (Block Attribute Manager) to change the prompt order of attributes in a titleblock or remove obsolete tags.',
           'Run `ATTSYNC` -> `Select` after editing any block in `BEDIT` to push attribute formatting/position updates to all existing block instances.',
           'Always use `BURST` (never `EXPLODE`) when converting attributed blocks to plain text so typed values (`C-12`) do not revert to raw tag names (`COL_TAG`).'
@@ -385,8 +387,8 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
           'Always attach consultant backgrounds using Reference Type = `Overlay` and Path Type = `Relative Path` so two disciplines referencing each other never trigger circular Xref loops.',
           'Place every Xref at Insertion Point `0,0,0`, Scale `1,1,1`, Rotation `0` on a dedicated `Z-XREF` layer so all disciplines register to the exact same origin.',
           'Ensure `VISRETAIN = 1` so color, lineweight, and freeze changes you make to Xref layers (`e.g., turning Architectural walls grey Index 9`) are saved in your host drawing when the Xref reloads.',
-          'Use `XCLIP` (`XC`) to crop an Xref to a specific building wing or blow-up area.',
-          'When submitting final CAD files to a client or contractor, ALWAYS run `ETRANSMIT`—it packages your main DWG, all Xrefs, `.CTB` plot styles, custom `.SHX`/`.TTF` fonts, and raster logos into a single `.ZIP` archive (or binds Xrefs automatically) so nothing shows up as "Unresolved Reference" on the client’s computer!'
+          'Use `XCLIP` (`XC`) to crop an Xref to a specific building wing or blow-up area, and use `XBIND` (`XB`) to permanently import a specific Block, Layer, or DimStyle out of an attached Xref into your host DWG without binding the entire Xref!',
+          'When submitting final CAD files to a client or contractor, ALWAYS run `ETRANSMIT`—it packages your main DWG, all Xrefs, `.CTB` plot styles, custom `.SHX`/`.TTF` fonts, and raster logos into a single `.ZIP` archive.'
         ],
         proTip: 'Need to copy just one beam, grid line, or room label out of a locked Xref into your active drawing without opening the Xref? Type `NCOPY` (Nested Copy) and click the sub-entity directly!'
       }
@@ -418,32 +420,31 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
       },
       {
         id: 'acad-7-2',
-        title: 'Precision Dimensioning: DIMLINEAR, DIMALIGNED, DIMCONTINUE, DIMBASELINE, DIMORDINATE, DIMSPACE, DIMBREAK',
-        commandsOrFormulas: ['DIM', 'DIMLINEAR (DLI)', 'DIMALIGNED (DAL)', 'DIMANGULAR (DAN)', 'DIMARC (DAR)', 'DIMCONTINUE (DCO)', 'DIMBASELINE (DBA)', 'DIMORDINATE (DOR)', 'DIMSPACE', 'DIMBREAK'],
-        summary: 'Place aligned structural bay chains, cumulative setting-out dimensions, arc lengths, and auto-spaced parallel dimension tiers.',
+        title: 'Precision Dimensioning: DIMLINEAR, DIMALIGNED, DIMANGULAR, DIMARC, DIMRADIUS, DIMDIAMETER, DIMCONTINUE, DIMBASELINE, DIMORDINATE, DIMSTYLE, DIMSPACE, DIMBREAK',
+        commandsOrFormulas: ['DIMLINEAR (DLI)', 'DIMALIGNED (DAL)', 'DIMANGULAR (DAN)', 'DIMARC (DAR)', 'DIMRADIUS (DRA)', 'DIMDIAMETER (DDI)', 'DIMCONTINUE (DCO)', 'DIMBASELINE (DBA)', 'DIMORDINATE (DOR)', 'DIMSTYLE (D)', 'DIMSPACE', 'DIMBREAK'],
+        summary: 'Place aligned structural bay chains, curve radii/diameters, cumulative setting-out dimensions, arc lengths, and auto-spaced parallel dimension tiers.',
         mechanics:
           'When `DIMASSOC = 2`, dimensions link parametrically to the snapped geometry vertices (`Defpoints`). Pressing Enter twice at the start of `DLI` or `DAL` lets you click an entire line or arc segment directly without picking both endpoints.',
         guidelines: [
-          'Grid & Facade Chains: Place the first bay dimension with `DLI`, then immediately type `DCO` (`DIMCONTINUE`) and click each remaining grid line—all dimensions lock into a perfectly collinear horizontal chain.',
-          'Cumulative Setting-Out (`DIMBASELINE` / `DBA`): After placing the first dimension from Grid A, type `DBA` to stack cumulative distances from the datum origin automatically.',
-          'Equal Tier Spacing (`DIMSPACE`): If your 3 exterior dimension tiers look unevenly spaced, type `DIMSPACE` -> Click the inner base dimension -> Select the outer dimensions -> Enter `Auto` (or `10` mm in paper units) to space them evenly!',
-          'Clean Crossing Gaps (`DIMBREAK`): Type `DIMBREAK` -> Select dimensions whose extension lines cross over walls or other dimensions -> Press Enter (`Auto`) to place clean visual breaks without exploding the dimension!',
-          'Curved Beams & Roads (`DIMARC` / `DAR`): Always use `DIMARC` (with the arc symbol $\frown$) instead of `DIMALIGNED` when measuring the true curved length of an arc.'
+          'Grid & Facade Chains: Place the first bay dimension with `DLI` (or `DAL` for sloped beams/roofs), then immediately type `DCO` (`DIMCONTINUE`) and click each remaining grid line—all dimensions lock into a perfectly collinear chain.',
+          'Curves, Culverts & Piles (`DIMRADIUS`, `DIMDIAMETER`, `DIMARC`, `DIMANGULAR`): Use `DRA` (`R1500`) for road curb and rebar bend radii, `DDI` (`Ø600`) for bored piles and pipes, `DAR` for true curved arc length, and `DAN` for skewed grid angles.',
+          'Cumulative Setting-Out (`DIMBASELINE` / `DBA` & `DIMORDINATE` / `DOR`): Use `DBA` to stack cumulative distances from Grid A, or set `UCS` at the corner benchmark and run `DOR` to label exact X/Y datum coordinates without cluttering dimension lines.',
+          'Equal Tier Spacing & Clean Gaps (`DIMSPACE` & `DIMBREAK`): Run `DIMSPACE` (`Auto`) to space parallel dimension tiers evenly, and run `DIMBREAK` (`Auto`) to insert clean visual breaks where extension lines cross!'
         ],
         proTip: 'Inside `DIMSTYLE` (`D`) -> `Lines` tab, check `Fixed length extension lines` (set Length = `8` mm in paper units). This keeps all dimension extension tails clean and uniform even when snapping to staggered interior/exterior wall corners!'
       },
       {
         id: 'acad-7-3',
-        title: 'Smart Callouts & Live Schedules: MLEADER, TABLE & Excel DATALINK',
-        commandsOrFormulas: ['MLEADER (MLD)', 'MLEADERALIGN (MLA)', 'MLEADERCOLLECT (MLC)', 'TABLE (TB)', 'DATALINK (DL)', 'DATALINKUPDATE'],
-        summary: 'Replace old `QLEADER` arrows with aligned Multi-Leaders and link Excel BOQ/BBS spreadsheets live into AutoCAD sheets.',
+        title: 'Smart Callouts & Live Schedules: MLEADER, MLEADERSTYLE, TABLE, TABLESTYLE & Excel DATALINK',
+        commandsOrFormulas: ['MLEADER (MLD)', 'MLEADERSTYLE (MLS)', 'MLEADERALIGN (MLA)', 'MLEADERCOLLECT (MLC)', 'TABLE (TB)', 'TABLESTYLE (TS)', 'DATALINK (DL)'],
+        summary: 'Standardize leader callouts with `MLEADERSTYLE` and link formatted Excel BOQ/BBS spreadsheets live into AutoCAD via `TABLESTYLE` & `DATALINK`.',
         mechanics:
-          '`MLEADER` combines arrowhead, leader landing, and MText/Block bubble into a single associative entity. `DATALINK` connects a specific Named Range or Sheet in an external `.xlsx` file bi-directionally to an AutoCAD `TABLE`.',
+          '`MLEADER` combines arrowhead, leader landing, and MText/Block bubble into a single associative entity governed by `MLEADERSTYLE`. `DATALINK` connects a specific Named Range or Sheet in an external `.xlsx` file bi-directionally to an AutoCAD `TABLE`.',
         guidelines: [
-          'Use `MLEADERALIGN` (`MLA`) to line up all structural rebar callouts neatly along a vertical margin on the right side of a beam/column detail.',
-          'Add multiple arrows to a single callout note (e.g., pointing to 4 identical stirrup zones) by clicking the `MLEADER`, hovering over the landing grip, and choosing `Add Leader` (or `LEADERADD`).',
-          'Live Excel Schedule Link: Type `DATALINK` (`DL`) -> Create a new Excel Data Link -> Browse to your `Bar_Bending_Schedule.xlsx` -> Type `TABLE` (`TB`) -> Check `From a data link` and insert the table on your CAD sheet.',
-          'Whenever the structural engineer updates bar weights in Excel and saves, type `DATALINKUPDATE` -> `Update data link` in AutoCAD to refresh the CAD sheet table automatically!'
+          'Configure `MLEADERSTYLE` (`MLS`) with a closed filled arrow (`3.0 mm`), horizontal landing (`2.0 mm`), and either `MText` (for rebar callouts) or `Block -> Circle/Hexagon` (for keynote/bar mark tags).',
+          'Use `MLEADERALIGN` (`MLA`) to line up all structural rebar callouts neatly along a vertical margin, and `MLEADERCOLLECT` (`MLC`) to group multiple block-tag leaders into a single horizontal chain.',
+          'Configure `TABLESTYLE` (`TS`) with dedicated `Title` (`5.0 mm`), `Header` (`3.5 mm`), and `Data` (`2.5 mm`) cell styles before inserting schedules.',
+          'Live Excel Schedule Link: Type `DATALINK` (`DL`) -> Create a new Excel Data Link -> Browse to your `Bar_Bending_Schedule.xlsx` -> Type `TABLE` (`TB`) -> Check `From a data link` and insert the table on your CAD sheet.'
         ],
         proTip: 'AutoCAD native tables (`TABLE`) support Excel-like formulas directly inside cells (`=SUM(C3:C20)`, `=B4*C4`)—press `CTRL+F` -> `Formula` inside any table cell.'
       },
@@ -736,21 +737,22 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
       },
       {
         id: 'excel-3-2',
-        title: 'Conditional Aggregations & Weighted Sums: SUMIFS, COUNTIFS, AVERAGEIFS, SUMPRODUCT',
+        title: 'Conditional Aggregations, Counting & Averages: SUM, SUMIF, SUMIFS, SUMPRODUCT, COUNT, COUNTA, COUNTBLANK, COUNTIF, COUNTIFS, AVERAGE, AVERAGEIF, AVERAGEIFS',
         commandsOrFormulas: [
-          '=SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2])',
+          '=SUMIFS(sum_range, criteria_range1, criteria1, ...)',
           '=SUMPRODUCT(Qty_Range, Rate_Range)',
-          '=SUMPRODUCT(Area_Range, X_Centroid_Range) / SUM(Area_Range)'
+          '=COUNT(num_range) | =COUNTA(any_range) | =COUNTBLANK(range)',
+          '=COUNTIFS(range1, crit1, ...) | =AVERAGEIFS(avg_range, range1, crit1, ...)'
         ],
-        summary: 'Compute BOQ totals without helper columns, calculate composite section centroids ($\bar{x}, \bar{y}$), and filter costs by WBS code or date range.',
+        summary: 'Compute BOQ totals without helper columns, audit unpriced blank BOQ rows, count test cylinders, and calculate mean concrete strength by grade.',
         mechanics:
-          '`SUMPRODUCT` multiplies corresponding elements across two or more arrays and returns the sum of those products ($\sum A_i B_i$). Dividing `SUMPRODUCT(Weights, Values)` by `SUM(Weights)` computes any weighted average or structural center of gravity in a single cell!',
+          '`SUM` / `SUMIF` / `SUMIFS` aggregate numeric totals; `COUNT` counts only numeric cells, `COUNTA` counts all non-empty cells (text + numbers), and `COUNTBLANK` counts empty unpriced/unfilled cells. `SUMPRODUCT` multiplies corresponding arrays and sums the products ($\sum A_i B_i$).',
         guidelines: [
+          'BOQ Completeness Audit (`COUNT` vs `COUNTA` vs `COUNTBLANK`): Place `=COUNTBLANK(F5:F300)` at the top of your Tender Rate column—if it returns anything greater than `0`, you have unpriced items in your bid!',
           'Direct Total Cost without an Amount Column: `=SUMPRODUCT(D5:D200, E5:E200)` multiplies `Quantity × Unit Rate` for every row and sums the grand total in one formula.',
-          'Center of Rigidity / Pile Group Centroid ($\bar{X}$): `=SUMPRODUCT(Pile_Cap_Range, X_Coord_Range) / SUM(Pile_Cap_Range)`.',
-          'Date-Window Cashflow Aggregation: `=SUMIFS(Invoice_Amt, Invoice_Date, ">="&Start_Date, Invoice_Date, "<="&End_Date, Discipline, "Structural")` sums all structural invoices within a specific monthly billing window.'
+          'Quality Control Cube Strength Mean (`AVERAGEIFS` & `COUNTIFS`): Use `=AVERAGEIFS(MPa_Col, Grade_Col, "M30", Age_Col, 28)` to compute the mean 28-day cylinder strength for M30 concrete, and `=COUNTIFS(Grade_Col, "M30", MPa_Col, "<30")` to count any failing samples!'
         ],
-        proTip: 'You can use wildcards (`*` and `?`) inside `SUMIFS` and `COUNTIFS`: `=SUMIFS(Amount_Col, WBS_Col, "03.02.*")` sums every sub-item belonging to Concrete Work package `03.02`!'
+        proTip: 'You can use wildcards (`*` and `?`) inside `SUMIF`, `SUMIFS`, `COUNTIF`, `COUNTIFS`, and `AVERAGEIFS`: `=SUMIFS(Amount_Col, WBS_Col, "03.02.*")` sums every sub-item belonging to Concrete Work package `03.02`!'
       },
       {
         id: 'excel-3-3',
@@ -802,19 +804,21 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
       },
       {
         id: 'excel-4-2',
-        title: 'Engineering Unit Conversions & Trigonometry: CONVERT, SQRT, POWER, PI, MOD, SIN/COS/TAN, RADIANS/DEGREES',
+        title: 'Unit Conversions, Exponents & Trigonometry: CONVERT, SQRT, POWER, PI, ABS, MOD, SIN/COS/TAN, ASIN/ACOS/ATAN, RADIANS/DEGREES',
         commandsOrFormulas: [
           '=CONVERT(value, "from_unit", "to_unit")',
-          '=SIN(RADIANS(Angle_Deg))',
-          '=DEGREES(ATAN(Opposite / Adjacent))'
+          '=SQRT(x) | =POWER(x, y) | =PI() | =ABS(x) | =MOD(n, d)',
+          '=SIN(RADIANS(Deg)) | =COS(RADIANS(Deg)) | =TAN(RADIANS(Deg))',
+          '=DEGREES(ASIN(x)) | =DEGREES(ACOS(x)) | =DEGREES(ATAN(Rise/Run))'
         ],
-        summary: 'Perform built-in SI/Imperial unit conversions and evaluate retaining wall earth pressure ($K_a, K_p$) and roof truss trigonometry.',
+        summary: 'Perform built-in SI/Imperial unit conversions, evaluate circular areas (`PI`), and compute earth pressure ($K_a, K_p$) and truss angles.',
         mechanics:
-          'Excel’s `SIN`, `COS`, and `TAN` functions strictly expect angles in **Radians**, not Degrees! Passing `30` directly into `=SIN(30)` calculates the sine of 30 radians ($-0.988$) instead of $\\sin(30^\\circ) = 0.500$. Always wrap degree inputs inside `RADIANS(...)`.',
+          'Excel’s `SIN`, `COS`, and `TAN` functions strictly expect angles in **Radians**, and inverse trig functions (`ASIN`, `ACOS`, `ATAN`) return angles in **Radians**! Always wrap degree inputs in `RADIANS(...)` and wrap inverse trig outputs in `DEGREES(...)`.',
         guidelines: [
-          'Built-In `CONVERT` Function Examples: `=CONVERT(100, "ft", "m")` ($30.48\\text{ m}$), `=CONVERT(1, "m3", "ft3")` ($35.3147\\text{ cft}$), `=CONVERT(25, "MPa", "psi")` (or multiply $\\text{MPa} \\times 145.038$), `=CONVERT(1000, "lbm", "kg")`.',
+          'Built-In `CONVERT` Function Examples: `=CONVERT(100, "ft", "m")` ($30.48\\text{ m}$), `=CONVERT(1, "m3", "ft3")` ($35.3147\\text{ cft}$), `=CONVERT(1000, "lbm", "kg")`.',
+          'Circular Pile Area & Hydraulic Radius (`PI`, `POWER`, `SQRT`, `ABS`): Pile Area $= \\text{`=PI()*POWER(Dia/2, 2)`}$; Resultant Vector Length $= \\text{`=SQRT(Fx^2 + Fy^2)`}$; Absolute Eccentricity $|e| = \\text{`=ABS(M / P)`}$.',
           'Rankine Active Earth Pressure Coefficient ($K_a$) for Soil Friction Angle $\\phi$ (in cell `C5` in degrees): `=(1 - SIN(RADIANS(C5))) / (1 + SIN(RADIANS(C5)))` (or `=TAN(RADIANS(45 - C5/2))^2`).',
-          'Inverse Trig for Roof Pitch / Ramp Slope Angle: `=DEGREES(ATAN(Rise / Run))` converts a vertical rise and horizontal run into degrees.'
+          'Inverse Trig (`ASIN`, `ACOS`, `ATAN`) for Roof Pitch / Strut-and-Tie Angle $\\theta$: `=DEGREES(ATAN(Rise / Run))` or `=DEGREES(ACOS(Adjacent / Hypotenuse))`.'
         ],
         proTip: 'For area and volume conversions inside `CONVERT`, append `2` or `3` or use `"m2"`, `"ft2"`, `"in2"`, `"m3"`, `"ft3"`, `"gal"`, `"l"`.'
       },
@@ -848,33 +852,35 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
     topics: [
       {
         id: 'excel-5-1',
-        title: 'String Parsing & Rebar Callout Generation: TEXTJOIN, LEFT, RIGHT, MID, FIND, TRIM, SUBSTITUTE, VALUE, TEXT',
+        title: 'String Parsing & Rebar Callouts: TEXTJOIN, CONCAT, LEFT, RIGHT, MID, LEN, FIND, SEARCH, TRIM, CLEAN, SUBSTITUTE, REPLACE, VALUE, TEXT',
         commandsOrFormulas: [
-          '=TEXTJOIN(" + ", TRUE, B5:E5)',
-          '=Number_Bars & "-Ø" & Dia_mm & " @ " & Spacing_mm & " c/c"',
-          '=TEXT(Value, "0.00")'
+          '=TEXTJOIN(" + ", TRUE, B5:E5) | =CONCAT(A2:C2)',
+          '=LEFT(text, n) | =MID(text, start, n) | =RIGHT(text, n) | =LEN(text)',
+          '=FIND("x", A2) (case-sensitive) | =SEARCH("beam", A2) (case-insensitive)',
+          '=VALUE(TRIM(CLEAN(SUBSTITUTE(A5, "m2", "")))) | =TEXT(Val, "0.00")'
         ],
         summary: 'Generate formatted AutoCAD rebar callout strings (`"4-Ø20 + 2-Ø16"`) and parse imported CAD/Survey text strings into numbers.',
         mechanics:
-          'When concatenating numbers into engineering labels, raw numbers lose their formatting (`12.5` instead of `12.50`). Wrapping numeric cells in `TEXT(cell, "0.00")` preserves exact decimal places inside labels.',
+          '`FIND` (case-sensitive) and `SEARCH` (case-insensitive, supports wildcards) locate the character position of delimiters like `"x"` or `"-"`, allowing `LEFT`, `MID`, `RIGHT`, `LEN`, and `REPLACE` to slice dimension strings (`"300x600"`). Wrapping numeric cells in `TEXT(cell, "0.00")` preserves decimal places inside concatenated labels.',
         guidelines: [
-          'Auto-Generate CAD Rebar Callout Strings: `=C5 & "-Ø" & D5 & " @ " & E5 & " mm c/c (L = " & TEXT(F5, "0.00") & " m)"` produces `"12-Ø16 @ 150 mm c/c (L = 4.25 m)"` ready to copy into AutoCAD.',
-          'Combine Multi-Layer Beam Bars cleanly (`TEXTJOIN`): `=TEXTJOIN(" + ", TRUE, IF(B5:D5>0, B5:D5 & "-Ø" & $B$4:$D$4, ""))` joins only non-zero bar layers with `" + "` and ignores empty columns!',
-          'Clean Imported PDF/CAD Data: Wrap pasted text in `=VALUE(TRIM(CLEAN(SUBSTITUTE(A5, "m2", ""))))` to strip trailing `"m2"` unit suffixes and non-printing ASCII spaces and convert to a true calculable number.'
+          'Extract Width `B` and Depth `D` from `"300x600"` in cell `A2`: Width `=VALUE(LEFT(A2, FIND("x", A2)-1))` (`300`), and Depth `=VALUE(RIGHT(A2, LEN(A2)-FIND("x", A2)))` (`600`).',
+          'Combine Multi-Layer Beam Bars cleanly (`TEXTJOIN` & `CONCAT`): `=TEXTJOIN(" + ", TRUE, IF(B5:D5>0, B5:D5 & "-Ø" & $B$4:$D$4, ""))` joins only non-zero bar layers with `" + "` and ignores empty columns!',
+          'Clean Imported PDF/CAD Data: Wrap pasted text in `=VALUE(TRIM(CLEAN(SUBSTITUTE(A5, "m2", ""))))` to strip trailing `"m2"` unit suffixes and non-printing ASCII characters and convert to a true calculable number.'
         ],
         proTip: 'Use custom number formats (`CTRL+1 -> Number -> Custom -> 0.00 "m³"` or `0 "mm c/c"`) instead of typing units inside cells—the cell displays `"14.50 m³"` on printouts while remaining a pure number (`14.5`) for `SUM` and multiplication!'
       },
       {
         id: 'excel-5-2',
-        title: 'Construction Schedule & Contract Dates: WORKDAY.INTL, NETWORKDAYS.INTL, DATEDIF, EDATE, EOMONTH',
+        title: 'Construction Schedule & Contract Dates: TODAY, NOW, DATE, DATEDIF, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, EDATE, EOMONTH',
         commandsOrFormulas: [
-          '=WORKDAY.INTL(Start_Date, Duration_Days, "0000100", Holiday_Range)',
-          '=NETWORKDAYS.INTL(Start_Date, Finish_Date, 7, Holiday_Range)',
-          '=DATEDIF(Start_Date, Finish_Date, "d")'
+          '=TODAY() | =NOW() | =DATE(Year, Month, Day)',
+          '=WORKDAY(Start, Days, [Holidays]) | =WORKDAY.INTL(Start, Days, "0000100", Holidays)',
+          '=NETWORKDAYS(Start, End, [Holidays]) | =NETWORKDAYS.INTL(Start, End, 7, Holidays)',
+          '=DATEDIF(Start_Date, Finish_Date, "d") | =EDATE(Date, Months) | =EOMONTH(Date, 0)'
         ],
-        summary: 'Calculate completion dates and working days using 6-day construction site workweeks (e.g., Friday-only weekend) and holiday exclusions.',
+        summary: 'Track live contract elapsed time (`TODAY`/`DATEDIF`) and calculate working days using 5-day (`WORKDAY`) or 6-day (`WORKDAY.INTL`) site calendars.',
         mechanics:
-          'Standard `WORKDAY` assumes a Western 5-day week (Saturday & Sunday off). In construction projects operating 6 days a week (e.g., Friday off or Sunday off), `WORKDAY.INTL` and `NETWORKDAYS.INTL` let you define the exact 7-character weekend mask (`"0000100"` starting Monday means only Friday is a rest day!).',
+          '`TODAY()` returns the live current date for countdown trackers (`=Contract_Finish - TODAY()`). Standard `WORKDAY` and `NETWORKDAYS` assume a 5-day week (Sat/Sun off), whereas `WORKDAY.INTL` and `NETWORKDAYS.INTL` let you define a 6-day construction site workweek (`"0000100"` = Friday off only).',
         guidelines: [
           '7-Character Weekend String (`Mon-Tue-Wed-Thu-Fri-Sat-Sun`, where `0 = Workday`, `1 = Weekend`): Use `"0000100"` for a 6-day site week with Friday off, or `"0000001"` for a 6-day site week with Sunday off.',
           'Calculate Task Finish Date: `=WORKDAY.INTL(Start_Date, Working_Days - 1, "0000100", $H$5:$H$25)` (where `$H$5:$H$25` lists public holidays and rain-out days).',
@@ -884,19 +890,20 @@ export const SOFTWARE_GUIDEBOOK_CHAPTERS: GuidebookChapter[] = [
       },
       {
         id: 'excel-5-3',
-        title: 'Modern Dynamic Arrays & Named Variables: LET, LAMBDA, FILTER, SORT, UNIQUE, SEQUENCE',
+        title: 'Modern Dynamic Arrays & Named Variables: LET, LAMBDA, FILTER, SORT, SORTBY, UNIQUE, SEQUENCE',
         commandsOrFormulas: [
-          '=LET(b, 300, d, 550, fc, 25, fy, 500, Mu, 180, ...)',
+          '=LET(b, 300, d, 550, fc, 25, fy, 500, ...)',
+          '=LAMBDA(d, ROUND((d^2)/162.162, 3))',
           '=FILTER(tbl_BOQ, tbl_BOQ[Floor]="GF", "No Items")',
-          '=SORT(UNIQUE(tbl_BBS[Dia_mm]))'
+          '=SORT(UNIQUE(tbl_BBS[Dia_mm])) | =SORTBY(tbl_BOQ, tbl_BOQ[Amount], -1) | =SEQUENCE(20)'
         ],
-        summary: 'Write readable, self-contained engineering formulas with local variables (`LET`) and build live filtered sub-schedules (`FILTER` / `UNIQUE`).',
+        summary: 'Write readable formulas with local variables (`LET`), reusable custom functions without VBA (`LAMBDA`), and live sorted/filtered sub-schedules.',
         mechanics:
-          '`LET` assigns names (`b, d, fc, fy, As`) to intermediate expressions inside a single cell so you never have to repeat the same long sub-formula 4 times or create 6 hidden helper columns.',
+          '`LET` assigns local names (`b, d, fc, fy`) inside a formula so sub-expressions are evaluated once. `LAMBDA` lets you define custom named functions inside Excel’s Name Manager (`CTRL+F3`) without needing `.xlsm` VBA macros! `FILTER`, `SORT`, `SORTBY`, `UNIQUE`, and `SEQUENCE` spill dynamic arrays automatically.',
         guidelines: [
           'Reinforced Concrete Flexural Depth Check with `LET`: `=LET(Mu_Nmm, B5*10^6, b, C5, d, D5, fc, E5, fy, F5, Rn, Mu_Nmm/(0.9*b*d^2), rho, (0.85*fc/fy)*(1 - SQRT(1 - (2*Rn)/(0.85*fc))), ROUND(rho*b*d, 1))` computes exact required steel area $A_s$ ($\text{mm}^2$) in one clean cell!',
-          'Live Filtered Variation Order Schedule: `=FILTER(tbl_BOQ, tbl_BOQ[Cum_Qty] > tbl_BOQ[Contract_Qty], "No Overruns")` automatically lists every single BOQ item that has exceeded contract quantity.',
-          'Auto-Numbering WBS/Item Rows: `=SEQUENCE(COUNTA(B5:B200))` generates a dynamic `1, 2, 3...` serial number column that adjusts automatically as rows are added.'
+          'Create a Macro-Free Custom Function with `LAMBDA`: Open `Formulas -> Name Manager -> New` -> Name it `RebarWt` -> Refers to: `=LAMBDA(dia_mm, ROUND((dia_mm^2)/162.162, 3))` -> Now use `=RebarWt(16)` anywhere in the workbook!',
+          'Top Cost Items Ranking (`SORTBY` & `FILTER`): Use `=SORTBY(tbl_BOQ, tbl_BOQ[Amount], -1)` to automatically rank all BOQ items from highest cost to lowest cost for Pareto 80/20 value engineering!'
         ],
         proTip: 'Combine `SORT(UNIQUE(range))` to create a self-updating list of all unique Concrete Grades or Rebar Diameters currently used in your schedule.'
       }

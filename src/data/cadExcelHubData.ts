@@ -1478,6 +1478,75 @@ export const EXPANDED_LISP_ROUTINES: LispRoutineItem[] = [
   )
   (princ)
 )`
+  },
+  {
+    id: 'slopearrow',
+    title: 'Drainage / Ramp Slope Percentage & Ratio Stamper (SLOPEARROW)',
+    command: 'SLOPEARROW',
+    category: 'Annotation & Drafting',
+    desc: 'Computes the exact longitudinal slope (% and 1:N gradient) between two clicked invert/spot levels and places an aligned slope callout.',
+    howToRun: [
+      'Type `SLOPEARROW` and press Enter.',
+      'Enter Upstream/High Elevation (m) and Downstream/Low Elevation (m).',
+      'Click the high point and low point on the drawing—it measures horizontal distance $L$, computes Slope % and $1:N$ ratio, and stamps the callout.'
+    ],
+    code: `(defun c:SLOPEARROW (/ z1 z2 p1 p2 dist dz pct ratio ang mid lbl)
+  (setq z1 (getreal "\\nEnter Upstream / High Elevation (m): ")
+        z2 (getreal "\\nEnter Downstream / Low Elevation (m): ")
+        p1 (getpoint "\\nClick Upstream Point on Plan: ")
+        p2 (getpoint p1 "\\nClick Downstream Point on Plan: "))
+  (setq dist (distance p1 p2)
+        dz (abs (- z1 z2)))
+  (if (> dist 0.0)
+    (progn
+      (setq pct (* (/ dz dist) 100.0)
+            ratio (if (> dz 0.0) (/ dist dz) 0.0)
+            ang (angle p1 p2)
+            mid (list (/ (+ (car p1) (car p2)) 2.0) (/ (+ (cadr p1) (cadr p2)) 2.0) 0.0)
+            lbl (strcat "SLOPE = " (rtos pct 2 2) "% (1:" (rtos ratio 2 1) ")"))
+      (if (and (> ang (/ pi 2.0)) (<= ang (* pi 1.5))) (setq ang (+ ang pi)))
+      (entmake (list '(0 . "TEXT") (cons 10 mid) (cons 40 200.0) (cons 50 ang) (cons 1 lbl)))
+      (princ (strcat "\\n>>> " lbl))
+    )
+  )
+  (princ)
+)`
+  },
+  {
+    id: 'countblocks',
+    title: 'Automated Block Schedule Counter to CSV/Screen (COUNTBLOCKS)',
+    command: 'COUNTBLOCKS',
+    category: 'Takeoff & BOQ',
+    desc: 'Counts all block references in the selection set (including unique block names) and prints a clean BOQ summary list.',
+    howToRun: [
+      'Type `COUNTBLOCKS` and press Enter.',
+      'Window-select the floor plan or type `ALL` and press Enter.',
+      'Press `F2` to view the itemized block schedule table.'
+    ],
+    code: `(defun c:COUNTBLOCKS (/ ss i ent ed bname lst pair msg)
+  (princ "\\nSelect blocks to count for BOQ schedule: ")
+  (if (setq ss (ssget '((0 . "INSERT"))))
+    (progn
+      (setq i 0 lst '())
+      (while (< i (sslength ss))
+        (setq ent (ssname ss i)
+              ed (entget ent)
+              bname (cdr (assoc 2 ed)))
+        (if (setq pair (assoc bname lst))
+          (setq lst (subst (cons bname (1+ (cdr pair))) pair lst))
+          (setq lst (cons (cons bname 1) lst)))
+        (setq i (1+ i))
+      )
+      (setq msg "BLOCK QUANTITY SCHEDULE:\\n------------------------\\n")
+      (foreach item (vl-sort lst '(lambda (a b) (< (car a) (car b))))
+        (setq msg (strcat msg (car item) "  -->  " (itoa (cdr item)) " Nos\\n"))
+      )
+      (princ (strcat "\\n" msg))
+      (alert msg)
+    )
+  )
+  (princ)
+)`
   }
 ];
 
@@ -1858,6 +1927,57 @@ End Function`
     Next ws
     MsgBox "All visible BOQ & BBS sheets exported to:" & vbCrLf & FolderPath, vbInformation
 End Sub`
+  },
+  {
+    id: 'rebar-weight-interp',
+    title: 'Rebar Unit Weight & Code Table Linear Interpolation UDFs (`RebarUnitWeight` & `LinearInterp`)',
+    functionName: '=RebarUnitWeight(Dia_mm) & =LinearInterp(x, xRange, yRange)',
+    category: 'Structural & BBS Automation',
+    desc: 'Provides two clean engineering worksheet functions: `=RebarUnitWeight(16)` for unit mass in kg/m ($d^2/162.162$) and `=LinearInterp(x, X_Col, Y_Col)` for automatic table interpolation.',
+    usageInCell: '=RebarUnitWeight(C5)  or  =LinearInterp(G4, A4:A15, B4:B15)',
+    howToInstall: [
+      'Press `ALT + F11` in Excel -> `Insert -> Module`.',
+      'Paste the VBA code below to unlock `=RebarUnitWeight()` and `=LinearInterp()` across all sheets in your workbook.'
+    ],
+    vbaCode: `Function RebarUnitWeight(ByVal DiaMM As Double) As Double
+    ' Returns unit weight of steel bar in kg/m (Density = 7850 kg/m3)
+    If DiaMM <= 0 Then
+        RebarUnitWeight = 0#
+    Else
+        RebarUnitWeight = Round((DiaMM ^ 2) / 162.162, 3)
+    End If
+End Function
+
+Function LinearInterp(ByVal x As Double, ByVal xRng As Range, ByVal yRng As Range) As Variant
+    Dim n As Long, i As Long
+    Dim x1 As Double, x2 As Double, y1 As Double, y2 As Double
+    n = xRng.Rows.Count
+    If n < 2 Or xRng.Rows.Count <> yRng.Rows.Count Then
+        LinearInterp = CVErr(xlErrRef)
+        Exit Function
+    End If
+    If x <= xRng.Cells(1, 1).Value Then
+        LinearInterp = yRng.Cells(1, 1).Value
+        Exit Function
+    ElseIf x >= xRng.Cells(n, 1).Value Then
+        LinearInterp = yRng.Cells(n, 1).Value
+        Exit Function
+    End If
+    For i = 1 To n - 1
+        x1 = xRng.Cells(i, 1).Value
+        x2 = xRng.Cells(i + 1, 1).Value
+        If x >= x1 And x <= x2 Then
+            y1 = yRng.Cells(i, 1).Value
+            y2 = yRng.Cells(i + 1, 1).Value
+            If x2 = x1 Then
+                LinearInterp = y1
+            Else
+                LinearInterp = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+            End If
+            Exit Function
+        End If
+    Next i
+End Function`
   }
 ];
 

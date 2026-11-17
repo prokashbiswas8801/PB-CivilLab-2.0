@@ -46,6 +46,7 @@ import {
   SOFTWARE_GUIDEBOOK_CHAPTERS,
   SoftwarePillarId
 } from '../../../data/softwareGuidebookData';
+import { AboutThisTool, AboutThisToolButton } from '../../ui';
 
 export type CadHubTabId =
   | 'viewport'
@@ -449,14 +450,25 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
     };
   };
 
+  const activeDocToolId = useMemo(() => {
+    if (activeTab === 'viewport') return 'cad-viewport';
+    if (activeTab === 'excel') return 'cad-excel';
+    if (activeTab === 'guidebook') return 'cad-guidebook';
+    if (activeTab === 'msproject') return 'cad-msproject';
+    return 'cad-shortcuts';
+  }, [activeTab]);
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
       <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono uppercase tracking-widest mb-2">
-              <Sparkles className="w-3.5 h-3.5" /> Civil, Structural & Project Management Software Hub
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono uppercase tracking-widest">
+                <Sparkles className="w-3.5 h-3.5" /> Civil, Structural & Project Management Software Hub
+              </div>
+              <AboutThisToolButton toolId={activeDocToolId} targetId="cad-hub-doc" />
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
               <Terminal className="w-6 h-6 text-amber-500 shrink-0" />
@@ -2745,6 +2757,11 @@ export const CadExcelHub: React.FC<CadExcelHubProps> = ({ initialTab = 'viewport
           )}
         </div>
       )}
+
+      {/* Comprehensive Bilingual Engineering Monograph & Documentation */}
+      <div className="pt-4 border-t border-zinc-800/80">
+        <AboutThisTool id="cad-hub-doc" toolId={activeDocToolId} defaultExpanded={true} />
+      </div>
     </div>
   );
 };
