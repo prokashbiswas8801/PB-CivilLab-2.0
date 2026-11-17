@@ -17,8 +17,6 @@ import {
   Building2,
   FlaskConical,
   User,
-  Palette,
-  Check,
   Calculator,
   Layers,
   Columns,
@@ -44,10 +42,8 @@ import {
 } from 'lucide-react';
 import { EngineeringModuleId, UnitSystemPreset } from '../../types/civil';
 import { useWorkbench } from '../../context/WorkbenchContext';
-import { useTheme } from '../../context/ThemeContext';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { TOOL_REGISTRY_MAP } from '../../data/toolRegistry';
-import { BrandLogoIcon } from '../Logo';
 
 export type DisciplineAccentKey = 'amber' | 'emerald' | 'indigo' | 'sky' | 'teal' | 'rose';
 
@@ -270,46 +266,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenCadModal,
   onOpenSiteQcModal,
   onOpenProfileModal,
-  unitSystemPreset,
-  onSelectUnitPreset,
   engineerDisplayName,
 }) => {
   const workbench = useWorkbench();
   const civilLab = useCivilLab();
-  const { theme, setTheme, availableThemes } = useTheme();
 
   const [filterQuery, setFilterQuery] = useState('');
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-    structural: true,
-    geotechnical: false,
-    estimation: false,
-    hydraulics: false,
-    sitemanagement: false,
-    'testing-lab-qaqc': false,
-  });
+  // All categories start collapsed by default (null). Single-open accordion mode.
+  const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
 
   // Compact Rail flyout state (when collapsed on desktop or on tablet rail)
   const [railFlyoutCatId, setRailFlyoutCatId] = useState<string | null>(null);
   const [railFlyoutTop, setRailFlyoutTop] = useState<number>(80);
-  const [themePopoverOpen, setThemePopoverOpen] = useState(false);
 
   const tabletRailRef = useRef<HTMLDivElement>(null);
   const desktopRailRef = useRef<HTMLDivElement>(null);
-  const themeMenuRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);
 
-  // Auto-expand the discipline group containing the active module
-  useEffect(() => {
-    if (isDashboardActive) return;
-    const matchedCat = SIDEBAR_CATEGORIES.find((cat) =>
-      cat.items.some((item) => item.moduleId === activeModule)
-    );
-    if (matchedCat) {
-      setOpenCategories((prev) => (prev[matchedCat.id] ? prev : { ...prev, [matchedCat.id]: true }));
-    }
-  }, [activeModule, activeSubAction, isDashboardActive]);
-
-  // Close rail flyout & theme popover on outside click or Escape
+  // Close rail flyout on outside click or Escape
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -320,14 +294,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setRailFlyoutCatId(null);
         }
       }
-      if (themePopoverOpen && themeMenuRef.current && !themeMenuRef.current.contains(target)) {
-        setThemePopoverOpen(false);
-      }
     };
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setRailFlyoutCatId(null);
-        setThemePopoverOpen(false);
         if (isMobileOpen) onCloseMobile();
       }
     };
@@ -337,13 +307,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       document.removeEventListener('mousedown', handleOutsideClick);
       window.removeEventListener('keydown', handleEsc);
     };
-  }, [railFlyoutCatId, themePopoverOpen, isMobileOpen, onCloseMobile]);
+  }, [railFlyoutCatId, isMobileOpen, onCloseMobile]);
 
   const toggleCategory = (catId: string) => {
-    setOpenCategories((prev) => ({
-      ...prev,
-      [catId]: !prev[catId],
-    }));
+    setOpenCategoryId((prev) => (prev === catId ? null : catId));
   };
 
   const handleItemClick = (item: SidebarSubItem) => {
@@ -373,18 +340,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     setRailFlyoutCatId(null);
     onCloseMobile();
-  };
-
-  const isMetricActive = unitSystemPreset
-    ? unitSystemPreset !== 'imperial'
-    : workbench.unitSystem !== 'Imperial';
-
-  const handleSetUnitSystem = (mode: 'metric' | 'imperial') => {
-    if (onSelectUnitPreset) {
-      onSelectUnitPreset(mode);
-    } else {
-      workbench.setUnitSystem(mode === 'imperial' ? 'Imperial' : 'SI');
-    }
   };
 
   const resolvedEngineerName =
@@ -430,109 +385,83 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return (
       <div
         ref={containerRef}
-        className="relative flex flex-col h-full theme-glass-panel border-r border-[var(--md-sys-color-outline-variant)] select-none"
+        className="relative flex flex-col h-full max-h-full min-h-0 overflow-hidden theme-glass-panel border-r border-[var(--md-sys-color-outline-variant)] select-none"
       >
-        {/* 1. TOP BRAND HEADER */}
+        {/* 1. STREAMLINED TOP CONTROLS (Home + Collapse/Close + Filter Search) */}
         <div
-          className={`h-16 flex items-center border-b border-[var(--md-sys-color-outline-variant)] shrink-0 ${
-            railMode ? 'px-2 justify-center flex-col gap-1 py-2 h-auto min-h-[68px]' : 'px-3.5 justify-between gap-2'
+          className={`shrink-0 border-b border-[var(--md-sys-color-outline-variant)]/70 ${
+            railMode ? 'px-2 py-2.5 flex flex-col items-center gap-1.5' : 'px-3 pt-2.5 pb-2.5 space-y-2'
           }`}
         >
-          <button
-            type="button"
-            onClick={() => {
-              onSelectDashboard();
-              onCloseMobile();
-            }}
-            aria-label="BD. CivilLab — Home"
-            title="BD. CivilLab — Home"
-            className={`flex items-center gap-2.5 cursor-pointer group transition-opacity text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
-              railMode ? 'p-1' : 'min-w-0 py-1 pr-1'
-            }`}
-          >
-            <BrandLogoIcon size={railMode ? 30 : 32} animated={false} className="shadow-xs shrink-0" />
-            {!railMode && (
-              <div className="leading-tight min-w-0">
-                <span className="text-sm font-black tracking-tight text-[var(--md-sys-color-on-surface)] group-hover:text-[var(--md-sys-color-primary)] transition-colors block truncate">
-                  <span className="text-[var(--md-sys-color-primary)]">BD.</span> CivilLab
-                </span>
-                <span className="block text-[10px] font-medium text-[var(--md-sys-color-on-surface-variant)] truncate">
-                  Civil Workbench
-                </span>
-              </div>
-            )}
-          </button>
-
-          {/* Collapse / Expand or Slide-Over Close Control */}
-          {isSlideOver ? (
+          <div className={`flex items-center ${railMode ? 'flex-col gap-1.5 w-full' : 'justify-between gap-2'}`}>
             <button
               type="button"
-              onClick={onCloseMobile}
-              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
-              aria-label="Close navigation drawer"
-              title="Close drawer"
+              onClick={() => {
+                onSelectDashboard();
+                setRailFlyoutCatId(null);
+                onCloseMobile();
+              }}
+              aria-current={homeSelected ? 'page' : undefined}
+              title="Home"
+              className={`group relative flex items-center transition-all cursor-pointer rounded-2xl min-h-[38px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
+                railMode ? 'w-11 justify-center px-0' : 'flex-1 gap-2.5 px-3'
+              } ${
+                homeSelected
+                  ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-2xs'
+                  : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] font-semibold'
+              }`}
             >
-              <X className="w-5 h-5" />
+              <Home
+                className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${
+                  homeSelected
+                    ? 'text-[var(--md-sys-color-on-primary-container)]'
+                    : 'text-[var(--md-sys-color-primary)]'
+                }`}
+              />
+              {!railMode && <span className="text-xs tracking-tight whitespace-nowrap">Home</span>}
             </button>
-          ) : (
-            <>
-              {/* Desktop (lg+) 2-state Collapse / Expand toggle */}
+
+            {/* Collapse / Expand or Slide-Over Close Control */}
+            {isSlideOver ? (
               <button
                 type="button"
-                onClick={onToggleCollapse}
-                className={`hidden lg:flex items-center justify-center rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer ${
-                  railMode ? 'w-9 h-7' : 'w-9 h-9 shrink-0'
-                }`}
-                title={isCollapsed ? 'Expand Sidebar (Ctrl+B)' : 'Collapse to Icon Rail (Ctrl+B)'}
-                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                onClick={onCloseMobile}
+                className="w-9 h-9 flex items-center justify-center rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer shrink-0"
+                aria-label="Close navigation drawer"
+                title="Close drawer"
               >
-                {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+                <X className="w-4 h-4" />
               </button>
-
-              {/* Tablet (md only) 1-click Expand Drawer toggle */}
-              {onOpenMobile && (
+            ) : (
+              <>
+                {/* Desktop (lg+) 2-state Collapse / Expand toggle */}
                 <button
                   type="button"
-                  onClick={onOpenMobile}
-                  className="hidden md:flex lg:hidden items-center justify-center w-9 h-7 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer"
-                  title="Expand Navigation Drawer"
-                  aria-label="Expand Navigation Drawer"
+                  onClick={onToggleCollapse}
+                  className={`hidden lg:flex items-center justify-center rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer shrink-0 ${
+                    railMode ? 'w-11 h-8' : 'w-9 h-[38px]'
+                  }`}
+                  title={isCollapsed ? 'Expand Sidebar (Ctrl+B)' : 'Collapse to Icon Rail (Ctrl+B)'}
+                  aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
-                  <PanelLeftOpen className="w-4 h-4" />
+                  {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
                 </button>
-              )}
-            </>
-          )}
-        </div>
 
-        {/* 2. DEDICATED "Home" ENTRY & QUICK FILTER SEARCH */}
-        <div className={`${railMode ? 'px-2 pt-2.5 pb-2' : 'px-3 pt-3 pb-2 space-y-2.5'} shrink-0`}>
-          <button
-            type="button"
-            onClick={() => {
-              onSelectDashboard();
-              setRailFlyoutCatId(null);
-              onCloseMobile();
-            }}
-            aria-current={homeSelected ? 'page' : undefined}
-            title="Home"
-            className={`group relative w-full flex items-center transition-all cursor-pointer rounded-2xl min-h-[42px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
-              railMode ? 'justify-center px-0' : 'gap-3 px-3.5'
-            } ${
-              homeSelected
-                ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-2xs'
-                : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] font-semibold'
-            }`}
-          >
-            <Home
-              className={`w-[18px] h-[18px] shrink-0 transition-transform group-hover:scale-105 ${
-                homeSelected
-                  ? 'text-[var(--md-sys-color-on-primary-container)]'
-                  : 'text-[var(--md-sys-color-primary)]'
-              }`}
-            />
-            {!railMode && <span className="text-xs tracking-tight whitespace-nowrap">Home</span>}
-          </button>
+                {/* Tablet (md only) 1-click Expand Drawer toggle */}
+                {onOpenMobile && (
+                  <button
+                    type="button"
+                    onClick={onOpenMobile}
+                    className="hidden md:flex lg:hidden items-center justify-center w-11 h-8 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer shrink-0"
+                    title="Expand Navigation Drawer"
+                    aria-label="Expand Navigation Drawer"
+                  >
+                    <PanelLeftOpen className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
 
           {/* Compact Quick-Filter Search Input (Expanded mode only) */}
           {!railMode && (
@@ -544,7 +473,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onChange={(e) => setFilterQuery(e.target.value)}
                 placeholder="Filter modules..."
                 aria-label="Filter modules"
-                className="w-full h-9 pl-8 pr-8 rounded-2xl text-xs bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/70 focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-1 focus:ring-[var(--md-sys-color-primary)] transition-colors"
+                className="w-full h-8 pl-8 pr-8 rounded-xl text-xs bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/70 focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-1 focus:ring-[var(--md-sys-color-primary)] transition-colors"
               />
               {filterQuery && (
                 <button
@@ -560,10 +489,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* 3. SCROLLABLE M3 DISCIPLINE GROUPS / ICON RAIL */}
+        {/* 2. SCROLLABLE DISCIPLINE CATEGORIES / ICON RAIL */}
         <div
-          className={`flex-1 overflow-y-auto custom-scrollbar ${
-            railMode ? 'px-2 py-1.5 space-y-2' : 'px-2.5 py-1.5 space-y-2'
+          className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
+            railMode ? 'px-2 py-2 space-y-1.5' : 'px-2.5 py-2 space-y-1.5'
           }`}
         >
           {/* Compact Icon Rail Mode (Desktop collapsed or Tablet md) */}
@@ -589,55 +518,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       aria-expanded={isFlyoutOpen}
                       aria-label={cat.name}
                       title={cat.name}
-                      className={`w-12 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
+                      className={`w-11 h-10 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
                         hasActiveItem || isFlyoutOpen
                           ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-xs'
                           : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
                       }`}
                     >
                       <span
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                        className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors ${
                           hasActiveItem || isFlyoutOpen
                             ? 'bg-transparent'
                             : `${accentStyle.iconBg} ${accentStyle.iconText}`
                         }`}
                       >
-                        <Icon className="w-[18px] h-[18px] shrink-0" />
+                        <Icon className="w-4 h-4 shrink-0" />
                       </span>
+                      {hasActiveItem && !isFlyoutOpen && (
+                        <span
+                          className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${accentStyle.dotBg}`}
+                        />
+                      )}
                     </button>
 
                     {/* Hover Tooltip when flyout is closed */}
                     {!isFlyoutOpen && (
                       <div
                         role="tooltip"
-                        className="pointer-events-none opacity-0 group-hover/rail:opacity-100 transition-opacity duration-150 fixed left-[84px] z-50 px-2.5 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline)] text-xs font-semibold text-[var(--md-sys-color-on-surface)] shadow-xl whitespace-nowrap hidden md:block"
-                        style={{ marginTop: '6px' }}
+                        className="pointer-events-none opacity-0 group-hover/rail:opacity-100 transition-opacity duration-150 fixed left-[76px] z-50 px-2.5 py-1.5 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline)] text-xs font-semibold text-[var(--md-sys-color-on-surface)] shadow-xl whitespace-nowrap hidden md:block"
+                        style={{ marginTop: '4px' }}
                       >
-                        {cat.name} · {cat.items.length}
+                        {cat.name}
                       </div>
                     )}
 
-                    {/* Floating M3 Popover Menu on Rail Click */}
+                    {/* Floating Popover Menu on Rail Click */}
                     {isFlyoutOpen && (
                       <div
                         style={{ top: `${railFlyoutTop}px` }}
-                        className="fixed left-[84px] z-50 w-64 max-h-[70vh] overflow-y-auto custom-scrollbar rounded-3xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] shadow-2xl p-2 space-y-1"
+                        className="fixed left-[76px] z-50 w-60 max-h-[68vh] overflow-y-auto custom-scrollbar rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline)] shadow-2xl p-2 space-y-1"
                       >
-                        <div className="px-2.5 py-2 flex items-center justify-between border-b border-[var(--md-sys-color-outline-variant)]">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span
-                              className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${accentStyle.iconBg} ${accentStyle.iconText}`}
-                            >
-                              <Icon className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)] truncate">
-                              {cat.name}
-                            </span>
-                          </div>
+                        <div className="px-2.5 py-1.5 flex items-center gap-2 border-b border-[var(--md-sys-color-outline-variant)]">
                           <span
-                            className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${accentStyle.badgeBg}`}
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${accentStyle.iconBg} ${accentStyle.iconText}`}
                           >
-                            {cat.items.length}
+                            <Icon className="w-3.5 h-3.5" />
+                          </span>
+                          <span className="text-xs font-bold text-[var(--md-sys-color-on-surface)] truncate">
+                            {cat.name}
                           </span>
                         </div>
 
@@ -649,18 +576,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 key={item.id}
                                 type="button"
                                 onClick={() => handleItemClick(item)}
-                                className={`w-full min-h-[40px] px-2.5 py-1.5 rounded-2xl flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
+                                className={`w-full min-h-[36px] px-2.5 py-1.5 rounded-xl flex items-center gap-2 text-left transition-colors cursor-pointer ${
                                   isItemActive
                                     ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
                                     : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
                                 }`}
                               >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                    isItemActive
+                                      ? accentStyle.dotBg
+                                      : 'bg-[var(--md-sys-color-outline)]'
+                                  }`}
+                                />
                                 <span className="text-xs truncate">{item.name}</span>
-                                {item.badge && (
-                                  <span className="text-[9.5px] font-mono font-semibold opacity-75 shrink-0">
-                                    {item.badge}
-                                  </span>
-                                )}
                               </button>
                             );
                           })}
@@ -672,17 +601,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               })}
             </div>
           ) : (
-            /* Expanded Mode: Pinned + Collapsible M3 Discipline Accordions */
+            /* Expanded Mode: Pinned + Single-Open Collapsible Discipline Accordions */
             <>
               {/* Quick Pinned Calculators (only when not filtering) */}
               {!normalizedFilter && workbench.favoriteTools.length > 0 && (
-                <div className="pb-1.5 border-b border-[var(--md-sys-color-outline-variant)]/70">
+                <div className="pb-1.5 mb-1 border-b border-[var(--md-sys-color-outline-variant)]/70">
                   <div className="px-2 pb-1 flex items-center justify-between text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
                     <span className="flex items-center gap-1.5">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span>Pinned</span>
                     </span>
-                    <span className="tabular-nums">{workbench.favoriteTools.length}</span>
                   </div>
                   <div className="space-y-0.5">
                     {workbench.favoriteTools.map((modId) => {
@@ -714,7 +642,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               onCloseMobile();
                             }
                           }}
-                          className={`w-full min-h-[38px] flex items-center justify-between px-3 py-1 rounded-2xl text-xs transition-colors cursor-pointer select-none group/pinned ${
+                          className={`w-full min-h-[34px] flex items-center justify-between px-2.5 py-1 rounded-xl text-xs transition-colors cursor-pointer select-none group/pinned ${
                             isActive
                               ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold'
                               : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container)] hover:text-[var(--md-sys-color-on-surface)]'
@@ -760,129 +688,120 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   const accentStyle = ACCENT_STYLES[cat.accent];
                   const hasActiveItem =
                     !isDashboardActive && cat.items.some((it) => it.moduleId === activeModule);
-                  const isOpen = Boolean(normalizedFilter) || (openCategories[cat.id] ?? false);
+                  const isOpen = Boolean(normalizedFilter) || openCategoryId === cat.id;
 
                   return (
                     <div
                       key={cat.id}
-                      className="rounded-2xl bg-[var(--md-sys-color-surface-container-low)]/50 border border-[var(--md-sys-color-outline-variant)]/60 overflow-hidden transition-colors"
+                      className={`rounded-2xl border overflow-hidden transition-colors ${
+                        isOpen
+                          ? 'bg-[var(--md-sys-color-surface-container-low)]/75 border-[var(--md-sys-color-outline-variant)]'
+                          : 'bg-[var(--md-sys-color-surface-container-low)]/35 border-[var(--md-sys-color-outline-variant)]/50 hover:border-[var(--md-sys-color-outline-variant)]'
+                      }`}
                     >
-                      {/* M3 Discipline Accordion Header */}
+                      {/* Clean Category Accordion Header (Collapsed by default) */}
                       <button
                         type="button"
                         onClick={() => toggleCategory(cat.id)}
                         aria-expanded={isOpen}
-                        className={`w-full px-2.5 py-2 flex items-center justify-between gap-2 transition-colors cursor-pointer text-left min-h-[42px] ${
+                        className={`w-full px-2.5 py-2 flex items-center justify-between gap-2 transition-colors cursor-pointer text-left min-h-[40px] ${
                           hasActiveItem
                             ? accentStyle.activeHeader
                             : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
                         }`}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <span
                             className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${accentStyle.iconBg} ${accentStyle.iconText}`}
                           >
                             <Icon className="w-3.5 h-3.5" />
                           </span>
-                          <span className="text-xs font-bold tracking-tight truncate">
+                          <span className="text-xs font-semibold tracking-tight truncate">
                             {cat.name}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span
-                            className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold tabular-nums ${accentStyle.badgeBg}`}
-                          >
-                            {cat.items.length}
-                          </span>
+                          {hasActiveItem && !isOpen && (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${accentStyle.dotBg}`}
+                              title="Contains active module"
+                            />
+                          )}
                           <ChevronRight
                             className={`w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] transition-transform duration-200 ${
-                              isOpen ? 'rotate-90' : ''
+                              isOpen ? 'rotate-90 text-[var(--md-sys-color-on-surface)]' : ''
                             }`}
                           />
                         </div>
                       </button>
 
-                      {/* Accordion Module Items */}
-                      {isOpen && (
-                        <div className="px-1.5 pb-1.5 pt-0.5 space-y-0.5">
-                          {cat.items.map((item) => {
-                            const isItemActive = checkItemActive(item);
-                            const isFav = item.moduleId
-                              ? workbench.isFavoriteTool(item.moduleId)
-                              : false;
+                      {/* Accordion Module Items (Clean module names only + subtle hover pin star) */}
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-1.5 pb-1.5 pt-0.5 space-y-0.5 border-t border-[var(--md-sys-color-outline-variant)]/40">
+                              {cat.items.map((item) => {
+                                const isItemActive = checkItemActive(item);
+                                const isFav = item.moduleId
+                                  ? workbench.isFavoriteTool(item.moduleId)
+                                  : false;
 
-                            return (
-                              <div
-                                key={item.id}
-                                className={`group/item relative flex items-center justify-between gap-1.5 min-h-[40px] px-2.5 py-1.5 rounded-2xl transition-all cursor-pointer ${
-                                  isItemActive
-                                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-2xs'
-                                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] font-medium'
-                                }`}
-                                onClick={() => handleItemClick(item)}
-                                title={item.name}
-                              >
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  {/* Left subtle accent dot / highlight */}
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className={`group/item relative flex items-center justify-between gap-2 min-h-[36px] px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
                                       isItemActive
-                                        ? `${accentStyle.dotBg} scale-125`
-                                        : 'bg-[var(--md-sys-color-outline)] group-hover/item:bg-[var(--md-sys-color-on-surface-variant)]'
+                                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-semibold shadow-2xs'
+                                        : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] font-medium'
                                     }`}
-                                  />
-                                  <div className="min-w-0 flex items-baseline gap-1.5 flex-1">
-                                    <span className="text-xs truncate leading-snug">
-                                      {item.name}
-                                    </span>
-                                    {item.bnLabel && (
+                                    onClick={() => handleItemClick(item)}
+                                    title={item.name}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
                                       <span
-                                        className="font-nikosh text-[10px] opacity-70 truncate shrink-0 max-w-[68px]"
-                                        lang="bn"
-                                      >
-                                        {item.bnLabel}
+                                        className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+                                          isItemActive
+                                            ? `${accentStyle.dotBg} scale-125`
+                                            : 'bg-[var(--md-sys-color-outline)] group-hover/item:bg-[var(--md-sys-color-on-surface-variant)]'
+                                        }`}
+                                      />
+                                      <span className="text-xs truncate leading-snug">
+                                        {item.name}
                                       </span>
+                                    </div>
+
+                                    {item.moduleId && !item.subAction && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          workbench.toggleFavoriteTool(item.moduleId!);
+                                        }}
+                                        className={`p-1 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity cursor-pointer shrink-0 ${
+                                          isFav
+                                            ? '!opacity-100 text-amber-500'
+                                            : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-amber-500'
+                                        }`}
+                                        title={isFav ? 'Unpin' : 'Pin module'}
+                                        aria-label={isFav ? `Unpin ${item.name}` : `Pin ${item.name}`}
+                                      >
+                                        <Star className={`w-3 h-3 ${isFav ? 'fill-amber-500' : ''}`} />
+                                      </button>
                                     )}
                                   </div>
-                                </div>
-
-                                <div className="flex items-center gap-1 shrink-0">
-                                  {item.badge && (
-                                    <span
-                                      className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
-                                        isItemActive
-                                          ? 'bg-[var(--md-sys-color-on-primary-container)]/10 text-[var(--md-sys-color-on-primary-container)]'
-                                          : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]'
-                                      }`}
-                                    >
-                                      {item.badge}
-                                    </span>
-                                  )}
-                                  {item.moduleId && !item.subAction && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        workbench.toggleFavoriteTool(item.moduleId!);
-                                      }}
-                                      className={`p-1 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity cursor-pointer ${
-                                        isFav
-                                          ? '!opacity-100 text-amber-500'
-                                          : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-amber-500'
-                                      }`}
-                                      title={isFav ? 'Unpin' : 'Pin tool'}
-                                      aria-label={isFav ? `Unpin ${item.name}` : `Pin ${item.name}`}
-                                    >
-                                      <Star className={`w-3 h-3 ${isFav ? 'fill-amber-500' : ''}`} />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })
@@ -891,106 +810,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* 4. COMPACT SIDEBAR UTILITY FOOTER DOCK */}
+        {/* 3. MINIMAL SIDEBAR FOOTER DOCK (Profile + CAD / By-Laws Only) */}
         <div
-          ref={themeMenuRef}
           className={`relative border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shrink-0 ${
-            railMode ? 'p-2 flex flex-col items-center gap-1.5' : 'p-2.5 space-y-2'
+            railMode
+              ? 'p-2 flex flex-col items-center gap-1.5'
+              : 'px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] space-y-1.5'
           }`}
         >
-          {/* Theme Popover Menu (Upward) */}
-          {themePopoverOpen && (
-            <div
-              className={`absolute bottom-full mb-2 z-50 w-72 rounded-3xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 backdrop-blur-2xl shadow-2xl p-2.5 space-y-1.5 ${
-                railMode ? 'left-16' : 'left-2.5 right-2.5 w-auto'
-              }`}
-            >
-              <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
-                <span>Architectural Themes</span>
-                <span className="text-[9px] text-[var(--md-sys-color-primary)]">6 Curated</span>
-              </div>
-              <div className="space-y-1 max-h-72 overflow-y-auto custom-scrollbar pr-0.5">
-                {availableThemes.map((t) => {
-                  const isActive = t.id === theme;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        setTheme(t.id);
-                        setThemePopoverOpen(false);
-                      }}
-                      className={`w-full px-2.5 py-2 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
-                        isActive
-                          ? 'bg-[var(--md-sys-color-primary-container)]/35 border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] font-bold shadow-xs'
-                          : 'border-transparent hover:border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Mini Live Blueprint Surface Swatch */}
-                        <div
-                          className="w-8 h-8 rounded-xl border shrink-0 flex items-center justify-center relative overflow-hidden shadow-2xs"
-                          style={{
-                            backgroundColor: t.colors.bg,
-                            borderColor: t.colors.border,
-                            backgroundImage: `
-                              radial-gradient(circle at 25% 25%, ${t.colors.ambientGlow} 0%, transparent 70%),
-                              linear-gradient(to right, ${t.colors.gridLine} 1px, transparent 1px),
-                              linear-gradient(to bottom, ${t.colors.gridLine} 1px, transparent 1px)
-                            `,
-                            backgroundSize: '100% 100%, 6px 6px, 6px 6px',
-                          }}
-                        >
-                          <div className="flex -space-x-1">
-                            <span
-                              className="w-3 h-3 rounded-full border border-black/30"
-                              style={{ backgroundColor: t.colors.accent }}
-                            />
-                            <span
-                              className="w-3 h-3 rounded-full border border-black/30"
-                              style={{ backgroundColor: t.colors.secondary }}
-                            />
-                          </div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold truncate flex items-center gap-1.5">
-                            <span className="truncate">{t.name}</span>
-                          </div>
-                          <div className="text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
-                            {t.subtitle} · {t.mode.toUpperCase()}
-                          </div>
-                        </div>
-                      </div>
-                      {isActive && <Check className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {railMode ? (
-            /* Rail Mode Footer Icons */
+            /* Rail Mode Minimal Footer Icons */
             <>
-              <button
-                type="button"
-                onClick={() => handleSetUnitSystem(isMetricActive ? 'imperial' : 'metric')}
-                className="w-11 h-9 rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] text-[10px] font-mono font-bold text-[var(--md-sys-color-primary)] flex items-center justify-center transition-colors cursor-pointer"
-                title={`Unit System: ${isMetricActive ? 'Metric SI' : 'Imperial ft-in'} (Click to switch)`}
-                aria-label="Toggle Metric SI / Imperial unit system"
-              >
-                {isMetricActive ? 'SI' : 'ft-in'}
-              </button>
-
               {onOpenCadModal && (
                 <button
                   type="button"
                   onClick={() => onOpenCadModal('viewport')}
-                  className="w-11 h-9 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-10 h-9 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center justify-center transition-colors cursor-pointer"
                   title="CAD & Excel Hub"
                   aria-label="CAD & Excel Hub"
                 >
-                  <Laptop className="w-4 h-4" />
+                  <Laptop className="w-4 h-4 text-sky-500" />
                 </button>
               )}
 
@@ -998,29 +837,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenArchitectureModal('far')}
-                  className="w-11 h-9 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-10 h-9 rounded-xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center justify-center transition-colors cursor-pointer"
                   title="Architecture By-Laws"
                   aria-label="Architecture By-Laws"
                 >
-                  <Compass className="w-4 h-4" />
+                  <Compass className="w-4 h-4 text-emerald-500" />
                 </button>
               )}
-
-              <button
-                type="button"
-                onClick={() => setThemePopoverOpen((prev) => !prev)}
-                className="w-11 h-9 rounded-2xl text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] flex items-center justify-center transition-colors cursor-pointer"
-                title="Theme"
-                aria-label="Switch Theme"
-              >
-                <Palette className="w-4 h-4" />
-              </button>
 
               {onOpenProfileModal && (
                 <button
                   type="button"
                   onClick={() => onOpenProfileModal('profile')}
-                  className="w-11 h-9 rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-10 h-9 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] flex items-center justify-center transition-colors cursor-pointer"
                   title={resolvedEngineerName}
                   aria-label={resolvedEngineerName}
                 >
@@ -1029,101 +858,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </>
           ) : (
-            /* Expanded Footer Dock */
+            /* Expanded Mode Minimal Footer: CAD/By-Laws + Engineer Profile */
             <>
-              {/* 1-Click Unit System Toggle (Metric SI / Imperial ft-in) */}
-              <div
-                role="group"
-                aria-label="Global Unit System"
-                className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)]"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSetUnitSystem('metric')}
-                  className={`py-1.5 px-2 rounded-xl text-[11px] font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    isMetricActive
-                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-2xs'
-                      : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
-                  }`}
-                >
-                  Metric SI
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetUnitSystem('imperial')}
-                  className={`py-1.5 px-2 rounded-xl text-[11px] font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    !isMetricActive
-                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-2xs'
-                      : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]'
-                  }`}
-                >
-                  Imperial ft-in
-                </button>
-              </div>
+              {(onOpenCadModal || onOpenArchitectureModal) && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenCadModal?.('viewport');
+                      onCloseMobile();
+                    }}
+                    className="min-h-[32px] px-2.5 py-1 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    title="CAD & Excel Hub"
+                  >
+                    <Laptop className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                    <span className="truncate">CAD Hub</span>
+                  </button>
 
-              {/* Quick Modals Trigger Row: CAD & Excel Hub, Architecture By-Laws, Theme */}
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onOpenCadModal?.('viewport');
-                    onCloseMobile();
-                  }}
-                  className="min-h-[36px] px-2 py-1.5 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                  title="CAD & Excel Hub"
-                >
-                  <Laptop className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                  <span className="truncate">CAD</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    onOpenArchitectureModal?.('far');
-                    onCloseMobile();
-                  }}
-                  className="min-h-[36px] px-2 py-1.5 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                  title="Architecture By-Laws"
-                >
-                  <Compass className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="truncate">By-Laws</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setThemePopoverOpen((prev) => !prev)}
-                  className={`min-h-[36px] px-2 py-1.5 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer ${
-                    themePopoverOpen
-                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border-[var(--md-sys-color-primary)]/50'
-                      : 'bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
-                  }`}
-                  title="Switch Workbench Theme"
-                >
-                  <Palette className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
-                  <span className="truncate">Theme</span>
-                </button>
-              </div>
-
-              {/* Engineer Profile Quick Trigger */}
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenProfileModal?.('profile');
-                  onCloseMobile();
-                }}
-                className="w-full min-h-[40px] px-2.5 py-1.5 rounded-2xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/60 hover:bg-[var(--md-sys-color-surface-container)] flex items-center justify-between gap-2 transition-colors cursor-pointer text-left"
-                title="Open Engineer Profile & Preferences"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-6 h-6 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-                    <User className="w-3.5 h-3.5" />
-                  </span>
-                  <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate">
-                    {resolvedEngineerName}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenArchitectureModal?.('far');
+                      onCloseMobile();
+                    }}
+                    className="min-h-[32px] px-2.5 py-1 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    title="Architecture By-Laws"
+                  >
+                    <Compass className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span className="truncate">By-Laws</span>
+                  </button>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
-              </button>
+              )}
+
+              {onOpenProfileModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenProfileModal('profile');
+                    onCloseMobile();
+                  }}
+                  className="w-full min-h-[36px] px-2.5 py-1.5 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/60 hover:bg-[var(--md-sys-color-surface-container)] flex items-center justify-between gap-2 transition-colors cursor-pointer text-left"
+                  title="Open Engineer Profile & Preferences"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-5 h-5 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
+                      <User className="w-3 h-3" />
+                    </span>
+                    <span className="text-xs font-semibold text-[var(--md-sys-color-on-surface)] truncate">
+                      {resolvedEngineerName}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)] shrink-0" />
+                </button>
+              )}
             </>
           )}
         </div>
@@ -1136,7 +923,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 1. Tablet Persistent Compact Icon Rail (md only: 768px - 1023px) */}
       <aside
         aria-label="Compact Navigation Rail"
-        className="hidden md:block lg:hidden w-20 h-screen sticky top-0 shrink-0 z-30 print:hidden"
+        className="hidden md:block lg:hidden w-[68px] h-full max-h-full min-h-0 shrink-0 z-30 print:hidden"
       >
         {renderSidebarBody({ railMode: true, containerRef: tabletRailRef })}
       </aside>
@@ -1144,14 +931,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 2. Desktop Persistent 2-State Navigation Drawer / Icon Rail (lg and above) */}
       <aside
         aria-label="Primary Navigation Sidebar"
-        className={`hidden lg:block h-screen sticky top-0 shrink-0 transition-all duration-300 z-30 print:hidden ${
-          isCollapsed ? 'w-20' : 'w-72'
+        className={`hidden lg:block h-full max-h-full min-h-0 shrink-0 transition-all duration-300 z-30 print:hidden ${
+          isCollapsed ? 'w-[68px]' : 'w-64 xl:w-[272px]'
         }`}
       >
         {renderSidebarBody({ railMode: isCollapsed, containerRef: desktopRailRef })}
       </aside>
 
-      {/* 3. Mobile (<md) & Tablet Expanded Slide-Over M3 Modal Drawer */}
+      {/* 3. Mobile (<md) & Tablet Expanded Slide-Over Modal Drawer */}
       <AnimatePresence>
         {isMobileOpen && (
           <div className="fixed inset-0 z-50 lg:hidden flex">
@@ -1183,7 +970,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }
                 touchStartXRef.current = null;
               }}
-              className="relative w-80 max-w-[85vw] h-full shadow-2xl z-10 flex flex-col rounded-r-3xl overflow-hidden"
+              className="relative w-72 max-w-[85vw] h-[100dvh] max-h-[100dvh] shadow-2xl z-10 flex flex-col rounded-r-3xl overflow-hidden"
             >
               {renderSidebarBody({ railMode: false, isSlideOver: true })}
             </motion.div>
@@ -1193,3 +980,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </>
   );
 };
+
