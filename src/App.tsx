@@ -4651,6 +4651,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
             onOpenProfileModal={handleOpenProfileModal}
             unitSystemPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'}
             onSelectUnitPreset={handleSelectUnitPreset}
+            onSelectTheme={handleThemeChange}
             engineerDisplayName={userProfile.fullName}
           />
 
@@ -6226,6 +6227,8 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
           onNavigateConverter={() => navigateToModule('unit-converter')}
           onOpenHistory={() => navigateToDashboard('history')}
           onOpenProfile={() => navigateToDashboard('profile')}
+          isMobileSidebarOpen={mobileDrawerOpen}
+          isDesktopSidebarOpen={!appState.sidebarCollapsed}
         />
 
         {/* PROJECT WORKSPACES MANAGER MODAL */}

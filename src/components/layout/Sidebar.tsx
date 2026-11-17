@@ -17,6 +17,9 @@ import {
   Building2,
   FlaskConical,
   User,
+  Palette,
+  Check,
+  RotateCw,
   Calculator,
   Layers,
   Columns,
@@ -40,8 +43,9 @@ import {
   FileText,
   Mail,
 } from 'lucide-react';
-import { EngineeringModuleId, UnitSystemPreset } from '../../types/civil';
+import { EngineeringModuleId, UnitSystemPreset, ThemePreference } from '../../types/civil';
 import { useWorkbench } from '../../context/WorkbenchContext';
+import { useTheme, EngineeringTheme } from '../../context/ThemeContext';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { TOOL_REGISTRY_MAP } from '../../data/toolRegistry';
 
@@ -97,6 +101,7 @@ export interface SidebarProps {
   onOpenProfileModal?: (tab?: 'profile' | 'preferences' | 'presets') => void;
   unitSystemPreset?: UnitSystemPreset;
   onSelectUnitPreset?: (preset: UnitSystemPreset) => void;
+  onSelectTheme?: (theme: ThemePreference) => void;
   engineerDisplayName?: string;
 }
 
@@ -266,10 +271,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenCadModal,
   onOpenSiteQcModal,
   onOpenProfileModal,
+  onSelectTheme,
   engineerDisplayName,
 }) => {
   const workbench = useWorkbench();
   const civilLab = useCivilLab();
+  const { theme, themeConfig, setTheme, availableThemes } = useTheme();
 
   const [filterQuery, setFilterQuery] = useState('');
   // All categories start collapsed by default (null). Single-open accordion mode.
@@ -278,26 +285,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Compact Rail flyout state (when collapsed on desktop or on tablet rail)
   const [railFlyoutCatId, setRailFlyoutCatId] = useState<string | null>(null);
   const [railFlyoutTop, setRailFlyoutTop] = useState<number>(80);
+  const [themePopoverOpen, setThemePopoverOpen] = useState(false);
 
   const tabletRailRef = useRef<HTMLDivElement>(null);
   const desktopRailRef = useRef<HTMLDivElement>(null);
+  const mobileDrawerRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);
 
-  // Close rail flyout on outside click or Escape
+  // Close rail flyout & theme popover on outside click or Escape
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (railFlyoutCatId) {
-        const insideTablet = tabletRailRef.current?.contains(target) ?? false;
-        const insideDesktop = desktopRailRef.current?.contains(target) ?? false;
-        if (!insideTablet && !insideDesktop) {
-          setRailFlyoutCatId(null);
-        }
+      const insideTablet = tabletRailRef.current?.contains(target) ?? false;
+      const insideDesktop = desktopRailRef.current?.contains(target) ?? false;
+      const insideMobile = mobileDrawerRef.current?.contains(target) ?? false;
+      const insideAnySidebar = insideTablet || insideDesktop || insideMobile;
+
+      if (railFlyoutCatId && !insideTablet && !insideDesktop) {
+        setRailFlyoutCatId(null);
+      }
+      if (themePopoverOpen && !insideAnySidebar) {
+        setThemePopoverOpen(false);
       }
     };
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setRailFlyoutCatId(null);
+        setThemePopoverOpen(false);
         if (isMobileOpen) onCloseMobile();
       }
     };
@@ -307,10 +321,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       document.removeEventListener('mousedown', handleOutsideClick);
       window.removeEventListener('keydown', handleEsc);
     };
-  }, [railFlyoutCatId, isMobileOpen, onCloseMobile]);
+  }, [railFlyoutCatId, themePopoverOpen, isMobileOpen, onCloseMobile]);
 
   const toggleCategory = (catId: string) => {
     setOpenCategoryId((prev) => (prev === catId ? null : catId));
+  };
+
+  const handleSelectCuratedTheme = (tId: EngineeringTheme) => {
+    const matched = availableThemes.find((t) => t.id === tId);
+    setTheme(tId);
+    civilLab.updateUserProfile({ theme: tId });
+    if (matched && onSelectTheme) {
+      onSelectTheme(matched.mode === 'dark' ? 'dark' : 'light');
+    }
+    setThemePopoverOpen(false);
+  };
+
+  const handleQuickCycleTheme = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const currentIdx = availableThemes.findIndex((t) => t.id === theme);
+    const nextTheme = availableThemes[(currentIdx + 1) % availableThemes.length];
+    if (nextTheme) {
+      setTheme(nextTheme.id);
+      civilLab.updateUserProfile({ theme: nextTheme.id });
+      if (onSelectTheme) {
+        onSelectTheme(nextTheme.mode === 'dark' ? 'dark' : 'light');
+      }
+    }
   };
 
   const handleItemClick = (item: SidebarSubItem) => {
@@ -339,6 +376,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onSelectModule(item.moduleId, item.subAction);
     }
     setRailFlyoutCatId(null);
+    setThemePopoverOpen(false);
     onCloseMobile();
   };
 
@@ -387,9 +425,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ref={containerRef}
         className="relative flex flex-col h-full max-h-full min-h-0 overflow-hidden theme-glass-panel border-r border-[var(--md-sys-color-outline-variant)] select-none"
       >
-        {/* 1. STREAMLINED TOP CONTROLS (Home + Collapse/Close + Filter Search) */}
+        {/* 1. STICKY TOP CONTROLS (Home + Collapse/Close + Filter Search) */}
         <div
-          className={`shrink-0 border-b border-[var(--md-sys-color-outline-variant)]/70 ${
+          className={`sticky top-0 z-20 shrink-0 border-b border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface)]/95 backdrop-blur-md ${
             railMode ? 'px-2 py-2.5 flex flex-col items-center gap-1.5' : 'px-3 pt-2.5 pb-2.5 space-y-2'
           }`}
         >
@@ -399,6 +437,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => {
                 onSelectDashboard();
                 setRailFlyoutCatId(null);
+                setThemePopoverOpen(false);
                 onCloseMobile();
               }}
               aria-current={homeSelected ? 'page' : undefined}
@@ -489,7 +528,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* 2. SCROLLABLE DISCIPLINE CATEGORIES / ICON RAIL */}
+        {/* 2. INDEPENDENTLY SCROLLABLE DISCIPLINE CATEGORIES / ICON RAIL */}
         <div
           className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
             railMode ? 'px-2 py-2 space-y-1.5' : 'px-2.5 py-2 space-y-1.5'
@@ -513,6 +552,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         const rect = e.currentTarget.getBoundingClientRect();
                         const maxTop = Math.max(16, window.innerHeight - 360);
                         setRailFlyoutTop(Math.min(Math.max(16, rect.top), maxTop));
+                        setThemePopoverOpen(false);
                         setRailFlyoutCatId((prev) => (prev === cat.id ? null : cat.id));
                       }}
                       aria-expanded={isFlyoutOpen}
@@ -810,16 +850,90 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* 3. MINIMAL SIDEBAR FOOTER DOCK (Profile + CAD / By-Laws Only) */}
+        {/* 3. STICKY SIDEBAR FOOTER DOCK (CAD, By-Laws, Permanent Theme Switcher + Profile) */}
         <div
-          className={`relative border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] shrink-0 ${
+          className={`sticky bottom-0 z-20 mt-auto border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]/95 backdrop-blur-md shrink-0 ${
             railMode
               ? 'p-2 flex flex-col items-center gap-1.5'
               : 'px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] space-y-1.5'
           }`}
         >
+          {/* Upward 6-Theme Popup Menu (Works in Mobile Portrait, Mobile Landscape, Tablet Rail & Desktop) */}
+          {themePopoverOpen && (
+            <div
+              className={`absolute bottom-full mb-2 z-50 rounded-2xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 backdrop-blur-2xl shadow-2xl p-2 space-y-1.5 ${
+                railMode ? 'left-[72px] w-68' : 'left-2 right-2 w-auto'
+              }`}
+            >
+              <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between gap-2">
+                <span>Architectural Themes</span>
+                <button
+                  type="button"
+                  onClick={handleQuickCycleTheme}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:opacity-90 text-[9.5px] font-mono font-bold cursor-pointer transition-opacity"
+                  title="1-Tap Cycle Next Theme"
+                >
+                  <RotateCw className="w-2.5 h-2.5" />
+                  <span>Cycle</span>
+                </button>
+              </div>
+              <div className="space-y-1 max-h-[min(260px,52vh)] overflow-y-auto custom-scrollbar pr-0.5">
+                {availableThemes.map((t) => {
+                  const isActive = t.id === theme;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleSelectCuratedTheme(t.id)}
+                      className={`w-full px-2 py-1.5 rounded-xl flex items-center justify-between text-left transition-all cursor-pointer border ${
+                        isActive
+                          ? 'bg-[var(--md-sys-color-primary-container)]/35 border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] font-bold shadow-2xs'
+                          : 'border-transparent hover:border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {/* Mini Live Blueprint Surface Swatch */}
+                        <div
+                          className="w-7 h-7 rounded-lg border shrink-0 flex items-center justify-center relative overflow-hidden shadow-2xs"
+                          style={{
+                            backgroundColor: t.colors.bg,
+                            borderColor: t.colors.border,
+                            backgroundImage: `
+                              radial-gradient(circle at 25% 25%, ${t.colors.ambientGlow} 0%, transparent 70%),
+                              linear-gradient(to right, ${t.colors.gridLine} 1px, transparent 1px),
+                              linear-gradient(to bottom, ${t.colors.gridLine} 1px, transparent 1px)
+                            `,
+                            backgroundSize: '100% 100%, 6px 6px, 6px 6px',
+                          }}
+                        >
+                          <div className="flex -space-x-1">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/30"
+                              style={{ backgroundColor: t.colors.accent }}
+                            />
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/30"
+                              style={{ backgroundColor: t.colors.secondary }}
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-bold truncate">{t.name}</div>
+                          <div className="text-[9.5px] font-mono text-[var(--md-sys-color-on-surface-variant)] truncate">
+                            {t.subtitle} · {t.mode.toUpperCase()}
+                          </div>
+                        </div>
+                      </div>
+                      {isActive && <Check className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {railMode ? (
-            /* Rail Mode Minimal Footer Icons */
+            /* Rail Mode Sticky Footer Icons */
             <>
               {onOpenCadModal && (
                 <button
@@ -845,6 +959,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               )}
 
+              {/* Permanent Theme Switcher Icon in Rail Footer */}
+              <button
+                type="button"
+                onClick={() => {
+                  setRailFlyoutCatId(null);
+                  setThemePopoverOpen((prev) => !prev);
+                }}
+                className={`relative w-10 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                  themePopoverOpen
+                    ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]'
+                    : 'text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)]'
+                }`}
+                title={`Theme: ${themeConfig.name} (Click for 6-theme menu)`}
+                aria-label="Switch Theme"
+              >
+                <Palette className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+                <span
+                  className="absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full border border-black/30"
+                  style={{ backgroundColor: themeConfig.colors.accent }}
+                />
+              </button>
+
               {onOpenProfileModal && (
                 <button
                   type="button"
@@ -858,37 +994,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </>
           ) : (
-            /* Expanded Mode Minimal Footer: CAD/By-Laws + Engineer Profile */
+            /* Expanded Mode Sticky Footer: CAD + By-Laws + Permanent Theme Control (Popup + 1-Tap Cycle) + Engineer Profile */
             <>
-              {(onOpenCadModal || onOpenArchitectureModal) && (
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onOpenCadModal?.('viewport');
-                      onCloseMobile();
-                    }}
-                    className="min-h-[32px] px-2.5 py-1 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    title="CAD & Excel Hub"
-                  >
-                    <Laptop className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                    <span className="truncate">CAD Hub</span>
-                  </button>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenCadModal?.('viewport');
+                    onCloseMobile();
+                  }}
+                  className="min-h-[32px] px-2 py-1 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                  title="CAD & Excel Hub"
+                >
+                  <Laptop className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                  <span className="truncate">CAD</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenArchitectureModal?.('far');
+                    onCloseMobile();
+                  }}
+                  className="min-h-[32px] px-2 py-1 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                  title="Architecture By-Laws"
+                >
+                  <Compass className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="truncate">By-Laws</span>
+                </button>
+
+                {/* Permanent Theme Control: Main button opens 6-theme popup menu, right action cycles in 1 tap */}
+                <div
+                  className={`min-h-[32px] rounded-xl border flex items-stretch overflow-hidden transition-colors ${
+                    themePopoverOpen
+                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border-[var(--md-sys-color-primary)]/60'
+                      : 'bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 text-[var(--md-sys-color-on-surface)]'
+                  }`}
+                >
                   <button
                     type="button"
-                    onClick={() => {
-                      onOpenArchitectureModal?.('far');
-                      onCloseMobile();
-                    }}
-                    className="min-h-[32px] px-2.5 py-1 rounded-xl bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)] text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    title="Architecture By-Laws"
+                    onClick={() => setThemePopoverOpen((prev) => !prev)}
+                    className="flex-1 pl-2 pr-1 py-1 flex items-center justify-center gap-1 text-[11px] font-semibold hover:bg-[var(--md-sys-color-surface-container)]/60 transition-colors cursor-pointer min-w-0"
+                    title={`Active Theme: ${themeConfig.name} (Tap to open 6-theme menu)`}
+                    aria-expanded={themePopoverOpen}
                   >
-                    <Compass className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span className="truncate">By-Laws</span>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full border border-black/30 shrink-0"
+                      style={{ backgroundColor: themeConfig.colors.accent }}
+                    />
+                    <span className="truncate">Theme</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleQuickCycleTheme}
+                    className="px-1.5 flex items-center justify-center border-l border-[var(--md-sys-color-outline-variant)]/70 hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] transition-colors cursor-pointer shrink-0"
+                    title="1-Tap Cycle Next Theme"
+                    aria-label="1-Tap Cycle Next Theme"
+                  >
+                    <RotateCw className="w-2.5 h-2.5" />
                   </button>
                 </div>
-              )}
+              </div>
 
               {onOpenProfileModal && (
                 <button
@@ -972,7 +1138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className="relative w-72 max-w-[85vw] h-[100dvh] max-h-[100dvh] shadow-2xl z-10 flex flex-col rounded-r-3xl overflow-hidden"
             >
-              {renderSidebarBody({ railMode: false, isSlideOver: true })}
+              {renderSidebarBody({ railMode: false, isSlideOver: true, containerRef: mobileDrawerRef })}
             </motion.div>
           </div>
         )}
@@ -980,4 +1146,5 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </>
   );
 };
+
 

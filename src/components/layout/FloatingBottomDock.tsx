@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Home,
   Grid,
@@ -8,7 +8,6 @@ import {
   User,
   ChevronDown,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 import { useCivilLab, ActivePage } from '../../context/CivilLabContext';
 
@@ -19,6 +18,8 @@ export interface FloatingBottomDockProps {
   onNavigateConverter?: () => void;
   onOpenHistory?: () => void;
   onOpenProfile?: () => void;
+  isMobileSidebarOpen?: boolean;
+  isDesktopSidebarOpen?: boolean;
 }
 
 interface DestinationItem {
@@ -95,6 +96,8 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   onNavigateConverter,
   onOpenHistory,
   onOpenProfile,
+  isMobileSidebarOpen = false,
+  isDesktopSidebarOpen = false,
 }) => {
   const {
     activePage,
@@ -103,8 +106,79 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
     savedHistory,
     isDockCollapsed,
     setIsDockCollapsed,
-    toggleDockCollapsed,
   } = useCivilLab();
+
+  // Independent automatic minimize state triggered by sidebar opening/closing or browser return.
+  // Never overwrites the user's manual `isDockCollapsed` preference stored in CivilLabContext.
+  const [isAutoMinimized, setIsAutoMinimized] = useState<boolean>(() => Boolean(isMobileSidebarOpen));
+  const prevMobileSidebarRef = useRef<boolean>(isMobileSidebarOpen);
+  const prevDesktopSidebarRef = useRef<boolean>(isDesktopSidebarOpen);
+
+  // 1. Auto-minimize when mobile/tablet sidebar drawer opens; auto-restore when it closes
+  useEffect(() => {
+    if (prevMobileSidebarRef.current !== isMobileSidebarOpen) {
+      if (isMobileSidebarOpen) {
+        setIsAutoMinimized(true);
+      } else {
+        setIsAutoMinimized(false);
+      }
+      prevMobileSidebarRef.current = isMobileSidebarOpen;
+    }
+  }, [isMobileSidebarOpen]);
+
+  // 2. Auto-minimize when desktop sidebar is expanded; auto-restore when collapsed
+  useEffect(() => {
+    if (prevDesktopSidebarRef.current !== isDesktopSidebarOpen) {
+      if (isDesktopSidebarOpen) {
+        setIsAutoMinimized(true);
+      } else {
+        setIsAutoMinimized(false);
+      }
+      prevDesktopSidebarRef.current = isDesktopSidebarOpen;
+    }
+  }, [isDesktopSidebarOpen]);
+
+  // 3. Auto-maximize when returning from the browser (tab visibility / window focus / pageshow)
+  // while respecting the user's manual `isDockCollapsed` setting.
+  useEffect(() => {
+    const handleBrowserReturn = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+      if (!isMobileSidebarOpen) {
+        setIsAutoMinimized(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleBrowserReturn);
+    window.addEventListener('focus', handleBrowserReturn);
+    window.addEventListener('pageshow', handleBrowserReturn);
+    return () => {
+      document.removeEventListener('visibilitychange', handleBrowserReturn);
+      window.removeEventListener('focus', handleBrowserReturn);
+      window.removeEventListener('pageshow', handleBrowserReturn);
+    };
+  }, [isMobileSidebarOpen]);
+
+  const effectiveDockCollapsed = isDockCollapsed || isAutoMinimized;
+
+  const handleManualExpandDock = useCallback(() => {
+    setIsAutoMinimized(false);
+    setIsDockCollapsed(false);
+  }, [setIsDockCollapsed]);
+
+  const handleManualMinimizeDock = useCallback(() => {
+    setIsDockCollapsed(true);
+  }, [setIsDockCollapsed]);
+
+  const handleManualToggleDock = useCallback(() => {
+    if (effectiveDockCollapsed) {
+      setIsAutoMinimized(false);
+      setIsDockCollapsed(false);
+    } else {
+      setIsDockCollapsed(true);
+    }
+  }, [effectiveDockCollapsed, setIsDockCollapsed]);
 
   const handleSelect = useCallback(
     (destId: ActivePage | 'search') => {
@@ -158,7 +232,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
       // Alt+D to toggle dock collapse
       if (e.altKey && e.key.toLowerCase() === 'd') {
         e.preventDefault();
-        toggleDockCollapsed();
+        handleManualToggleDock();
         return;
       }
 
@@ -188,15 +262,15 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSelect, toggleDockCollapsed]);
+  }, [handleSelect, handleManualToggleDock]);
 
   // COLLAPSED STATE: Unobtrusive Floating Pill in bottom-right corner
-  if (isDockCollapsed) {
+  if (effectiveDockCollapsed) {
     return (
-      <div className="fixed bottom-4 right-4 z-50 print:hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="fixed bottom-4 right-4 z-40 print:hidden animate-in fade-in zoom-in-95 duration-200">
         <button
           type="button"
-          onClick={() => setIsDockCollapsed(false)}
+          onClick={handleManualExpandDock}
           className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]/95 backdrop-blur-xl shadow-2xl text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] hover:border-[var(--md-sys-color-primary)] transition-all cursor-pointer group hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[var(--md-sys-color-primary)]/40"
           title="Expand Navigation Dock (Alt+D)"
           aria-label="Expand Navigation Dock"
@@ -223,7 +297,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   return (
     <nav
       aria-label="BD. CivilLab Main Navigation"
-      className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 print:hidden transition-all duration-200 max-w-[96vw] sm:max-w-none"
+      className="fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 print:hidden transition-all duration-200 max-w-[96vw] sm:max-w-none"
     >
       <div
         className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl sm:rounded-full bg-[var(--md-sys-color-surface)]/95 backdrop-blur-xl border border-[var(--md-sys-color-outline)] shadow-2xl shadow-black/40 ring-1 ring-white/10 select-none pb-[max(0.35rem,env(safe-area-inset-bottom))]
@@ -297,7 +371,7 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
         {/* Minimize / Collapse Toggle Button */}
         <button
           type="button"
-          onClick={toggleDockCollapsed}
+          onClick={handleManualMinimizeDock}
           className="flex items-center justify-center p-2 rounded-xl sm:rounded-full min-w-[38px] min-h-[44px] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] transition-all cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]
           max-h-[500px]:min-h-[36px] max-h-[500px]:p-1.5"
           title="Minimize Dock to Corner Pill (Alt+D)"
@@ -309,3 +383,4 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
     </nav>
   );
 };
+
