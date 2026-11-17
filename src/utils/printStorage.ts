@@ -16,12 +16,14 @@ export type PaperSize = 'a4' | 'letter' | 'legal';
 export type PageOrientation = 'portrait' | 'landscape';
 export type MarginOption = 'normal' | 'compact' | 'wide';
 export type FontScaleOption = 'small' | 'medium' | 'large';
+export type PrintUnitPreset = 'workspace' | 'metric' | 'imperial' | 'regional';
 
 export interface PrintSettings {
   paperSize: PaperSize;
   orientation: PageOrientation;
   margins: MarginOption;
   fontScale: FontScaleOption;
+  exportUnitPreset?: PrintUnitPreset;
   sections: PrintSectionToggles;
   includeQrCode: boolean;
   includeWatermark: boolean;
@@ -57,6 +59,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   orientation: 'portrait',
   margins: 'normal',
   fontScale: 'medium',
+  exportUnitPreset: 'workspace',
   sections: DEFAULT_SECTION_TOGGLES,
   includeQrCode: true,
   includeWatermark: false,

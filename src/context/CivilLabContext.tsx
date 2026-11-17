@@ -51,6 +51,7 @@ export interface CivilPdfPreset {
   paperSize: 'a4' | 'letter' | 'legal';
   orientation: 'portrait' | 'landscape';
   marginMm: number;
+  exportUnitPreset?: 'workspace' | 'metric' | 'imperial' | 'regional';
   includeHeader: boolean;
   includeFooter: boolean;
   includeQR: boolean;

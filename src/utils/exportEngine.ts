@@ -33,7 +33,12 @@ import {
   saveVerifiedReport,
 } from './verificationEngine';
 import { TESTING_LAB_TEST_MAP, TESTING_LAB_TESTS } from '../data/testingLabCatalog';
-import { getBrandLogoPngDataUrl } from '../assets/brandLogoData';
+import {
+  BRAND_LOGO_LIGHT_SVG_DATA_URI,
+  getBrandLogoLightPngDataUrl,
+  getBrandLogoPngDataUrl,
+} from '../assets/brandLogoData';
+import { formatFeetInches } from './unitConverter';
 import {
   evaluateLabTest,
   getDefaultChecklistStates,
@@ -278,6 +283,8 @@ export interface ReportFormulaStep {
   remarks?: string;
 }
 
+export type ExportUnitPreset = 'workspace' | 'metric' | 'imperial' | 'regional';
+
 export interface EngineeringReportData {
   projectMeta: {
     projectName: string;
@@ -285,7 +292,7 @@ export interface EngineeringReportData {
     client?: string;
     location?: string;
     date: string;
-    unitSystem: 'SI' | 'Imperial';
+    unitSystem: 'SI' | 'Imperial' | 'Regional' | string;
     engineerName?: string;
     engineerDesignation?: string;
     engineerLicense?: string;
@@ -325,6 +332,7 @@ export interface PdfExportEngineOptions {
   paperSize?: 'a4' | 'letter' | 'legal';
   orientation?: 'portrait' | 'landscape';
   marginMm?: number;
+  exportUnitPreset?: ExportUnitPreset;
   customHeaderTitle?: string;
   customCompanySubtitle?: string;
   customProjectName?: string;
@@ -339,6 +347,214 @@ export interface PdfExportEngineOptions {
   includeSignatureBlock?: boolean;
   includeFooter?: boolean;
   captureLiveDiagram?: boolean;
+}
+
+/**
+ * Converts a single value + unit pair into the target export unit preset ('metric' | 'imperial' | 'regional')
+ * with high engineering accuracy and clean formatting.
+ */
+export function convertValueAndUnitForExport(
+  rawValue: string | number,
+  rawUnit: string,
+  targetSystem: 'metric' | 'imperial' | 'regional'
+): { value: string | number; unit: string } {
+  const u = (rawUnit || '').trim();
+  const numVal =
+    typeof rawValue === 'number'
+      ? rawValue
+      : typeof rawValue === 'string' && /^-?\d+(\.\d+)?$/.test(rawValue.trim())
+        ? parseFloat(rawValue.trim())
+        : NaN;
+
+  if (!Number.isFinite(numVal) || !u || u === '-' || u === 'ratio' || u === '%' || u === 'deg' || u === 'type' || u === 'code' || u === 'factor') {
+    return { value: rawValue, unit: rawUnit };
+  }
+
+  const fmt = (n: number, d = 2) => {
+    if (Math.abs(n) === 0) return '0';
+    if (Math.abs(n) >= 1000) return n.toFixed(1);
+    if (Math.abs(n) >= 10) return n.toFixed(d);
+    return Number(n.toFixed(Math.max(d, 3))).toString();
+  };
+
+  if (targetSystem === 'metric') {
+    // Normalize any imperial/regional units back to SI
+    if (u === 'ft') return { value: fmt(numVal * 0.3048, 3), unit: 'm' };
+    if (u === 'in') return { value: fmt(numVal * 25.4, 1), unit: 'mm' };
+    if (u === 'sq ft' || u === 'ft^2' || u === 'ft²') return { value: fmt(numVal * 0.092903, 2), unit: 'm^2' };
+    if (u === 'CFT' || u === 'ft^3' || u === 'ft³') return { value: fmt(numVal * 0.0283168, 3), unit: 'm^3' };
+    if (u === 'psi') return { value: fmt(numVal / 145.0377, 2), unit: 'MPa' };
+    if (u === 'kip' || u === 'kips') return { value: fmt(numVal * 4.44822, 2), unit: 'kN' };
+    if (u === 'lbs' || u === 'lb') return { value: fmt(numVal * 0.453592, 2), unit: 'kg' };
+    return { value: rawValue, unit: rawUnit };
+  }
+
+  if (targetSystem === 'imperial') {
+    switch (u) {
+      case 'm':
+        return { value: `${formatFeetInches(numVal, { isMeters: true })} (${fmt(numVal * 3.28084, 2)} ft)`, unit: 'ft-in' };
+      case 'mm':
+        return { value: fmt(numVal / 25.4, 2), unit: 'in' };
+      case 'cm':
+        return { value: fmt(numVal / 2.54, 2), unit: 'in' };
+      case 'm^2':
+      case 'm²':
+        return { value: fmt(numVal * 10.76391, 2), unit: 'sq ft' };
+      case 'cm^4':
+      case 'cm⁴':
+        return { value: fmt(numVal * 0.024025, 2), unit: 'in^4' };
+      case 'm^3':
+      case 'm³':
+        return { value: fmt(numVal * 35.31467, 2), unit: 'CFT' };
+      case 'L':
+        return { value: fmt(numVal * 0.264172, 2), unit: 'gal' };
+      case 'kN':
+        return { value: fmt(numVal * 0.224809, 2), unit: 'kip' };
+      case 'kN/m':
+        return { value: fmt(numVal * 0.0685218, 3), unit: 'kip/ft' };
+      case 'kN.m':
+      case 'kN·m':
+      case 'kNm':
+        return { value: fmt(numVal * 0.737562, 2), unit: 'kip.ft' };
+      case 'MPa':
+        return { value: fmt(numVal * 145.0377, 0), unit: 'psi' };
+      case 'GPa':
+        return { value: fmt(numVal * 145.0377, 0), unit: 'ksi' };
+      case 'kPa':
+      case 'kN/m^2':
+        return { value: fmt(numVal * 20.8854, 1), unit: 'psf' };
+      case 'kN/m^3':
+      case 'kN/m³':
+        return { value: fmt(numVal * 6.36588, 1), unit: 'pcf' };
+      case 'kg':
+        return { value: fmt(numVal * 2.20462, 1), unit: 'lbs' };
+      case 'kg/m':
+        return { value: fmt(numVal * 0.671969, 3), unit: 'lb/ft' };
+      case 'kg/m^3':
+      case 'kg/m³':
+        return { value: fmt(numVal * 0.062428, 1), unit: 'lb/ft^3' };
+      case 'm^3/s':
+      case 'm³/s':
+        return { value: fmt(numVal * 35.31467, 2), unit: 'cfs' };
+      case 'L/s':
+        return { value: fmt(numVal * 15.8503, 1), unit: 'gpm' };
+      case 'm/s':
+        return { value: fmt(numVal * 3.28084, 2), unit: 'ft/s' };
+      default:
+        return { value: rawValue, unit: rawUnit };
+    }
+  }
+
+  // targetSystem === 'regional' (Bangladesh Field Standard: ft-in, sq ft / Katha, CFT, psi, kg/MT)
+  switch (u) {
+    case 'm':
+      return { value: `${formatFeetInches(numVal, { isMeters: true })} (${fmt(numVal * 3.28084, 2)} ft)`, unit: 'ft-in' };
+    case 'mm':
+      return { value: `${fmt(numVal / 25.4, 2)}" (${fmt(numVal, 0)} mm)`, unit: 'in (mm)' };
+    case 'cm':
+      return { value: fmt(numVal / 2.54, 2), unit: 'in' };
+    case 'm^2':
+    case 'm²': {
+      const sqft = numVal * 10.76391;
+      if (sqft >= 720) {
+        return { value: `${fmt(sqft, 1)} sq ft (${fmt(sqft / 720, 2)} Katha)`, unit: 'sq ft / Katha' };
+      }
+      return { value: fmt(sqft, 2), unit: 'sq ft' };
+    }
+    case 'm^3':
+    case 'm³':
+      return { value: fmt(numVal * 35.31467, 2), unit: 'CFT' };
+    case 'MPa':
+      return { value: `${fmt(numVal * 145.0377, 0)} psi (${fmt(numVal, 1)} MPa)`, unit: 'psi (MPa)' };
+    case 'kPa':
+      return { value: `${fmt(numVal * 0.0208854, 2)} tsf (${fmt(numVal, 1)} kPa)`, unit: 'tsf (kPa)' };
+    case 'm^3/s':
+    case 'm³/s':
+      return { value: fmt(numVal * 35.31467, 2), unit: 'cusec (cfs)' };
+    default:
+      return { value: rawValue, unit: rawUnit };
+  }
+}
+
+/**
+ * Converts an entire `EngineeringReportData` payload into the user's selected export unit preset
+ * ('workspace' | 'metric' | 'imperial' | 'regional').
+ */
+export function applyExportUnitConversionToReport(
+  reportData: EngineeringReportData,
+  exportUnitPreset: ExportUnitPreset = 'workspace',
+  workspace?: CivilWorkspace
+): EngineeringReportData {
+  const effectiveSystem: 'metric' | 'imperial' | 'regional' =
+    exportUnitPreset === 'workspace'
+      ? (workspace?.unitPreferences?.systemPreset as 'metric' | 'imperial' | 'regional') ||
+        (reportData.projectMeta.unitSystem === 'Imperial' ? 'imperial' : 'metric')
+      : exportUnitPreset;
+
+  const unitLabelMap: Record<'metric' | 'imperial' | 'regional', string> = {
+    metric: 'SI Metric (m, kN, MPa)',
+    imperial: 'Imperial (ft-in, kip, psi)',
+    regional: 'Regional BD (ft-in, CFT, psi)',
+  };
+
+  if (effectiveSystem === 'metric' && reportData.projectMeta.unitSystem === 'SI') {
+    return {
+      ...reportData,
+      projectMeta: {
+        ...reportData.projectMeta,
+        unitSystem: unitLabelMap.metric,
+      },
+    };
+  }
+
+  const convertedInputs = (reportData.inputs || []).map((inp) => {
+    const conv = convertValueAndUnitForExport(inp.value, inp.unit, effectiveSystem);
+    return {
+      ...inp,
+      value: conv.value,
+      unit: conv.unit,
+    };
+  });
+
+  const convertedOutputs = (reportData.outputs || []).map((out) => {
+    const conv = convertValueAndUnitForExport(out.value, out.unit, effectiveSystem);
+    let convertedLimit = out.limit;
+    if (out.limit && effectiveSystem !== 'metric') {
+      // Replace embedded metric numbers in limit strings like "12.50 mm (L/360)" or "25 MPa"
+      convertedLimit = out.limit
+        .replace(/(\d+(?:\.\d+)?)\s*mm/g, (_, n) => `${(parseFloat(n) / 25.4).toFixed(2)} in`)
+        .replace(/(\d+(?:\.\d+)?)\s*MPa/g, (_, n) => `${(parseFloat(n) * 145.0377).toFixed(0)} psi`)
+        .replace(/(\d+(?:\.\d+)?)\s*m\b/g, (_, n) => `${(parseFloat(n) * 3.28084).toFixed(2)} ft`);
+    }
+    return {
+      ...out,
+      value: conv.value,
+      unit: conv.unit,
+      limit: convertedLimit,
+    };
+  });
+
+  const convertedHeaders = reportData.takeoffHeaders
+    ? reportData.takeoffHeaders.map((h) => {
+        if (effectiveSystem === 'metric') return h;
+        return h
+          .replace(/\(m\)/g, '(ft)')
+          .replace(/\(m\^3\)|\(m³\)/g, '(CFT)')
+          .replace(/\(m\^2\)|\(m²\)/g, '(sq ft)')
+          .replace(/\(MPa\)/g, '(psi)');
+      })
+    : undefined;
+
+  return {
+    ...reportData,
+    projectMeta: {
+      ...reportData.projectMeta,
+      unitSystem: unitLabelMap[effectiveSystem],
+    },
+    inputs: convertedInputs,
+    outputs: convertedOutputs,
+    takeoffHeaders: convertedHeaders,
+  };
 }
 
 let cachedNikoshBase64: string | null = null;
@@ -388,8 +604,32 @@ export async function registerNikoshFontIfAvailable(doc: jsPDF): Promise<boolean
 }
 
 /**
+ * Helper to determine if an <svg> element is a real 2D engineering schematic
+ * rather than a tiny 16x16 / 24x24 Lucide UI toolbar icon.
+ */
+export function isEngineeringSchematicSvg(svgEl: SVGSVGElement): boolean {
+  const cls = (svgEl.getAttribute('class') || '').toLowerCase();
+  if (cls.includes('lucide') || svgEl.hasAttribute('data-lucide')) {
+    return false;
+  }
+  const vb = svgEl.viewBox?.baseVal;
+  if (vb && vb.width > 0 && vb.height > 0) {
+    return vb.width >= 180 && vb.height >= 100;
+  }
+  const widthAttr = parseFloat(svgEl.getAttribute('width') || '0');
+  if (widthAttr > 0 && widthAttr < 120) {
+    return false;
+  }
+  const rect = svgEl.getBoundingClientRect();
+  if (rect.width > 0 && rect.width < 120) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Locates the active module's 2D analytical SVG diagram in the DOM and captures it
- * as a high-DPI PNG data URL with resolved CSS custom property colors.
+ * as a crisp Light CAD Blueprint PNG data URL on a pure white background.
  */
 export async function captureActiveModuleDiagramPng(): Promise<{
   dataUrl: string;
@@ -398,17 +638,20 @@ export async function captureActiveModuleDiagramPng(): Promise<{
 } | null> {
   if (typeof document === 'undefined') return null;
   const selectors = [
-    '[data-diagram-export="active-module"] svg',
+    '[data-diagram-export="active-module"] [data-cad-diagram="true"] svg',
     '#pb-print-capture-source .print-capture-diagram svg',
+    '[data-diagram-export="active-module"] svg',
     '.print-capture-diagram svg',
     '.analytical-diagram-container svg',
   ];
 
   for (const sel of selectors) {
-    const svgEl = document.querySelector(sel) as SVGSVGElement | null;
-    if (svgEl) {
-      const captured = await captureSvgToPngDataUrl(svgEl);
-      if (captured) return captured;
+    const candidates = Array.from(document.querySelectorAll(sel)) as SVGSVGElement[];
+    for (const svgEl of candidates) {
+      if (isEngineeringSchematicSvg(svgEl)) {
+        const captured = await captureSvgToPngDataUrl(svgEl);
+        if (captured) return captured;
+      }
     }
   }
   return null;
@@ -423,7 +666,7 @@ export async function captureActiveModuleDiagramPng(): Promise<{
  * using jsPDF, jspdf-autotable, embedded 2D vector schematic capture, and QR verification.
  */
 export async function generateEngineeringPDF(
-  reportData: EngineeringReportData,
+  rawReportData: EngineeringReportData,
   options: PdfExportEngineOptions = {}
 ): Promise<jsPDF> {
   const {
@@ -431,6 +674,7 @@ export async function generateEngineeringPDF(
     paperSize = 'a4',
     orientation = 'portrait',
     marginMm = 14,
+    exportUnitPreset = 'workspace',
     customHeaderTitle,
     customCompanySubtitle,
     customProjectName,
@@ -446,6 +690,8 @@ export async function generateEngineeringPDF(
     includeFooter = true,
     captureLiveDiagram = true,
   } = options;
+
+  const reportData = applyExportUnitConversionToReport(rawReportData, exportUnitPreset);
 
   const notify = async (stage: string, percent: number) => {
     if (onProgress) {
@@ -513,7 +759,7 @@ export async function generateEngineeringPDF(
 
   let brandLogoDataUrl = '';
   try {
-    brandLogoDataUrl = await getBrandLogoPngDataUrl(256);
+    brandLogoDataUrl = await getBrandLogoLightPngDataUrl(256);
   } catch {
     brandLogoDataUrl = '';
   }
@@ -533,78 +779,91 @@ export async function generateEngineeringPDF(
   let yPos = margin;
 
   // ==========================================================================
-  // PAGE 1: CONSULTANT TITLE BLOCK & HEADER
+  // PAGE 1: CLEAN LIGHT ARCHITECTURAL CONSULTANT TITLE BLOCK & HEADER
   // ==========================================================================
   await notify('Composing consultant title block and project credentials...', 45);
 
   if (includeHeader) {
-    const headerH = 26;
-    // Top Accent Banner (Navy #0f172a)
-    doc.setFillColor(15, 23, 42);
-    doc.rect(margin, yPos, contentWidth, headerH, 'F');
+    const headerH = 26.5;
+    // Clean Light Architectural Header Surface (#ffffff) with crisp navy border (#1e3a8a)
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(30, 58, 138);
+    doc.setLineWidth(0.45);
+    doc.roundedRect(margin, yPos, contentWidth, headerH, 1.5, 1.5, 'FD');
 
-    // Decorative engineering accent bar (Blue #2563eb)
-    doc.setFillColor(37, 99, 235);
-    doc.rect(margin, yPos + headerH, contentWidth, 1.5, 'F');
+    // Top 1.6mm structural navy accent bar (#1e3a8a)
+    doc.setFillColor(30, 58, 138);
+    doc.rect(margin, yPos, contentWidth, 1.6, 'F');
+
+    // Bottom subtle blueprint divider stripe (#dbeafe)
+    doc.setFillColor(239, 246, 255);
+    doc.rect(margin + 0.3, yPos + headerH - 5.8, contentWidth - 0.6, 5.5, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.2);
+    doc.line(margin, yPos + headerH - 5.8, margin + contentWidth, yPos + headerH - 5.8);
 
     let titleTextX = margin + 4;
     if (brandLogoDataUrl) {
       try {
-        doc.addImage(brandLogoDataUrl, 'PNG', margin + 3.5, yPos + 3.5, 19, 19);
-        titleTextX = margin + 26;
+        doc.addImage(brandLogoDataUrl, 'PNG', margin + 3.5, yPos + 3, 17, 17);
+        titleTextX = margin + 23.5;
       } catch {
         titleTextX = margin + 4;
       }
     }
 
-    // Brand Name in White
-    doc.setTextColor(255, 255, 255);
+    // Brand Name in Deep Architectural Navy (#0f172a)
+    doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13.5);
+    doc.setFontSize(13);
     doc.text('BD. CIVILLAB', titleTextX, yPos + 8);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    doc.setTextColor(30, 58, 138);
     doc.text(
       sanitizeEngineeringSymbols(
         customCompanySubtitle || 'PROFESSIONAL CIVIL ENGINEERING LABORATORY & CERTIFIED SUBMITTAL SUITE'
       ),
       titleTextX,
-      yPos + 13.2
+      yPos + 12.8
     );
 
-    doc.setFontSize(7);
-    doc.setTextColor(226, 232, 240);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(51, 65, 85);
     doc.text(
       sanitizeEngineeringSymbols(
-        `SUBMITTAL REF: ${docId}  |  STATUS: ${reportData.moduleMeta.status || 'VERIFIED'}  |  UNITS: ${reportData.projectMeta.unitSystem.toUpperCase()}`
+        `SUBMITTAL REF: ${docId}  |  STATUS: ${reportData.moduleMeta.status || 'VERIFIED'}  |  UNITS: ${String(reportData.projectMeta.unitSystem).toUpperCase()}`
       ),
       titleTextX,
-      yPos + 18.5
+      yPos + 17.5
     );
 
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.setTextColor(148, 163, 184);
+    doc.setTextColor(30, 58, 138);
     doc.text(
       sanitizeEngineeringSymbols(
         `Governing Code: ${reportData.moduleMeta.standard || 'BNBC 2020 / ACI 318-19 / AISC 360-16'}`
       ),
-      titleTextX,
-      yPos + 23
+      margin + 4,
+      yPos + 24.4
     );
 
-    // QR Code Box (top right)
+    // QR Code Box (top right on clean white card with slate border)
     if (qrDataUrl) {
-      const qrSize = 21;
-      const qrX = margin + contentWidth - qrSize - 2;
-      const qrY = yPos + 2.5;
+      const qrSize = 20;
+      const qrX = margin + contentWidth - qrSize - 2.5;
+      const qrY = yPos + 3.2;
       doc.setFillColor(255, 255, 255);
-      doc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 1, 1, 'F');
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.25);
+      doc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 1, 1, 'FD');
       doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
     }
 
-    yPos += headerH + 4.5;
+    yPos += headerH + 3.5;
   }
 
   // Metadata Grid Box
@@ -734,8 +993,10 @@ export async function generateEngineeringPDF(
         lineWidth: 0.15,
       },
       headStyles: {
-        fillColor: [30, 58, 138],
-        textColor: [255, 255, 255],
+        fillColor: [239, 246, 255],
+        textColor: [30, 58, 138],
+        lineColor: [148, 163, 184],
+        lineWidth: 0.2,
         fontStyle: 'bold',
         fontSize: 7.3,
       },
@@ -755,13 +1016,13 @@ export async function generateEngineeringPDF(
   }
 
   // ==========================================================================
-  // SECTION 2: 2D ANALYTICAL / STRUCTURAL SCHEMATIC DIAGRAM (IF AVAILABLE)
+  // SECTION 2: 2D ANALYTICAL / STRUCTURAL SCHEMATIC DIAGRAM (LIGHT CAD BLUEPRINT)
   // ==========================================================================
   if (includeDiagram && diagramImg && diagramImg.dataUrl) {
     await notify('Embedding high-resolution 2D engineering schematic...', 66);
 
     const aspect = diagramImg.height / Math.max(1, diagramImg.width);
-    const maxDiagramH = orientation === 'landscape' ? 56 : 64;
+    const maxDiagramH = orientation === 'landscape' ? 62 : 70;
     let renderW = contentWidth - 4;
     let renderH = renderW * aspect;
     if (renderH > maxDiagramH) {
@@ -779,7 +1040,7 @@ export async function generateEngineeringPDF(
     doc.setTextColor(30, 58, 138);
     doc.text(
       sanitizeEngineeringSymbols(
-        `${sectionNum}.0 ${reportData.diagramCaption || '2D STRUCTURAL & ANALYTICAL SCHEMATIC DIAGRAM'}`
+        `${sectionNum}.0 ${reportData.diagramCaption || '2D STRUCTURAL & ANALYTICAL CAD SCHEMATIC'}`
       ),
       margin,
       yPos
@@ -787,8 +1048,10 @@ export async function generateEngineeringPDF(
     sectionNum++;
     yPos += 2.2;
 
-    doc.setFillColor(15, 23, 42);
-    doc.setDrawColor(203, 213, 225);
+    // Clean White CAD Blueprint Frame (#ffffff) with Navy/Slate Border
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.3);
     doc.roundedRect(margin, yPos, contentWidth, renderH + 4, 1.5, 1.5, 'FD');
 
     const imgX = margin + (contentWidth - renderW) / 2;
@@ -851,8 +1114,10 @@ export async function generateEngineeringPDF(
         lineWidth: 0.15,
       },
       headStyles: {
-        fillColor: [30, 58, 138],
-        textColor: [255, 255, 255],
+        fillColor: [239, 246, 255],
+        textColor: [30, 58, 138],
+        lineColor: [148, 163, 184],
+        lineWidth: 0.2,
         fontStyle: 'bold',
         fontSize: 7.3,
       },
@@ -960,8 +1225,10 @@ export async function generateEngineeringPDF(
         lineWidth: 0.15,
       },
       headStyles: {
-        fillColor: [15, 23, 42],
-        textColor: [255, 255, 255],
+        fillColor: [239, 246, 255],
+        textColor: [30, 58, 138],
+        lineColor: [148, 163, 184],
+        lineWidth: 0.2,
         fontStyle: 'bold',
         fontSize: 7,
       },
@@ -3152,39 +3419,104 @@ export async function captureSvgToPngDataUrl(
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
     const vb = svgEl.viewBox?.baseVal;
     const rect = svgEl.getBoundingClientRect();
-    const w = vb && vb.width > 0 ? vb.width : Math.max(600, rect.width || 600);
-    const h = vb && vb.height > 0 ? vb.height : Math.max(260, rect.height || 260);
+    const w = vb && vb.width > 0 ? vb.width : Math.max(640, rect.width || 640);
+    const h = vb && vb.height > 0 ? vb.height : Math.max(280, rect.height || 280);
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     clone.setAttribute('width', String(w));
     clone.setAttribute('height', String(h));
 
-    // Ensure high-contrast CAD background for standalone SVG captures
-    if (!clone.style.backgroundColor) {
-      clone.style.backgroundColor = '#0f172a';
+    // Set pure white CAD blueprint background for clean printing & PDF output
+    clone.style.backgroundColor = '#ffffff';
+    clone.style.color = '#0f172a';
+
+    // Walk all elements in the cloned SVG to convert dark-mode canvas fills/strokes
+    // into crisp Light CAD Blueprint colors on a white sheet.
+    const darkSurfaceHexes = new Set([
+      '#0f172a',
+      '#1e293b',
+      '#111827',
+      '#090d16',
+      '#141413',
+      '#020617',
+      '#18181b',
+      '#0b1120',
+      '#172554',
+      '#1e1b4b',
+    ]);
+    const lightTextHexes = new Set([
+      '#ffffff',
+      '#fff',
+      '#f8fafc',
+      '#f1f5f9',
+      '#e2e8f0',
+      '#cbd5e1',
+    ]);
+
+    const allNodes = Array.from(clone.querySelectorAll('*'));
+    for (const el of allNodes) {
+      const tag = el.tagName.toLowerCase();
+      const fill = (el.getAttribute('fill') || '').trim().toLowerCase();
+      const stroke = (el.getAttribute('stroke') || '').trim().toLowerCase();
+
+      // Convert dark background rectangles/polygons into crisp light blueprint surfaces
+      if ((tag === 'rect' || tag === 'polygon' || tag === 'path') && darkSurfaceHexes.has(fill)) {
+        el.setAttribute('fill', '#f8fafc');
+        if (!stroke || darkSurfaceHexes.has(stroke) || stroke === '#334155') {
+          el.setAttribute('stroke', '#cbd5e1');
+        }
+      }
+
+      // Convert white/light text or tick marks into deep architectural navy
+      if (tag === 'text' || tag === 'tspan') {
+        if (!fill || lightTextHexes.has(fill) || fill.includes('--md-sys-color-on-surface')) {
+          el.setAttribute('fill', '#0f172a');
+        } else if (fill === '#94a3b8') {
+          el.setAttribute('fill', '#334155');
+        } else if (fill === '#38bdf8' || fill === '#60a5fa') {
+          el.setAttribute('fill', '#1d4ed8');
+        } else if (fill === '#fbbf24' || fill === '#facc15') {
+          el.setAttribute('fill', '#b45309');
+        } else if (fill === '#34d399' || fill === '#4ade80') {
+          el.setAttribute('fill', '#047857');
+        } else if (fill === '#f87171' || fill === '#fb7185') {
+          el.setAttribute('fill', '#be123c');
+        }
+      } else {
+        // Non-text geometry strokes (dimension lines, axes, gridlines)
+        if (lightTextHexes.has(stroke)) {
+          el.setAttribute('stroke', '#1e293b');
+        } else if (stroke === '#334155' || stroke === '#1e293b') {
+          el.setAttribute('stroke', '#cbd5e1');
+        } else if (stroke === '#38bdf8') {
+          el.setAttribute('stroke', '#0284c7');
+        }
+      }
     }
 
-    // Resolve CSS custom properties and currentColor so standalone Blob Image renders crisply
+    // Resolve CSS custom properties and currentColor to Light CAD Blueprint palette
     let svgText = new XMLSerializer().serializeToString(clone);
     const cssVarMap: Record<string, string> = {
-      'var(--md-sys-color-on-surface)': '#f8fafc',
-      'var(--md-sys-color-on-surface-variant)': '#cbd5e1',
-      'var(--md-sys-color-primary)': '#38bdf8',
-      'var(--md-sys-color-secondary)': '#818cf8',
-      'var(--md-sys-color-tertiary)': '#fbbf24',
-      'var(--md-sys-color-error)': '#f87171',
+      'var(--md-sys-color-on-surface)': '#0f172a',
+      'var(--md-sys-color-on-surface-variant)': '#334155',
+      'var(--md-sys-color-primary)': '#1d4ed8',
+      'var(--md-sys-color-primary-container)': '#dbeafe',
+      'var(--md-sys-color-on-primary-container)': '#1e3a8a',
+      'var(--md-sys-color-secondary)': '#4338ca',
+      'var(--md-sys-color-tertiary)': '#b45309',
+      'var(--md-sys-color-error)': '#be123c',
       'var(--md-sys-color-outline)': '#64748b',
-      'var(--md-sys-color-outline-variant)': '#334155',
-      'var(--md-sys-color-surface)': '#0f172a',
-      'var(--md-sys-color-surface-container)': '#1e293b',
-      'var(--md-sys-color-surface-container-low)': '#0f172a',
-      'var(--md-sys-color-surface-container-high)': '#1e293b',
-      'var(--md-sys-color-surface-container-highest)': '#334155',
-      currentColor: '#e2e8f0',
+      'var(--md-sys-color-outline-variant)': '#cbd5e1',
+      'var(--md-sys-color-surface)': '#ffffff',
+      'var(--md-sys-color-surface-container)': '#f8fafc',
+      'var(--md-sys-color-surface-container-low)': '#ffffff',
+      'var(--md-sys-color-surface-container-high)': '#f1f5f9',
+      'var(--md-sys-color-surface-container-highest)': '#e2e8f0',
+      currentColor: '#0f172a',
     };
     for (const [token, hex] of Object.entries(cssVarMap)) {
       svgText = svgText.split(token).join(hex);
     }
-    svgText = svgText.replace(/var\(--[^)]+\)/g, '#cbd5e1');
+    svgText = svgText.replace(/var\(--[^)]+\)/g, '#334155');
 
     const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
@@ -3196,7 +3528,7 @@ export async function captureSvgToPngDataUrl(
       image.src = url;
     });
 
-    const scale = 2;
+    const scale = 2.25;
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(w * scale);
     canvas.height = Math.round(h * scale);
@@ -3205,7 +3537,7 @@ export async function captureSvgToPngDataUrl(
       URL.revokeObjectURL(url);
       return null;
     }
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     URL.revokeObjectURL(url);
@@ -3281,32 +3613,36 @@ export async function exportArchitectureSubmittalPDF(
   }
 
   const logoDataUrl =
+    (await getBrandLogoLightPngDataUrl(256)) ||
     (payload.brandLogoSrc ? await loadImageAsPngDataUrl(payload.brandLogoSrc) : null) ||
     (await getBrandLogoPngDataUrl(256));
 
-  // Header Title Block
-  doc.setFillColor(15, 23, 42);
-  doc.rect(margin, margin, contentWidth, 25, 'F');
-  doc.setFillColor(245, 158, 11); // Amber gold architectural stripe
-  doc.rect(margin, margin + 25, contentWidth, 1.5, 'F');
+  // Clean Light Architectural Header Title Block
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(30, 58, 138);
+  doc.setLineWidth(0.45);
+  doc.roundedRect(margin, margin, contentWidth, 25, 1.5, 1.5, 'FD');
+  doc.setFillColor(30, 58, 138);
+  doc.rect(margin, margin, contentWidth, 1.6, 'F');
 
   let textStartX = margin + 4;
   if (logoDataUrl) {
-    doc.addImage(logoDataUrl, 'PNG', margin + 3, margin + 3, 18, 18);
-    textStartX = margin + 24;
+    doc.addImage(logoDataUrl, 'PNG', margin + 3, margin + 3.5, 17, 17);
+    textStartX = margin + 23;
   }
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(12.5);
   doc.text('BD. CIVILLAB - ARCHITECTURE & BY-LAW SUBMITTAL', textStartX, margin + 8.5);
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.setTextColor(203, 213, 225);
+  doc.setTextColor(30, 58, 138);
   doc.text(sanitizeEngineeringSymbols(payload.tabTitle), textStartX, margin + 13.5);
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
+  doc.setTextColor(71, 85, 105);
   doc.text(
     sanitizeEngineeringSymbols(
       `REF: ${docId}  |  CODE: ${payload.codeStandard}  |  OVERALL STATUS: ${payload.status}`
@@ -3316,13 +3652,17 @@ export async function exportArchitectureSubmittalPDF(
   );
 
   if (qrDataUrl) {
-    doc.addImage(qrDataUrl, 'PNG', margin + contentWidth - 22.5, margin + 2, 21, 21);
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(margin + contentWidth - 22.5, margin + 2.5, 20, 20, 1, 1, 'FD');
+    doc.addImage(qrDataUrl, 'PNG', margin + contentWidth - 22, margin + 3, 19, 19);
   }
 
   // Project & Engineer Credentials Box
-  let yPos = margin + 30;
+  let yPos = margin + 29;
   doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
+  doc.setDrawColor(203, 213, 225);
   doc.roundedRect(margin, yPos, contentWidth, 22, 2, 2, 'FD');
 
   const engName = payload.userProfile?.fullName || 'Pending Signature';
@@ -3355,9 +3695,10 @@ export async function exportArchitectureSubmittalPDF(
   yPos += 27;
 
   // 1. Capture & Embed 2D CAD SVG Diagram(s)
-  if (payload.svgElements && payload.svgElements.length > 0) {
-    for (let sIdx = 0; sIdx < payload.svgElements.length; sIdx++) {
-      const captured = await captureSvgToPngDataUrl(payload.svgElements[sIdx]);
+  const validSvgs = (payload.svgElements || []).filter((s) => isEngineeringSchematicSvg(s));
+  if (validSvgs.length > 0) {
+    for (let sIdx = 0; sIdx < validSvgs.length; sIdx++) {
+      const captured = await captureSvgToPngDataUrl(validSvgs[sIdx]);
       if (captured) {
         const maxImgW = contentWidth;
         const aspect = captured.height / Math.max(1, captured.width);
@@ -3382,8 +3723,9 @@ export async function exportArchitectureSubmittalPDF(
         );
         yPos += 2.5;
 
-        doc.setDrawColor(203, 213, 225);
-        doc.roundedRect(margin, yPos, contentWidth, renderH + 3, 1.5, 1.5, 'D');
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(148, 163, 184);
+        doc.roundedRect(margin, yPos, contentWidth, renderH + 3, 1.5, 1.5, 'FD');
         doc.addImage(captured.dataUrl, 'PNG', imgX, yPos + 1.5, renderW, renderH);
         yPos += renderH + 7;
       }
@@ -3414,8 +3756,8 @@ export async function exportArchitectureSubmittalPDF(
         sanitizeEngineeringSymbols(inp.notes || '—'),
       ]),
       theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 1.6, textColor: [15, 23, 42] },
-      headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 7.5, cellPadding: 1.6, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+      headStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], lineColor: [148, 163, 184], lineWidth: 0.2, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
     });
     yPos = (doc as any).lastAutoTable.finalY + 5;
@@ -3445,8 +3787,8 @@ export async function exportArchitectureSubmittalPDF(
         d.status,
       ]),
       theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 1.6, textColor: [15, 23, 42] },
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 7.5, cellPadding: 1.6, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+      headStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], lineColor: [148, 163, 184], lineWidth: 0.2, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
     });
     yPos = (doc as any).lastAutoTable.finalY + 6;
@@ -3573,9 +3915,10 @@ export async function printArchitectureSubmittalA4(
   }
 
   const svgHtmlBlocks = (payload.svgElements || [])
+    .filter((svg) => isEngineeringSchematicSvg(svg))
     .map((svg) => {
       const clone = svg.cloneNode(true) as SVGSVGElement;
-      clone.setAttribute('class', 'w-full max-h-[280px] rounded-lg border border-slate-300 bg-slate-900');
+      clone.setAttribute('class', 'w-full max-h-[280px] rounded-lg border border-slate-300 bg-white');
       return `<div class="my-2 flex justify-center">${clone.outerHTML}</div>`;
     })
     .join('');
@@ -3622,17 +3965,13 @@ export async function printArchitectureSubmittalA4(
 
   const html = `
     <div class="space-y-5 font-sans text-slate-900 bg-white p-6 max-w-5xl mx-auto leading-relaxed">
-      <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
+      <div class="border-b-2 border-blue-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
         <div class="flex items-center gap-3.5">
-          ${
-            payload.brandLogoSrc
-              ? `<img src="${payload.brandLogoSrc}" alt="BD. CivilLab" class="w-14 h-14 rounded-xl object-contain border border-slate-300 bg-slate-900 p-1 shrink-0" />`
-              : ''
-          }
+          <img src="${BRAND_LOGO_LIGHT_SVG_DATA_URI}" alt="BD. CivilLab" class="w-14 h-14 rounded-xl object-contain border border-blue-900 bg-white p-0.5 shrink-0" />
           <div>
             <div class="text-xl font-black tracking-tight text-slate-900">BD. CivilLab · Architecture Submittal</div>
-            <div class="text-sm font-bold text-amber-700">${payload.tabTitle}</div>
-            <div class="text-[10px] font-mono text-slate-500 mt-0.5">Standard: ${payload.codeStandard} · Status: <strong>${payload.status}</strong></div>
+            <div class="text-sm font-bold text-blue-800">${payload.tabTitle}</div>
+            <div class="text-[10px] font-mono text-slate-600 mt-0.5">Standard: ${payload.codeStandard} · Status: <strong>${payload.status}</strong></div>
           </div>
         </div>
         <div class="flex items-center gap-3 shrink-0">
@@ -3640,7 +3979,7 @@ export async function printArchitectureSubmittalA4(
             <div>Doc Ref: <strong>${docId}</strong></div>
             <div>Printed: ${nowStr}</div>
           </div>
-          ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Verify QR" class="w-16 h-16 border border-slate-800 rounded p-0.5" />` : ''}
+          ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Verify QR" class="w-16 h-16 border border-slate-400 rounded p-0.5 bg-white" />` : ''}
         </div>
       </div>
 
@@ -3660,17 +3999,17 @@ export async function printArchitectureSubmittalA4(
       ${
         svgHtmlBlocks
           ? `<div class="p-3 border border-slate-300 rounded bg-white print-avoid-break">
-              <div class="text-[11px] font-bold font-mono uppercase text-slate-600 mb-2">1. 2D CAD Architectural / Services Schematic</div>
+              <div class="text-[11px] font-bold font-mono uppercase text-blue-900 mb-2">1. 2D CAD Architectural / Services Schematic</div>
               ${svgHtmlBlocks}
             </div>`
           : ''
       }
 
       <div class="border border-slate-300 rounded p-3 bg-white print-avoid-break">
-        <div class="text-[11px] font-bold font-mono uppercase text-slate-600 mb-2">2. Input Design Parameters</div>
+        <div class="text-[11px] font-bold font-mono uppercase text-blue-900 mb-2">2. Input Design Parameters</div>
         <table class="w-full text-[11px] border-collapse">
           <thead>
-            <tr class="bg-slate-900 text-white text-left">
+            <tr class="bg-blue-50 text-blue-900 border-b border-slate-300 text-left">
               <th class="py-1.5 px-2">Parameter</th>
               <th class="py-1.5 px-2 text-center">Symbol</th>
               <th class="py-1.5 px-2 text-right">Value</th>
@@ -3683,10 +4022,10 @@ export async function printArchitectureSubmittalA4(
       </div>
 
       <div class="border border-slate-300 rounded p-3 bg-white print-avoid-break">
-        <div class="text-[11px] font-bold font-mono uppercase text-slate-600 mb-2">3. Code Compliance &amp; DCR Summary</div>
+        <div class="text-[11px] font-bold font-mono uppercase text-blue-900 mb-2">3. Code Compliance &amp; DCR Summary</div>
         <table class="w-full text-[11px] border-collapse">
           <thead>
-            <tr class="bg-slate-800 text-white text-left">
+            <tr class="bg-blue-50 text-blue-900 border-b border-slate-300 text-left">
               <th class="py-1.5 px-2">Compliance Check</th>
               <th class="py-1.5 px-2 text-right">Demand / Actual</th>
               <th class="py-1.5 px-2 text-right">Allowable Limit</th>

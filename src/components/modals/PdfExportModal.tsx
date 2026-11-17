@@ -144,6 +144,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
             paperSize: modalPreset.paperSize,
             orientation: modalPreset.orientation,
             marginMm: modalPreset.marginMm,
+            exportUnitPreset: modalPreset.exportUnitPreset || 'workspace',
             includeQR: modalPreset.includeQR,
             includeFormulaSteps: modalPreset.includeFormulaSteps,
             includeDiagram: modalPreset.includeDiagram,
@@ -161,6 +162,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
             paperSize: modalPreset.paperSize,
             orientation: modalPreset.orientation,
             marginMm: modalPreset.marginMm,
+            exportUnitPreset: modalPreset.exportUnitPreset || 'workspace',
             customHeaderTitle: customReportTitle || undefined,
             companySubtitle: modalPreset.companySubtitle || userProfile.organization || undefined,
             customProjectName: customProjectName || undefined,
@@ -211,7 +213,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
                 Certified PDF Submittal & Page Setup
               </h2>
               <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                Full Submittal · Inputs, Derivations, 2D Diagrams, Schedules & Consultant Seal
+                Full Submittal · Light CAD Blueprint · Custom Export Unit System
               </span>
             </div>
           </div>
@@ -257,14 +259,35 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
             </div>
           )}
 
-          {/* Section 1: Page Geometry Overrides */}
+          {/* Section 1: Page Geometry & Export Unit Format Overrides */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] font-mono">
               <Settings className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-              <span>Page Geometry & Margin Overrides</span>
+              <span>Page Geometry & Export Unit System</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase">
+                  Export Unit Format
+                </label>
+                <select
+                  value={modalPreset.exportUnitPreset || 'workspace'}
+                  onChange={(e) =>
+                    setModalPreset({
+                      ...modalPreset,
+                      exportUnitPreset: e.target.value as 'workspace' | 'metric' | 'imperial' | 'regional',
+                    })
+                  }
+                  className="w-full h-10 px-2.5 text-xs font-bold rounded-lg border border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)]"
+                >
+                  <option value="workspace">Workspace Active Units</option>
+                  <option value="metric">SI Metric (m, kN, MPa)</option>
+                  <option value="imperial">Imperial (ft-in, kip, psi)</option>
+                  <option value="regional">Regional BD (ft-in, CFT, Katha)</option>
+                </select>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-[11px] font-mono font-bold text-[var(--md-sys-color-on-surface-variant)] uppercase">
                   Paper Size

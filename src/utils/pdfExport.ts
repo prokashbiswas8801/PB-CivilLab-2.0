@@ -10,7 +10,9 @@ import {
   PublicEngineeringReportRecord,
 } from './verificationEngine';
 import {
+  applyExportUnitConversionToReport,
   buildReportDataFromWorkspace,
+  ExportUnitPreset,
   generateEngineeringPDF,
   PdfExportEngineOptions,
 } from './exportEngine';
@@ -24,6 +26,7 @@ export interface PdfExportCustomOverrides {
   paperSize?: 'a4' | 'letter' | 'legal';
   orientation?: 'portrait' | 'landscape';
   marginMm?: number;
+  exportUnitPreset?: ExportUnitPreset;
   customHeaderTitle?: string;
   companySubtitle?: string;
   customProjectName?: string;
@@ -90,11 +93,17 @@ export async function exportCertifiedEngineeringPdf({
         }
       : undefined;
 
-  const reportData = buildReportDataFromWorkspace(
+  const rawReportData = buildReportDataFromWorkspace(
     activeModule,
     workspace,
     envelope,
     effectiveProfile
+  );
+
+  const reportData = applyExportUnitConversionToReport(
+    rawReportData,
+    customOverrides?.exportUnitPreset || 'workspace',
+    workspace
   );
 
   // Apply custom overrides if provided
@@ -130,6 +139,7 @@ export async function exportCertifiedEngineeringPdf({
     paperSize: customOverrides?.paperSize || 'a4',
     orientation: customOverrides?.orientation || 'portrait',
     marginMm: customOverrides?.marginMm || 14,
+    exportUnitPreset: customOverrides?.exportUnitPreset || 'workspace',
     customHeaderTitle: customOverrides?.customHeaderTitle,
     customCompanySubtitle: customOverrides?.companySubtitle,
     customProjectName: customOverrides?.customProjectName,

@@ -5902,57 +5902,59 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                       </div>
                     </div>
 
-                    {activeModule === 'boq-estimator' && currentEnvelope.result && (
-                      <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'rate-analysis' && currentEnvelope.result && (
-                      <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'concrete-materials' && currentEnvelope.result && (
-                      <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'rebar-bbs' && currentEnvelope.result && (
-                      <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'masonry-finishes' && currentEnvelope.result && (
-                      <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
-                      <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'beam-analysis' && currentEnvelope.result && (
-                      <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'bearing-capacity' && currentEnvelope.result && (
-                      <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'concrete-mix' && currentEnvelope.result && (
-                      <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'open-channel' && currentEnvelope.result && (
-                      <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'continuous-beam' && currentEnvelope.result && (
-                      <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
-                      <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'section-analyzer' && currentEnvelope.result && (
-                      <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'rc-column-design' && currentEnvelope.result && (
-                      <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'strut-and-tie' && currentEnvelope.result && (
-                      <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'pile-capacity' && currentEnvelope.result && (
-                      <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
-                    {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
-                      <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
-                    )}
+                    <div data-cad-diagram="true">
+                      {activeModule === 'boq-estimator' && currentEnvelope.result && (
+                        <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'rate-analysis' && currentEnvelope.result && (
+                        <RateAnalysisBreakdownDiagramSvg params={activeWorkspace.rateAnalysis} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'concrete-materials' && currentEnvelope.result && (
+                        <ConcreteMaterialsDiagramSvg params={activeWorkspace.concreteMaterials} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'rebar-bbs' && currentEnvelope.result && (
+                        <RebarBBSDiagramSvg params={activeWorkspace.rebarBbs} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'masonry-finishes' && currentEnvelope.result && (
+                        <MasonryDiagramSvg params={activeWorkspace.masonry} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'earthwork-alignment' && currentEnvelope.result && (
+                        <EarthworkDiagramSvg params={activeWorkspace.earthwork} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'beam-analysis' && currentEnvelope.result && (
+                        <BeamDiagramSvg params={activeWorkspace.beam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'bearing-capacity' && currentEnvelope.result && (
+                        <BearingDiagramSvg params={activeWorkspace.bearing} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'concrete-mix' && currentEnvelope.result && (
+                        <ConcreteMixSvg params={activeWorkspace.concrete} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'open-channel' && currentEnvelope.result && (
+                        <ChannelHydraulicsSvg params={activeWorkspace.channel} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'continuous-beam' && currentEnvelope.result && (
+                        <ContinuousBeamDiagramSvg params={activeWorkspace.continuousBeam || defaultContinuousBeam} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'frame-truss-2d' && currentEnvelope.result && (
+                        <FrameTruss2DDiagramSvg params={activeWorkspace.frameTruss2d || defaultFrameTruss2d} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'section-analyzer' && currentEnvelope.result && (
+                        <SectionAnalyzerDiagramSvg params={activeWorkspace.sectionAnalyzer || defaultSectionAnalyzer} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'rc-column-design' && currentEnvelope.result && (
+                        <RcColumnDiagramSvg params={activeWorkspace.rcColumn || defaultRcColumn} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'strut-and-tie' && currentEnvelope.result && (
+                        <StrutAndTieDiagramSvg params={activeWorkspace.strutAndTie || defaultStrutAndTie} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'pile-capacity' && currentEnvelope.result && (
+                        <PileCapacityDiagramSvg params={activeWorkspace.pile || defaultPile} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                      {activeModule === 'pipe-hydraulics' && currentEnvelope.result && (
+                        <PipeHydraulicsDiagramSvg params={activeWorkspace.pipe || defaultPipe} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -6137,7 +6139,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 )}
               </div>
 
-              <div className="print-capture-diagram">
+              <div className="print-capture-diagram" data-cad-diagram="true">
                 {activeModule === 'boq-estimator' && currentEnvelope.result && (
                   <BOQCostBreakdownDiagramSvg params={activeWorkspace.boq} result={currentEnvelope.result as any} unitPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'} />
                 )}

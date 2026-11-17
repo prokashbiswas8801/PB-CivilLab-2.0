@@ -10,11 +10,18 @@ import {
 } from '../types/testingLab';
 import { TESTING_LAB_TEST_MAP } from '../data/testingLabCatalog';
 import { CivilWorkspace, UserProfile } from '../types/civil';
-import { sanitizeEngineeringSymbols } from './exportEngine';
+import {
+  convertValueAndUnitForExport,
+  ExportUnitPreset,
+  sanitizeEngineeringSymbols,
+} from './exportEngine';
 import { generateSubmittalDocRef } from './qrCode';
 import { createVerifiedReportRecord, saveVerifiedReport } from './verificationEngine';
-import { BRAND_LOGO_BASE64, getBrandLogoPngDataUrl } from '../assets/brandLogoData';
-import { BRAND_LOGO_SRC } from '../components/Logo';
+import {
+  BRAND_LOGO_BASE64,
+  BRAND_LOGO_LIGHT_SVG_DATA_URI,
+  getBrandLogoLightPngDataUrl,
+} from '../assets/brandLogoData';
 
 export function getDefaultInputsForTest(test: LabTestDefinition): Record<string, number> {
   const defaults: Record<string, number> = {};
@@ -3054,6 +3061,7 @@ export async function exportLabTestCertificatePdf(params: {
     paperSize?: 'a4' | 'letter' | 'legal';
     orientation?: 'portrait' | 'landscape';
     marginMm?: number;
+    exportUnitPreset?: ExportUnitPreset;
     includeQR?: boolean;
     includeFormulaSteps?: boolean;
     includeDiagram?: boolean;
@@ -3072,6 +3080,11 @@ export async function exportLabTestCertificatePdf(params: {
     checklistStates,
     customOverrides,
   } = params;
+
+  const effectiveUnitSystem: 'metric' | 'imperial' | 'regional' =
+    customOverrides?.exportUnitPreset && customOverrides.exportUnitPreset !== 'workspace'
+      ? customOverrides.exportUnitPreset
+      : (workspace.unitPreferences?.systemPreset as 'metric' | 'imperial' | 'regional') || 'metric';
 
   const paperFormat = customOverrides?.paperSize || 'a4';
   const orientation = customOverrides?.orientation || 'portrait';
@@ -3115,44 +3128,60 @@ export async function exportLabTestCertificatePdf(params: {
         margin: 1,
         width: 160,
         errorCorrectionLevel: 'M',
+        color: { dark: '#0f172a', light: '#ffffff' },
       });
     } catch {
       qrDataUrl = '';
     }
   }
 
-  // Header Banner
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, pageWidth, 32, 'F');
+  // Clean Light Architectural Header Banner (Zero Dark Blocks)
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(30, 58, 138);
+  doc.setLineWidth(0.45);
+  doc.roundedRect(margin, 8, contentWidth, 25, 1.5, 1.5, 'FD');
+  doc.setFillColor(30, 58, 138);
+  doc.rect(margin, 8, contentWidth, 1.6, 'F');
+
   try {
-    const brandLogoDataUrl = await getBrandLogoPngDataUrl(256).catch(() => BRAND_LOGO_BASE64);
-    doc.addImage(brandLogoDataUrl, 'PNG', margin, 5, 20, 20);
+    const brandLogoDataUrl = await getBrandLogoLightPngDataUrl(256).catch(() => BRAND_LOGO_BASE64);
+    doc.addImage(brandLogoDataUrl, 'PNG', margin + 3.5, 11.5, 17, 17);
   } catch {
     // ignore image error
   }
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13.5);
+  doc.setFontSize(12);
   doc.text(
     sanitizeEngineeringSymbols(
       customOverrides?.reportTitle || 'BD. CivilLab — QUALITY ASSURANCE & LAB TEST CERTIFICATE'
     ),
-    margin + 24,
-    12.5
+    margin + 23.5,
+    15.5
+  );
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.4);
+  doc.setTextColor(30, 58, 138);
+  doc.text(
+    `Ref: ${docId}  |  Test Code: ${test.code} (${test.testType})  |  Units: ${effectiveUnitSystem.toUpperCase()}`,
+    margin + 23.5,
+    21
   );
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.2);
-  doc.setTextColor(148, 163, 184);
-  doc.text(`Ref: ${docId}  |  Test Code: ${test.code} (${test.testType})  |  Issued: ${nowStr}`, margin + 24, 18.5);
-  doc.text(`Governing Codes: ${sanitizeEngineeringSymbols(test.governingCodes.join(' . '))}`, margin + 24, 24.5);
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    `Governing Codes: ${sanitizeEngineeringSymbols(test.governingCodes.join(' . '))}  |  Issued: ${nowStr}`,
+    margin + 23.5,
+    26.2
+  );
 
   if (qrDataUrl) {
     doc.setFillColor(255, 255, 255);
-    doc.rect(pageWidth - margin - 24, 3.5, 24, 25, 'F');
-    doc.addImage(qrDataUrl, 'PNG', pageWidth - margin - 22.5, 4.5, 21, 21);
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(5.5);
-    doc.text('SCAN TO VERIFY', pageWidth - margin - 12, 27.6, { align: 'center' });
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(pageWidth - margin - 22.5, 10.2, 20, 20.5, 1, 1, 'FD');
+    doc.addImage(qrDataUrl, 'PNG', pageWidth - margin - 21.5, 10.8, 18, 18);
   }
 
   let y = 39;
@@ -3185,18 +3214,26 @@ export async function exportLabTestCertificatePdf(params: {
 
   y += Math.max(8, titleWrapped.length * 4.8) + 2;
 
-  // Verdict Banner
-  doc.setFillColor(vColor[0], vColor[1], vColor[2]);
-  doc.roundedRect(margin, y, contentWidth, 11, 1.8, 1.8, 'F');
-  doc.setTextColor(255, 255, 255);
+  // Verdict Banner (Clean Light Tinted Surface with Bold Status Border)
+  const vBgColor: [number, number, number] =
+    evaluation.verdict === 'PASS'
+      ? [236, 253, 245]
+      : evaluation.verdict === 'WARNING'
+      ? [254, 243, 199]
+      : [255, 241, 242];
+  doc.setFillColor(vBgColor[0], vBgColor[1], vBgColor[2]);
+  doc.setDrawColor(vColor[0], vColor[1], vColor[2]);
+  doc.setLineWidth(0.45);
+  doc.roundedRect(margin, y, contentWidth, 10.5, 1.5, 1.5, 'FD');
+  doc.setTextColor(vColor[0], vColor[1], vColor[2]);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
+  doc.setFontSize(9.2);
   doc.text(
     sanitizeEngineeringSymbols(`VERDICT: ${evaluation.verdict} — ${evaluation.verdictHeadline.en}`),
     margin + 4,
-    y + 7
+    y + 6.8
   );
-  y += 15;
+  y += 14.5;
 
   // Project & Sample Metadata Grid
   const projectLabel = customOverrides?.projectName || workspace.name || 'Untitled Project';
@@ -3208,8 +3245,8 @@ export async function exportLabTestCertificatePdf(params: {
     startY: y,
     margin: { left: margin, right: margin },
     theme: 'grid',
-    styles: { fontSize: 8.0, cellPadding: 2.0 },
-    headStyles: { fillColor: [30, 41, 59], textColor: 255 },
+    styles: { fontSize: 8.0, cellPadding: 2.0, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+    headStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], lineColor: [148, 163, 184], lineWidth: 0.2, fontStyle: 'bold' },
     head: [['Project & Engineering Authority', 'Sample & Code Identification']],
     body: [
       [
@@ -3220,19 +3257,27 @@ export async function exportLabTestCertificatePdf(params: {
   });
   y = (doc as any).lastAutoTable.finalY + 4.5;
 
-  // Observed Inputs & Evaluated Metrics Tables
+  // Observed Inputs & Evaluated Metrics Tables (with exportUnitPreset conversion)
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    theme: 'striped',
-    styles: { fontSize: 8.0, cellPadding: 1.8 },
-    headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+    theme: 'grid',
+    styles: { fontSize: 8.0, cellPadding: 1.8, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+    headStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], lineColor: [148, 163, 184], lineWidth: 0.2, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     head: [['Observed Test Parameter', 'Measured Value', 'Unit']],
-    body: test.calculatorInputs.map((f) => [
-      sanitizeEngineeringSymbols(f.label.en),
-      sanitizeEngineeringSymbols(formatLabFieldValue(f, inputs[f.key])),
-      f.options ? 'Preset' : sanitizeEngineeringSymbols(f.unit || '-'),
-    ]),
+    body: test.calculatorInputs.map((f) => {
+      const rawFormatted = formatLabFieldValue(f, inputs[f.key]);
+      if (f.options) {
+        return [sanitizeEngineeringSymbols(f.label.en), sanitizeEngineeringSymbols(rawFormatted), 'Preset'];
+      }
+      const conv = convertValueAndUnitForExport(rawFormatted, f.unit || '-', effectiveUnitSystem);
+      return [
+        sanitizeEngineeringSymbols(f.label.en),
+        sanitizeEngineeringSymbols(String(conv.value)),
+        sanitizeEngineeringSymbols(conv.unit || '-'),
+      ];
+    }),
   });
   y = (doc as any).lastAutoTable.finalY + 4.5;
 
@@ -3240,14 +3285,18 @@ export async function exportLabTestCertificatePdf(params: {
     startY: y,
     margin: { left: margin, right: margin },
     theme: 'grid',
-    styles: { fontSize: 8.2, cellPadding: 2.0 },
-    headStyles: { fillColor: [15, 118, 110], textColor: 255 },
+    styles: { fontSize: 8.2, cellPadding: 2.0, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+    headStyles: { fillColor: [236, 253, 245], textColor: [4, 120, 87], lineColor: [148, 163, 184], lineWidth: 0.2, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     head: [['Evaluated Engineering Metric', 'Computed Output', 'Unit']],
-    body: evaluation.metrics.map((m) => [
-      sanitizeEngineeringSymbols(m.labelEn),
-      sanitizeEngineeringSymbols(m.value),
-      sanitizeEngineeringSymbols(m.unit || '-'),
-    ]),
+    body: evaluation.metrics.map((m) => {
+      const conv = convertValueAndUnitForExport(m.value, m.unit || '-', effectiveUnitSystem);
+      return [
+        sanitizeEngineeringSymbols(m.labelEn),
+        sanitizeEngineeringSymbols(String(conv.value)),
+        sanitizeEngineeringSymbols(conv.unit || '-'),
+      ];
+    }),
   });
   y = (doc as any).lastAutoTable.finalY + 5;
 
@@ -3323,8 +3372,8 @@ export async function exportLabTestCertificatePdf(params: {
       startY: y,
       margin: { left: margin, right: margin },
       theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 1.6 },
-      headStyles: { fillColor: [30, 41, 59], textColor: 255 },
+      styles: { fontSize: 7.5, cellPadding: 1.6, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.15 },
+      headStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], lineColor: [148, 163, 184], lineWidth: 0.2, fontStyle: 'bold' },
       head: [['QA/QC Inspection Point', 'Code', 'Wt', 'Crit', 'Status']],
       body: test.checklistItems.map((it) => [
         sanitizeEngineeringSymbols(it.item.en),
@@ -3492,11 +3541,11 @@ export async function buildPrintableLabCertificateHtml(params: {
 
   return `
     <div class="space-y-4 font-sans text-slate-900 bg-white p-6 max-w-4xl mx-auto leading-relaxed">
-      <div class="border-b-2 border-slate-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
+      <div class="border-b-2 border-blue-900 pb-4 flex items-start justify-between gap-4 print-avoid-break">
         <div class="flex items-center gap-3">
-          <img src="${BRAND_LOGO_SRC}" alt="BD. CivilLab" class="w-12 h-12 rounded-lg object-contain bg-slate-900 p-1 border border-slate-300" />
+          <img src="${BRAND_LOGO_LIGHT_SVG_DATA_URI}" alt="BD. CivilLab" class="w-12 h-12 rounded-lg object-contain bg-white p-0.5 border border-blue-900" />
           <div>
-            <div class="text-xl font-black text-blue-700">BD. CivilLab — Laboratory &amp; Field QA/QC Certificate</div>
+            <div class="text-xl font-black text-blue-900">BD. CivilLab — Laboratory &amp; Field QA/QC Certificate</div>
             <div class="text-xs font-mono text-slate-600">${test.code} · ${test.testType} (${test.testTypeBn}) · ${nowStr}</div>
             <div class="text-xs font-bold text-slate-900 mt-0.5">${test.title.en} (${test.title.bn})</div>
           </div>
@@ -3508,7 +3557,7 @@ export async function buildPrintableLabCertificateHtml(params: {
           </div>
           ${
             qrDataUrl
-              ? `<div class="border border-slate-800 p-1 rounded bg-white text-center shrink-0">
+              ? `<div class="border border-slate-400 p-1 rounded bg-white text-center shrink-0">
                   <img src="${qrDataUrl}" alt="QR" class="w-16 h-16" />
                   <div class="text-[7px] font-mono font-bold">${docId}</div>
                 </div>`
@@ -3517,7 +3566,7 @@ export async function buildPrintableLabCertificateHtml(params: {
         </div>
       </div>
 
-      <div class="px-4 py-2.5 rounded-lg font-bold text-sm ${verdictColor} print-avoid-break">
+      <div class="px-4 py-2.5 rounded-lg font-bold text-sm border ${stampClass} print-avoid-break">
         VERDICT: ${evaluation.verdict} — ${evaluation.verdictHeadline.en} (${evaluation.verdictHeadline.bn})
       </div>
 
@@ -3538,7 +3587,7 @@ export async function buildPrintableLabCertificateHtml(params: {
 
       <div class="grid grid-cols-2 gap-4 print-avoid-break">
         <table class="w-full border-collapse border border-slate-300 text-xs">
-          <thead><tr class="bg-slate-800 text-white"><th class="p-2 text-left">Observed Input</th><th class="p-2 text-right">Value</th></tr></thead>
+          <thead><tr class="bg-blue-50 text-blue-900 border-b border-slate-300"><th class="p-2 text-left">Observed Input</th><th class="p-2 text-right">Value</th></tr></thead>
           <tbody>
             ${test.calculatorInputs
               .map(
@@ -3549,7 +3598,7 @@ export async function buildPrintableLabCertificateHtml(params: {
           </tbody>
         </table>
         <table class="w-full border-collapse border border-slate-300 text-xs">
-          <thead><tr class="bg-emerald-800 text-white"><th class="p-2 text-left">Evaluated Metric</th><th class="p-2 text-right">Output</th></tr></thead>
+          <thead><tr class="bg-emerald-50 text-emerald-900 border-b border-slate-300"><th class="p-2 text-left">Evaluated Metric</th><th class="p-2 text-right">Output</th></tr></thead>
           <tbody>
             ${evaluation.metrics
               .map(
@@ -3573,7 +3622,7 @@ export async function buildPrintableLabCertificateHtml(params: {
       ${
         test.checklistItems && test.checklistItems.length > 0 && checklistStates
           ? `<table class="w-full border-collapse border border-slate-300 text-xs print-avoid-break">
-              <thead><tr class="bg-slate-800 text-white"><th class="p-1.5 text-left">Inspection Point</th><th class="p-1.5">Code</th><th class="p-1.5">Wt</th><th class="p-1.5">Status</th></tr></thead>
+              <thead><tr class="bg-blue-50 text-blue-900 border-b border-slate-300"><th class="p-1.5 text-left">Inspection Point</th><th class="p-1.5">Code</th><th class="p-1.5">Wt</th><th class="p-1.5">Status</th></tr></thead>
               <tbody>
                 ${test.checklistItems
                   .map(
