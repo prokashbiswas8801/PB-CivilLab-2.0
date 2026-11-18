@@ -2522,7 +2522,7 @@ export function exportProjectWorkspacePackage(
     schemaVersion: 2,
     exportType: 'single-workspace',
     brand: 'BD. CivilLab',
-    tagline: 'CALCULATE SMARTER. BUILD BETTER.',
+    tagline: 'CALCULATE SMARTER. DESIGN STRONGER. BUILD BETTER.',
     exportedAt: new Date().toISOString(),
     workspace,
     history: wsHistory,
@@ -2632,7 +2632,7 @@ export function exportPresetsPackage(presets: EngineeringPreset[]): string {
     schemaVersion: 2,
     exportType: 'civil-presets-package',
     brand: 'BD. CivilLab',
-    tagline: 'CALCULATE SMARTER. BUILD BETTER.',
+    tagline: 'CALCULATE SMARTER. DESIGN STRONGER. BUILD BETTER.',
     exportedAt: new Date().toISOString(),
     presets,
   };

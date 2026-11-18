@@ -3403,7 +3403,7 @@ export default function App() {
             <div>
               <div class="text-2xl font-black font-sans tracking-tight text-blue-700">BD. CivilLab</div>
               <div class="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-600 mt-0.5">
-                CALCULATE SMARTER. BUILD BETTER. · CERTIFIED ANALYTICAL WORKBENCH
+                CALCULATE SMARTER. DESIGN STRONGER. BUILD BETTER. · CERTIFIED ANALYTICAL WORKBENCH
               </div>
               <div class="text-xs font-mono text-slate-500 mt-1">Official Engineering Submittal &amp; Verification Sheet</div>
             </div>
@@ -4661,9 +4661,14 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
             <div className="print-only p-6 border-b-2 border-black mb-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <img src={BRAND_LOGO_SRC} alt="BD. CivilLab" className="w-10 h-10 object-contain rounded" />
-                    <span className="text-2xl font-black text-black">BD. CivilLab</span>
+                  <div className="flex items-center gap-2.5">
+                    <img src={BRAND_LOGO_SRC} alt="BD. CivilLab" className="w-10 h-10 object-contain rounded-lg" />
+                    <div>
+                      <span className="text-2xl font-black text-black block leading-none">BD. CivilLab</span>
+                      <span className="text-[9px] font-mono uppercase tracking-widest text-gray-500 font-bold">
+                        Calculate Smarter. Design Stronger. Build Better.
+                      </span>
+                    </div>
                   </div>
                   <div className="text-xs font-mono uppercase text-gray-600 mt-1">
                     Certified Professional Engineering Calculation Submittal Sheet

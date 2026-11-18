@@ -48,6 +48,7 @@ import { useWorkbench } from '../../context/WorkbenchContext';
 import { useTheme, EngineeringTheme } from '../../context/ThemeContext';
 import { useCivilLab } from '../../context/CivilLabContext';
 import { TOOL_REGISTRY_MAP } from '../../data/toolRegistry';
+import { LogoMark } from '../Logo';
 
 export type DisciplineAccentKey = 'amber' | 'emerald' | 'indigo' | 'sky' | 'teal' | 'rose';
 
@@ -439,25 +440,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setRailFlyoutCatId(null);
                 setThemePopoverOpen(false);
                 onCloseMobile();
+                if (typeof window !== 'undefined') {
+                  const mainEl = document.getElementById('top');
+                  if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
               }}
               aria-current={homeSelected ? 'page' : undefined}
-              title="Home"
-              className={`group relative flex items-center transition-all cursor-pointer rounded-2xl min-h-[38px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
-                railMode ? 'w-11 justify-center px-0' : 'flex-1 gap-2.5 px-3'
+              title="BD. CivilLab — Go to Home Dashboard"
+              aria-label="BD. CivilLab — Go to Home Dashboard"
+              className={`group relative flex items-center transition-all cursor-pointer rounded-2xl min-h-[40px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
+                railMode ? 'w-11 justify-center px-0' : 'flex-1 gap-2.5 px-2.5'
               } ${
                 homeSelected
                   ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-bold shadow-2xs'
                   : 'text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container)] font-semibold'
               }`}
             >
-              <Home
-                className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${
-                  homeSelected
-                    ? 'text-[var(--md-sys-color-on-primary-container)]'
-                    : 'text-[var(--md-sys-color-primary)]'
-                }`}
-              />
-              {!railMode && <span className="text-xs tracking-tight whitespace-nowrap">Home</span>}
+              <LogoMark size={railMode ? 28 : 26} animated={true} className="shrink-0" />
+              {!railMode && (
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="text-xs font-extrabold tracking-tight whitespace-nowrap flex items-baseline">
+                    <span className="text-[var(--md-sys-color-primary)]">BD</span>
+                    <span className="inline-block w-1 h-1 rounded-[1.5px] bg-amber-500 mx-0.5 mb-0.5 shrink-0" aria-hidden="true" />
+                    <span>Civil</span>
+                    <span className="text-[var(--md-sys-color-primary)]">Lab</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-primary)]">
+                    <Home className="w-3 h-3 shrink-0" />
+                    <span>Home</span>
+                  </span>
+                </div>
+              )}
             </button>
 
             {/* Collapse / Expand or Slide-Over Close Control */}

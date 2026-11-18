@@ -135,17 +135,27 @@ export const Topbar: React.FC<TopbarProps> = ({
 
         <button
           type="button"
-          onClick={onNavigateHome}
-          className="flex items-center gap-2 cursor-pointer group rounded-full py-1 pr-2 hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
-          title="Home"
-          aria-label="BD. CivilLab — Home"
+          onClick={() => {
+            if (onNavigateHome) onNavigateHome();
+            if (typeof window !== 'undefined') {
+              const mainEl = document.getElementById('top');
+              if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}
+          className="flex items-center gap-2.5 cursor-pointer group rounded-xl py-1 px-1.5 hover:bg-[var(--md-sys-color-surface-container-low)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+          title="Go to Home Dashboard — BD. CivilLab"
+          aria-label="BD. CivilLab — Home Dashboard"
         >
-          <LogoMark size={24} animated={false} className="shadow-xs shrink-0" />
+          <LogoMark size={28} animated={true} className="shadow-xs shrink-0" />
           <div className="flex items-baseline gap-1.5 hidden sm:flex">
-            <span className="text-sm font-black tracking-tight text-[var(--md-sys-color-on-surface)] group-hover:text-[var(--md-sys-color-primary)] transition-colors whitespace-nowrap">
-              <span className="text-[var(--md-sys-color-primary)]">BD.</span> CivilLab
+            <span className="text-sm font-black tracking-tight text-[var(--md-sys-color-on-surface)] group-hover:text-[var(--md-sys-color-primary)] transition-colors whitespace-nowrap flex items-baseline">
+              <span className="text-[var(--md-sys-color-primary)]">BD</span>
+              <span className="inline-block w-1.5 h-1.5 rounded-[2px] bg-amber-500 mx-0.5 mb-0.5 shrink-0" aria-hidden="true" />
+              <span>Civil</span>
+              <span className="text-[var(--md-sys-color-primary)] font-bold">Lab</span>
             </span>
-            <span className="hidden xl:inline text-[10.5px] text-[var(--md-sys-color-on-surface-variant)] opacity-80 font-nikosh tracking-normal" lang="bn">
+            <span className="hidden xl:inline text-[10.5px] text-[var(--md-sys-color-on-surface-variant)] opacity-85 font-nikosh tracking-normal" lang="bn">
               • সিভিল ইঞ্জিনিয়ারিং ওয়ার্কবেঞ্চ
             </span>
           </div>

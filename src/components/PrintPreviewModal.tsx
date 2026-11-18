@@ -916,11 +916,11 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
                           <div className="text-lg font-black tracking-tight text-slate-900">
                             BD. CIVILLAB
                           </div>
-                          <div className="text-[10px] font-mono font-bold tracking-widest text-blue-800 uppercase">
-                            PROFESSIONAL CIVIL ENGINEERING &amp; CERTIFIED SUBMITTAL SUITE
+                          <div className="text-[9.5px] font-mono font-bold tracking-widest text-blue-800 uppercase">
+                            CALCULATE SMARTER. DESIGN STRONGER. BUILD BETTER.
                           </div>
                           <div className="text-[10px] font-mono text-slate-600 mt-0.5">
-                            Export Units: <strong>{convertedReportData.projectMeta.unitSystem}</strong>
+                            Professional Civil Engineering Submittal Suite · Units: <strong>{convertedReportData.projectMeta.unitSystem}</strong>
                           </div>
                         </div>
                       </div>

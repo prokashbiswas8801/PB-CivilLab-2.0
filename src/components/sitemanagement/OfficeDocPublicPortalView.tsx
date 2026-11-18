@@ -22,6 +22,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { VerifiedOfficeDocRecord } from '../../utils/officeDocVerification';
+import { LogoMark } from '../Logo';
 
 interface OfficeDocPublicPortalViewProps {
   record: VerifiedOfficeDocRecord;
@@ -89,22 +90,30 @@ export const OfficeDocPublicPortalView: React.FC<OfficeDocPublicPortalViewProps>
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           {/* Brand & Verification Badge */}
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold font-sans tracking-wide text-white">
-                  <span className="text-blue-400 font-extrabold">BD.</span> CivilLab
-                </span>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  VERIFIED STAKEHOLDER PORTAL
-                </span>
+            <button
+              type="button"
+              onClick={() => (onOpenWorkbench ? onOpenWorkbench() : onClose())}
+              title="Go to Home Dashboard — BD. CivilLab"
+              className="flex items-center gap-2.5 cursor-pointer group focus:outline-none"
+            >
+              <LogoMark size={34} animated={true} className="shrink-0" />
+              <div className="text-left">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold font-sans tracking-wide text-white group-hover:text-blue-400 transition-colors flex items-baseline">
+                    <span className="text-blue-400 font-extrabold">BD</span>
+                    <span className="inline-block w-1.5 h-1.5 rounded-[2px] bg-amber-500 mx-0.5 mb-0.5 shrink-0" aria-hidden="true" />
+                    <span>Civil</span>
+                    <span className="text-blue-400 font-bold">Lab</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    VERIFIED STAKEHOLDER PORTAL
+                  </span>
+                </div>
+                <div className="text-[11px] font-mono text-slate-400">
+                  Ref: {record.memoNo} • ID: {record.docId}
+                </div>
               </div>
-              <div className="text-[11px] font-mono text-slate-400">
-                Ref: {record.memoNo} • ID: {record.docId}
-              </div>
-            </div>
+            </button>
           </div>
 
           {/* Action Strip */}

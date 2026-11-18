@@ -1,23 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Obsidian Dark Foundation Base -->
-  <rect width="64" height="64" rx="14" fill="#141413" stroke="#2B2A27" stroke-width="1.2" />
-
-  <!-- Subtle Precision CAD Engineering Grid -->
-  <path d="M14 20h36M14 32h36M14 44h36 M20 14v36M32 14v36M44 14v36" stroke="#252422" stroke-width="0.75" stroke-dasharray="1.5 2.5" />
-
-  <!-- 45-degree Chamfer Alignment Accents -->
-  <path d="M12 16L16 12M48 52l4-4" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round" opacity="0.6" />
-
-  <!-- "C" Structural Channel Frame (Warm Titanium White #F8FAFC) -->
-  <path d="M30 18H21.5L16.5 23.5V40.5L21.5 46H30" fill="none" stroke="#F8FAFC" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" />
-
-  <!-- "L" Reinforced Angle Beam & Structural Ruler (Engineered Amber Gold #F59E0B) -->
-  <path d="M35 18V46H48" fill="none" stroke="#F59E0B" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" />
-
-  <!-- Millimeter Scale Caliper Ticks on 'L' Vertical Leg -->
-  <path d="M31.5 23.5h2.5 M30 29h4 M31.5 34.5h2.5 M30 40h4" stroke="#F59E0B" stroke-width="1.2" stroke-linecap="round" />
-
-  <!-- Structural Node Caliper Pivot & Anchor Point -->
-  <circle cx="41.5" cy="27" r="2.2" fill="#F59E0B" />
-  <circle cx="41.5" cy="27" r="0.9" fill="#141413" />
+  <defs>
+    <linearGradient id="bcl-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <linearGradient id="bcl-caliper" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#bcl-bg)" stroke="#334155" stroke-width="1.5" />
+  <rect x="3" y="3" width="58" height="58" rx="14" fill="none" stroke="#38BDF8" stroke-opacity="0.28" stroke-width="0.8" />
+  <path d="M25 12.5 A21.5 21.5 0 0 1 53.5 37.5" fill="none" stroke="url(#bcl-caliper)" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 2" />
+  <path d="M15.5 21.5 L26.5 27 L15.5 32.5 L26.5 38 L15.5 43.5" fill="none" stroke="#38BDF8" stroke-opacity="0.5" stroke-width="1.4" stroke-linejoin="round" />
+  <path d="M29.5 14 L15.5 21.5 V42.5 L29.5 50" fill="none" stroke="#F8FAFC" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M34.5 16.5 V46.5 H50.5" fill="none" stroke="url(#bcl-caliper)" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M35.5 24H40 M35.5 30H42 M35.5 36H40 M35.5 41.5H43.5" stroke="#F8FAFC" stroke-width="1.5" stroke-linecap="round" />
+  <path d="M26.5 27 L45.5 27.5 L34.5 46.5" fill="none" stroke="#F59E0B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="45.5" cy="27.5" r="3.5" fill="#F59E0B" stroke="#0F172A" stroke-width="1.2" />
+  <circle cx="45.5" cy="27.5" r="1.2" fill="#FFFBEB" />
+  <circle cx="34.5" cy="16.5" r="2.4" fill="#F59E0B" stroke="#0F172A" stroke-width="1" />
 </svg>

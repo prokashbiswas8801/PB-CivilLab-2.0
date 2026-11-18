@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Logo } from './Logo';
+import { Logo, OFFICIAL_TAGLINE, OFFICIAL_TAGLINE_BN } from './Logo';
 import { ShieldCheck, FileText, UserCheck, Mail, X, ExternalLink, HardHat, Award, Scale } from 'lucide-react';
 
 export interface FooterProps {
@@ -28,13 +28,22 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
                   variant="full"
                   size="md"
                   showTagline={true}
+                  animated={true}
                   onClick={onNavigateHome}
                   asLink={!onNavigateHome}
                   href="#top"
                 />
               </div>
 
-              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] leading-relaxed max-w-sm pt-1">
+              <div className="inline-flex items-center gap-2 text-[11px] font-mono font-bold text-[var(--md-sys-color-primary)] tracking-wide pt-0.5">
+                <span>{OFFICIAL_TAGLINE}</span>
+                <span className="opacity-60">·</span>
+                <span className="font-nikosh text-xs font-normal text-[var(--md-sys-color-on-surface-variant)]" lang="bn">
+                  {OFFICIAL_TAGLINE_BN}
+                </span>
+              </div>
+
+              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] leading-relaxed max-w-sm pt-0.5">
                 Precision computational workbench engineered for structural engineers, geotechnical practitioners,
                 and quantity surveyors. High-fidelity formulas, real-time vector diagrams, and standards-compliant takeoff schedules.
               </p>
@@ -135,7 +144,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
             </p>
           </div>
 
-          {/* Bottom Copyright & Secondary Tagline Statement */}
+          {/* Bottom Copyright & Official Tagline Statement */}
           <div className="pt-6 border-t border-[var(--md-sys-color-outline-variant)] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
             <div className="flex items-center gap-2">
               <span className="font-bold text-[var(--md-sys-color-on-surface)]">
@@ -148,7 +157,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateHome, className = '' }
             </div>
 
             <div className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-[var(--md-sys-color-primary)]">
-              <span>CALCULATE SMARTER. BUILD BETTER.</span>
+              <span>{OFFICIAL_TAGLINE.toUpperCase()}</span>
             </div>
           </div>
         </div>

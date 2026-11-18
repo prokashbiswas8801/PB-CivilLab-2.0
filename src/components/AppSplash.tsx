@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrandLogoIcon } from './Logo';
+import { BrandLogoIcon, OFFICIAL_TAGLINE, OFFICIAL_TAGLINE_BN } from './Logo';
 
 export interface AppSplashProps {
   onComplete?: () => void;
@@ -40,21 +40,23 @@ export const AppSplash: React.FC<AppSplashProps> = ({ onComplete, minDurationMs 
         <div className="relative flex items-center justify-center p-4">
           <div className="absolute inset-0 rounded-full bg-[var(--md-sys-color-primary)]/20 blur-2xl animate-pulse" />
           <div className="relative">
-            <BrandLogoIcon size={80} animated={true} className="shadow-lg border-2 border-white/20" />
+            <BrandLogoIcon size={84} animated={true} className="shadow-xl rounded-2xl" />
           </div>
         </div>
 
         {/* Title & Tagline */}
         <div className="space-y-1.5">
-          <div className="text-2xl font-extrabold tracking-tight">
-            <span className="text-[var(--md-sys-color-primary)] font-black">BD.</span>{' '}
-            <span>CivilLab</span>
+          <div className="text-2xl font-extrabold tracking-tight flex items-baseline justify-center">
+            <span className="text-[var(--md-sys-color-primary)] font-black">BD</span>
+            <span className="inline-block w-2 h-2 rounded-[2.5px] bg-amber-500 mx-1 mb-0.5 shrink-0" aria-hidden="true" />
+            <span>Civil</span>
+            <span className="text-[var(--md-sys-color-primary)] font-bold">Lab</span>
           </div>
-          <div className="text-[11px] font-mono uppercase font-bold tracking-widest text-[var(--md-sys-color-on-surface-variant)]">
-            CALCULATE SMARTER. BUILD BETTER.
+          <div className="text-[11px] font-mono uppercase font-bold tracking-widest text-[var(--md-sys-color-primary)]">
+            {OFFICIAL_TAGLINE}
           </div>
-          <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] opacity-80 font-nikosh" lang="bn">
-            নিখুঁত হিসাব · মজবুত নির্মাণ
+          <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] opacity-85 font-nikosh" lang="bn">
+            {OFFICIAL_TAGLINE_BN}
           </div>
         </div>
 

@@ -58,6 +58,7 @@ import {
   parseFeetInchString,
 } from '../../utils/unitConverter';
 import { NumericDraftInput } from '../ui/NumericDraftInput';
+import { LogoMark, OFFICIAL_TAGLINE } from '../Logo';
 
 export interface HomePageProps {
   activeWorkspace: CivilWorkspace;
@@ -810,12 +811,25 @@ export const HomePage: React.FC<HomePageProps> = ({
               </button>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center shrink-0">
-                <Home className="w-4 h-4" />
-              </span>
-              <span>Home</span>
-            </h1>
+            <div className="flex items-center gap-3 pt-0.5">
+              <LogoMark size={38} animated={true} className="shrink-0 shadow-xs" />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)] flex items-baseline gap-2">
+                  <span className="flex items-baseline">
+                    <span className="text-[var(--md-sys-color-primary)] font-black">BD</span>
+                    <span className="inline-block w-1.5 h-1.5 rounded-[2px] bg-amber-500 mx-0.5 mb-0.5 shrink-0" aria-hidden="true" />
+                    <span>Civil</span>
+                    <span className="text-[var(--md-sys-color-primary)] font-bold">Lab</span>
+                  </span>
+                  <span className="text-xs sm:text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+                    · Home Dashboard
+                  </span>
+                </h1>
+                <p className="text-[11px] font-mono uppercase tracking-wider font-bold text-[var(--md-sys-color-primary)] mt-0.5">
+                  {OFFICIAL_TAGLINE}
+                </p>
+              </div>
+            </div>
 
             <p className="text-xs sm:text-sm text-[var(--md-sys-color-on-surface-variant)] leading-relaxed">
               Structural analysis, foundation bearing, BOQ takeoff &amp; field ERP.{' '}
