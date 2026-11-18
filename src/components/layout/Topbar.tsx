@@ -151,7 +151,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           <div className="flex items-baseline gap-1.5 hidden sm:flex">
             <span className="text-sm font-black tracking-tight text-[var(--md-sys-color-on-surface)] group-hover:text-[var(--md-sys-color-primary)] transition-colors whitespace-nowrap flex items-baseline">
               <span className="text-[var(--md-sys-color-primary)]">BD</span>
-              <span className="inline-block w-1.5 h-1.5 rounded-[2px] bg-amber-500 mx-0.5 mb-0.5 shrink-0" aria-hidden="true" />
+              <span className="inline-block w-1.5 h-1.5 rounded-[2px] bg-amber-500 mx-0.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:rotate-45" aria-hidden="true" />
               <span>Civil</span>
               <span className="text-[var(--md-sys-color-primary)] font-bold">Lab</span>
             </span>

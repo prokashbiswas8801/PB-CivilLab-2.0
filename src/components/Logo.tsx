@@ -15,7 +15,7 @@ export interface LogoProps {
   className?: string;
   /** Custom class name for the tagline */
   taglineClassName?: string;
-  /** When true, renders with dynamic micro-interaction & pulse effects */
+  /** When true, renders with dynamic mechanical caliper-gear micro-interactions */
   animated?: boolean;
   /** Optional click handler or navigation (e.g. navigate to Home/Dashboard) */
   onClick?: () => void;
@@ -40,12 +40,12 @@ const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', { height: number; markS
 /**
  * BD. CivilLab — Dynamic Isometric Structural Truss, Compass Caliper & Golden-Ratio Node Emblem
  *
- * Meaningful Engineering Symbolism:
- * 1. Outer Isometric Space-Truss ('C' Structural Frame): Represents axial load paths, 3D building frames & structural integrity.
- * 2. Cantilever Mast & Sweeping Compass Caliper Arc ('L' Vernier Scale): Represents AutoCAD drafting precision, surveying & code compliance.
- * 3. Golden-Ratio Equilibrium Node (Apex Pin Joint): Represents structural equilibrium (∑F = 0, ∑M = 0) at the golden section.
- *
- * Automatically adapts to both Dark and Light themes via CSS custom properties (--md-sys-color-*).
+ * Mechanical Caliper & Gear Engagement Kinematics on Hover:
+ * - Emblem Chassis: Subtle +3.5° clockwise engagement & 1.05× scale with spring-snap easing.
+ * - Outer Compass Caliper Arc: Rotates +14° clockwise around (34, 34).
+ * - Inner Toothed Micrometer Gear Ring: Counter-rotates -22° around the golden-ratio pivot (45.5, 27.5).
+ * - Upper Crown Pinion Gear: Rotates +18° around (34.5, 16.5).
+ * - Vernier Scale Graduations: Shifts -1px vertically as caliper jaws lock.
  */
 export const ClVectorMark: React.FC<{ size?: number; className?: string; animated?: boolean }> = ({
   size = 36,
@@ -63,8 +63,10 @@ export const ClVectorMark: React.FC<{ size?: number; className?: string; animate
       viewBox="0 0 64 64"
       width={size}
       height={size}
-      className={`group/mark shrink-0 overflow-visible select-none transition-transform duration-200 ease-out ${
-        animated ? 'group-hover:scale-105 hover:scale-105' : ''
+      className={`group/mark shrink-0 overflow-visible select-none ${
+        animated
+          ? 'transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-105 group-hover:rotate-[3.5deg] group-hover/logo:scale-105 group-hover/logo:rotate-[3.5deg] hover:scale-105 hover:rotate-[3.5deg] motion-reduce:transition-none motion-reduce:transform-none'
+          : ''
       } ${className}`}
       aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
@@ -126,11 +128,12 @@ export const ClVectorMark: React.FC<{ size?: number; className?: string; animate
         <path d="M14 17L50 47M50 17L14 47" strokeDasharray="1.5 3" />
       </g>
 
-      {/* 3. Sweeping Compass Caliper Arc & Degree Protractor Ticks (Dynamic on Hover) */}
+      {/* 3. Sweeping Compass Caliper Arc & Degree Protractor Ticks (Rotates +14° Clockwise on Hover) */}
       <g
+        style={{ transformBox: 'view-box', transformOrigin: '34px 34px' }}
         className={
           animated
-            ? 'origin-[34px_34px] transition-transform duration-200 ease-out group-hover:rotate-3 group-hover/mark:rotate-3'
+            ? 'transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:rotate-[14deg] group-hover/logo:rotate-[14deg] group-hover/mark:rotate-[14deg] motion-reduce:transition-none motion-reduce:transform-none'
             : ''
         }
       >
@@ -187,13 +190,18 @@ export const ClVectorMark: React.FC<{ size?: number; className?: string; animate
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Precision Millimeter Caliper Graduations on 'L' Mast */}
+        {/* Precision Millimeter Caliper Graduations on 'L' Mast (Micro-shifts on Hover as Vernier Locks) */}
         <path
           d="M35.5 24H40 M35.5 30H42 M35.5 36H40 M35.5 41.5H43.5"
           stroke="var(--md-sys-color-on-surface)"
           strokeOpacity="0.85"
           strokeWidth="1.5"
           strokeLinecap="round"
+          className={
+            animated
+              ? 'transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-[1px] group-hover/logo:-translate-y-[1px] group-hover/mark:-translate-y-[1px] motion-reduce:transition-none'
+              : ''
+          }
         />
         {/* Diagonal Tension Tie Rod connecting 'L' Mast to 'C' Truss */}
         <path
@@ -207,21 +215,48 @@ export const ClVectorMark: React.FC<{ size?: number; className?: string; animate
         />
       </g>
 
-      {/* 6. Golden-Ratio Equilibrium Node (Apex Structural Pivot) */}
+      {/* 6. Golden-Ratio Equilibrium Node & Counter-Rotating Micrometer Gear Ring */}
       <g>
         {/* Pulsing Equilibrium Halo */}
         <circle
           cx="45.5"
           cy="27.5"
-          r="6.2"
+          r="6.6"
           fill={`url(#${goldNodeGradId})`}
-          className={animated ? ' opacity-75 group-hover:scale-125 transition-transform duration-200 origin-[45.5px_27.5px]' : 'opacity-65'}
+          style={{ transformBox: 'view-box', transformOrigin: '45.5px 27.5px' }}
+          className={
+            animated
+              ? 'opacity-75 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-125 group-hover/logo:scale-125 group-hover/mark:scale-125 motion-reduce:transition-none'
+              : 'opacity-65'
+          }
         />
+
+        {/* Counter-Rotating Precision Toothed Micrometer Gear Ring (-22° on Hover) */}
+        <g
+          style={{ transformBox: 'view-box', transformOrigin: '45.5px 27.5px' }}
+          className={
+            animated
+              ? 'transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-rotate-[22deg] group-hover/logo:-rotate-[22deg] group-hover/mark:-rotate-[22deg] motion-reduce:transition-none motion-reduce:transform-none'
+              : ''
+          }
+        >
+          <circle
+            cx="45.5"
+            cy="27.5"
+            r="5.3"
+            fill="none"
+            stroke="#F59E0B"
+            strokeWidth="1.35"
+            strokeDasharray="1.7 1.65"
+            strokeOpacity="0.92"
+          />
+        </g>
+
         {/* Outer Golden Pin-Joint Ring */}
         <circle
           cx="45.5"
           cy="27.5"
-          r="3.4"
+          r="3.3"
           fill="#F59E0B"
           stroke="var(--md-sys-color-surface, #0F172A)"
           strokeWidth="1.2"
@@ -229,15 +264,34 @@ export const ClVectorMark: React.FC<{ size?: number; className?: string; animate
         {/* Center Precision Target Core */}
         <circle cx="45.5" cy="27.5" r="1.2" fill="#FFFBEB" />
 
-        {/* Top Crown Node on 'L' Mast */}
-        <circle
-          cx="34.5"
-          cy="16.5"
-          r="2.4"
-          fill="#F59E0B"
-          stroke="var(--md-sys-color-surface, #0F172A)"
-          strokeWidth="1"
-        />
+        {/* Upper Crown Pinion Gear & Node on 'L' Mast (+18° Clockwise Engagement on Hover) */}
+        <g
+          style={{ transformBox: 'view-box', transformOrigin: '34.5px 16.5px' }}
+          className={
+            animated
+              ? 'transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:rotate-[18deg] group-hover/logo:rotate-[18deg] group-hover/mark:rotate-[18deg] motion-reduce:transition-none motion-reduce:transform-none'
+              : ''
+          }
+        >
+          <circle
+            cx="34.5"
+            cy="16.5"
+            r="3.8"
+            fill="none"
+            stroke="#F59E0B"
+            strokeWidth="1.1"
+            strokeDasharray="1.4 1.4"
+            strokeOpacity="0.8"
+          />
+          <circle
+            cx="34.5"
+            cy="16.5"
+            r="2.3"
+            fill="#F59E0B"
+            stroke="var(--md-sys-color-surface, #0F172A)"
+            strokeWidth="1"
+          />
+        </g>
       </g>
     </svg>
   );
@@ -303,7 +357,7 @@ export const Logo: React.FC<LogoProps> = ({
       } ${variant === 'stacked' ? 'flex-col text-center items-center' : 'flex-row'} ${className}`}
     >
       {/* Dynamic Isometric Truss & Compass Caliper Logo Mark */}
-      <div className="relative shrink-0 flex items-center justify-center transition-transform duration-200">
+      <div className="relative shrink-0 flex items-center justify-center">
         <ClVectorMark size={collapsed ? 30 : resolved.markSize} animated={animated} />
       </div>
 
@@ -326,7 +380,7 @@ export const Logo: React.FC<LogoProps> = ({
               BD
             </span>
             <span
-              className="inline-block w-1.5 h-1.5 rounded-[2px] bg-amber-500 mx-0.5 mb-0.5 shrink-0"
+              className="inline-block w-1.5 h-1.5 rounded-[2px] bg-amber-500 mx-0.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover/logo:rotate-45 group-hover:rotate-45"
               aria-hidden="true"
             />
             <span

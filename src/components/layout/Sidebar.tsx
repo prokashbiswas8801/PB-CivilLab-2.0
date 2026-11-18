@@ -462,7 +462,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex items-center justify-between flex-1 min-w-0">
                   <span className="text-xs font-extrabold tracking-tight whitespace-nowrap flex items-baseline">
                     <span className="text-[var(--md-sys-color-primary)]">BD</span>
-                    <span className="inline-block w-1 h-1 rounded-[1.5px] bg-amber-500 mx-0.5 mb-0.5 shrink-0" aria-hidden="true" />
+                    <span className="inline-block w-1 h-1 rounded-[1.5px] bg-amber-500 mx-0.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:rotate-45" aria-hidden="true" />
                     <span>Civil</span>
                     <span className="text-[var(--md-sys-color-primary)]">Lab</span>
                   </span>
