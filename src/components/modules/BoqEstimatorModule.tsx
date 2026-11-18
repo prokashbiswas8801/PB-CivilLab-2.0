@@ -34,6 +34,7 @@ import {
   TakeoffCategory,
   TakeoffUnit,
   TakeoffLineItem,
+  BOQStoryStage,
   CustomUnitDefinition,
   UnitCategoryKey,
   UserProfile,
@@ -387,6 +388,8 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
   const [internalItemUnit, setInternalItemUnit] = useState<TakeoffUnit>('m3');
   const [internalItemWastage, setInternalItemWastage] = useState(0);
   const [internalItemUnitRate, setInternalItemUnitRate] = useState(0);
+  const [internalItemStoryStage, setInternalItemStoryStage] = useState<BOQStoryStage>('substructure');
+  const [internalItemFloorMultiplier, setInternalItemFloorMultiplier] = useState<number>(1);
 
   const activeEditingId = editingTakeoffItemId !== undefined ? editingTakeoffItemId : internalEditingId;
   const setActiveEditingId = setEditingTakeoffItemId || setInternalEditingId;
@@ -439,6 +442,8 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
         setItemDeductionAction(it.deductionQty);
         setItemWastageAction(it.wastagePercent);
         setItemUnitRateAction(it.unitRate);
+        setInternalItemStoryStage(it.storyStage || 'substructure');
+        setInternalItemFloorMultiplier(it.floorMultiplier ?? 1);
       }
     }
   }, [activeEditingId, activeWorkspace.boq.items]);
@@ -463,6 +468,8 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                   itemNo: itemNo.trim() || it.itemNo,
                   description: itemDesc.trim(),
                   category: itemCategory,
+                  storyStage: internalItemStoryStage,
+                  floorMultiplier: Math.max(1, internalItemFloorMultiplier),
                   numberOfMembers: Math.max(0, itemMembers),
                   lengthM: itemLength,
                   widthM: itemWidth,
@@ -482,6 +489,8 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
         itemNo: itemNo.trim() || `${activeWorkspace.boq.items.length + 1}.01`,
         description: itemDesc.trim(),
         category: itemCategory,
+        storyStage: internalItemStoryStage,
+        floorMultiplier: Math.max(1, internalItemFloorMultiplier),
         numberOfMembers: Math.max(0, itemMembers),
         lengthM: itemLength,
         widthM: itemWidth,
@@ -511,6 +520,7 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
     setItemDeductionAction(0);
     setItemWastageAction(0);
     setItemUnitRateAction(0);
+    setInternalItemFloorMultiplier(1);
   };
 
   const currentLibraryId = activeWorkspace.boq?.rateLibraryId || 'pwd-2024';
@@ -776,6 +786,87 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
           </div>
         </div>
 
+        {/* Bangladesh Statutory Tax & Retention Preset Bar + Typical Floor Count */}
+        <div className="pt-2.5 border-t border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+              Statutory Presets:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: {
+                    ...ws.boq,
+                    vatTaxPercent: 7.5,
+                    aitTaxPercent: 5.0,
+                    retentionMoneyPercent: 10.0,
+                  },
+                }));
+              }}
+              className="px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-primary-container)] text-[10px] font-mono font-bold text-[var(--md-sys-color-primary)] cursor-pointer transition-colors"
+            >
+              PWD &amp; LGED Standard (7.5% VAT, 5% AIT, 10% Ret.)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: {
+                    ...ws.boq,
+                    vatTaxPercent: 5.0,
+                    aitTaxPercent: 3.0,
+                    retentionMoneyPercent: 5.0,
+                  },
+                }));
+              }}
+              className="px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[10px] font-mono font-semibold text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors"
+            >
+              Commercial (5% VAT, 3% AIT, 5% Ret.)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: {
+                    ...ws.boq,
+                    vatTaxPercent: 0,
+                    aitTaxPercent: 0,
+                    retentionMoneyPercent: 0,
+                    mobilizationRecoveryPercent: 0,
+                  },
+                }));
+              }}
+              className="px-2 py-1 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)] cursor-pointer transition-colors"
+            >
+              Zero-Tax Baseline
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <label className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+              Typical Story Multiplier (×N):
+            </label>
+            <NumericDraftInput
+              min={1}
+              max={60}
+              allowDecimal={false}
+              value={activeWorkspace.boq.typicalFloorCount ?? 1}
+              onChangeValue={(val) => {
+                const n = Math.max(1, Math.round(val));
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  boq: { ...ws.boq, typicalFloorCount: n },
+                }));
+              }}
+              className="w-16 px-2 py-1 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono font-bold text-center"
+            />
+          </div>
+        </div>
+
         {/* Regional District Multiplier & Rate Library Pill */}
         <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between text-xs text-[var(--md-sys-color-on-surface-variant)] gap-2">
           <div className="flex items-center gap-1.5 font-mono">
@@ -917,6 +1008,48 @@ export const BoqEstimatorInputs: React.FC<BoqEstimatorInputsProps> = ({
                   ? 'border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/30'
                   : 'border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)]'
               }`}
+            />
+          </div>
+        </div>
+
+        {/* Building Story Stage & Floor Multiplier */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-[11px] font-semibold mb-1">Building Story Stage</label>
+            <select
+              value={internalItemStoryStage}
+              onChange={(e) => {
+                const st = e.target.value as BOQStoryStage;
+                setInternalItemStoryStage(st);
+                if (st === 'typical-floor') {
+                  setInternalItemFloorMultiplier(Math.max(1, activeWorkspace.boq.typicalFloorCount ?? 1));
+                } else {
+                  setInternalItemFloorMultiplier(1);
+                }
+              }}
+              className="w-full touch-target-48 px-2 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
+            >
+              <option value="substructure">Substructure &amp; Foundation</option>
+              <option value="ground-floor">Ground Floor / Plinth</option>
+              <option value="typical-floor">Typical Floor (×N Stories)</option>
+              <option value="roof-parapet">Roof, Parapet &amp; Mumty</option>
+            </select>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <label className="text-[11px] font-semibold">Story Multiplier (×N Floors)</label>
+              <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)]">
+                ×{internalItemFloorMultiplier}
+              </span>
+            </div>
+            <NumericDraftInput
+              min={1}
+              max={60}
+              allowDecimal={false}
+              value={internalItemFloorMultiplier}
+              onChangeValue={(val) => setInternalItemFloorMultiplier(Math.max(1, Math.round(val)))}
+              className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] font-mono text-xs"
             />
           </div>
         </div>
@@ -1671,11 +1804,23 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
                                   <div className="font-semibold text-[var(--md-sys-color-on-surface)] truncate max-w-sm">
                                     {it.description}
                                   </div>
-                                  {it.vendorSource && (
-                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono block">
-                                      Vendor: {it.vendorSource}
-                                    </span>
-                                  )}
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                    {it.storyStage && (
+                                      <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)] border border-[var(--md-sys-color-outline-variant)] uppercase">
+                                        {it.storyStage.replace('-', ' ')}
+                                      </span>
+                                    )}
+                                    {(it.floorMultiplier ?? 1) > 1 && (
+                                      <span className="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+                                        ×{it.floorMultiplier} Stories
+                                      </span>
+                                    )}
+                                    {it.vendorSource && (
+                                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
+                                        Vendor: {it.vendorSource}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="py-2 px-2 text-center">{it.numberOfMembers}</td>
                                 <td className={`py-2 px-2 text-right ${it.lengthM === 0 ? 'text-amber-600 dark:text-amber-400' : ''}`} title={it.lengthM > 0 ? formatFeetInches(it.lengthM, { isMeters: true }) : undefined}>
@@ -1889,32 +2034,48 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
             </div>
 
             {/* Bangladeshi PWD / LGED Statutory Deductions & Net Payable Schedule */}
-            {((boqResult.aitTaxPercent ?? 0) > 0 || (boqResult.retentionMoneyPercent ?? 0) > 0 || (boqResult.mobilizationRecoveryPercent ?? 0) > 0) && (
-              <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 space-y-1.5">
+            {((boqResult.vatTaxPercent ?? 0) > 0 || (boqResult.aitTaxPercent ?? 0) > 0 || (boqResult.retentionMoneyPercent ?? 0) > 0 || (boqResult.mobilizationRecoveryPercent ?? 0) > 0) && (
+              <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]/60 space-y-1.5 font-mono tabular-nums">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
                   Statutory Deductions at Source (PWD / LGED / NBR Compliance)
                 </div>
+                {(boqResult.vatTaxPercent ?? 0) > 0 && (
+                  <div className="flex justify-between items-center text-xs text-rose-600 dark:text-rose-400">
+                    <span>- Withheld VAT at Source ({boqResult.vatTaxPercent}%):</span>
+                    <span>- {boqResult.currencySymbol} {(boqResult.vatTaxAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
                 {(boqResult.aitTaxPercent ?? 0) > 0 && (
-                  <div className="flex justify-between items-center text-xs font-mono text-rose-600 dark:text-rose-400">
+                  <div className="flex justify-between items-center text-xs text-rose-600 dark:text-rose-400">
                     <span>- Advance Income Tax AIT ({boqResult.aitTaxPercent}%):</span>
                     <span>- {boqResult.currencySymbol} {(boqResult.aitTaxAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
                 {(boqResult.retentionMoneyPercent ?? 0) > 0 && (
-                  <div className="flex justify-between items-center text-xs font-mono text-amber-600 dark:text-amber-400">
+                  <div className="flex justify-between items-center text-xs text-amber-600 dark:text-amber-400">
                     <span>- Security Deposit / Retention Money ({boqResult.retentionMoneyPercent}%):</span>
                     <span>- {boqResult.currencySymbol} {(boqResult.retentionMoneyAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
                 {(boqResult.mobilizationRecoveryPercent ?? 0) > 0 && (
-                  <div className="flex justify-between items-center text-xs font-mono text-purple-600 dark:text-purple-400">
+                  <div className="flex justify-between items-center text-xs text-purple-600 dark:text-purple-400">
                     <span>- Mobilization Advance Recovery ({boqResult.mobilizationRecoveryPercent}%):</span>
                     <span>- {boqResult.currencySymbol} {(boqResult.mobilizationRecoveryAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
-                <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex justify-between items-center text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                  <span>NET PAYABLE TO CONTRACTOR:</span>
+                <div className="flex justify-between items-center text-xs font-bold text-rose-700 dark:text-rose-300 pt-1 border-t border-[var(--md-sys-color-outline-variant)]/40">
+                  <span>TOTAL STATUTORY DEDUCTIONS AT SOURCE:</span>
+                  <span>- {boqResult.currencySymbol} {(boqResult.totalStatutoryDeductionsAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex justify-between items-center text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  <span>NET PAYABLE CHECK TO CONTRACTOR:</span>
                   <span className="text-base md:text-lg font-extrabold">{boqResult.currencySymbol} {(boqResult.netPayableToContractorAmount ?? boqResult.grandTotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  <span>Estimated Contractor Net Margin (after AIT):</span>
+                  <span className="font-bold text-[var(--md-sys-color-tertiary)]">
+                    {boqResult.currencySymbol} {(boqResult.contractorNetMarginAmount ?? boqResult.contractorOverheadAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
             )}
@@ -2032,6 +2193,50 @@ export const BoqEstimatorTable: React.FC<BoqEstimatorTableProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Stage-Wise Material Procurement Ceiling Schedule (Substructure -> Ground -> Typical Floors -> Roof) */}
+                {boqResult.stageResourceAbstract && boqResult.stageResourceAbstract.length > 0 && (
+                  <div className="overflow-x-auto rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                    <div className="p-2.5 bg-[var(--md-sys-color-surface-container)] border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
+                        Stage-Wise Building Story Procurement Ceilings
+                      </span>
+                      <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+                        Grouped by Substructure · Ground Floor · Typical Story (×N) · Roof
+                      </span>
+                    </div>
+                    <table className="w-full text-left border-collapse text-xs font-mono tabular-nums min-w-[680px]">
+                      <thead>
+                        <tr className="border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] font-bold">
+                          <th className="py-2 px-3">Building Stage</th>
+                          <th className="py-2 px-2 text-center">Items</th>
+                          <th className="py-2 px-2 text-right">Subtotal ({boqResult.currencySymbol})</th>
+                          <th className="py-2 px-2 text-right">Cement (Bags)</th>
+                          <th className="py-2 px-2 text-right">Sand (CFT)</th>
+                          <th className="py-2 px-2 text-right">Agg./Khoa (CFT)</th>
+                          <th className="py-2 px-2 text-right">Rebar (kg)</th>
+                          <th className="py-2 px-3 text-right">Bricks (Nos)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
+                        {boqResult.stageResourceAbstract.map((stg) => (
+                          <tr key={stg.stage} className="hover:bg-[var(--md-sys-color-surface-container-low)]">
+                            <td className="py-2 px-3 font-bold text-[var(--md-sys-color-on-surface)]">{stg.stageLabel}</td>
+                            <td className="py-2 px-2 text-center">{stg.itemCount}</td>
+                            <td className="py-2 px-2 text-right font-semibold text-[var(--md-sys-color-primary)]">
+                              {stg.subtotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-2 px-2 text-right">{stg.cementBags50Kg.toFixed(1)}</td>
+                            <td className="py-2 px-2 text-right">{stg.sandCft.toFixed(1)}</td>
+                            <td className="py-2 px-2 text-right">{stg.coarseAggregateCft.toFixed(1)}</td>
+                            <td className="py-2 px-2 text-right text-amber-600 dark:text-amber-400">{stg.rebarKg.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                            <td className="py-2 px-3 text-right">{stg.bricksNos.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 {/* Line-by-line Resource Breakdown Table */}
                 {boqResult.resourceAbstract.lineItemBreakdown.length > 0 && (

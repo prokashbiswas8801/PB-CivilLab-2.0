@@ -489,6 +489,54 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                 </div>
               ))}
             </div>
+
+            {/* Automated RCC Lintel Bearing Deduction & Jamb/Sill Plaster Reveal Addition */}
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-2 text-xs font-mono">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="inline-flex items-center gap-2 cursor-pointer font-semibold text-[var(--md-sys-color-primary)]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(m.autoDeductLintels)}
+                    onChange={(e) => updateMasonry({ autoDeductLintels: e.target.checked })}
+                  />
+                  <span>Auto-Deduct RCC Lintel Bearing Above Openings</span>
+                </label>
+                <label className="inline-flex items-center gap-2 cursor-pointer font-semibold text-emerald-700 dark:text-emerald-400">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(m.autoAddJambSillPlaster)}
+                    onChange={(e) => updateMasonry({ autoAddJambSillPlaster: e.target.checked })}
+                  />
+                  <span>Auto-Add Door/Window Jamb &amp; Sill Reveal Plaster</span>
+                </label>
+              </div>
+              {m.autoDeductLintels && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <span className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Lintel Depth (mm, default 150mm / 6&quot;)</span>
+                    <NumericDraftInput
+                      min={75}
+                      max={400}
+                      allowDecimal={false}
+                      value={m.autoLintelThicknessMm ?? 150}
+                      onChangeValue={(val) => updateMasonry({ autoLintelThicknessMm: Math.max(75, Math.round(val)) })}
+                      className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)]">End Bearing Each Side (mm, default 150mm / 6&quot;)</span>
+                    <NumericDraftInput
+                      min={100}
+                      max={350}
+                      allowDecimal={false}
+                      value={m.autoLintelBearingMm ?? 150}
+                      onChangeValue={(val) => updateMasonry({ autoLintelBearingMm: Math.max(75, Math.round(val)) })}
+                      className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Plastering, Ceramic Floor Tiles & Paint/Putty Coverage Estimator Inputs */}
@@ -654,6 +702,85 @@ export const MasonryFinishesInputs: React.FC<MasonryFinishesInputsProps> = ({
                   onChangeValue={(val) => updateMasonry({ paintCoverageM2PerL: Math.max(0, val) })}
                   className="w-full min-h-[42px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] font-mono tabular-nums text-xs bg-[var(--md-sys-color-surface)]"
                 />
+              </div>
+            </div>
+
+            {/* Wall Tiles, Floor Skirting (4" / 6"), Tile Adhesive (20kg) & Chicken Wire Mesh */}
+            <div className="pt-2.5 border-t border-[var(--md-sys-color-outline-variant)] space-y-2 text-xs font-mono">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[10px] uppercase font-bold text-[var(--md-sys-color-primary)]">
+                  Wall Tiles, Floor Skirting (4&quot; / 6&quot;), Tile Adhesive &amp; 20-Gauge Wire Mesh
+                </span>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-[11px]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(m.includeChickenWireMesh)}
+                    onChange={(e) => updateMasonry({ includeChickenWireMesh: e.target.checked })}
+                  />
+                  <span>Include 20-Gauge Chicken Wire Mesh (RCC-Brick Junctions)</span>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div>
+                  <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                    Wall Tile Height (m)
+                  </label>
+                  <NumericDraftInput
+                    min={0}
+                    max={4.5}
+                    value={m.wallTileHeightM ?? 0}
+                    onChangeValue={(val) => updateMasonry({ wallTileHeightM: Math.max(0, val) })}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                    Wall Tile Run L (m)
+                  </label>
+                  <NumericDraftInput
+                    min={0}
+                    value={m.wallTileLengthM ?? 0}
+                    onChangeValue={(val) => updateMasonry({ wallTileLengthM: Math.max(0, val) })}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                    Skirting Height
+                  </label>
+                  <select
+                    value={m.skirtingHeightMm ?? 100}
+                    onChange={(e) => updateMasonry({ skirtingHeightMm: Number(e.target.value) })}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] text-xs bg-[var(--md-sys-color-surface)]"
+                  >
+                    <option value="0">0 mm (None)</option>
+                    <option value="100">100 mm (4&quot; Std)</option>
+                    <option value="150">150 mm (6&quot; High)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                    Skirting Run (m)
+                  </label>
+                  <NumericDraftInput
+                    min={0}
+                    value={m.skirtingLengthM ?? 0}
+                    onChangeValue={(val) => updateMasonry({ skirtingLengthM: Math.max(0, val) })}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                    Adhesive (kg/m²)
+                  </label>
+                  <NumericDraftInput
+                    min={0}
+                    max={12}
+                    value={m.tileAdhesiveKgPerM2 ?? 4.5}
+                    onChangeValue={(val) => updateMasonry({ tileAdhesiveKgPerM2: Math.max(0, val) })}
+                    className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -822,6 +949,100 @@ export const MasonryFinishesMetrics: React.FC<MasonryFinishesMetricsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Automated Lintel Deduction & Jamb/Sill Plaster Reveal Schedule Card */}
+      {result.lintelRevealSchedule &&
+        (result.lintelRevealSchedule.autoDeductedLintelVolumeM3 > 0 ||
+          result.lintelRevealSchedule.jambSillRevealPlasterAreaM2 > 0) && (
+          <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2 text-xs font-mono tabular-nums">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-bold text-[var(--md-sys-color-primary)] uppercase">
+                Automated RCC Lintel Deduction &amp; Jamb/Sill Reveal Plaster Schedule
+              </span>
+              <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                Lintel: {result.lintelRevealSchedule.lintelThicknessMm}mm deep × +{result.lintelRevealSchedule.lintelBearingMm}mm end bearing
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
+                  Auto-Deducted RCC Lintel Bearing Volume ({result.lintelRevealSchedule.autoDeductedLintelCount} Nos)
+                </span>
+                <strong className="text-base text-rose-600 dark:text-rose-400 mt-0.5 block">
+                  -{result.lintelRevealSchedule.autoDeductedLintelVolumeM3.toFixed(3)} m³ (-{result.lintelRevealSchedule.autoDeductedLintelVolumeCft.toFixed(2)} CFT)
+                </strong>
+              </div>
+              <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
+                  Added Jamb &amp; Sill Reveal Plaster Area
+                </span>
+                <strong className="text-base text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                  +{result.lintelRevealSchedule.jambSillRevealPlasterAreaM2.toFixed(2)} m² (+{result.lintelRevealSchedule.jambSillRevealPlasterAreaSft.toFixed(1)} SFT)
+                </strong>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Wall Tiles, Floor Skirting, Tile Adhesive (20kg), Joint Grout & Chicken Wire Mesh Card */}
+      {result.wallTileSkirtingAdhesiveSchedule &&
+        (result.wallTileSkirtingAdhesiveSchedule.totalTiledAreaM2 > 0 ||
+          result.wallTileSkirtingAdhesiveSchedule.chickenWireMeshRollsCount > 0) && (
+          <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2 text-xs font-mono tabular-nums">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-bold text-[var(--md-sys-color-primary)] uppercase">
+                Wall Tiles, Floor Skirting, Tile Adhesive (20kg) &amp; Wire Mesh Schedule
+              </span>
+              <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                Total Tiled + Skirting Surface: <strong className="text-[var(--md-sys-color-on-surface)]">{result.wallTileSkirtingAdhesiveSchedule.totalTiledAreaM2.toFixed(2)} m²</strong> ({result.wallTileSkirtingAdhesiveSchedule.totalTiledAreaSft.toFixed(1)} SFT)
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Wall Tiles &amp; Boxes</span>
+                <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">
+                  {result.wallTileSkirtingAdhesiveSchedule.wallTileBoxesCount} boxes ({result.wallTileSkirtingAdhesiveSchedule.wallTilesWithWastageCount} tiles)
+                </strong>
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                  {result.wallTileSkirtingAdhesiveSchedule.wallTileAreaSft.toFixed(1)} SFT ({result.wallTileSkirtingAdhesiveSchedule.wallTileAreaM2.toFixed(2)} m²)
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
+                  Floor Skirting ({result.wallTileSkirtingAdhesiveSchedule.skirtingHeightMm}mm)
+                </span>
+                <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">
+                  {result.wallTileSkirtingAdhesiveSchedule.skirtingAreaSft.toFixed(1)} SFT ({result.wallTileSkirtingAdhesiveSchedule.skirtingAreaM2.toFixed(2)} m²)
+                </strong>
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                  Run: {result.wallTileSkirtingAdhesiveSchedule.skirtingLengthM.toFixed(1)} m
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
+                  Tile Adhesive &amp; Grout
+                </span>
+                <strong className="text-sm text-[var(--md-sys-color-primary)] mt-0.5 block">
+                  {result.wallTileSkirtingAdhesiveSchedule.tileAdhesiveBags20Kg} bags (20kg)
+                </strong>
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                  {result.wallTileSkirtingAdhesiveSchedule.tileAdhesiveTotalKg.toFixed(1)} kg adhesive · {result.wallTileSkirtingAdhesiveSchedule.jointGroutTotalKg.toFixed(2)} kg grout
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">
+                  20-Gauge Chicken Wire Mesh
+                </span>
+                <strong className="text-sm text-amber-600 dark:text-amber-400 mt-0.5 block">
+                  {result.wallTileSkirtingAdhesiveSchedule.chickenWireMeshRollsCount} roll(s) (30m)
+                </strong>
+                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                  {result.wallTileSkirtingAdhesiveSchedule.chickenWireMeshLengthM.toFixed(1)} m ({result.wallTileSkirtingAdhesiveSchedule.chickenWireMeshAreaM2.toFixed(2)} m²)
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Paint, Primer & Wall Putty Schedule Card */}
       {result.paintPuttySchedule && result.paintPuttySchedule.finishingSurfaceAreaM2 > 0 && (

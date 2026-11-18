@@ -876,20 +876,142 @@ export const RateAnalysisInputs: React.FC<RateAnalysisInputsProps> = ({
           </div>
           <div>
             <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
-              VAT &amp; AIT Tax (%)
+              VAT Tax (%)
             </label>
             <NumericDraftInput
               min={0}
               max={35}
-              value={activeWorkspace.rateAnalysis.vatAitPercent ?? 0}
+              value={activeWorkspace.rateAnalysis.vatPercent ?? activeWorkspace.rateAnalysis.vatAitPercent ?? 0}
               onChangeValue={(val) => {
                 updateActiveWorkspace((ws) => ({
                   ...ws,
-                  rateAnalysis: { ...ws.rateAnalysis, vatAitPercent: Math.max(0, val) },
+                  rateAnalysis: {
+                    ...ws.rateAnalysis,
+                    vatPercent: Math.max(0, val),
+                    vatAitPercent: Math.max(0, val) + (ws.rateAnalysis.aitPercent ?? 0),
+                  },
                 }));
               }}
               className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
             />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
+              AIT Withholding (%)
+            </label>
+            <NumericDraftInput
+              min={0}
+              max={25}
+              value={activeWorkspace.rateAnalysis.aitPercent ?? 0}
+              onChangeValue={(val) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  rateAnalysis: {
+                    ...ws.rateAnalysis,
+                    aitPercent: Math.max(0, val),
+                    vatAitPercent: (ws.rateAnalysis.vatPercent ?? ws.rateAnalysis.vatAitPercent ?? 0) + Math.max(0, val),
+                  },
+                }));
+              }}
+              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
+              Retention Money (%)
+            </label>
+            <NumericDraftInput
+              min={0}
+              max={20}
+              value={activeWorkspace.rateAnalysis.retentionPercent ?? 0}
+              onChangeValue={(val) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  rateAnalysis: { ...ws.rateAnalysis, retentionPercent: Math.max(0, val) },
+                }));
+              }}
+              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold mb-1 text-[var(--md-sys-color-on-surface)]">
+              PWD SoR Benchmark ({getCurrencySymbol(activeWorkspace.rateAnalysis.currency)})
+            </label>
+            <NumericDraftInput
+              min={0}
+              value={activeWorkspace.rateAnalysis.pwdScheduleRatePerUnit ?? 0}
+              onChangeValue={(val) => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  rateAnalysis: { ...ws.rateAnalysis, pwdScheduleRatePerUnit: Math.max(0, val) },
+                }));
+              }}
+              placeholder="Auto SoR"
+              className="w-full min-h-[48px] touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono tabular-nums text-[var(--md-sys-color-on-surface)]"
+            />
+          </div>
+        </div>
+
+        {/* Bangladesh Statutory Tax & Retention Presets */}
+        <div className="pt-2.5 border-t border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+            Statutory Deduction Preset:
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  rateAnalysis: {
+                    ...ws.rateAnalysis,
+                    vatPercent: 7.5,
+                    aitPercent: 5.0,
+                    retentionPercent: 10.0,
+                    vatAitPercent: 12.5,
+                  },
+                }));
+              }}
+              className="px-2.5 py-1 rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-primary-container)] text-[10.5px] font-mono font-bold text-[var(--md-sys-color-primary)] cursor-pointer transition-colors"
+            >
+              PWD &amp; LGED Standard (7.5% VAT, 5% AIT, 10% Ret.)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  rateAnalysis: {
+                    ...ws.rateAnalysis,
+                    vatPercent: 5.0,
+                    aitPercent: 3.0,
+                    retentionPercent: 5.0,
+                    vatAitPercent: 8.0,
+                  },
+                }));
+              }}
+              className="px-2.5 py-1 rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[10.5px] font-mono font-semibold text-[var(--md-sys-color-on-surface)] cursor-pointer transition-colors"
+            >
+              Private Commercial (5% VAT, 3% AIT, 5% Ret.)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  rateAnalysis: {
+                    ...ws.rateAnalysis,
+                    vatPercent: 0,
+                    aitPercent: 0,
+                    retentionPercent: 0,
+                    vatAitPercent: 0,
+                  },
+                }));
+              }}
+              className="px-2 py-1 rounded-md border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] text-[10.5px] font-mono text-[var(--md-sys-color-on-surface-variant)] cursor-pointer transition-colors"
+            >
+              Zero-Tax Baseline
+            </button>
           </div>
         </div>
       </div>
@@ -1000,19 +1122,19 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
         </div>
       </div>
 
-      {/* Cost Sensitivity & Margin Breakdown Card */}
+      {/* Cost Sensitivity, PWD Benchmark Variance & Margin Breakdown Card */}
       <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
             <TrendingUp className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-            <span>Cost Sensitivity &amp; Margin Breakdown</span>
+            <span>Cost Sensitivity, PWD SoR Benchmark &amp; Margin Breakdown</span>
           </div>
           <span className="text-[11px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)]">
-            CP&amp;OH {rateResult.contractorProfitPercent}% · VAT/AIT {(rateResult.vatAitPercent ?? 0).toFixed(1)}% · Wastage {(rateResult.materialWastagePercent ?? 0).toFixed(1)}%
+            CP&amp;OH {rateResult.contractorProfitPercent}% · VAT {(rateResult.vatPercent ?? 0).toFixed(1)}% · AIT {(rateResult.aitPercent ?? 0).toFixed(1)}% · Ret. {(rateResult.retentionPercent ?? 0).toFixed(1)}%
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono tabular-nums">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 font-mono tabular-nums">
           <div className="p-3 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] space-y-1">
             <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
               Direct Execution Cost
@@ -1027,7 +1149,7 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
 
           <div className="p-3 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] space-y-1">
             <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)]">
-              Commercial Quoted Rate (incl. VAT/AIT)
+              Commercial Quoted Rate (Gross)
             </div>
             <div className="text-base font-bold text-[var(--md-sys-color-primary)]">
               {rateResult.currencySymbol} {formatCur(quotedPerM3)} <span className="text-[11px] font-normal text-[var(--md-sys-color-on-surface-variant)]">/ {unitLabel}</span>
@@ -1039,13 +1161,25 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
 
           <div className="p-3 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] space-y-1">
             <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              Net Contractor Profit Margin
+              Contractor Net Margin
             </div>
             <div className="text-base font-bold text-emerald-600 dark:text-emerald-400">
               +{rateResult.currencySymbol} {formatCur(profitPerM3)} <span className="text-[11px] font-normal text-[var(--md-sys-color-on-surface-variant)]">/ {unitLabel}</span>
             </div>
             <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
               +{rateResult.currencySymbol} {formatCur(profitPerSub)} / {subUnitLabel} ({rateResult.contractorProfitPercent}% CP&amp;OH)
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg bg-[var(--md-sys-color-surface)] border border-[var(--md-sys-color-outline-variant)] space-y-1">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--md-sys-color-tertiary)]">
+              PWD Schedule of Rates Variance
+            </div>
+            <div className="text-base font-bold text-[var(--md-sys-color-on-surface)]">
+              {rateResult.currencySymbol} {formatCur(rateResult.pwdScheduleRatePerUnit ?? rateResult.unitRatePerM3)} <span className="text-[11px] font-normal text-[var(--md-sys-color-on-surface-variant)]">/ {unitLabel}</span>
+            </div>
+            <div className={`text-[11px] font-bold ${(rateResult.pwdVariancePercent ?? 0) <= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              {(rateResult.pwdVariancePercent ?? 0) > 0 ? `+${rateResult.pwdVariancePercent}% Above SoR` : `${rateResult.pwdVariancePercent ?? 0}% vs PWD SoR`}
             </div>
           </div>
         </div>
@@ -1281,10 +1415,10 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
       <div className="space-y-2">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)] flex items-center gap-1.5">
           <Percent className="w-3.5 h-3.5 text-purple-500" />
-          <span>4. Statutory Markups, Utilities & Contractor Profit Stack</span>
+          <span>4. Statutory Markups, Utilities, Deductions &amp; Net Payable Check</span>
         </h3>
         <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] overflow-hidden">
-          <div className="divide-y divide-[var(--md-sys-color-outline-variant)] text-xs font-mono">
+          <div className="divide-y divide-[var(--md-sys-color-outline-variant)] text-xs font-mono tabular-nums">
             <div className="flex items-center justify-between p-2.5 bg-[var(--md-sys-color-surface)]">
               <span className="text-[var(--md-sys-color-on-surface-variant)] font-semibold">
                 Direct Prime Cost (Materials + Labor + Machinery):
@@ -1295,7 +1429,7 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
             </div>
             <div className="flex items-center justify-between p-2.5 bg-[var(--md-sys-color-surface)]">
               <span className="text-[var(--md-sys-color-on-surface-variant)]">
-                Water & Electrical Charges ({rateResult.waterElectricityPercent}%):
+                Water &amp; Electrical Charges ({rateResult.waterElectricityPercent}%):
               </span>
               <span className="font-semibold text-[var(--md-sys-color-on-surface)]">
                 {rateResult.currencySymbol} {formatCur(rateResult.waterElectricityCost)}
@@ -1303,7 +1437,7 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
             </div>
             <div className="flex items-center justify-between p-2.5 bg-[var(--md-sys-color-surface-container-low)]">
               <span className="text-[var(--md-sys-color-on-surface-variant)] font-semibold">
-                Subtotal before Contractor Profit:
+                Subtotal before Contractor Profit (Direct Execution Cost):
               </span>
               <span className="font-bold text-[var(--md-sys-color-on-surface)]">
                 {rateResult.currencySymbol} {formatCur(rateResult.subtotalBeforeProfit)}
@@ -1311,7 +1445,7 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
             </div>
             <div className="flex items-center justify-between p-2.5 bg-[var(--md-sys-color-surface)]">
               <span className="text-[var(--md-sys-color-on-surface-variant)]">
-                Contractor Profit & Overhead ({rateResult.contractorProfitPercent}%):
+                Contractor Profit &amp; Overhead ({rateResult.contractorProfitPercent}%):
               </span>
               <span className="font-semibold text-purple-600 dark:text-purple-400">
                 {rateResult.currencySymbol} {formatCur(rateResult.contractorProfitCost)}
@@ -1325,22 +1459,38 @@ export const RateAnalysisTables: React.FC<RateAnalysisTablesProps> = ({
                 {rateResult.currencySymbol} {formatCur(rateResult.grandTotalCost)}
               </span>
             </div>
-            {(rateResult.vatAitCost ?? 0) > 0 && (
+            {((rateResult.vatAitCost ?? 0) > 0 || (rateResult.retentionCost ?? 0) > 0) && (
               <>
                 <div className="flex items-center justify-between p-2.5 bg-[var(--md-sys-color-surface)]">
                   <span className="text-[var(--md-sys-color-on-surface-variant)]">
-                    + Statutory VAT &amp; AIT Reserve ({(rateResult.vatAitPercent ?? 7.5).toFixed(1)}%):
+                    + Statutory VAT ({(rateResult.vatPercent ?? 0).toFixed(1)}%) &amp; AIT ({(rateResult.aitPercent ?? 0).toFixed(1)}%) Reserve:
                   </span>
                   <span className="font-semibold text-[var(--md-sys-color-on-surface)]">
-                    {rateResult.currencySymbol} {formatCur(rateResult.vatAitCost ?? 0)}
+                    +{rateResult.currencySymbol} {formatCur(rateResult.vatAitCost ?? 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-[var(--md-sys-color-surface-container)] text-sm font-bold">
                   <span className="text-[var(--md-sys-color-on-surface)]">
-                    Commercial Tender Quote (incl. VAT &amp; AIT):
+                    Gross Commercial Bill / Tender Quote (incl. VAT &amp; AIT):
                   </span>
-                  <span className="text-base text-emerald-600 dark:text-emerald-400">
+                  <span className="text-base text-[var(--md-sys-color-primary)]">
                     {rateResult.currencySymbol} {formatCur(rateResult.commercialQuotedTotalCost ?? rateResult.grandTotalCost)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 bg-[var(--md-sys-color-surface)] text-rose-600 dark:text-rose-400">
+                  <span>
+                    - Withheld Statutory Deductions (VAT {rateResult.vatPercent ?? 0}% + AIT {rateResult.aitPercent ?? 0}% + Retention {rateResult.retentionPercent ?? 0}%):
+                  </span>
+                  <span className="font-semibold">
+                    -{rateResult.currencySymbol} {formatCur(rateResult.totalStatutoryDeductionsPerBasis ?? ((rateResult.vatAitCost ?? 0) + (rateResult.retentionCost ?? 0)))}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-emerald-500/10 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  <span>
+                    Net Payable Check to Contractor ({rateResult.currencySymbol} {formatCur(rateResult.netPayablePerUnit ?? rateResult.unitRatePerM3)} / {unitLabel}):
+                  </span>
+                  <span className="text-base">
+                    {rateResult.currencySymbol} {formatCur(rateResult.netPayableToContractorPerBasis ?? rateResult.grandTotalCost)}
                   </span>
                 </div>
               </>

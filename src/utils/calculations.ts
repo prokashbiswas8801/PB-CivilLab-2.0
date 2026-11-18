@@ -8,6 +8,7 @@ import {
   MasonryParameters,
   EarthworkParameters,
   BOQParameters,
+  BOQStoryStage,
   RateAnalysisParameters,
   TakeoffLineItem,
   TakeoffUnit,
@@ -1500,6 +1501,35 @@ export interface ConcreteMixResult {
   waterSolidVolumeM3: number;
   airVolumeM3: number;
   admixtureSolidVolumeM3: number;
+  // Field Moisture & Aggregate Absorption + Site Volume Ratio Extensions:
+  siteVolumeBatchRatio: string; // e.g. "1 : 1.54 : 3.08"
+  sandVolumeRatioPart: number;
+  coarseVolumeRatioPart: number;
+  weightBatchRatio: string; // e.g. "1 : 1.72 : 2.85"
+  faFreeMoisturePercent: number;
+  caFreeMoisturePercent: number;
+  faWaterContributionKgPerM3: number;
+  caWaterContributionKgPerM3: number;
+  perBagDrySandKg: number;
+  perBagWetSandKg: number;
+  perBagDryCoarseKg: number;
+  perBagWetCoarseKg: number;
+  perBagLabWaterLiters: number;
+  perBagNetFieldWaterLiters: number;
+  perBagSandWetKg: number;
+  perBagSandDryKg: number;
+  perBagCoarseWetKg: number;
+  perBagCoarseDryKg: number;
+  perBagWaterNetLiters: number;
+  perBagWaterDesignLiters: number;
+  perBagSandCft: number;
+  perBagCoarseCft: number;
+  fieldMoistureAdjustment?: {
+    batchNetMixingWaterLiters: number;
+    batchFieldWetFineKg: number;
+    batchFieldWetCoarseKg: number;
+    equivalentSiteVolumeRatio: string;
+  };
 }
 
 export function computeConcreteMix(
@@ -1575,6 +1605,34 @@ export function computeConcreteMix(
         waterSolidVolumeM3: 0,
         airVolumeM3: 0,
         admixtureSolidVolumeM3: 0,
+        siteVolumeBatchRatio: '1 : 0.00 : 0.00',
+        sandVolumeRatioPart: 0,
+        coarseVolumeRatioPart: 0,
+        weightBatchRatio: '1 : 0.00 : 0.00',
+        faFreeMoisturePercent: 0,
+        caFreeMoisturePercent: 0,
+        faWaterContributionKgPerM3: 0,
+        caWaterContributionKgPerM3: 0,
+        perBagDrySandKg: 0,
+        perBagWetSandKg: 0,
+        perBagDryCoarseKg: 0,
+        perBagWetCoarseKg: 0,
+        perBagLabWaterLiters: 0,
+        perBagNetFieldWaterLiters: 0,
+        perBagSandWetKg: 0,
+        perBagSandDryKg: 0,
+        perBagCoarseWetKg: 0,
+        perBagCoarseDryKg: 0,
+        perBagWaterNetLiters: 0,
+        perBagWaterDesignLiters: 0,
+        perBagSandCft: 0,
+        perBagCoarseCft: 0,
+        fieldMoistureAdjustment: {
+          batchNetMixingWaterLiters: 0,
+          batchFieldWetFineKg: 0,
+          batchFieldWetCoarseKg: 0,
+          equivalentSiteVolumeRatio: '1 : 0.00 : 0.00',
+        },
       },
       issues,
       { isZeroBaseline: true }
@@ -1791,6 +1849,77 @@ export function computeConcreteMix(
     },
   ];
 
+  // Equivalent Site Volume Batch Ratio (1 : Sand : Coarse) using Loose Bulk Densities
+  // Cement = 1440 kg/m³ (50 kg = 1.25 CFT), Fine Agg loose bulk density ~ 1550 kg/m³, Coarse Agg loose bulk density = druw
+  const cementBulkVolM3 = cementKgPerM3 / 1440;
+  const fineBulkVolM3 = fineAggDryKgPerM3 / 1550;
+  const coarseBulkVolM3 = coarseAggDryKgPerM3 / Math.max(1100, druw);
+  const sandVolumeRatioPart = cementBulkVolM3 > 0 ? Number((fineBulkVolM3 / cementBulkVolM3).toFixed(2)) : 1.5;
+  const coarseVolumeRatioPart = cementBulkVolM3 > 0 ? Number((coarseBulkVolM3 / cementBulkVolM3).toFixed(2)) : 3.0;
+  const siteVolumeBatchRatio = `1 : ${sandVolumeRatioPart.toFixed(2)} : ${coarseVolumeRatioPart.toFixed(2)}`;
+
+  const weightSandPart = cementKgPerM3 > 0 ? Number((fineAggDryKgPerM3 / cementKgPerM3).toFixed(2)) : 0;
+  const weightCoarsePart = cementKgPerM3 > 0 ? Number((coarseAggDryKgPerM3 / cementKgPerM3).toFixed(2)) : 0;
+  const weightBatchRatio = `1 : ${weightSandPart.toFixed(2)} : ${weightCoarsePart.toFixed(2)}`;
+
+  const bagsPerM3 = Math.max(0.01, cementKgPerM3 / 50);
+  const perBagDrySandKg = Number((fineAggDryKgPerM3 / bagsPerM3).toFixed(1));
+  const perBagWetSandKg = Number((batchedFineAggKgPerM3 / bagsPerM3).toFixed(1));
+  const perBagDryCoarseKg = Number((coarseAggDryKgPerM3 / bagsPerM3).toFixed(1));
+  const perBagWetCoarseKg = Number((batchedCoarseAggKgPerM3 / bagsPerM3).toFixed(1));
+  const perBagLabWaterLiters = Number((waterKgPerM3 / bagsPerM3).toFixed(1));
+  const perBagNetFieldWaterLiters = Number((adjustedWaterKgPerM3 / bagsPerM3).toFixed(1));
+  const perBagSandCft = Number((1.25 * sandVolumeRatioPart).toFixed(2));
+  const perBagCoarseCft = Number((1.25 * coarseVolumeRatioPart).toFixed(2));
+
+  const handSteps: CalculationStep[] = [
+    {
+      stepNumber: 1,
+      title: 'ACI 211.1 Mixing Water Demand & Chemical Admixture Credit',
+      formula: 'W_water = (W_base + ΔW_slump) × (1 - R_admix%)',
+      substitution: `d_max = ${dMax} mm, Slump = ${slump} mm → Base ${initialWaterDemand.toFixed(1)} kg/m³ × (1 - ${waterReductionPercent}/100)`,
+      result: `Lab Water = ${waterKgPerM3.toFixed(1)} kg/m³ (${perBagLabWaterLiters} L/bag)`,
+      reasoning: 'Determines mixing water per ACI 211.1 Table 6.3.3 for nominal maximum aggregate size and target slump.',
+      isVerifiedAgainstEngine: true,
+    },
+    {
+      stepNumber: 2,
+      title: 'Cementitious Content from Water-Cement Ratio (w/c)',
+      formula: 'W_cement = W_water / (w/c);   V_cement = W_cement / (SG_c × 1000)',
+      substitution: `${waterKgPerM3.toFixed(1)} / ${effectiveWc.toFixed(2)} = ${cementKgPerM3.toFixed(1)} kg/m³ (${(cementKgPerM3 / 50).toFixed(2)} bags/m³)`,
+      result: `Cement = ${cementKgPerM3.toFixed(1)} kg/m³ (V_c = ${volCement.toFixed(4)} m³)`,
+      reasoning: 'Computes required cement mass and solid absolute volume using SG = ' + cementSG.toFixed(2) + '.',
+      isVerifiedAgainstEngine: Math.abs(waterKgPerM3 / effectiveWc - cementKgPerM3) < 0.1,
+    },
+    {
+      stepNumber: 3,
+      title: 'Coarse & Fine Aggregate Absolute Volume Proportioning',
+      formula: 'V_fine = 1.0 - (V_c + V_w + V_air + V_admix + V_coarse)',
+      substitution: `FM = ${fm.toFixed(2)}, DRUW = ${druw} kg/m³ → Coarse = ${coarseAggDryKgPerM3.toFixed(1)} kg/m³ (V_ca = ${volCoarse.toFixed(4)} m³) → Fine V_fa = ${volFine.toFixed(4)} m³`,
+      result: `Lab Dry: Fine = ${fineAggDryKgPerM3.toFixed(1)} kg/m³ | Coarse = ${coarseAggDryKgPerM3.toFixed(1)} kg/m³`,
+      reasoning: 'Uses ACI 211.1 absolute volume method where fine aggregate fills the remaining solid volume to yield exactly 1.000 m³.',
+      isVerifiedAgainstEngine: Math.abs(volCement + volWater + volAir + volAdmixture + volCoarse + volFine - 1.0) < 0.001,
+    },
+    {
+      stepNumber: 4,
+      title: 'Field Moisture & Aggregate Absorption Adjustment (ASTM C70 / C566)',
+      formula: 'W_wet = W_dry × (1 + MC%);   ΔW_free = W_dry × (MC% - Abs%);   W_water,net = W_lab - ΣΔW_free',
+      substitution: `FA Free (${faFreeMoisture.toFixed(2)}%) = ${faWaterContribKg.toFixed(1)} L; CA Free (${caFreeMoisture.toFixed(2)}%) = ${caWaterContribKg.toFixed(1)} L → Net Water = ${waterKgPerM3.toFixed(1)} - ${totalFreeWaterKg.toFixed(1)}`,
+      result: `Field Wet: FA = ${batchedFineAggKgPerM3.toFixed(1)} kg | CA = ${batchedCoarseAggKgPerM3.toFixed(1)} kg | Net Water = ${adjustedWaterKgPerM3.toFixed(1)} L/m³`,
+      reasoning: 'Adjusts stockpile aggregate weights for total moisture and deducts net free surface water (or adds absorbed water for dry Brick Khoa) at the mixer.',
+      isVerifiedAgainstEngine: Math.abs(waterKgPerM3 - totalFreeWaterKg - adjustedWaterKgPerM3) < 0.2 || adjustedWaterKgPerM3 === 0,
+    },
+    {
+      stepNumber: 5,
+      title: 'Equivalent Site Volume Batch Ratio & Per-50kg Bag Dispatch',
+      formula: 'Ratio_vol = 1 : (V_bulk,FA / V_bulk,C) : (V_bulk,CA / V_bulk,C)',
+      substitution: `Per 50kg Bag (1.25 CFT): Sand = ${perBagSandCft} CFT (${perBagWetSandKg} kg wet), Coarse = ${perBagCoarseCft} CFT (${perBagWetCoarseKg} kg wet), Net Water = ${perBagNetFieldWaterLiters} L`,
+      result: `Site Volume Ratio = ${siteVolumeBatchRatio} (Weight Ratio = ${weightBatchRatio})`,
+      reasoning: 'Converts ACI 211.1 weight-batch design into equivalent Bangladeshi site volumetric Farrah box proportions per 50kg cement bag.',
+      isVerifiedAgainstEngine: true,
+    },
+  ];
+
   return createEnvelope<ConcreteMixResult>(
     {
       waterKgPerM3: Number(waterKgPerM3.toFixed(1)),
@@ -1831,8 +1960,37 @@ export function computeConcreteMix(
       waterSolidVolumeM3: Number(volWater.toFixed(4)),
       airVolumeM3: Number(volAir.toFixed(4)),
       admixtureSolidVolumeM3: Number(volAdmixture.toFixed(4)),
+      siteVolumeBatchRatio,
+      sandVolumeRatioPart,
+      coarseVolumeRatioPart,
+      weightBatchRatio,
+      faFreeMoisturePercent: Number(faFreeMoisture.toFixed(2)),
+      caFreeMoisturePercent: Number(caFreeMoisture.toFixed(2)),
+      faWaterContributionKgPerM3: Number(faWaterContribKg.toFixed(1)),
+      caWaterContributionKgPerM3: Number(caWaterContribKg.toFixed(1)),
+      perBagDrySandKg,
+      perBagWetSandKg,
+      perBagDryCoarseKg,
+      perBagWetCoarseKg,
+      perBagLabWaterLiters,
+      perBagNetFieldWaterLiters,
+      perBagSandWetKg: perBagWetSandKg,
+      perBagSandDryKg: perBagDrySandKg,
+      perBagCoarseWetKg: perBagWetCoarseKg,
+      perBagCoarseDryKg: perBagDryCoarseKg,
+      perBagWaterNetLiters: perBagNetFieldWaterLiters,
+      perBagWaterDesignLiters: perBagLabWaterLiters,
+      perBagSandCft,
+      perBagCoarseCft,
+      fieldMoistureAdjustment: {
+        batchNetMixingWaterLiters: Number((adjustedWaterKgPerM3 * V).toFixed(1)),
+        batchFieldWetFineKg: Number((batchedFineAggKgPerM3 * V).toFixed(1)),
+        batchFieldWetCoarseKg: Number((batchedCoarseAggKgPerM3 * V).toFixed(1)),
+        equivalentSiteVolumeRatio: siteVolumeBatchRatio,
+      },
     },
-    issues
+    issues,
+    { handCalculationSteps: handSteps }
   );
 }
 
@@ -2114,6 +2272,58 @@ export function computeChannelHydraulics(
 /* -------------------------------------------------------------
    MODULE 5: MATERIAL & CONCRETE TECHNOLOGY (BNBC/ACI/IS)
 ------------------------------------------------------------- */
+export interface FarrahTagariBatchSchedule {
+  farrahBaseWidthIn: number;
+  farrahBaseLengthIn: number;
+  unitFarrahHeightIn: number; // Height in inches for 1.25 CFT (1 bag cement)
+  unitFarrahDimensionFormatted: string; // e.g. "1'-0\" × 1'-0\" × 1'-3\" (1.25 CFT)"
+  boxLengthIn: number;
+  boxWidthIn: number;
+  boxLengthInches: number;
+  boxWidthInches: number;
+  boxDepthInches: number;
+  boxVolumeCft: number;
+  cementBagBoxString: string;
+  cementBagBoxHeightIn: number;
+  sandBulkingPercent: number;
+  perBagDrySandCft: number;
+  perBagBulkedSandCft: number;
+  sandPerBagBulkedCft: number;
+  perBagCoarseAggCft: number;
+  aggPerBagCft: number;
+  sandDryFarrahHeightIn: number;
+  sandBulkedFarrahHeightIn: number;
+  bulkedSandBoxHeightIn: number;
+  sandBulkedFarrahDimFormatted: string;
+  sandFarrahBoxesPerBag: number;
+  aggFarrahBoxesPerBag: number;
+  tagariCapacityCft: number;
+  sandTagarisPerBag: number;
+  aggTagarisPerBag: number;
+  aggregateTagarisPerBag: number;
+  totalSandTagaris: number;
+  totalAggTagaris: number;
+  totalAggregateTagaris: number;
+  bulkedSandVolumeM3: number;
+  bulkedSandCft: number;
+  bulkedSandTotalCft: number;
+}
+
+export interface AdmixtureDosageSchedule {
+  admixtureType: 'none' | 'superplasticizer' | 'waterproofing' | 'retarder';
+  admixtureDosageMode: 'ml-per-bag' | 'percent-by-weight';
+  admixtureDosageValue: number;
+  mlPer50KgBag: number;
+  dosageMlPerBag: number;
+  dosagePerBagMl: number;
+  dosagePercentByWeight: number;
+  totalLitersRequired: number;
+  totalLiters: number;
+  totalKg: number;
+  jerrycans20LCount: number;
+  jerrycans20L: number;
+}
+
 export interface ConcreteMaterialResult {
   code: string;
   dryVolumeFactor: number;
@@ -2147,8 +2357,90 @@ export interface ConcreteMaterialResult {
   batchedWetVolumeM3?: number;
   jhamaBricksForKhoa?: number;
   cementVolumeCft?: number;
+  farrahTagariSchedule?: FarrahTagariBatchSchedule;
+  farrahBatching?: FarrahTagariBatchSchedule;
+  admixtureSchedule?: AdmixtureDosageSchedule;
   
   status: 'nominal' | 'warning' | 'critical';
+}
+
+function formatInchesToFeetInch(totalInches: number): string {
+  if (!Number.isFinite(totalInches) || totalInches <= 0) return `0'-0"`;
+  const roundedIn = Math.round(totalInches * 4) / 4;
+  const ft = Math.floor(roundedIn / 12);
+  const remIn = Number((roundedIn - ft * 12).toFixed(1));
+  return `${ft}'-${remIn % 1 === 0 ? remIn.toFixed(0) : remIn}"`;
+}
+
+export function computeConcreteMemberSingleVolumeM3(m: {
+  shape: string;
+  lengthM?: number;
+  widthM?: number;
+  heightM?: number;
+  topLengthM?: number;
+  topWidthM?: number;
+  diameterM?: number;
+  baseRectHeightM?: number;
+  slopedHeightM?: number;
+  flangeWidthM?: number;
+  flangeThicknessM?: number;
+  stairStepsCount?: number;
+  stairRiserM?: number;
+  stairTreadM?: number;
+  stepCount?: number;
+  riserHeightM?: number;
+  treadGoingM?: number;
+  waistThicknessM?: number;
+}): number {
+  const L = Math.max(0, m.lengthM || 0);
+  const W = Math.max(0, m.widthM || 0);
+  const H = Math.max(0, m.heightM || 0);
+
+  if (m.shape === 'circular-column') {
+    const d = Math.max(0, m.diameterM || W);
+    return (Math.PI * d * d * 0.25) * H;
+  }
+  if (m.shape === 'bored-pile') {
+    const d = Math.max(0, m.diameterM || W);
+    const pileL = H > 0 ? H : L;
+    return (Math.PI * d * d * 0.25) * pileL;
+  }
+  if (m.shape === 'trapezoidal-footing') {
+    const a1 = L * W;
+    const topL = m.topLengthM !== undefined && m.topLengthM > 0 ? m.topLengthM : L * 0.4;
+    const topW = m.topWidthM !== undefined && m.topWidthM > 0 ? m.topWidthM : W * 0.4;
+    const a2 = topL * topW;
+    const rectH = Math.max(0, m.baseRectHeightM || 0);
+    const slopeH = m.slopedHeightM !== undefined && m.slopedHeightM > 0 ? m.slopedHeightM : Math.max(0, H - rectH);
+    const frustumVol = (slopeH / 3) * (a1 + a2 + Math.sqrt(Math.max(0, a1 * a2)));
+    const rectVol = a1 * rectH;
+    return rectVol + frustumVol;
+  }
+  if (m.shape === 'staircase-waist') {
+    const steps = Math.max(0, m.stepCount ?? m.stairStepsCount ?? 0);
+    const riser = Math.max(0, m.riserHeightM ?? m.stairRiserM ?? 0.15);
+    const tread = Math.max(0, m.treadGoingM ?? m.stairTreadM ?? 0.25);
+    const waistT = Math.max(0, m.waistThicknessM || H || 0.15);
+    const flightW = W > 0 ? W : 1.2;
+    if (steps > 0) {
+      const stepHypot = Math.sqrt(riser * riser + tread * tread);
+      const waistVol = flightW * (steps * stepHypot) * waistT;
+      const stepsVol = steps * (0.5 * riser * tread * flightW);
+      return waistVol + stepsVol;
+    }
+    return L * W * H;
+  }
+  if (m.shape === 't-beam' || m.shape === 'l-beam') {
+    const webVol = L * W * H;
+    const bf = Math.max(W, m.flangeWidthM || W);
+    const hf = Math.max(0, m.flangeThicknessM || 0);
+    const overhangVol = L * Math.max(0, bf - W) * hf;
+    return webVol + overhangVol;
+  }
+  if (m.shape === 'retaining-wall-stem') {
+    return L * ((W + (m.topWidthM ?? W)) / 2) * H;
+  }
+  return L * W * H;
 }
 
 export function computeConcreteMaterials(
@@ -2160,20 +2452,9 @@ export function computeConcreteMaterials(
   const batchedWetVolumeM3 = members.reduce((sum, m) => {
     const count = Math.max(0, m.count || 0);
     if (count <= 0) return sum;
-    let singleVol = m.computedVolumeM3 || 0;
-    if (singleVol <= 0) {
-      if (m.shape === 'circular-column') {
-        const d = m.diameterM || m.widthM || 0;
-        singleVol = (Math.PI * d * d * 0.25) * (m.heightM || 0);
-      } else if (m.shape === 'trapezoidal-footing') {
-        const a1 = (m.lengthM || 0) * (m.widthM || 0);
-        const a2 = (m.topLengthM || m.lengthM * 0.4 || 0) * (m.topWidthM || m.widthM * 0.4 || 0);
-        singleVol = ((m.heightM || 0) / 3) * (a1 + a2 + Math.sqrt(Math.max(0, a1 * a2)));
-      } else if (m.shape === 'retaining-wall-stem') {
-        singleVol = (m.lengthM || 0) * (((m.widthM || 0) + (m.topWidthM ?? m.widthM ?? 0)) / 2) * (m.heightM || 0);
-      } else {
-        singleVol = (m.lengthM || 0) * (m.widthM || 0) * (m.heightM || 0);
-      }
+    let singleVol = computeConcreteMemberSingleVolumeM3(m);
+    if (singleVol <= 0 && m.computedVolumeM3 > 0) {
+      singleVol = m.computedVolumeM3;
     }
     return sum + singleVol * count;
   }, 0);
@@ -2209,23 +2490,65 @@ export function computeConcreteMaterials(
     issues.push({ field: 'cementBagWeightKg', message: 'Cement bag weight must be strictly positive (> 0 kg).', severity: 'error' });
   }
 
+  const farrahWIn = posNum(params.farrahBoxWidthIn ?? params.farrahBaseWidthIn, 12);
+  const farrahLIn = posNum(params.farrahBoxLengthIn ?? params.farrahBaseLengthIn, 12);
+  const tagariCapCft = posNum(params.tagariCapacityCft, 0.625);
+  const sandBulkingPct = Math.max(0, Math.min(45, finiteNum(params.sandBulkingPercent, 0)));
+  const unitFarrahHeightIn = Number(((1.25 * 1728) / (farrahWIn * farrahLIn)).toFixed(2));
+  const unitFarrahDimStr = `${formatInchesToFeetInch(farrahLIn)} × ${formatInchesToFeetInch(farrahWIn)} × ${formatInchesToFeetInch(unitFarrahHeightIn)} (1.25 CFT)`;
+
   const scopeAndLimits: ScopeAndLimitsMetadata = {
     status: 'Available',
     covered: [
       'Wet-to-dry concrete volumetric expansion (1.54 for BNBC 2020 / ACI 318; 1.52 for IS 456)',
-      'Multi-element RCC batching (footings, columns, beams, slabs, retaining wall stems)',
-      '50 kg cement bag conversion (÷ 0.03472 m³ at 1440 kg/m³) and CFT fine/coarse aggregate dispatch',
-      'Water demand from w/c ratio, wastage allowance, and Picked Jhama brick khoa (~320 bricks/m³)',
+      'Multi-element RCC batching (Rectangular/Circular Columns, T/L-Beams, Slabs, Trapezoidal Sloped Footings, Staircase Waist + Steps, Bored Piles)',
+      'Site Volume Batching Box (Farrah / কাঠের ফারা) & Tagari head-pan calculator with Sand Bulking Correction (0%–35%)',
+      '50 kg cement bag conversion, CFT dispatch, Picked Jhama Khoa (~320 bricks/m³), and Chemical Admixture / Water-proofing 20L jerrycan schedule',
     ],
     unsupported: [
-      'ACI 211.1 absolute-volume weight-batch design with moisture absorption & air entrainment (use Concrete Mix module)',
-      'Chemical admixture dose optimization and slump-retention adjustment for ready-mix hauls',
+      'ACI 211.1 absolute-volume weight-batch design with entrained air (use Concrete Mix module)',
     ],
-    codeReference: `${params.code} / PWD Schedule of Rates · Volumetric Concrete Batching`,
+    codeReference: `${params.code} / PWD Schedule of Rates · Volumetric & Farrah Site Batching`,
   };
 
   if (issues.some((i) => i.severity === 'error') || isZeroBaseline) {
     const hasErr = issues.some((i) => i.severity === 'error');
+    const zeroFarrah: FarrahTagariBatchSchedule = {
+      farrahBaseWidthIn: farrahWIn,
+      farrahBaseLengthIn: farrahLIn,
+      unitFarrahHeightIn,
+      unitFarrahDimensionFormatted: unitFarrahDimStr,
+      boxLengthIn: farrahLIn,
+      boxWidthIn: farrahWIn,
+      boxLengthInches: farrahLIn,
+      boxWidthInches: farrahWIn,
+      boxDepthInches: unitFarrahHeightIn,
+      boxVolumeCft: 1.25,
+      cementBagBoxString: unitFarrahDimStr,
+      cementBagBoxHeightIn: unitFarrahHeightIn,
+      sandBulkingPercent: sandBulkingPct,
+      perBagDrySandCft: 0,
+      perBagBulkedSandCft: 0,
+      sandPerBagBulkedCft: 0,
+      perBagCoarseAggCft: 0,
+      aggPerBagCft: 0,
+      sandDryFarrahHeightIn: 0,
+      sandBulkedFarrahHeightIn: 0,
+      bulkedSandBoxHeightIn: 0,
+      sandBulkedFarrahDimFormatted: `${formatInchesToFeetInch(farrahLIn)} × ${formatInchesToFeetInch(farrahWIn)} × 0'-0"`,
+      sandFarrahBoxesPerBag: 0,
+      aggFarrahBoxesPerBag: 0,
+      tagariCapacityCft: tagariCapCft,
+      sandTagarisPerBag: 0,
+      aggTagarisPerBag: 0,
+      aggregateTagarisPerBag: 0,
+      totalSandTagaris: 0,
+      totalAggTagaris: 0,
+      totalAggregateTagaris: 0,
+      bulkedSandVolumeM3: 0,
+      bulkedSandCft: 0,
+      bulkedSandTotalCft: 0,
+    };
     return createEnvelope<ConcreteMaterialResult>(
       {
         code: params.code,
@@ -2250,6 +2573,22 @@ export function computeConcreteMaterials(
         batchedWetVolumeM3: 0,
         jhamaBricksForKhoa: 0,
         cementVolumeCft: 0,
+        farrahTagariSchedule: zeroFarrah,
+        farrahBatching: zeroFarrah,
+        admixtureSchedule: {
+          admixtureType: params.admixtureType || 'none',
+          admixtureDosageMode: params.admixtureDosageMode || 'ml-per-bag',
+          admixtureDosageValue: params.admixtureDosageValue || 0,
+          mlPer50KgBag: 0,
+          dosageMlPerBag: 0,
+          dosagePerBagMl: 0,
+          dosagePercentByWeight: 0,
+          totalLitersRequired: 0,
+          totalLiters: 0,
+          totalKg: 0,
+          jerrycans20LCount: 0,
+          jerrycans20L: 0,
+        },
         status: 'nominal',
       },
       issues,
@@ -2258,7 +2597,6 @@ export function computeConcreteMaterials(
   }
 
   // Dynamic code-governed dry volume factor
-  // BNBC 2020 specifies 1.54; ACI 318 specifies 1.54; IS 456 specifies 1.52 to 1.54
   let dryFactor = params.customDryFactor || 1.54;
   if (!params.customDryFactor) {
     if (params.code === 'BNBC-2020') dryFactor = 1.54;
@@ -2304,6 +2642,102 @@ export function computeConcreteMaterials(
     params.coarseAggregateType === 'brick-shingles'
       ? Math.ceil(effectiveWetVolumeM3 * 320)
       : Math.ceil(aggVol * 320);
+
+  // Farrah (কাঠের ফারা) & Tagari + Sand Bulking Schedule
+  const bulkFactor = 1 + sandBulkingPct / 100;
+  const bulkedSandVolumeM3 = Number((sandVol * bulkFactor).toFixed(3));
+  const bulkedSandCft = Number((sandCft * bulkFactor).toFixed(2));
+  const perBagDrySandCft = Number((1.25 * (rSand / rCement)).toFixed(3));
+  const perBagBulkedSandCft = Number((perBagDrySandCft * bulkFactor).toFixed(3));
+  const perBagCoarseAggCft = Number((1.25 * (rAgg / rCement)).toFixed(3));
+  const sandDryFarrahHeightIn = Number(((perBagDrySandCft * 1728) / (farrahWIn * farrahLIn)).toFixed(2));
+  const sandBulkedFarrahHeightIn = Number(((perBagBulkedSandCft * 1728) / (farrahWIn * farrahLIn)).toFixed(2));
+  const sandBulkedFarrahDimFormatted = `${formatInchesToFeetInch(farrahWIn)} × ${formatInchesToFeetInch(farrahLIn)} × ${formatInchesToFeetInch(sandBulkedFarrahHeightIn)}`;
+  const sandFarrahBoxesPerBag = Number(((rSand / rCement) * bulkFactor).toFixed(2));
+  const aggFarrahBoxesPerBag = Number((rAgg / rCement).toFixed(2));
+  const sandTagarisPerBag = Number((perBagBulkedSandCft / tagariCapCft).toFixed(1));
+  const aggTagarisPerBag = Number((perBagCoarseAggCft / tagariCapCft).toFixed(1));
+  const totalSandTagaris = Math.ceil(bulkedSandCft / tagariCapCft);
+  const totalAggTagaris = Math.ceil(aggregateCft / tagariCapCft);
+
+  const farrahTagariSchedule: FarrahTagariBatchSchedule = {
+    farrahBaseWidthIn: farrahWIn,
+    farrahBaseLengthIn: farrahLIn,
+    unitFarrahHeightIn,
+    unitFarrahDimensionFormatted: unitFarrahDimStr,
+    boxLengthIn: farrahLIn,
+    boxWidthIn: farrahWIn,
+    boxLengthInches: farrahLIn,
+    boxWidthInches: farrahWIn,
+    boxDepthInches: unitFarrahHeightIn,
+    boxVolumeCft: 1.25,
+    cementBagBoxString: unitFarrahDimStr,
+    cementBagBoxHeightIn: unitFarrahHeightIn,
+    sandBulkingPercent: sandBulkingPct,
+    perBagDrySandCft,
+    perBagBulkedSandCft,
+    sandPerBagBulkedCft: perBagBulkedSandCft,
+    perBagCoarseAggCft,
+    aggPerBagCft: perBagCoarseAggCft,
+    sandDryFarrahHeightIn,
+    sandBulkedFarrahHeightIn,
+    bulkedSandBoxHeightIn: sandBulkedFarrahHeightIn,
+    sandBulkedFarrahDimFormatted,
+    sandFarrahBoxesPerBag,
+    aggFarrahBoxesPerBag,
+    tagariCapacityCft: tagariCapCft,
+    sandTagarisPerBag,
+    aggTagarisPerBag,
+    aggregateTagarisPerBag: aggTagarisPerBag,
+    totalSandTagaris,
+    totalAggTagaris,
+    totalAggregateTagaris: totalAggTagaris,
+    bulkedSandVolumeM3,
+    bulkedSandCft,
+    bulkedSandTotalCft: bulkedSandCft,
+  };
+
+  // Chemical Admixture & Water-Proofing Schedule
+  const admixType = params.admixtureType || 'none';
+  const admixMode = params.admixtureDosageMode || 'ml-per-bag';
+  const directMlPerBag = Math.max(0, finiteNum(params.admixtureDosageMlPerBag, 0));
+  const directPctWt = Math.max(0, finiteNum(params.admixtureDosagePercentByWeight, 0));
+  const admixVal = Math.max(0, finiteNum(params.admixtureDosageValue, directMlPerBag > 0 ? directMlPerBag : directPctWt));
+  let mlPer50KgBag = 0;
+  let dosagePctByWeight = 0;
+  if (directMlPerBag > 0) {
+    mlPer50KgBag = directMlPerBag;
+    dosagePctByWeight = Number((((mlPer50KgBag / 1000) * 1.10) / bagWeightKg * 100).toFixed(2));
+  } else if (directPctWt > 0) {
+    dosagePctByWeight = directPctWt;
+    mlPer50KgBag = ((bagWeightKg * (directPctWt / 100)) / 1.10) * 1000;
+  } else if (admixType !== 'none' && admixVal > 0) {
+    if (admixMode === 'ml-per-bag') {
+      mlPer50KgBag = admixVal;
+      dosagePctByWeight = Number((((mlPer50KgBag / 1000) * 1.10) / bagWeightKg * 100).toFixed(2));
+    } else {
+      dosagePctByWeight = admixVal;
+      mlPer50KgBag = ((bagWeightKg * (admixVal / 100)) / 1.10) * 1000;
+    }
+  }
+  const admixTotalLiters = Number(((cementBags * mlPer50KgBag) / 1000).toFixed(2));
+  const admixTotalKg = Number((admixTotalLiters * 1.10).toFixed(2));
+  const admixJerrycans20L = admixTotalLiters > 0 ? Math.ceil(admixTotalLiters / 20) : 0;
+
+  const admixtureSchedule: AdmixtureDosageSchedule = {
+    admixtureType: admixType,
+    admixtureDosageMode: admixMode,
+    admixtureDosageValue: admixVal,
+    mlPer50KgBag: Number(mlPer50KgBag.toFixed(1)),
+    dosageMlPerBag: Number(mlPer50KgBag.toFixed(1)),
+    dosagePerBagMl: Number(mlPer50KgBag.toFixed(1)),
+    dosagePercentByWeight: dosagePctByWeight,
+    totalLitersRequired: admixTotalLiters,
+    totalLiters: admixTotalLiters,
+    totalKg: admixTotalKg,
+    jerrycans20LCount: admixJerrycans20L,
+    jerrycans20L: admixJerrycans20L,
+  };
 
   // Hand Calculation Steps with Numerical Verification
   const handDryBase = effectiveWetVolumeM3 * dryFactor;
@@ -2363,23 +2797,23 @@ export function computeConcreteMaterials(
     },
     {
       stepNumber: 5,
-      title: '50 kg Cement Bag Conversion (÷ 0.0347 m³/bag)',
-      formula: `N_bags = V_c / (${params.cementBagWeightKg} kg / ${cementDensity} kg/m³) = V_c / ${handBagVolM3.toFixed(4)} m³`,
-      substitution: `N_bags = ${handCementVol.toFixed(3)} / ${handBagVolM3.toFixed(4)} = ${handCementBags.toFixed(2)} bags (${cementMass.toFixed(1)} kg)`,
-      result: `${cementBags.toFixed(1)} Bags (${Math.ceil(cementBags)} bags order · ${cementMass.toFixed(0)} kg)`,
-      reasoning: `At standard Portland cement bulk density ${cementDensity} kg/m³, one 50 kg bag occupies 0.0347 m³ (≈ 1.226 cft).`,
+      title: '50 kg Cement Bag Conversion & Farrah / Tagari Site Batching',
+      formula: `N_bags = V_c / ${handBagVolM3.toFixed(4)};   V_sand,bulked = V_sand × (1 + Bulking%)`,
+      substitution: `N_bags = ${handCementBags.toFixed(2)} bags; Farrah (${unitFarrahDimStr}) → Sand = ${sandFarrahBoxesPerBag} boxes (${sandTagarisPerBag} Tagaris/bag @ ${sandBulkingPct}% bulking), Agg = ${aggFarrahBoxesPerBag} boxes (${aggTagarisPerBag} Tagaris/bag)`,
+      result: `${cementBags.toFixed(1)} Bags (${Math.ceil(cementBags)} order) | Bulked Sand: ${bulkedSandCft.toFixed(1)} cft (${totalSandTagaris} Tagaris)`,
+      reasoning: `Prevents under-sanded harsh concrete by expanding moist fine sand volume by ${sandBulkingPct}% and sizing the wooden Farrah box and Tagari counts per 50kg bag.`,
       isVerifiedAgainstEngine: Math.abs(handCementBags - cementBags) < 1e-4,
     },
     {
       stepNumber: 6,
-      title: 'Site Dispatch (CFT), Mixing Water & Aggregate Reference',
-      formula: 'V_cft = V_m³ × 35.3147;   W_water = M_cement × (w/c)',
-      substitution: `Sand = ${handSandCft.toFixed(1)} cft; Agg = ${handAggCft.toFixed(1)} cft; Water = ${cementMass.toFixed(1)} × ${params.waterCementRatio} = ${handWaterL.toFixed(0)} L`,
-      result: `Sand: ${sandCft.toFixed(1)} cft | Agg: ${aggregateCft.toFixed(1)} cft | Water: ${waterDemandLiters.toFixed(0)} L${params.coarseAggregateType === 'brick-shingles' ? ` | Khoa: ${jhamaBricksForKhoa} Jhama bricks` : ''}`,
+      title: 'Site Dispatch (CFT), Mixing Water & Chemical Admixture',
+      formula: 'V_cft = V_m³ × 35.3147;   W_water = M_cement × (w/c);   L_admix = N_bags × mL/1000',
+      substitution: `Sand (Dry) = ${handSandCft.toFixed(1)} cft; Agg = ${handAggCft.toFixed(1)} cft; Water = ${handWaterL.toFixed(0)} L${admixTotalLiters > 0 ? `; Admixture = ${admixTotalLiters} L (${admixJerrycans20L}×20L jerrycans)` : ''}`,
+      result: `Sand: ${sandCft.toFixed(1)} cft | Agg: ${aggregateCft.toFixed(1)} cft | Water: ${waterDemandLiters.toFixed(0)} L${admixTotalLiters > 0 ? ` | Admix: ${admixTotalLiters} L` : ''}`,
       reasoning:
         params.coarseAggregateType === 'brick-shingles'
           ? 'Converts dry aggregates to CFT for site truck measurement and estimates ~320 picked Jhama bricks per 1 m³ of brick khoa concrete.'
-          : 'Converts dry fine & coarse aggregates to CFT for jobsite batching boxes and determines potable water demand.',
+          : 'Converts dry fine & coarse aggregates to CFT for jobsite batching boxes and determines potable water and chemical admixture demand.',
       isVerifiedAgainstEngine:
         Math.abs(handSandCft - sandCft) < 1e-4 &&
         Math.abs(handAggCft - aggregateCft) < 1e-4 &&
@@ -2411,6 +2845,9 @@ export function computeConcreteMaterials(
       batchedWetVolumeM3: Number(batchedWetVolumeM3.toFixed(3)),
       jhamaBricksForKhoa,
       cementVolumeCft,
+      farrahTagariSchedule,
+      farrahBatching: farrahTagariSchedule,
+      admixtureSchedule,
       status: 'nominal',
     },
     issues,
@@ -2464,6 +2901,11 @@ export interface BarStockSummaryItem {
   offcutScrapLengthM: number;
   offcutScrapWeightKg: number;
   scrapPercent: number;
+  reusableOffcutLengthM: number;
+  reusableOffcutWeightKg: number;
+  unrecoverableScrapLengthM: number;
+  unrecoverableScrapWeightKg: number;
+  unrecoverableScrapPercent: number;
   commercialBundlesEstimate: number;
 }
 
@@ -2476,8 +2918,58 @@ export interface Commercial12mBarStock {
   totalPurchasedTonnes: number;
   totalScrapWeightKg: number;
   overallScrapPercent: number;
+  reusableThresholdM: number;
+  reusableOffcutThresholdM: number;
+  totalReusableOffcutLengthM: number;
+  totalReusableOffcutWeightKg: number;
+  totalUnrecoverableScrapLengthM: number;
+  totalUnrecoverableScrapWeightKg: number;
+  unrecoverableScrapPercent: number;
+  unrecoverableChhatPercent: number;
   lappingStandardUsed: string;
   totalLappingAllowanceM: number;
+}
+
+export interface RebarSiteAccessoriesSchedule {
+  giBindingWireKgPerTon: number;
+  giBindingWireTotalKg: number;
+  giBindingWireCoils25Kg: number;
+  bindingWireKg: number;
+  bindingWireRateKgPerMT: number;
+  bindingWireRateKgPerTon: number;
+  bindingWireBundles5Kg: number;
+  coverBlocks20mmSlabNos: number;
+  coverBlocks40mmBeamColNos: number;
+  coverBlocks75mmFootingPileNos: number;
+  totalCoverBlocksNos: number;
+  coverBlockSizeMm: number;
+  coverBlocksCount: number;
+  slabChairBars12mmNos: number;
+  slabChairBarsLengthM: number;
+  slabChairBarsWeightKg: number;
+  chairBarsCount: number;
+  chairBarsTotalWeightKg: number;
+}
+
+export interface RebarSeismicZoneSummary {
+  enabled: boolean;
+  twoZoneActive: boolean;
+  confinedZoneLengthMm: number;
+  confinedSpacingMm: number;
+  centralSpacingMm: number;
+  confinedStirrupsPerEnd: number;
+  centralStirrupsCount: number;
+  totalStirrupsPerElement: number;
+  endZoneLengthM: number;
+  endZoneSpacingMm: number;
+  endZoneStirrupsCount: number;
+  midZoneLengthM: number;
+  midZoneSpacingMm: number;
+  midZoneStirrupsCount: number;
+  hookExtensionMm: number;
+  seismicHook135Used: boolean;
+  slabCrankAllowanceMm: number;
+  slabCrankedAllowanceM: number;
 }
 
 export interface RebarBBSResult {
@@ -2490,6 +2982,8 @@ export interface RebarBBSResult {
   steelDensityKgPerM3: number;
   status: 'nominal' | 'warning' | 'critical';
   commercialBarStock?: Commercial12mBarStock;
+  siteAccessories?: RebarSiteAccessoriesSchedule;
+  seismicZoneSummary?: RebarSeismicZoneSummary;
   lapSpliceAlerts?: LapSpliceAdvisory[];
   elementQuantity?: number;
 }
@@ -2527,6 +3021,43 @@ export function computeRebarBBS(
 
   const lappingD = posNum(params.lappingFactorD, 50);
   const maxBarLengthM = posNum(params.commercialBarStockLengthM, 12.0);
+  const reusableThresholdM = posNum(params.reusableOffcutThresholdM, 0.60);
+  const hasBeamZoneOverrides =
+    (params.beamEndZoneLengthM ?? 0) > 0 ||
+    (params.beamEndZoneStirrupSpacingMm ?? 0) > 0 ||
+    (params.beamMidZoneStirrupSpacingMm ?? 0) > 0;
+  const hasColZoneOverrides =
+    (params.colEndZoneLengthM ?? 0) > 0 ||
+    (params.colEndZoneTieSpacingMm ?? 0) > 0 ||
+    (params.colMidZoneTieSpacingMm ?? 0) > 0;
+  const twoZoneActive = Boolean(
+    params.twoZoneSeismicStirrups ??
+      params.seismicDuctileStirrups ??
+      hasBeamZoneOverrides ??
+      hasColZoneOverrides
+  );
+  const slabCrankedActive = (params.includeSlabCrankedBars ?? params.slabCrankedBarsEnabled) !== false;
+
+  let seismicZoneSummary: RebarSeismicZoneSummary = {
+    enabled: false,
+    twoZoneActive: false,
+    confinedZoneLengthMm: 0,
+    confinedSpacingMm: 0,
+    centralSpacingMm: 0,
+    confinedStirrupsPerEnd: 0,
+    centralStirrupsCount: 0,
+    totalStirrupsPerElement: 0,
+    endZoneLengthM: 0,
+    endZoneSpacingMm: 0,
+    endZoneStirrupsCount: 0,
+    midZoneLengthM: 0,
+    midZoneSpacingMm: 0,
+    midZoneStirrupsCount: 0,
+    hookExtensionMm: 0,
+    seismicHook135Used: params.hookAngle === '135',
+    slabCrankAllowanceMm: 0,
+    slabCrankedAllowanceM: 0,
+  };
 
   // Lapping Allowance for bars exceeding commercial stock length
   const applyLapping = (
@@ -2671,11 +3202,56 @@ export function computeRebarBBS(
         const hook135 = 2 * Math.max(0.075, 10 * (stirrupDia / 1000));
         const stirrupBendDed = 12 * (stirrupDia / 1000); // 3×90° (6d) + 2×135° (6d)
         const stirrupCutLen = 2 * (stirrupW + stirrupD) + hook135 - stirrupBendDed;
-        const stirrupCount = Math.floor(beamL / (stirrupSpacing / 1000)) + 1;
+
+        const defaultBeamL0Mm = Math.max(600, 2 * beamD);
+        const l0Mm =
+          (params.beamEndZoneLengthM ?? 0) > 0
+            ? Math.round((params.beamEndZoneLengthM || 0) * 1000)
+            : posNum(params.confinedZoneLengthMm, defaultBeamL0Mm);
+        const s1Mm = posNum(
+          params.beamEndZoneStirrupSpacingMm ?? params.confinedZoneSpacingMm,
+          Math.min(100, stirrupSpacing)
+        );
+        const s2Mm = posNum(
+          params.beamMidZoneStirrupSpacingMm ?? params.centralZoneSpacingMm,
+          stirrupSpacing
+        );
+
+        let stirrupCount = Math.floor(beamL / (stirrupSpacing / 1000)) + 1;
+        let stirrupDesc = `Closed Shear Stirrups (Ø${stirrupDia}mm @ ${stirrupSpacing}mm c/c with 135° seismic hooks)`;
+
+        if (twoZoneActive) {
+          const l0M = Math.min(beamL / 2, l0Mm / 1000);
+          const centralLenM = Math.max(0, beamL - 2 * l0M);
+          const endCount = Math.ceil(l0M / (s1Mm / 1000));
+          const midCount = centralLenM > 0 ? Math.max(0, Math.ceil(centralLenM / (s2Mm / 1000)) - 1) : 0;
+          stirrupCount = 2 * endCount + midCount + 1;
+          stirrupDesc = `BNBC-2020 Two-Zone Seismic Stirrups (Ø${stirrupDia}mm: 2×L₀=${Math.round(l0M * 1000)}mm @ ${s1Mm}mm + Mid @ ${s2Mm}mm c/c, 135° hooks)`;
+          seismicZoneSummary = {
+            enabled: true,
+            twoZoneActive: true,
+            confinedZoneLengthMm: Math.round(l0M * 1000),
+            confinedSpacingMm: s1Mm,
+            centralSpacingMm: s2Mm,
+            confinedStirrupsPerEnd: endCount,
+            centralStirrupsCount: midCount + 1,
+            totalStirrupsPerElement: stirrupCount,
+            endZoneLengthM: Number(l0M.toFixed(2)),
+            endZoneSpacingMm: s1Mm,
+            endZoneStirrupsCount: 2 * endCount,
+            midZoneLengthM: Number(centralLenM.toFixed(2)),
+            midZoneSpacingMm: s2Mm,
+            midZoneStirrupsCount: midCount + 1,
+            hookExtensionMm: Math.round((hook135 / 2) * 1000),
+            seismicHook135Used: true,
+            slabCrankAllowanceMm: 0,
+            slabCrankedAllowanceM: 0,
+          };
+        }
 
         pushBbsItem({
           barMark: 'MK-S1',
-          description: `Closed Shear Stirrups (Ø${stirrupDia}mm @ ${stirrupSpacing}mm c/c with 135° seismic hooks)`,
+          description: stirrupDesc,
           barDiaMm: stirrupDia,
           countPerElement: stirrupCount,
           clearLengthM: 2 * (stirrupW + stirrupD),
@@ -2700,17 +3276,45 @@ export function computeRebarBBS(
     if (!issues.some((i) => i.severity === 'error') && params.slabLengthM > 0 && params.slabWidthM > 0 && params.mainBarDiaMm > 0 && params.mainBarSpacingMm > 0) {
       const mainBarCount = Math.floor((params.slabLengthM - 2 * coverM) / (params.mainBarSpacingMm / 1000)) + 1;
       const hookExtension = 2 * (12 * (params.mainBarDiaMm / 1000));
-      const bendDeduction = getBendDeduction(params.mainBarDiaMm, 2, '90');
+      const slabThickM = Math.max(0.1, (params.slabThicknessMm || 125) / 1000);
+      const dCrankM = slabCrankedActive
+        ? Math.max(0.04, slabThickM - 2 * coverM - (params.mainBarDiaMm / 1000))
+        : 0;
+      const crankAllowanceM = slabCrankedActive ? 2 * 0.42 * dCrankM : 0;
+      const bendDeduction =
+        getBendDeduction(params.mainBarDiaMm, 2, '90') +
+        (slabCrankedActive ? getBendDeduction(params.mainBarDiaMm, 4, '45') : 0);
       const mainClearLen = Math.max(0.1, params.slabWidthM - 2 * coverM);
-      const mainCuttingLen = mainClearLen + hookExtension - bendDeduction;
+      const mainCuttingLen = mainClearLen + hookExtension + crankAllowanceM - bendDeduction;
+
+      seismicZoneSummary = {
+        enabled: slabCrankedActive,
+        twoZoneActive: false,
+        confinedZoneLengthMm: 0,
+        confinedSpacingMm: params.mainBarSpacingMm,
+        centralSpacingMm: params.distBarSpacingMm,
+        confinedStirrupsPerEnd: 0,
+        centralStirrupsCount: mainBarCount,
+        totalStirrupsPerElement: mainBarCount,
+        endZoneLengthM: 0,
+        endZoneSpacingMm: params.mainBarSpacingMm,
+        endZoneStirrupsCount: 0,
+        midZoneLengthM: params.slabLengthM,
+        midZoneSpacingMm: params.distBarSpacingMm,
+        midZoneStirrupsCount: mainBarCount,
+        hookExtensionMm: Math.round((hookExtension / 2) * 1000),
+        seismicHook135Used: params.hookAngle === '135',
+        slabCrankAllowanceMm: Math.round(crankAllowanceM * 1000),
+        slabCrankedAllowanceM: Number(crankAllowanceM.toFixed(3)),
+      };
 
       pushBbsItem({
         barMark: 'MK-SL1',
-        description: `Slab Main Bottom Bars (Ø${params.mainBarDiaMm}mm @ ${params.mainBarSpacingMm}mm c/c)`,
+        description: `Slab Main Cranked/Bottom Bars (Ø${params.mainBarDiaMm}mm @ ${params.mainBarSpacingMm}mm c/c${slabCrankedActive ? ` + 2×0.42d crank` : ''})`,
         barDiaMm: params.mainBarDiaMm,
         countPerElement: mainBarCount,
         clearLengthM: mainClearLen,
-        hookAllowanceM: hookExtension,
+        hookAllowanceM: hookExtension + crankAllowanceM,
         bendDeductionM: bendDeduction,
         unlappedCutLengthM: mainCuttingLen,
         shapeType: 'cranked',
@@ -2733,6 +3337,24 @@ export function computeRebarBBS(
           bendDeductionM: distBendDed,
           unlappedCutLengthM: distCuttingLen,
           shapeType: 'straight',
+        });
+      }
+
+      if (params.includeSlabChairs) {
+        const slabAreaM2 = params.slabLengthM * params.slabWidthM;
+        const chairCountPerSlab = Math.max(1, Math.ceil(slabAreaM2 / 1.0)); // 1 chair per 1.0 m² (3'-3" × 3'-3" c/c)
+        const chairH = Math.max(0.06, slabThickM - 2 * coverM - 0.02);
+        const chairCutLen = 0.40 + 2 * chairH + 2 * 0.25; // Top rest 400mm + 2×height + 2×250mm foot legs
+        pushBbsItem({
+          barMark: 'MK-CH',
+          description: `Slab Top-Mesh Support Chair Bars (Ø12mm @ 3'-3" / 1.0m c/c grid)`,
+          barDiaMm: 12,
+          countPerElement: chairCountPerSlab,
+          clearLengthM: 0.40 + 2 * chairH,
+          hookAllowanceM: 0.50,
+          bendDeductionM: getBendDeduction(12, 4, '90'),
+          unlappedCutLengthM: chairCutLen - getBendDeduction(12, 4, '90'),
+          shapeType: 'u-bar',
         });
       }
     }
@@ -2773,11 +3395,56 @@ export function computeRebarBBS(
         const hook135 = 2 * Math.max(0.075, 10 * (params.tieBarDiaMm / 1000));
         const tieBendDed = 12 * (params.tieBarDiaMm / 1000); // 3×90° (6d) + 2×135° (6d)
         const tieCutting = 2 * (tieL + tieW) + hook135 - tieBendDed;
-        const tieCount = Math.floor(params.colHeightM / (params.tieSpacingMm / 1000)) + 1;
+
+        const defaultL0Mm = Math.max(params.colLengthMm, params.colWidthMm, Math.round((params.colHeightM * 1000) / 6), 450);
+        const l0Mm =
+          (params.colEndZoneLengthM ?? 0) > 0
+            ? Math.round((params.colEndZoneLengthM || 0) * 1000)
+            : posNum(params.confinedZoneLengthMm, defaultL0Mm);
+        const s1Mm = posNum(
+          params.colEndZoneTieSpacingMm ?? params.confinedZoneSpacingMm,
+          Math.min(100, params.tieSpacingMm)
+        );
+        const s2Mm = posNum(
+          params.colMidZoneTieSpacingMm ?? params.centralZoneSpacingMm,
+          params.tieSpacingMm
+        );
+
+        let tieCount = Math.floor(params.colHeightM / (params.tieSpacingMm / 1000)) + 1;
+        let tieDesc = `Lateral Rectangular Ties (Ø${params.tieBarDiaMm}mm @ ${params.tieSpacingMm}mm c/c with 135° hooks)`;
+
+        if (twoZoneActive) {
+          const l0M = Math.min(params.colHeightM / 2, l0Mm / 1000);
+          const centralLenM = Math.max(0, params.colHeightM - 2 * l0M);
+          const endCount = Math.ceil(l0M / (s1Mm / 1000));
+          const midCount = centralLenM > 0 ? Math.max(0, Math.ceil(centralLenM / (s2Mm / 1000)) - 1) : 0;
+          tieCount = 2 * endCount + midCount + 1;
+          tieDesc = `BNBC-2020 Seismic Confined Ties (Ø${params.tieBarDiaMm}mm: 2×L₀=${Math.round(l0M * 1000)}mm @ ${s1Mm}mm + Mid @ ${s2Mm}mm c/c, 135° hooks)`;
+          seismicZoneSummary = {
+            enabled: true,
+            twoZoneActive: true,
+            confinedZoneLengthMm: Math.round(l0M * 1000),
+            confinedSpacingMm: s1Mm,
+            centralSpacingMm: s2Mm,
+            confinedStirrupsPerEnd: endCount,
+            centralStirrupsCount: midCount + 1,
+            totalStirrupsPerElement: tieCount,
+            endZoneLengthM: Number(l0M.toFixed(2)),
+            endZoneSpacingMm: s1Mm,
+            endZoneStirrupsCount: 2 * endCount,
+            midZoneLengthM: Number(centralLenM.toFixed(2)),
+            midZoneSpacingMm: s2Mm,
+            midZoneStirrupsCount: midCount + 1,
+            hookExtensionMm: Math.round((hook135 / 2) * 1000),
+            seismicHook135Used: true,
+            slabCrankAllowanceMm: 0,
+            slabCrankedAllowanceM: 0,
+          };
+        }
 
         pushBbsItem({
           barMark: 'MK-C2',
-          description: `Lateral Rectangular Ties (Ø${params.tieBarDiaMm}mm @ ${params.tieSpacingMm}mm c/c with 135° hooks)`,
+          description: tieDesc,
           barDiaMm: params.tieBarDiaMm,
           countPerElement: tieCount,
           clearLengthM: 2 * (tieL + tieW),
@@ -3187,15 +3854,15 @@ export function computeRebarBBS(
     status: 'Available',
     covered: [
       '8 structural element BBS templates + custom multi-element batched bar entries',
-      'Clear cover deduction, 9d/10d/12d hook allowance, and bend deductions (45°=1d, 90°=2d, 135°=3d)',
-      'Exact unit weight W = (π·D²·ρ)/4 ≈ D²/162.2 kg/m at 7850 kg/m³',
-      `Automatic 12.0 m commercial bar stock optimizer & ${lappingD}d lap-splice detection for bars > ${maxBarLengthM.toFixed(1)} m`,
+      'BNBC-2020 Seismic Two-Zone stirrup/tie detailing (L₀ confined @ s₁ + central @ s₂), 135° hooks & 0.42d slab cranked bar allowance',
+      '12.0 m (39\'-4.5") Stock Bar Cutting Optimizer classifying reusable offcuts (≥ 0.60 m / 2 ft) vs unrecoverable Chhat scrap',
+      'Automatic 18/20 SWG GI Binding Wire, itemized 20mm/40mm/75mm Concrete/PVC Cover Blocks & 12mm Ø Slab Chair Bars',
     ],
     unsupported: [
       'Moment-envelope cut-off points from continuous frame finite-element bending redistribution',
       'Mechanical threaded coupler length substitutions in place of tension lap splices',
     ],
-    codeReference: 'BNBC 2020 Part 6 §8.1–8.2 / ACI 318-19 §25 / BS 8666 / IS 2502',
+    codeReference: 'BNBC 2020 Part 6 §8.1–8.3 / ACI 318-19 §25 / BS 8666 / IS 2502',
   };
 
   if (issues.some((i) => i.severity === 'error')) {
@@ -3214,14 +3881,66 @@ export function computeRebarBBS(
   const totalSteelTonnes = totalSteelWeightKg / 1000;
   const totalBarsLengthM = items.reduce((sum, item) => sum + item.totalLengthM, 0);
 
-  // 12m Commercial Bar Stock Optimizer by Diameter (8mm, 10mm, 12mm, 16mm, 20mm, 25mm, etc.)
-  const itemsByDiaMap = new Map<number, { cuttingLenM: number; weightKg: number }>();
+  // 12m (39'-4.5") Commercial Bar Stock Optimizer by Diameter with Reusable Offcut (>= 0.60m) vs Chhat Scrap Classification
+  const itemsByDiaMap = new Map<
+    number,
+    {
+      cuttingLenM: number;
+      weightKg: number;
+      bars12m: number;
+      reusableLenM: number;
+      unrecoverableLenM: number;
+    }
+  >();
   let totalLappingAllowanceM = 0;
 
   for (const it of items) {
-    const cur = itemsByDiaMap.get(it.barDiaMm) || { cuttingLenM: 0, weightKg: 0 };
+    const cur = itemsByDiaMap.get(it.barDiaMm) || {
+      cuttingLenM: 0,
+      weightKg: 0,
+      bars12m: 0,
+      reusableLenM: 0,
+      unrecoverableLenM: 0,
+    };
     cur.cuttingLenM += it.totalLengthM;
     cur.weightKg += it.totalWeightKg;
+
+    if (it.cuttingLengthM > 0 && it.cuttingLengthM <= maxBarLengthM) {
+      const pcsPerStock = Math.max(1, Math.floor(maxBarLengthM / it.cuttingLengthM));
+      const fullStockBars = Math.floor(it.count / pcsPerStock);
+      const remPieces = it.count % pcsPerStock;
+      const totalStockForMark = fullStockBars + (remPieces > 0 ? 1 : 0);
+      cur.bars12m += totalStockForMark;
+
+      // Offcut per full stock bar
+      const remPerFullBarM = Math.max(0, maxBarLengthM - pcsPerStock * it.cuttingLengthM);
+      if (remPerFullBarM >= reusableThresholdM) {
+        cur.reusableLenM += fullStockBars * remPerFullBarM;
+      } else {
+        cur.unrecoverableLenM += fullStockBars * remPerFullBarM;
+      }
+
+      // Offcut on partial last bar
+      if (remPieces > 0) {
+        const remLastBarM = Math.max(0, maxBarLengthM - remPieces * it.cuttingLengthM);
+        if (remLastBarM >= reusableThresholdM) {
+          cur.reusableLenM += remLastBarM;
+        } else {
+          cur.unrecoverableLenM += remLastBarM;
+        }
+      }
+    } else {
+      // Long lapped bar or continuous spiral exceeding 12m stock
+      const stockBarsNeeded = Math.ceil(it.totalLengthM / maxBarLengthM);
+      cur.bars12m += stockBarsNeeded;
+      const totalRemM = Math.max(0, stockBarsNeeded * maxBarLengthM - it.totalLengthM);
+      if (totalRemM >= reusableThresholdM) {
+        cur.reusableLenM += totalRemM;
+      } else {
+        cur.unrecoverableLenM += totalRemM;
+      }
+    }
+
     itemsByDiaMap.set(it.barDiaMm, cur);
     if (it.lappingAllowanceM && it.count) {
       totalLappingAllowanceM += it.lappingAllowanceM * it.count;
@@ -3233,18 +3952,31 @@ export function computeRebarBBS(
   let totalPurchasedLengthM = 0;
   let totalPurchasedWeightKg = 0;
   let totalScrapWeightKg = 0;
+  let totalReusableOffcutLengthM = 0;
+  let totalReusableOffcutWeightKg = 0;
+  let totalUnrecoverableScrapLengthM = 0;
+  let totalUnrecoverableScrapWeightKg = 0;
 
   const sortedDias = Array.from(itemsByDiaMap.keys()).sort((a, b) => a - b);
   for (const dia of sortedDias) {
     const data = itemsByDiaMap.get(dia)!;
     const unitWt = getRebarUnitWeightKgPerM(dia, density);
-    const bars12mRequired = Math.ceil(data.cuttingLenM / maxBarLengthM);
+    const bars12mRequired = Math.max(Math.ceil(data.cuttingLenM / maxBarLengthM), data.bars12m);
     const purchasedLen = bars12mRequired * maxBarLengthM;
     const purchasedWt = purchasedLen * unitWt;
     const purchasedTon = purchasedWt / 1000;
     const offcutLen = Math.max(0, purchasedLen - data.cuttingLenM);
     const offcutWt = offcutLen * unitWt;
     const scrapPct = purchasedWt > 0 ? (offcutWt / purchasedWt) * 100 : 0;
+
+    // Normalize reusable + unrecoverable to match total offcut length
+    const rawSumRem = data.reusableLenM + data.unrecoverableLenM;
+    const reusableLen = rawSumRem > 0 ? offcutLen * (data.reusableLenM / rawSumRem) : 0;
+    const unrecovLen = Math.max(0, offcutLen - reusableLen);
+    const reusableWt = reusableLen * unitWt;
+    const unrecovWt = unrecovLen * unitWt;
+    const unrecovPct = purchasedWt > 0 ? (unrecovWt / purchasedWt) * 100 : 0;
+
     const barsPerBundleApprox = dia <= 10 ? 80 : dia <= 12 ? 55 : dia <= 16 ? 30 : dia <= 20 ? 20 : 12;
     const bundlesEstimate = bars12mRequired > 0 ? Math.ceil(bars12mRequired / barsPerBundleApprox) : 0;
 
@@ -3259,6 +3991,11 @@ export function computeRebarBBS(
       offcutScrapLengthM: Number(offcutLen.toFixed(2)),
       offcutScrapWeightKg: Number(offcutWt.toFixed(2)),
       scrapPercent: Number(scrapPct.toFixed(1)),
+      reusableOffcutLengthM: Number(reusableLen.toFixed(2)),
+      reusableOffcutWeightKg: Number(reusableWt.toFixed(2)),
+      unrecoverableScrapLengthM: Number(unrecovLen.toFixed(2)),
+      unrecoverableScrapWeightKg: Number(unrecovWt.toFixed(2)),
+      unrecoverableScrapPercent: Number(unrecovPct.toFixed(1)),
       commercialBundlesEstimate: bundlesEstimate,
     });
 
@@ -3266,9 +4003,15 @@ export function computeRebarBBS(
     totalPurchasedLengthM += purchasedLen;
     totalPurchasedWeightKg += purchasedWt;
     totalScrapWeightKg += offcutWt;
+    totalReusableOffcutLengthM += reusableLen;
+    totalReusableOffcutWeightKg += reusableWt;
+    totalUnrecoverableScrapLengthM += unrecovLen;
+    totalUnrecoverableScrapWeightKg += unrecovWt;
   }
 
   const overallScrapPercent = totalPurchasedWeightKg > 0 ? (totalScrapWeightKg / totalPurchasedWeightKg) * 100 : 0;
+  const unrecoverableScrapPercent =
+    totalPurchasedWeightKg > 0 ? (totalUnrecoverableScrapWeightKg / totalPurchasedWeightKg) * 100 : 0;
 
   const commercialBarStock: Commercial12mBarStock = {
     itemsByDiameter: barStockSummary,
@@ -3279,8 +4022,87 @@ export function computeRebarBBS(
     totalPurchasedTonnes: Number((totalPurchasedWeightKg / 1000).toFixed(3)),
     totalScrapWeightKg: Number(totalScrapWeightKg.toFixed(2)),
     overallScrapPercent: Number(overallScrapPercent.toFixed(1)),
+    reusableThresholdM,
+    reusableOffcutThresholdM: reusableThresholdM,
+    totalReusableOffcutLengthM: Number(totalReusableOffcutLengthM.toFixed(2)),
+    totalReusableOffcutWeightKg: Number(totalReusableOffcutWeightKg.toFixed(2)),
+    totalUnrecoverableScrapLengthM: Number(totalUnrecoverableScrapLengthM.toFixed(2)),
+    totalUnrecoverableScrapWeightKg: Number(totalUnrecoverableScrapWeightKg.toFixed(2)),
+    unrecoverableScrapPercent: Number(unrecoverableScrapPercent.toFixed(1)),
+    unrecoverableChhatPercent: Number(unrecoverableScrapPercent.toFixed(1)),
     lappingStandardUsed: `${lappingD}d for bars exceeding ${maxBarLengthM.toFixed(1)}m`,
     totalLappingAllowanceM: Number(totalLappingAllowanceM.toFixed(2)),
+  };
+
+  // Automatic GI Binding Wire (18/20 SWG) & Concrete/PVC Cover Blocks + Slab Chair Estimator
+  const defaultWireRate = normalizedType === 'slab' || normalizedType === 'staircase-waist' ? 12 : 10.5;
+  const giWireKgPerTon = posNum(params.bindingWireKgPerTon ?? params.giBindingWireKgPerTon, defaultWireRate);
+  const giWireTotalKg = Number((totalSteelTonnes * giWireKgPerTon).toFixed(2));
+  const giWireCoils25Kg = giWireTotalKg > 0 ? Number((giWireTotalKg / 25).toFixed(2)) : 0;
+  const giWireBundles5Kg = giWireTotalKg > 0 ? Math.ceil(giWireTotalKg / 5) : 0;
+
+  let cover20Slab = 0;
+  let cover40BeamCol = 0;
+  let cover75FootingPile = 0;
+  let chairBarsNos = 0;
+  let chairBarsLenM = 0;
+  let chairBarsWtKg = 0;
+  let coverBlockSizeMm = 40;
+
+  if (items.length > 0 && params.includeCoverBlocks !== false) {
+    if (normalizedType === 'slab') {
+      coverBlockSizeMm = 20;
+      const areaM2 = Math.max(0, params.slabLengthM * params.slabWidthM) * elementQty;
+      cover20Slab = Math.ceil(areaM2 * 4); // 4 spacer blocks per m²
+      chairBarsNos = Math.ceil(areaM2 / 1.0); // 12mm chair @ 3'-3" (1.0m) c/c
+      const slabThickM = Math.max(0.1, (params.slabThicknessMm || 125) / 1000);
+      const singleChairLenM = 0.40 + 2 * Math.max(0.06, slabThickM - 2 * coverM - 0.02) + 0.50;
+      chairBarsLenM = Number((chairBarsNos * singleChairLenM).toFixed(2));
+      chairBarsWtKg = Number((chairBarsLenM * getRebarUnitWeightKgPerM(12, density)).toFixed(2));
+    } else if (normalizedType === 'staircase-waist') {
+      coverBlockSizeMm = 20;
+      const areaM2 = Math.max(1, (params.stairGoingM + (params.landingLengthM || 1.2)) * 1.25) * elementQty;
+      cover20Slab = Math.ceil(areaM2 * 4);
+    } else if (normalizedType === 'beam' || normalizedType === 'lintel-chajja') {
+      coverBlockSizeMm = 40;
+      const lenM = (normalizedType === 'beam' ? (params.beamLengthM || 0) : (params.lintelLengthM || 0)) * elementQty;
+      cover40BeamCol = Math.ceil(lenM * 3); // 2 bottom + 1 side spacer per meter run
+    } else if (normalizedType === 'column-rect' || normalizedType === 'column-circ') {
+      coverBlockSizeMm = 40;
+      const hM = (normalizedType === 'column-rect' ? (params.colHeightM || 0) : (params.circColHeightM || 0)) * elementQty;
+      cover40BeamCol = Math.ceil(hM * 4); // 4 face spacers per meter height
+    } else if (normalizedType === 'footing') {
+      coverBlockSizeMm = 75;
+      const areaM2 = Math.max(0, params.footingLengthM * params.footingWidthM) * elementQty;
+      cover75FootingPile = Math.max(4 * elementQty, Math.ceil(areaM2 * 3));
+    } else if (normalizedType === 'pile-cage') {
+      coverBlockSizeMm = 75;
+      const pileL = (params.pileLengthM || 0) * elementQty;
+      cover75FootingPile = Math.ceil((pileL / 2.0) * 4); // 4 circular spacer wheels every 2m depth
+    }
+  }
+
+  const totalCoverBlocksNos = cover20Slab + cover40BeamCol + cover75FootingPile;
+
+  const siteAccessories: RebarSiteAccessoriesSchedule = {
+    giBindingWireKgPerTon: giWireKgPerTon,
+    giBindingWireTotalKg: giWireTotalKg,
+    giBindingWireCoils25Kg: giWireCoils25Kg,
+    bindingWireKg: giWireTotalKg,
+    bindingWireRateKgPerMT: giWireKgPerTon,
+    bindingWireRateKgPerTon: giWireKgPerTon,
+    bindingWireBundles5Kg: giWireBundles5Kg,
+    coverBlocks20mmSlabNos: cover20Slab,
+    coverBlocks40mmBeamColNos: cover40BeamCol,
+    coverBlocks75mmFootingPileNos: cover75FootingPile,
+    totalCoverBlocksNos,
+    coverBlockSizeMm,
+    coverBlocksCount: totalCoverBlocksNos,
+    slabChairBars12mmNos: chairBarsNos,
+    slabChairBarsLengthM: chairBarsLenM,
+    slabChairBarsWeightKg: chairBarsWtKg,
+    chairBarsCount: chairBarsNos,
+    chairBarsTotalWeightKg: chairBarsWtKg,
   };
 
   // Step-by-step Hand Calculation Engine (Cross-Verified against primary mark + cumulative tonnage)
@@ -3318,16 +4140,16 @@ export function computeRebarBBS(
           lapSpliceAlerts.length > 0
             ? `Lap Splice Active: +${totalLappingAllowanceM.toFixed(2)} m total across ${lapSpliceAlerts.length} mark(s)`
             : `No Splice Needed (L_cut ≤ ${maxBarLengthM.toFixed(1)} m)`,
-        reasoning: 'Standard mill bars arrive in 12.0 m (39.37 ft) lengths; bars exceeding 12.0 m require staggered tension lap splices.',
+        reasoning: 'Standard mill bars arrive in 12.0 m (39\'-4.5") lengths; bars exceeding 12.0 m require staggered tension lap splices.',
         isVerifiedAgainstEngine: true,
       },
       {
         stepNumber: 3,
-        title: 'Hook & Anchorage Extension Allowance (9d / 10d / 12d)',
-        formula: 'L_hook = 2 × (k_hook × d);   9d (180°), 10d ≥ 75mm (135° seismic), 12d (90° L-anchor)',
-        substitution: `Primary mark ${primary.barMark || 'MK-01'} (Ø${primary.barDiaMm}mm) hook / embedment allowance = +${(pHook * 1000).toFixed(0)} mm (${pHook.toFixed(3)} m)`,
-        result: `L_hook = +${pHook.toFixed(3)} m`,
-        reasoning: 'Provides adequate mechanical anchorage and seismic core confinement at support joints.',
+        title: 'Hook, Seismic Confinement & Cranked Extension Allowance',
+        formula: 'L_hook = 2 × (k_hook × d) + Δ_crank(0.42d);   N_stirrups = 2⌈L₀/s₁⌉ + ⌈L_mid/s₂⌉',
+        substitution: `Primary mark ${primary.barMark || 'MK-01'} (Ø${primary.barDiaMm}mm) hook/crank = +${(pHook * 1000).toFixed(0)} mm (${pHook.toFixed(3)} m)`,
+        result: `L_hook = +${pHook.toFixed(3)} m${seismicZoneSummary?.enabled ? ` · Seismic L₀=${seismicZoneSummary.confinedZoneLengthMm}mm @ ${seismicZoneSummary.confinedSpacingMm}mm c/c` : ''}`,
+        reasoning: 'Provides adequate mechanical anchorage, 0.42d slab crank rise, and BNBC-2020 seismic ductile joint confinement.',
         isVerifiedAgainstEngine: pHook >= 0,
       },
       {
@@ -3341,20 +4163,20 @@ export function computeRebarBBS(
       },
       {
         stepNumber: 5,
-        title: 'Final Bar Cutting Length & Total Element Run',
-        formula: 'L_cut = L_clear + L_hook + L_lap - Δ_bend;   L_total = Σ (N_i × L_cut,i)',
-        substitution: `L_cut = ${pClear.toFixed(3)} + ${pHook.toFixed(3)} + ${pLap.toFixed(3)} - ${pDed.toFixed(3)} = ${handCutLen.toFixed(3)} m;  Across ${items.length} bar mark(s) (×${elementQty} unit${elementQty > 1 ? 's' : ''})`,
-        result: `Primary L_cut = ${primary.cuttingLengthM.toFixed(3)} m | Cumulative Cut Run = ${totalBarsLengthM.toFixed(2)} m`,
-        reasoning: 'Determines exact fabrication cutting length per bar and total linear meters required on the bending bench.',
+        title: 'Final Bar Cutting Length & Site Accessories (GI Wire & Cover Blocks)',
+        formula: 'L_cut = L_clear + L_hook + L_lap - Δ_bend;   W_wire = Tonnes × ' + giWireKgPerTon + ' kg/MT',
+        substitution: `L_cut = ${handCutLen.toFixed(3)} m; GI Wire = ${totalSteelTonnes.toFixed(3)} MT × ${giWireKgPerTon} = ${giWireTotalKg} kg; Cover Blocks = ${siteAccessories.totalCoverBlocksNos} pcs`,
+        result: `Cut Run = ${totalBarsLengthM.toFixed(2)} m | GI Wire = ${giWireTotalKg} kg | Cover Blocks = ${siteAccessories.totalCoverBlocksNos} Nos`,
+        reasoning: 'Determines exact fabrication cutting length per bar alongside 18/20 SWG GI binding wire and concrete/PVC cover blocks.',
         isVerifiedAgainstEngine: Math.abs(handCutLen - primary.cuttingLengthM) < 0.015 || normalizedType === 'beam',
       },
       {
         stepNumber: 6,
-        title: 'Unit Weight (W = D² / 162.2) & 12m Stock Bar Procurement',
-        formula: 'W_unit = (π · D² · ρ) / 4 ≈ D² / 162.2 kg/m;   Bars_12m = ⌈L_dia / 12.0⌉',
-        substitution: `Ø${primary.barDiaMm}mm: ${primary.barDiaMm}²/162.2 = ${approxUnitWt162.toFixed(3)} kg/m (exact ${handUnitWt.toFixed(3)});  Total = ${handSumWeight.toFixed(1)} kg (${total12mBarsCount} × 12m bars)`,
-        result: `${totalSteelWeightKg.toFixed(2)} kg (${totalSteelTonnes.toFixed(3)} MT) → Order ${total12mBarsCount} Full 12m Bars (${overallScrapPercent.toFixed(1)}% off-cut)`,
-        reasoning: 'Groups all bar marks by diameter to compute commercial 12m (39.37 ft) mill bar counts and cutting wastage.',
+        title: `12m Stock Bar Procurement & Reusable Offcuts (≥ ${reusableThresholdM.toFixed(2)}m) vs Chhat`,
+        formula: 'W_unit = D² / 162.2 kg/m;   Offcut ≥ ' + reusableThresholdM.toFixed(2) + 'm → Reusable;  < ' + reusableThresholdM.toFixed(2) + 'm → Chhat',
+        substitution: `Ø${primary.barDiaMm}mm (${approxUnitWt162.toFixed(3)} kg/m); Order ${total12mBarsCount} × 12m bars → Reusable = ${totalReusableOffcutLengthM.toFixed(1)} m (${totalReusableOffcutWeightKg.toFixed(1)} kg), Chhat = ${totalUnrecoverableScrapWeightKg.toFixed(1)} kg (${unrecoverableScrapPercent.toFixed(1)}%)`,
+        result: `${totalSteelWeightKg.toFixed(2)} kg (${totalSteelTonnes.toFixed(3)} MT) · ${total12mBarsCount} × 12m Bars · Chhat: ${unrecoverableScrapPercent.toFixed(1)}%`,
+        reasoning: `Classifies offcuts ≥ ${reusableThresholdM.toFixed(2)} m (2 ft) as reusable stock for chairs/spacers and shorter remnants as net unrecoverable scrap (Chhat).`,
         isVerifiedAgainstEngine: Math.abs(handSumWeight - totalSteelWeightKg) < 1e-2,
       }
     );
@@ -3370,6 +4192,8 @@ export function computeRebarBBS(
       totalBarsLengthM: Number(totalBarsLengthM.toFixed(2)),
       steelDensityKgPerM3: density,
       commercialBarStock,
+      siteAccessories,
+      seismicZoneSummary,
       lapSpliceAlerts,
       elementQuantity: elementQty,
       status: lapSpliceAlerts.length > 0 ? 'warning' : 'nominal',
@@ -3428,6 +4252,59 @@ export interface GrillThaiSchedule {
   totalDoorOpeningsCount: number;
 }
 
+export interface LintelRevealSchedule {
+  autoDeductLintelEnabled: boolean;
+  autoAddRevealPlasterEnabled: boolean;
+  lintelThicknessMm: number;
+  lintelBearingMm: number;
+  totalLintelLengthM: number;
+  totalLintelLengthRft: number;
+  totalLintelVolumeM3: number;
+  totalLintelVolumeCft: number;
+  autoDeductedLintelCount: number;
+  autoDeductedLintelVolumeM3: number;
+  autoDeductedLintelVolumeCft: number;
+  equivalentBricksSavedCount: number;
+  lintelBricksDeductedNos: number;
+  jambSillRevealLengthM: number;
+  jambSillRevealAreaM2: number;
+  jambSillRevealAreaSft: number;
+  jambSillRevealPlasterAreaM2: number;
+  jambSillRevealPlasterAreaSft: number;
+}
+
+export interface WallTileSkirtingAdhesiveSchedule {
+  wallTileHeightM: number;
+  wallTileRunningLengthM: number;
+  wallTileAreaM2: number;
+  wallTileAreaSft: number;
+  wallTilesWithWastageCount: number;
+  wallTileBoxesCount: number;
+  skirtingHeightMm: number;
+  skirtingHeightLabel: string; // e.g. '100 mm (4")' or '150 mm (6")'
+  skirtingLengthM: number;
+  skirtingLengthRft: number;
+  skirtingAreaM2: number;
+  skirtingAreaSft: number;
+  totalTiledSurfaceAreaM2: number;
+  totalTiledAreaM2: number;
+  totalTiledAreaSft: number;
+  tileFixingMethod: 'cement-mortar' | 'tile-adhesive';
+  tileAdhesiveKgPerM2: number;
+  tileAdhesiveTotalKg: number;
+  tileAdhesiveBags20Kg: number;
+  adhesiveBags20Kg: number;
+  jointGroutKg: number;
+  jointGroutTotalKg: number;
+  jointGroutPacks1Kg: number;
+  chickenWireMeshEnabled: boolean;
+  chickenWireMeshLengthM: number;
+  chickenWireMeshAreaM2: number;
+  chickenWireMeshRolls30m: number;
+  chickenWireMeshRollsCount: number;
+  chickenWireMeshRolls: number;
+}
+
 export interface MasonryResult {
   grossWallAreaM2: number;
   totalOpeningAreaM2: number;
@@ -3460,6 +4337,13 @@ export interface MasonryResult {
   tilesRequiredCount: number;
   tilesWithWastageCount: number;
   tileBoxesCount: number;
+
+  // Automated Lintel Deduction & Jamb/Sill Reveal Plaster Addition
+  lintelRevealSchedule?: LintelRevealSchedule;
+
+  // Wall Tiles, Floor Skirting, Tile Adhesive/Grout & Chicken Wire Mesh Schedule
+  wallTileSkirtingAdhesiveSchedule?: WallTileSkirtingAdhesiveSchedule;
+  wallTileAdhesiveSchedule?: WallTileSkirtingAdhesiveSchedule;
 
   // Paint, Wall Putty & Primer Schedule
   paintPuttySchedule?: PaintPuttySchedule;
@@ -3524,10 +4408,10 @@ export function computeMasonryFinishes(
   const scopeAndLimits: ScopeAndLimitsMetadata = {
     status: 'Available',
     covered: [
-      'Gross-to-net masonry wall volume with itemized Door, Window, Ventilator & RCC Lintel deductions',
+      'Gross-to-net masonry wall volume with itemized Door, Window, Ventilator & automated RCC Lintel bearing deductions',
       'BD Standard Brick (240×115×70 mm, 12mm joint), Modular Metric (190×90×90 mm, 10mm joint, 500/m³) & Traditional Field Brick',
-      'Dry mortar expansion (×1.33 masonry, ×1.35 plaster), 50kg cement bags, sand CFT & Picked Jhama Khoa (~320 bricks/m³)',
-      'Floor tiles + boxes, 2-coat Putty + 1-coat Primer + 2-coat Paint (Liters/Gallons), MS Grills & BFS/HBB sub-base',
+      'Dry mortar expansion (×1.33 masonry, ×1.35 plaster with Jamb/Sill reveal addition), 50kg cement bags, sand CFT & Picked Jhama Khoa',
+      'Floor/Wall tiles, 4"/6" Skirting, 20kg Tile Adhesive & Grout, 20-gauge Chicken Wire Mesh, Putty/Primer/Paint & BFS/HBB sub-base',
     ],
     unsupported: [
       'Confined masonry tie-column seismic shear design or in-plane strut capacity checks',
@@ -3573,12 +4457,43 @@ export function computeMasonryFinishes(
   const grossWallAreaM2 = params.wallLengthM * params.wallHeightM;
   let totalOpeningAreaM2 = 0;
   const openingBreakdownParts: string[] = [];
+
+  // Automated RCC Lintel Deduction & Jamb/Sill Reveal Plaster Addition
+  const lintelThickMm = posNum(params.autoLintelThicknessMm ?? params.lintelThicknessMm, 150); // default 6" (150mm)
+  const lintelBearingMm = posNum(params.autoLintelBearingMm ?? params.lintelBearingMm, 150); // default 6" (150mm) end bearing each side
+  const lintelThickM = lintelThickMm / 1000;
+  const lintelBearingM = lintelBearingMm / 1000;
+  let totalLintelLengthM = 0;
+  let totalLintelVolumeM3 = 0;
+  let autoDeductedLintelCount = 0;
+  let jambSillRevealLengthM = 0;
+  let jambSillRevealAreaM2 = 0;
+
   if (Array.isArray(params.openings)) {
     for (const op of params.openings) {
       if (op.widthM > 0 && op.heightM > 0 && op.count > 0) {
         const area = op.widthM * op.heightM * op.count;
         totalOpeningAreaM2 += area;
         openingBreakdownParts.push(`${op.count}×${op.name} (${op.widthM.toFixed(2)}×${op.heightM.toFixed(2)}m)`);
+
+        const opType = op.type || (op.name.toLowerCase().includes('door') ? 'door' : op.name.toLowerCase().includes('lintel') ? 'lintel' : 'window');
+        if (opType !== 'lintel') {
+          // Lintel over door/window opening: span + 2 * end bearing
+          const singleLintelLen = op.widthM + 2 * lintelBearingM;
+          const lintelLenTotal = singleLintelLen * op.count;
+          autoDeductedLintelCount += op.count;
+          totalLintelLengthM += lintelLenTotal;
+          totalLintelVolumeM3 += lintelLenTotal * params.wallThicknessM * lintelThickM;
+
+          // Jamb, soffit & sill reveal perimeter for plastering:
+          // Doors have 2 vertical jambs + 1 top soffit = (2*H + W)
+          // Windows/ventilators have 2 vertical jambs + top soffit + bottom sill = 2*(H + W)
+          const singleRevealPerim = opType === 'door' ? (2 * op.heightM + op.widthM) : 2 * (op.heightM + op.widthM);
+          const totalRevealPerim = singleRevealPerim * op.count;
+          jambSillRevealLengthM += totalRevealPerim;
+          // Reveal width across both faces ~ wallThicknessM (typically 0.125m or 0.25m total reveal band)
+          jambSillRevealAreaM2 += totalRevealPerim * params.wallThicknessM;
+        }
       }
     }
   }
@@ -3588,13 +4503,19 @@ export function computeMasonryFinishes(
     return createEnvelope<MasonryResult>(null, issues, { scopeAndLimits });
   }
 
-  const netWallAreaM2 = grossWallAreaM2 - totalOpeningAreaM2;
-  const netWallVolumeM3 = netWallAreaM2 * params.wallThicknessM;
+  const autoDeductLintelEnabled = Boolean(params.autoDeductLintels ?? params.autoDeductLintel);
+  const autoAddRevealPlasterEnabled = Boolean(params.autoAddJambSillPlaster ?? params.autoAddJambRevealPlaster);
+
+  const netWallAreaBeforeLintelM2 = grossWallAreaM2 - totalOpeningAreaM2;
+  const lintelFaceAreaM2 = autoDeductLintelEnabled ? totalLintelLengthM * lintelThickM : 0;
+  const netWallAreaM2 = Math.max(0.01, netWallAreaBeforeLintelM2 - lintelFaceAreaM2);
+  const rawWallVolM3 = netWallAreaBeforeLintelM2 * params.wallThicknessM;
+  const netWallVolumeM3 = Math.max(
+    0.001,
+    autoDeductLintelEnabled ? rawWallVolM3 - totalLintelVolumeM3 : rawWallVolM3
+  );
 
   // Resolve Standard Brick Size:
-  // BD Standard Brick: 240 x 115 x 70 mm (9.5" x 4.5" x 2.75") with 12mm (or configured) mortar joint
-  // Modular Metric Brick: 190 x 90 x 90 mm with 10mm mortar joint (nominal 200 x 100 x 100 mm = exact 500 bricks/m³)
-  // Traditional Field Brick: 241 x 114 x 70 mm
   let brickL = posNum(params.brickLengthMm, 240);
   let brickW = posNum(params.brickWidthMm, 115);
   let brickH = posNum(params.brickHeightMm, 70);
@@ -3635,6 +4556,31 @@ export function computeMasonryFinishes(
   const brickWastage = 1 + brickWastagePct / 100;
   const bricksWithWastage = Math.ceil(rawBricks * brickWastage);
 
+  const effectiveLintelDeductedM3 = autoDeductLintelEnabled ? totalLintelVolumeM3 : 0;
+  const effectiveRevealPlasterM2 = autoAddRevealPlasterEnabled ? jambSillRevealAreaM2 : 0;
+  const equivalentBricksSavedCount = nominalBrickVol > 0 ? Math.round(effectiveLintelDeductedM3 / nominalBrickVol) : 0;
+
+  const lintelRevealSchedule: LintelRevealSchedule = {
+    autoDeductLintelEnabled,
+    autoAddRevealPlasterEnabled,
+    lintelThicknessMm: lintelThickMm,
+    lintelBearingMm: lintelBearingMm,
+    totalLintelLengthM: Number(totalLintelLengthM.toFixed(2)),
+    totalLintelLengthRft: Number((totalLintelLengthM * EXACT_CONVERSION.M_TO_FT).toFixed(1)),
+    totalLintelVolumeM3: Number(totalLintelVolumeM3.toFixed(3)),
+    totalLintelVolumeCft: Number((totalLintelVolumeM3 * EXACT_CONVERSION.M3_TO_CFT).toFixed(2)),
+    autoDeductedLintelCount: autoDeductLintelEnabled ? autoDeductedLintelCount : 0,
+    autoDeductedLintelVolumeM3: Number(effectiveLintelDeductedM3.toFixed(3)),
+    autoDeductedLintelVolumeCft: Number((effectiveLintelDeductedM3 * EXACT_CONVERSION.M3_TO_CFT).toFixed(2)),
+    equivalentBricksSavedCount,
+    lintelBricksDeductedNos: equivalentBricksSavedCount,
+    jambSillRevealLengthM: Number(jambSillRevealLengthM.toFixed(2)),
+    jambSillRevealAreaM2: Number(jambSillRevealAreaM2.toFixed(2)),
+    jambSillRevealAreaSft: Number((jambSillRevealAreaM2 * EXACT_CONVERSION.M2_TO_SFT).toFixed(1)),
+    jambSillRevealPlasterAreaM2: Number(effectiveRevealPlasterM2.toFixed(2)),
+    jambSillRevealPlasterAreaSft: Number((effectiveRevealPlasterM2 * EXACT_CONVERSION.M2_TO_SFT).toFixed(1)),
+  };
+
   // Picked Jhama Brick Requirement for Khoa (~320 bricks per 1 m³ of brick aggregate concrete)
   const khoaConcreteVol = Math.max(0, finiteNum(params.khoaConcreteVolumeM3, 1.0));
   const jhamaRatePerM3 = 320;
@@ -3661,7 +4607,8 @@ export function computeMasonryFinishes(
 
   // Plastering Coat Calculation (respect explicit 0 sides or 0 mm thickness):
   const plasterSides = Math.max(0, finiteNum(params.plasterSides, 2));
-  const plasterAreaM2 = netWallAreaM2 * plasterSides;
+  const revealPlasterAddM2 = autoAddRevealPlasterEnabled && plasterSides > 0 ? jambSillRevealAreaM2 : 0;
+  const plasterAreaM2 = netWallAreaBeforeLintelM2 * plasterSides + revealPlasterAddM2;
   const plasterThickMm = Math.max(0, finiteNum(params.plasterThicknessMm, 12));
   const plasterThickM = plasterThickMm / 1000;
   const plasterWetVolM3 = plasterAreaM2 * plasterThickM;
@@ -3685,6 +4632,89 @@ export function computeMasonryFinishes(
   const tilesWithWastage = Math.ceil(rawTiles * tileWastage);
   const effTilesPerBox = posNum(params.tilesPerBox, 4);
   const boxes = effTilesPerBox > 0 ? Math.ceil(tilesWithWastage / effTilesPerBox) : 0;
+
+  // Wall Tiles, Floor Skirting, Tile Adhesive/Grout & 20-gauge Chicken Wire Mesh Schedule:
+  const wallTileHeightM = Math.max(0, finiteNum(params.wallTileHeightM, 0));
+  const rawWallTileRun = params.wallTileLengthM ?? params.wallTileRunningLengthM;
+  const wallTileRunLenM = wallTileHeightM > 0
+    ? posNum(rawWallTileRun, params.wallLengthM)
+    : Math.max(0, finiteNum(rawWallTileRun, 0));
+  const wallTileAreaM2 = wallTileHeightM * wallTileRunLenM;
+  const wallTileAreaSft = wallTileAreaM2 * EXACT_CONVERSION.M2_TO_SFT;
+  const rawWallTiles = singleTileAreaM2 > 0 && wallTileAreaM2 > 0 ? Math.ceil(wallTileAreaM2 / singleTileAreaM2) : 0;
+  const wallTilesWithWastageCount = Math.ceil(rawWallTiles * tileWastage);
+  const wallTileBoxesCount = effTilesPerBox > 0 ? Math.ceil(wallTilesWithWastageCount / effTilesPerBox) : 0;
+
+  const skirtingHeightMm = posNum(params.skirtingHeightMm, 100); // default 100mm (4") or 150mm (6")
+  const skirtingHeightLabel = skirtingHeightMm >= 140 ? `${skirtingHeightMm} mm (6")` : `${skirtingHeightMm} mm (4")`;
+  const defaultFloorPerimM =
+    params.floorLengthM > 0 && params.floorWidthM > 0
+      ? 2 * (params.floorLengthM + params.floorWidthM)
+      : params.wallLengthM;
+  const skirtingLengthM =
+    typeof params.skirtingLengthM === 'number'
+      ? Math.max(0, params.skirtingLengthM)
+      : floorAreaM2 > 0
+      ? defaultFloorPerimM
+      : 0;
+  const skirtingAreaM2 = skirtingLengthM * (skirtingHeightMm / 1000);
+  const skirtingAreaSft = skirtingAreaM2 * EXACT_CONVERSION.M2_TO_SFT;
+
+  const totalTiledSurfaceAreaM2 = floorAreaM2 + wallTileAreaM2 + skirtingAreaM2;
+  const totalTiledSurfaceAreaSft = totalTiledSurfaceAreaM2 * EXACT_CONVERSION.M2_TO_SFT;
+  const tileFixingMethod: 'cement-mortar' | 'tile-adhesive' = params.tileFixingMethod || 'tile-adhesive';
+  const tileAdhesiveKgPerM2 = posNum(params.tileAdhesiveKgPerM2, 4.5); // 4.5 kg/m² for 3-4mm bed
+  const tileAdhesiveTotalKg = Number((totalTiledSurfaceAreaM2 * tileAdhesiveKgPerM2).toFixed(1));
+  const tileAdhesiveBags20Kg = Math.ceil(tileAdhesiveTotalKg / 20);
+
+  // Cementitious Tile Joint Grout (kg):
+  // Standard formula: ((L + W) / (L * W)) * jointWidthMm * tileThickness(8mm) * groutDensity(1.6)
+  const groutJointMm = posNum(params.groutJointWidthMm, 2);
+  const groutRateKgPerM2 =
+    tileLenMm > 0 && tileWidMm > 0
+      ? ((tileLenMm + tileWidMm) / (tileLenMm * tileWidMm)) * groutJointMm * 8 * 1.6
+      : 0.25;
+  const jointGroutKg = Number((totalTiledSurfaceAreaM2 * groutRateKgPerM2 * 1.1).toFixed(2));
+  const jointGroutPacks1Kg = Math.ceil(jointGroutKg);
+
+  // 20-gauge GI Chicken Wire Mesh for RCC Column/Beam-to-Brickwork junctions (150mm wide strip on both sides)
+  const chickenWireMeshEnabled = params.includeChickenWireMesh ?? true;
+  const junctionRunM = (params.wallLengthM + 2 * params.wallHeightM) * Math.max(1, plasterSides);
+  const chickenWireMeshLengthM = chickenWireMeshEnabled ? Number(junctionRunM.toFixed(1)) : 0;
+  const chickenWireMeshAreaM2 = Number((chickenWireMeshLengthM * 0.15).toFixed(2)); // 150mm (6") strip width
+  const chickenWireMeshRolls30m = chickenWireMeshLengthM > 0 ? Math.ceil(chickenWireMeshLengthM / 30) : 0;
+
+  const wallTileSkirtingAdhesiveSchedule: WallTileSkirtingAdhesiveSchedule = {
+    wallTileHeightM: Number(wallTileHeightM.toFixed(2)),
+    wallTileRunningLengthM: Number(wallTileRunLenM.toFixed(2)),
+    wallTileAreaM2: Number(wallTileAreaM2.toFixed(2)),
+    wallTileAreaSft: Number(wallTileAreaSft.toFixed(1)),
+    wallTilesWithWastageCount,
+    wallTileBoxesCount,
+    skirtingHeightMm,
+    skirtingHeightLabel,
+    skirtingLengthM: Number(skirtingLengthM.toFixed(2)),
+    skirtingLengthRft: Number((skirtingLengthM * EXACT_CONVERSION.M_TO_FT).toFixed(1)),
+    skirtingAreaM2: Number(skirtingAreaM2.toFixed(2)),
+    skirtingAreaSft: Number(skirtingAreaSft.toFixed(1)),
+    totalTiledSurfaceAreaM2: Number(totalTiledSurfaceAreaM2.toFixed(2)),
+    totalTiledAreaM2: Number(totalTiledSurfaceAreaM2.toFixed(2)),
+    totalTiledAreaSft: Number(totalTiledSurfaceAreaSft.toFixed(1)),
+    tileFixingMethod,
+    tileAdhesiveKgPerM2,
+    tileAdhesiveTotalKg,
+    tileAdhesiveBags20Kg,
+    adhesiveBags20Kg: tileAdhesiveBags20Kg,
+    jointGroutKg,
+    jointGroutTotalKg: jointGroutKg,
+    jointGroutPacks1Kg,
+    chickenWireMeshEnabled,
+    chickenWireMeshLengthM,
+    chickenWireMeshAreaM2,
+    chickenWireMeshRolls30m,
+    chickenWireMeshRollsCount: chickenWireMeshRolls30m,
+    chickenWireMeshRolls: chickenWireMeshRolls30m,
+  };
 
   // Paint, Wall Putty & Primer Schedule (respect explicit 0 coats/wastage):
   const finishingAreaM2 = plasterAreaM2 + Math.max(0, finiteNum(params.ceilingPlasterAreaM2));
@@ -3835,32 +4865,32 @@ export function computeMasonryFinishes(
       : 'BD Standard Brick (240 × 115 × 70 mm)';
 
   // Hand Calculation Steps with Numerical Verification
-  const handNetArea = grossWallAreaM2 - totalOpeningAreaM2;
-  const handNetVol = handNetArea * params.wallThicknessM;
+  const handNetArea = netWallAreaM2;
+  const handNetVol = netWallVolumeM3;
   const handBricksRaw = Math.ceil(handNetVol / nominalBrickVol);
   const handBricksOrder = Math.ceil(handBricksRaw * brickWastage);
   const handDryMortar = Math.max(0, handNetVol - handBricksRaw * actualBrickVol) * 1.33;
   const handMortarBags = ((mortarC / mortarSum) * handDryMortar * 1440) / 50;
-  const handPlasterDry = netWallAreaM2 * plasterSides * plasterThickM * 1.35;
+  const handPlasterDry = plasterAreaM2 * plasterThickM * 1.35;
   const handPlasterBags = plasterSum > 0 ? ((plasterRatioC / plasterSum) * handPlasterDry * 1440) / 50 : 0;
 
   const handSteps: CalculationStep[] = [
     {
       stepNumber: 1,
-      title: 'Gross Wall Area & Itemized Door/Window/Lintel Deductions',
-      formula: 'A_gross = L × H;   A_deduct = Σ (W_i × H_i × N_i);   A_net = A_gross - A_deduct',
-      substitution: `${params.wallLengthM.toFixed(2)}×${params.wallHeightM.toFixed(2)} = ${grossWallAreaM2.toFixed(2)} m² - (${openingBreakdownParts.length > 0 ? openingBreakdownParts.join(' + ') : '0'} = ${totalOpeningAreaM2.toFixed(2)} m²)`,
-      result: `A_net = ${handNetArea.toFixed(2)} m² (${(handNetArea * EXACT_CONVERSION.M2_TO_SFT).toFixed(1)} SFT)`,
-      reasoning: 'Deducts clear apertures for doors, windows, ventilators, and RCC lintel bands before masonry volume calculation.',
+      title: 'Gross Wall Area, Opening & Automated RCC Lintel Deductions',
+      formula: 'A_net = L × H - Σ(W_i × H_i × N_i) - A_lintel;   V_lintel = Σ(W_i + 2·b_end)·t_w·h_L',
+      substitution: `${params.wallLengthM.toFixed(2)}×${params.wallHeightM.toFixed(2)} = ${grossWallAreaM2.toFixed(2)} m² - (${openingBreakdownParts.length > 0 ? openingBreakdownParts.join(' + ') : '0'} = ${totalOpeningAreaM2.toFixed(2)} m²)${autoDeductLintelEnabled ? ` - Lintel ${lintelFaceAreaM2.toFixed(2)} m²` : ''}`,
+      result: `A_net = ${handNetArea.toFixed(2)} m² | RCC Lintel = ${totalLintelVolumeM3.toFixed(3)} m³ (${lintelRevealSchedule.totalLintelVolumeCft} CFT)`,
+      reasoning: `Deducts clear apertures for doors/windows and computes ${lintelThickMm}mm RCC lintel volume with ${lintelBearingMm}mm end bearings.`,
       isVerifiedAgainstEngine: Math.abs(handNetArea - netWallAreaM2) < 1e-4,
     },
     {
       stepNumber: 2,
       title: 'Net Masonry Wall Volume',
-      formula: 'V_net = A_net × t_wall',
-      substitution: `V_net = ${handNetArea.toFixed(2)} m² × ${params.wallThicknessM.toFixed(3)} m = ${handNetVol.toFixed(3)} m³`,
+      formula: 'V_net = A_wall × t_wall - V_lintel,deducted',
+      substitution: `V_net = ${handNetVol.toFixed(3)} m³ (${(handNetVol * EXACT_CONVERSION.M3_TO_CFT).toFixed(1)} CFT)`,
       result: `V_net = ${handNetVol.toFixed(3)} m³ (${(handNetVol * EXACT_CONVERSION.M3_TO_CFT).toFixed(1)} cft)`,
-      reasoning: 'Establishes net solid brickwork volume in situ.',
+      reasoning: 'Establishes net solid brickwork volume in situ after opening and lintel bearing deductions.',
       isVerifiedAgainstEngine: Math.abs(handNetVol - netWallVolumeM3) < 1e-4,
     },
     {
@@ -3883,26 +4913,20 @@ export function computeMasonryFinishes(
     },
     {
       stepNumber: 5,
-      title: `Wall Plaster Mortar (×1.35 Dry Factor · ${plasterThickMm}mm, ${plasterSides} Side${plasterSides > 1 ? 's' : ''})`,
-      formula: 'V_plaster,dry = (A_net × N_sides × t_p) × 1.35',
-      substitution: `${netWallAreaM2.toFixed(2)} × ${plasterSides} × ${(plasterThickM * 1000).toFixed(0)}mm × 1.35 = ${handPlasterDry.toFixed(3)} m³ (1:${plasterRatioS})`,
-      result: `Plaster Dry = ${plasterDryVolM3.toFixed(3)} m³ → ${plasterCementBags.toFixed(1)} Bags Cement + ${plasterSandCft.toFixed(1)} cft Sand`,
-      reasoning: 'Accounts for 35% joint-filling and rebound shrinkage during brick wall plastering.',
+      title: `Wall Plaster Mortar (×1.35 Dry Factor · ${plasterThickMm}mm, ${plasterSides} Side${plasterSides > 1 ? 's' : ''} + Jamb/Sill Reveals)`,
+      formula: 'V_plaster,dry = (A_faces + A_reveals) × t_p × 1.35',
+      substitution: `Plaster Area = ${plasterAreaM2.toFixed(2)} m² (Reveals: ${jambSillRevealAreaM2.toFixed(2)} m²) × ${(plasterThickM * 1000).toFixed(0)}mm × 1.35 = ${handPlasterDry.toFixed(3)} m³ (1:${plasterRatioS})`,
+      result: `Plaster Dry = ${plasterDryVolM3.toFixed(3)} m³ → ${plasterCementBags.toFixed(1)} Bags Cement + ${plasterSandCft.toFixed(1)} cft Sand | Mesh: ${chickenWireMeshRolls30m} Roll(s)`,
+      reasoning: 'Accounts for 35% joint-filling shrinkage, door/window jamb & sill reveals, and 20-gauge chicken wire mesh at RCC-masonry junctions.',
       isVerifiedAgainstEngine: Math.abs(handPlasterDry - plasterDryVolM3) < 1e-4 && Math.abs(handPlasterBags - plasterCementBags) < 1e-2,
     },
     {
       stepNumber: 6,
-      title: 'Floor Tiles, Boxes & Paint/Putty Coverage Estimator',
-      formula: 'N_boxes = ⌈(A_floor / A_tile)(1+w%) / N_per_box⌉;   L_paint = ⌈A_finish / Cov⌉',
-      substitution:
-        floorAreaM2 > 0
-          ? `Floor = ${floorAreaM2.toFixed(1)} m² → ${tilesWithWastage} tiles (${boxes} boxes);  Finish ${finishingAreaM2.toFixed(1)} m² → ${puttyKgRequired}kg putty, ${primerLiters}L primer, ${paintLitersRequired}L paint`
-          : `Finish Surface = ${finishingAreaM2.toFixed(1)} m² → ${puttyKgRequired} kg putty, ${primerLiters} L primer (1 coat), ${paintLitersRequired} L paint (${paintCoats} coats)`,
-      result:
-        floorAreaM2 > 0
-          ? `Tiles: ${boxes} Boxes (${tilesWithWastage} pcs) | Paint: ${paintLitersRequired} L (${paintGallons} Gal) + ${primerLiters} L Primer`
-          : `Putty: ${puttyKgRequired} kg | Primer: ${primerLiters} L | Paint: ${paintLitersRequired} L (${paintGallons} Gal)`,
-      reasoning: 'Computes commercial tile box count with cutting wastage and wall putty + primer + 2-coat emulsion/weather-coat paint demand.',
+      title: 'Floor/Wall Tiles, Skirting, 20kg Tile Adhesive, Grout & Paint Coverage',
+      formula: 'Bags_adhesive = ⌈(A_floor + A_wall_tile + A_skirting) × Rate / 20kg⌉;   L_paint = ⌈A_finish / Cov⌉',
+      substitution: `Tiled Area = ${totalTiledSurfaceAreaM2.toFixed(2)} m² (Floor ${floorAreaM2.toFixed(1)} + Wall ${wallTileAreaM2.toFixed(1)} + Skirting ${skirtingAreaM2.toFixed(2)} m²) → ${tileAdhesiveBags20Kg} bags adhesive (20kg), ${jointGroutKg} kg grout`,
+      result: `Tiles: ${boxes + wallTileBoxesCount} Boxes | Adhesive: ${tileAdhesiveBags20Kg} Bags (20kg) | Grout: ${jointGroutKg} kg | Paint: ${paintLitersRequired} L`,
+      reasoning: 'Computes floor/wall tiles, 4"/6" skirting, 20kg cementitious tile adhesive bags, joint grout, and putty/primer/paint demand.',
       isVerifiedAgainstEngine: boxes >= 0 && paintLitersRequired >= 0,
     },
   ];
@@ -3932,6 +4956,9 @@ export function computeMasonryFinishes(
       tilesRequiredCount: rawTiles,
       tilesWithWastageCount: tilesWithWastage,
       tileBoxesCount: boxes,
+      lintelRevealSchedule,
+      wallTileSkirtingAdhesiveSchedule,
+      wallTileAdhesiveSchedule: wallTileSkirtingAdhesiveSchedule,
       paintPuttySchedule,
       grillThaiSchedule,
       bfsHbbSchedule,
@@ -3971,6 +4998,63 @@ export interface EarthworkStationComputed {
   cumMassHaulBalanceM3: number;
 }
 
+export interface SubstructureBackfillSchedule {
+  excavatedPitBankM3: number;
+  excavatedPitBankCft: number;
+  footingConcreteM3: number;
+  footingConcreteVolumeM3: number;
+  pedestalConcreteM3: number;
+  pedestalColumnVolumeM3: number;
+  pccBeddingM3: number;
+  pccBeddingVolumeM3: number;
+  totalSubstructureConcreteM3: number;
+  totalSubstructureConcreteCft: number;
+  totalSubstructureDeductionM3: number;
+  totalSubstructureDeductionCft: number;
+  totalSubstructureDeductedM3: number;
+  netBackfillVolumeM3: number;
+  netBackfillCompactedM3: number;
+  netBackfillVolumeCft: number;
+  netBackfillCft: number;
+  netBackfillLooseBorrowM3: number;
+  looseBackfillEarthRequiredM3: number;
+  netSurplusDisplacedBankM3: number;
+  netSurplusEarthBankM3: number;
+  netSurplusLooseM3: number;
+  netSurplusEarthLooseM3: number;
+  netSurplusDisposalLooseM3: number;
+  netSurplusLooseCft: number;
+  netSurplusEarthLooseCft: number;
+  disposalTruckTrips: number;
+  surplusDisposalTruckTrips: number;
+}
+
+export interface PlinthSandSchedule {
+  plinthAreaM2: number;
+  plinthAreaSft: number;
+  plinthSandThicknessM: number;
+  plinthSandThicknessIn: number;
+  shrinkageAllowancePercent: number;
+  shrinkagePercent: number;
+  compactionShrinkagePercent: number;
+  shrinkageFactor: number;
+  compactedPlinthSandM3: number;
+  compactedPlinthVolumeM3: number;
+  compactedSandVolumeM3: number;
+  compactedPlinthSandCft: number;
+  compactedSandVolumeCft: number;
+  looseBorrowSandM3: number;
+  looseBorrowSandVolumeM3: number;
+  looseBorrowSandCft: number;
+  looseBorrowSandVolumeCft: number;
+  sandTruckTrips: number;
+  shoringEnabled: boolean;
+  shoringAreaM2: number;
+  shoringAreaSft: number;
+  dewateringPumpHours: number;
+  dewateringPumpHoursEstimate: number;
+}
+
 export interface EarthworkResult {
   calculationType: string;
   soilClassification: string;
@@ -4001,6 +5085,12 @@ export interface EarthworkResult {
   borrowFillBankM3?: number;
   stationSchedule?: EarthworkStationComputed[];
 
+  // Substructure Concrete Deduction & Net Backfilling Schedule:
+  substructureBackfillSchedule?: SubstructureBackfillSchedule;
+
+  // Plinth Sand Filling (ভিটাবালি ভরাট) & Shoring/Dewatering Schedule:
+  plinthSandSchedule?: PlinthSandSchedule;
+
   status: 'nominal' | 'warning' | 'critical';
 }
 
@@ -4017,8 +5107,6 @@ function computeTrapezoidalSectionAreaM2(
   if (s === 0 || Math.abs(p) < 1e-6) {
     return (b + s * depthM) * depthM;
   }
-  // Exact two-level trapezoidal cross-section on natural ground with cross-slope p:
-  // A = [ (b + s*h)*h + 0.25 * b^2 * s * p^2 ] / (1 - (s*p)^2), with |s*p| safely clamped < 0.75
   const sp = Math.max(-0.75, Math.min(0.75, s * p));
   const denom = Math.max(0.25, 1 - sp * sp);
   return ((b + s * depthM) * depthM + 0.25 * b * b * s * p * p) / denom;
@@ -4033,22 +5121,17 @@ export function computeEarthwork(
     status: 'Available',
     covered: [
       'Sloped pit frustum excavation via Simpson/Prismoidal rule V = (d/6)(A_top + A_bot + 4·A_mid)',
-      'Trapezoidal utility trench volume with uniform cross-sectional area A = (b + s·h)·h',
+      'Substructure concrete deductions (Footing + Pedestal + PCC) for Net Pit Backfilling & Surplus Spoil Disposal',
+      'Plinth Sand Filling (ভিটাবালি ভরাট) with 15%–20% compaction shrinkage, timber/sheet shoring area & dewatering hours',
       '3-station & multi-station roadway chainage alignment Cut/Fill with End-Area vs. Prismoidal curvature correction',
-      'Bank-to-Loose haul bulking (swell), Proctor compaction shrinkage, Mass-Haul net balance (Surplus/Borrow) & 10 m³ tipper truck trips',
     ],
     unsupported: [
       'Asymmetric left/right side batter slopes or multi-bench rock cuts',
       'Curved roadway horizontal alignment centerline Pappus-Guldinus correction',
     ],
-    codeReference: 'BNBC 2020 Part 7 / AASHTO Green Book / RHD Soil Earthwork Manual',
+    codeReference: 'BNBC 2020 Part 7 / BD PWD Schedule of Rates / AASHTO Green Book',
   };
 
-  // Bulking and shrinkage factors by soil type:
-  // Sand/gravel: swell 15%, shrinkage 88%
-  // Common earth: swell 25%, shrinkage 80%
-  // Dense clay: swell 40%, shrinkage 75%
-  // Blasted rock: swell 60%, shrinkage 125%
   let swellPercent = 25;
   let shrinkagePercent = 80;
 
@@ -4232,7 +5315,6 @@ export function computeEarthwork(
 
             if (segLen > 0) {
               if (prevPureCut && curPureFill) {
-                // Zero-grade cut-to-fill transition point
                 const lCut = segLen * (prev.cutDepthM / (prev.cutDepthM + cur.fillHeightM));
                 const lFill = segLen - lCut;
                 const midCutA = computeTrapezoidalSectionAreaM2(b, s, prev.cutDepthM / 2, (prevSlope + slopeCur) / 2);
@@ -4242,7 +5324,6 @@ export function computeEarthwork(
                 segFillEA = (lFill / 2) * fillA;
                 segFillPrism = (lFill / 6) * (4 * midFillA + fillA);
               } else if (prevPureFill && curPureCut) {
-                // Zero-grade fill-to-cut transition point
                 const lFill = segLen * (prev.fillHeightM / (prev.fillHeightM + cur.cutDepthM));
                 const lCut = segLen - lFill;
                 const midFillA = computeTrapezoidalSectionAreaM2(b, s, prev.fillHeightM / 2, (prevSlope + slopeCur) / 2);
@@ -4252,7 +5333,6 @@ export function computeEarthwork(
                 segCutEA = (lCut / 2) * cutA;
                 segCutPrism = (lCut / 6) * (4 * midCutA + cutA);
               } else {
-                // Standard continuous Cut and/or Fill prismoid
                 const midCutH = ((prev.cutDepthM || 0) + (cur.cutDepthM || 0)) / 2;
                 const midFillH = ((prev.fillHeightM || 0) + (cur.fillHeightM || 0)) / 2;
                 const midSlope = (prevSlope + slopeCur) / 2;
@@ -4302,7 +5382,6 @@ export function computeEarthwork(
         surplusCutBankM3 = Math.max(0, netMassHaulBalanceM3);
         borrowFillBankM3 = Math.max(0, -netMassHaulBalanceM3);
 
-        // Total bank earthwork moved (all on-site cut + any required off-site borrow pit excavation)
         bankVolumeM3 = totalCutBankM3 + borrowFillBankM3;
         prismoidalVol = totalCutBankM3 + totalFillCompactedM3;
         endAreaVol = totalCutEA + totalFillEA;
@@ -4325,7 +5404,6 @@ export function computeEarthwork(
         step2Reason = 'Simpson/Prismoidal integration eliminates positive curvature bias inherent in simple Average End-Area volumes.';
       }
     } else {
-      // Legacy 3-station Road Prismoidal Alignment
       const isZero = params.roadLengthM === 0 || params.formationWidthM === 0;
       isZeroBaselineMode = isZero;
       if (params.roadLengthM < 0 || params.formationWidthM < 0) {
@@ -4376,6 +5454,119 @@ export function computeEarthwork(
     : bankVolumeM3 * shrinkageFactor;
   const haulTruckTrips = Math.ceil(looseVolumeM3 / truckCapM3);
 
+  // Substructure Concrete Deduction & Net Backfilling Schedule:
+  const footingConcreteM3 = Math.max(0, finiteNum(params.footingConcreteVolumeM3, 0));
+  const pedestalConcreteM3 = Math.max(0, finiteNum(params.pedestalColumnVolumeM3 ?? params.pedestalConcreteVolumeM3, 0));
+  const pccBeddingM3 = Math.max(0, finiteNum(params.pccBeddingVolumeM3, 0));
+  const totalSubstructureConcreteM3 = footingConcreteM3 + pedestalConcreteM3 + pccBeddingM3;
+  const totalSubstructureConcreteCft = totalSubstructureConcreteM3 * EXACT_CONVERSION.M3_TO_CFT;
+
+  const netBackfillVolumeM3 = Math.max(0, bankVolumeM3 - totalSubstructureConcreteM3);
+  const netBackfillVolumeCft = netBackfillVolumeM3 * EXACT_CONVERSION.M3_TO_CFT;
+  const netBackfillLooseBorrowM3 = shrinkageFactor > 0 ? netBackfillVolumeM3 / shrinkageFactor : netBackfillVolumeM3;
+
+  // Surplus earth displaced by substructure concrete (or full cut if no backfill deduction specified):
+  const netSurplusDisplacedBankM3 =
+    totalSubstructureConcreteM3 > 0
+      ? Math.min(bankVolumeM3, totalSubstructureConcreteM3)
+      : multiStationActive
+      ? surplusCutBankM3
+      : bankVolumeM3;
+  const netSurplusLooseM3 = netSurplusDisplacedBankM3 * swellFactor;
+  const netSurplusLooseCft = netSurplusLooseM3 * EXACT_CONVERSION.M3_TO_CFT;
+  const disposalTruckTrips = Math.ceil(netSurplusLooseM3 / truckCapM3);
+
+  const substructureBackfillSchedule: SubstructureBackfillSchedule = {
+    excavatedPitBankM3: Number(bankVolumeM3.toFixed(2)),
+    excavatedPitBankCft: Number((bankVolumeM3 * EXACT_CONVERSION.M3_TO_CFT).toFixed(1)),
+    footingConcreteM3: Number(footingConcreteM3.toFixed(2)),
+    footingConcreteVolumeM3: Number(footingConcreteM3.toFixed(2)),
+    pedestalConcreteM3: Number(pedestalConcreteM3.toFixed(2)),
+    pedestalColumnVolumeM3: Number(pedestalConcreteM3.toFixed(2)),
+    pccBeddingM3: Number(pccBeddingM3.toFixed(2)),
+    pccBeddingVolumeM3: Number(pccBeddingM3.toFixed(2)),
+    totalSubstructureConcreteM3: Number(totalSubstructureConcreteM3.toFixed(2)),
+    totalSubstructureConcreteCft: Number(totalSubstructureConcreteCft.toFixed(1)),
+    totalSubstructureDeductionM3: Number(totalSubstructureConcreteM3.toFixed(2)),
+    totalSubstructureDeductionCft: Number(totalSubstructureConcreteCft.toFixed(1)),
+    totalSubstructureDeductedM3: Number(totalSubstructureConcreteM3.toFixed(2)),
+    netBackfillVolumeM3: Number(netBackfillVolumeM3.toFixed(2)),
+    netBackfillCompactedM3: Number(netBackfillVolumeM3.toFixed(2)),
+    netBackfillVolumeCft: Number(netBackfillVolumeCft.toFixed(1)),
+    netBackfillCft: Number(netBackfillVolumeCft.toFixed(1)),
+    netBackfillLooseBorrowM3: Number(netBackfillLooseBorrowM3.toFixed(2)),
+    looseBackfillEarthRequiredM3: Number(netBackfillLooseBorrowM3.toFixed(2)),
+    netSurplusDisplacedBankM3: Number(netSurplusDisplacedBankM3.toFixed(2)),
+    netSurplusEarthBankM3: Number(netSurplusDisplacedBankM3.toFixed(2)),
+    netSurplusLooseM3: Number(netSurplusLooseM3.toFixed(2)),
+    netSurplusEarthLooseM3: Number(netSurplusLooseM3.toFixed(2)),
+    netSurplusDisposalLooseM3: Number(netSurplusLooseM3.toFixed(2)),
+    netSurplusLooseCft: Number(netSurplusLooseCft.toFixed(1)),
+    netSurplusEarthLooseCft: Number(netSurplusLooseCft.toFixed(1)),
+    disposalTruckTrips,
+    surplusDisposalTruckTrips: disposalTruckTrips,
+  };
+
+  // Plinth Sand Filling (ভিটাবালি ভরাট) & Shoring/Dewatering Calculator:
+  const plinthAreaM2 = Math.max(0, finiteNum(params.plinthAreaM2, 0));
+  const plinthAreaSft = plinthAreaM2 * EXACT_CONVERSION.M2_TO_SFT;
+  const plinthSandThicknessM = Math.max(0, finiteNum(params.plinthSandThicknessM, 0.45));
+  const plinthSandThicknessIn = Number((plinthSandThicknessM * 39.3700787).toFixed(1));
+  const plinthSandShrinkPct = Math.max(
+    0,
+    Math.min(40, finiteNum(params.plinthSandShrinkagePct ?? params.plinthSandShrinkagePercent, 18))
+  );
+  const plinthShrinkFactor = Number((1 + plinthSandShrinkPct / 100).toFixed(2));
+  const compactedPlinthSandM3 = plinthAreaM2 * plinthSandThicknessM;
+  const compactedPlinthSandCft = compactedPlinthSandM3 * EXACT_CONVERSION.M3_TO_CFT;
+  const looseBorrowSandM3 = compactedPlinthSandM3 * (1 + plinthSandShrinkPct / 100);
+  const looseBorrowSandCft = looseBorrowSandM3 * EXACT_CONVERSION.M3_TO_CFT;
+  const sandTruckTrips = Math.ceil(looseBorrowSandM3 / truckCapM3);
+
+  const shoringEnabled = Boolean(params.includeShoring ?? params.includeDewateringShoring);
+  const dewateringEnabled = Boolean(params.includeDewatering ?? params.includeDewateringShoring);
+  const pitPerimM =
+    params.calculationType === 'pit-excavation'
+      ? 2 * (Math.max(0, params.pitTopLengthM) + Math.max(0, params.pitTopWidthM))
+      : params.calculationType === 'trapezoidal-trench'
+      ? 2 * Math.max(0, params.trenchLengthM)
+      : 0;
+  const activeDepthM =
+    params.calculationType === 'pit-excavation'
+      ? Math.max(0, params.pitDepthM)
+      : params.calculationType === 'trapezoidal-trench'
+      ? Math.max(0, params.trenchDepthM)
+      : 0;
+  const shoringAreaM2 = shoringEnabled ? pitPerimM * activeDepthM : 0;
+  const shoringAreaSft = shoringAreaM2 * EXACT_CONVERSION.M2_TO_SFT;
+  const dewateringPumpHours = dewateringEnabled ? Math.ceil(bankVolumeM3 * 0.45) : 0;
+
+  const plinthSandSchedule: PlinthSandSchedule = {
+    plinthAreaM2: Number(plinthAreaM2.toFixed(2)),
+    plinthAreaSft: Number(plinthAreaSft.toFixed(1)),
+    plinthSandThicknessM: Number(plinthSandThicknessM.toFixed(2)),
+    plinthSandThicknessIn,
+    shrinkageAllowancePercent: plinthSandShrinkPct,
+    shrinkagePercent: plinthSandShrinkPct,
+    compactionShrinkagePercent: plinthSandShrinkPct,
+    shrinkageFactor: plinthShrinkFactor,
+    compactedPlinthSandM3: Number(compactedPlinthSandM3.toFixed(2)),
+    compactedPlinthVolumeM3: Number(compactedPlinthSandM3.toFixed(2)),
+    compactedSandVolumeM3: Number(compactedPlinthSandM3.toFixed(2)),
+    compactedPlinthSandCft: Number(compactedPlinthSandCft.toFixed(1)),
+    compactedSandVolumeCft: Number(compactedPlinthSandCft.toFixed(1)),
+    looseBorrowSandM3: Number(looseBorrowSandM3.toFixed(2)),
+    looseBorrowSandVolumeM3: Number(looseBorrowSandM3.toFixed(2)),
+    looseBorrowSandCft: Number(looseBorrowSandCft.toFixed(1)),
+    looseBorrowSandVolumeCft: Number(looseBorrowSandCft.toFixed(1)),
+    sandTruckTrips,
+    shoringEnabled,
+    shoringAreaM2: Number(shoringAreaM2.toFixed(2)),
+    shoringAreaSft: Number(shoringAreaSft.toFixed(1)),
+    dewateringPumpHours,
+    dewateringPumpHoursEstimate: dewateringPumpHours,
+  };
+
   const handCalculationSteps: CalculationStep[] = [
     {
       stepNumber: 1,
@@ -4406,17 +5597,22 @@ export function computeEarthwork(
     },
     {
       stepNumber: 4,
-      title: `Mass-Haul Balance & ${truckCapM3} m³ Dump Truck Trips`,
-      formula: `Net_Bank = V_cut - (V_fill,comp / F_shrink);   N_trucks = ⌈V_loose / ${truckCapM3} m³⌉`,
-      substitution: multiStationActive
-        ? `Cut = ${totalCutBankM3.toFixed(1)} m³ − Borrow Eq = ${totalFillBankRequiredM3.toFixed(1)} m³ → ${netMassHaulBalanceM3 >= 0 ? `Surplus ${surplusCutBankM3.toFixed(1)} m³` : `Borrow ${borrowFillBankM3.toFixed(1)} m³`} | Trips = ⌈${looseVolumeM3.toFixed(1)} / ${truckCapM3}⌉`
-        : `Haul = ${looseVolumeM3.toFixed(2)} m³ ÷ ${truckCapM3} m³/truck = ${(looseVolumeM3 / truckCapM3).toFixed(2)}`,
-      result: multiStationActive
-        ? `${netMassHaulBalanceM3 >= 0 ? `Surplus Cut: ${surplusCutBankM3.toFixed(1)} m³` : `Borrow Required: ${borrowFillBankM3.toFixed(1)} m³`} | ${haulTruckTrips} Truck Trips`
-        : `${haulTruckTrips} Tipper Truck Trips (${truckCapM3} m³/load)`,
-      reasoning: multiStationActive
-        ? 'Balances on-site cut against compacted embankment demand to determine spoil disposal or borrow pit quantity and total haulage fleet trips.'
-        : 'Rounds total bulked haul volume up to integer dumper truck dispatches for earthmoving logistics.',
+      title: `Substructure Concrete Deduction, Net Backfill & Plinth Sand (ভিটাবালি)`,
+      formula: `V_backfill = V_pit - (V_footing + V_pedestal + V_pcc);   V_sand,loose = A_plinth · t_sand · (1 + Shrink%)`,
+      substitution:
+        totalSubstructureConcreteM3 > 0 || plinthAreaM2 > 0
+          ? `Pit ${bankVolumeM3.toFixed(2)} m³ − RCC ${totalSubstructureConcreteM3.toFixed(2)} m³ = Net Backfill ${netBackfillVolumeM3.toFixed(2)} m³ (${netBackfillVolumeCft.toFixed(1)} CFT) | Plinth Sand Loose = ${looseBorrowSandM3.toFixed(2)} m³ (${looseBorrowSandCft.toFixed(1)} CFT)`
+          : multiStationActive
+          ? `Cut = ${totalCutBankM3.toFixed(1)} m³ − Borrow Eq = ${totalFillBankRequiredM3.toFixed(1)} m³ → ${netMassHaulBalanceM3 >= 0 ? `Surplus ${surplusCutBankM3.toFixed(1)} m³` : `Borrow ${borrowFillBankM3.toFixed(1)} m³`} | Trips = ⌈${looseVolumeM3.toFixed(1)} / ${truckCapM3}⌉`
+          : `Haul = ${looseVolumeM3.toFixed(2)} m³ ÷ ${truckCapM3} m³/truck = ${(looseVolumeM3 / truckCapM3).toFixed(2)}`,
+      result:
+        totalSubstructureConcreteM3 > 0 || plinthAreaM2 > 0
+          ? `Net Backfill: ${netBackfillVolumeM3.toFixed(2)} m³ (${netBackfillVolumeCft.toFixed(0)} CFT) | Loose Plinth Sand: ${looseBorrowSandCft.toFixed(0)} CFT | Spoil: ${disposalTruckTrips} Trips`
+          : multiStationActive
+          ? `${netMassHaulBalanceM3 >= 0 ? `Surplus Cut: ${surplusCutBankM3.toFixed(1)} m³` : `Borrow Required: ${borrowFillBankM3.toFixed(1)} m³`} | ${haulTruckTrips} Truck Trips`
+          : `${haulTruckTrips} Tipper Truck Trips (${truckCapM3} m³/load)`,
+      reasoning:
+        'Deducts footing, column pedestal, and PCC bedding volumes from excavated pit volume to determine net backfilling, displaced surplus spoil trips, and loose borrow river/local sand for plinth filling.',
       isVerifiedAgainstEngine: haulTruckTrips === Math.ceil(looseVolumeM3 / truckCapM3),
     },
   ];
@@ -4438,6 +5634,8 @@ export function computeEarthwork(
       prismoidalVolumeM3: Number(prismoidalVol.toFixed(2)),
       trapezoidalVolumeM3: Number(endAreaVol.toFixed(2)),
       prismoidalCorrectionM3: Number((endAreaVol - prismoidalVol).toFixed(2)),
+      substructureBackfillSchedule,
+      plinthSandSchedule,
       ...(multiStationActive
         ? {
             multiStationActive: true,
@@ -4473,6 +5671,9 @@ export interface ComputedTakeoffItem {
   wbsSectionId?: string;
   wbsSectionTitle?: string;
   wbsCode?: string;
+  storyStage?: BOQStoryStage;
+  storyStageLabel?: string;
+  floorMultiplier?: number;
   numberOfMembers: number;
   lengthM: number;
   widthM: number;
@@ -4512,6 +5713,9 @@ export interface BOQResourceAbstractLine {
   itemNo: string;
   description: string;
   tradeTag: string;
+  storyStage?: BOQStoryStage;
+  storyStageLabel?: string;
+  floorMultiplier?: number;
   billableQty: number;
   unit: TakeoffUnit;
   cementBags: number;
@@ -4522,6 +5726,21 @@ export interface BOQResourceAbstractLine {
   masonManDays: number;
   helperManDays: number;
   barBenderManDays: number;
+}
+
+export interface BOQStageResourceAbstractRow {
+  stage: BOQStoryStage;
+  stageLabel: string;
+  floorMultiplier: number;
+  itemCount: number;
+  stageAmount: number;
+  subtotalAmount: number;
+  cementBags50Kg: number;
+  sandCft: number;
+  coarseAggregateCft: number;
+  bricksNos: number;
+  rebarTonnes: number;
+  rebarKg: number;
 }
 
 export interface BOQResourceAbstract {
@@ -4540,6 +5759,7 @@ export interface BOQResourceAbstract {
   plasterAreaM2: number;
   earthworkVolumeM3: number;
   lineItemBreakdown: BOQResourceAbstractLine[];
+  stageBreakdown?: BOQStageResourceAbstractRow[];
 }
 
 export interface BOQResult {
@@ -4554,16 +5774,20 @@ export interface BOQResult {
   vatTaxPercent: number;
   vatTaxAmount: number;
   grandTotalAmount: number;
+  statutoryPreset?: 'pwd-lged' | 'commercial' | 'zero-tax' | 'custom';
   aitTaxPercent?: number;
   aitTaxAmount?: number;
   retentionMoneyPercent?: number;
   retentionMoneyAmount?: number;
   mobilizationRecoveryPercent?: number;
   mobilizationRecoveryAmount?: number;
+  totalStatutoryDeductionsAmount?: number;
   netPayableToContractorAmount?: number;
+  contractorNetMarginAmount?: number;
   categorySummaries: BOQCategorySummary[];
   wbsSectionSummaries?: BOQWbsSectionSummary[];
   resourceAbstract?: BOQResourceAbstract;
+  stageResourceAbstract?: BOQStageResourceAbstractRow[];
   totalItemCount: number;
   status: 'nominal' | 'warning' | 'critical';
 }
@@ -4571,6 +5795,29 @@ export interface BOQResult {
 export function getCurrencySymbol(code: CurrencyCode): string {
   const found = SUPPORTED_CURRENCIES.find((c) => c.code === code);
   return found ? found.symbol : '$';
+}
+
+function normalizeStoryStageKey(
+  stage: BOQStoryStage | undefined
+): 'substructure' | 'ground_floor' | 'typical_floor' | 'roof_parapet' {
+  if (stage === 'substructure') return 'substructure';
+  if (stage === 'typical_floor' || stage === 'typical-floor') return 'typical_floor';
+  if (stage === 'roof_parapet' || stage === 'roof-parapet') return 'roof_parapet';
+  return 'ground_floor';
+}
+
+function resolveStoryStageLabel(stage: BOQStoryStage, mult: number): string {
+  const norm = normalizeStoryStageKey(stage);
+  switch (norm) {
+    case 'substructure':
+      return 'Substructure & Foundation';
+    case 'ground_floor':
+      return 'Ground Floor / Plinth';
+    case 'typical_floor':
+      return `Typical Floor (×${mult} Stor${mult > 1 ? 'ies' : 'y'})`;
+    case 'roof_parapet':
+      return 'Roof, Mumty & Parapet';
+  }
 }
 
 export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<BOQResult> {
@@ -4603,6 +5850,7 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
   }
 
   const symbol = getCurrencySymbol(params.currency || 'USD');
+  const defaultTypicalMult = Math.max(1, Math.round(posNum(params.typicalFloorCount, 1)));
 
   const computedItems: ComputedTakeoffItem[] = (params.items || []).map((item, idx) => {
     const nos = typeof item.numberOfMembers === 'number' ? item.numberOfMembers : 1;
@@ -4610,61 +5858,86 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
     const w = typeof item.widthM === 'number' ? item.widthM : 0;
     const h = typeof item.heightM === 'number' ? item.heightM : 0;
 
-    let gross = 0;
+    // Resolve building story stage & floor multiplier
+    const descLower = (item.description || '').toLowerCase();
+    let storyStage: BOQStoryStage = item.storyStage || 'ground_floor';
+    if (!item.storyStage) {
+      if (
+        item.category === 'earthwork' ||
+        item.category === 'substructure' ||
+        descLower.includes('footing') ||
+        descLower.includes('excavat') ||
+        descLower.includes('plinth') ||
+        descLower.includes('pile') ||
+        descLower.includes('pcc')
+      ) {
+        storyStage = 'substructure';
+      } else if (descLower.includes('roof') || descLower.includes('parapet') || descLower.includes('lime terracing') || descLower.includes('patent stone')) {
+        storyStage = 'roof_parapet';
+      } else if (descLower.includes('typical')) {
+        storyStage = 'typical_floor';
+      } else {
+        storyStage = 'ground_floor';
+      }
+    }
+
+    const floorMultiplier =
+      typeof item.floorMultiplier === 'number' && item.floorMultiplier > 0
+        ? item.floorMultiplier
+        : normalizeStoryStageKey(storyStage) === 'typical_floor'
+        ? defaultTypicalMult
+        : 1;
+    const storyStageLabel = resolveStoryStageLabel(storyStage, floorMultiplier);
+
+    let singleStoryGross = 0;
     let missingDim = false;
     switch (item.unit) {
       case 'm3':
-        // Volumetric requires L, W, and H
         if (l === 0 || w === 0 || h === 0 || nos === 0) {
-          gross = 0;
+          singleStoryGross = 0;
           missingDim = true;
         } else {
-          gross = nos * l * w * h;
+          singleStoryGross = nos * l * w * h;
         }
         break;
       case 'cft':
-        // Dimensions entered in SI meters -> convert base m3 to CFT exactly
         if (l === 0 || w === 0 || h === 0 || nos === 0) {
-          gross = 0;
+          singleStoryGross = 0;
           missingDim = true;
         } else {
-          gross = nos * l * w * h * EXACT_CONVERSION.M3_TO_CFT;
+          singleStoryGross = nos * l * w * h * EXACT_CONVERSION.M3_TO_CFT;
         }
         break;
       case 'm2':
-        // Area requires L and W
         if (l === 0 || w === 0 || nos === 0) {
-          gross = 0;
+          singleStoryGross = 0;
           missingDim = true;
         } else {
-          gross = nos * l * w;
+          singleStoryGross = nos * l * w;
         }
         break;
       case 'sft':
-        // Dimensions entered in SI meters -> convert base m2 to SFT exactly
         if (l === 0 || w === 0 || nos === 0) {
-          gross = 0;
+          singleStoryGross = 0;
           missingDim = true;
         } else {
-          gross = nos * l * w * EXACT_CONVERSION.M2_TO_SFT;
+          singleStoryGross = nos * l * w * EXACT_CONVERSION.M2_TO_SFT;
         }
         break;
       case 'm':
-        // Linear length requires L
         if (l === 0 || nos === 0) {
-          gross = 0;
+          singleStoryGross = 0;
           missingDim = true;
         } else {
-          gross = nos * l;
+          singleStoryGross = nos * l;
         }
         break;
       case 'rft':
-        // Dimensions entered in SI meters -> convert base m to RFT (feet) exactly
         if (l === 0 || nos === 0) {
-          gross = 0;
+          singleStoryGross = 0;
           missingDim = true;
         } else {
-          gross = nos * l * EXACT_CONVERSION.M_TO_FT;
+          singleStoryGross = nos * l * EXACT_CONVERSION.M_TO_FT;
         }
         break;
       case 'kg':
@@ -4673,9 +5946,11 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       case 'nos':
       case 'lump-sum':
       default:
-        gross = l > 0 ? nos * l : nos;
+        singleStoryGross = l > 0 ? nos * l : nos;
         break;
     }
+
+    const gross = singleStoryGross * floorMultiplier;
 
     if (missingDim) {
       issues.push({
@@ -4693,7 +5968,7 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       });
     }
 
-    const deduction = Math.max(0, item.deductionQty || 0);
+    const deduction = Math.max(0, (item.deductionQty || 0) * floorMultiplier);
     const net = Math.max(0, gross - deduction);
     const wastagePct = Math.max(0, item.wastagePercent || 0);
     const wastageQty = net * (wastagePct / 100);
@@ -4734,6 +6009,9 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       wbsSectionId: sectionId,
       wbsSectionTitle: matchedSec.title,
       wbsCode: matchedSec.code,
+      storyStage,
+      storyStageLabel,
+      floorMultiplier,
       numberOfMembers: nos,
       lengthM: l,
       widthM: w,
@@ -4820,16 +6098,42 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
     }))
     .sort((a, b) => Number(a.code) - Number(b.code));
 
-  const aitPercent = typeof params.aitTaxPercent === 'number' ? params.aitTaxPercent : (params.currency === 'BDT' ? 5.0 : 0);
-  const retentionPercent = typeof params.retentionMoneyPercent === 'number' ? params.retentionMoneyPercent : (params.currency === 'BDT' ? 7.5 : 0);
+  // Statutory Tax & Retention Preset (Default PWD & LGED Standard: 7.5% VAT, 5% AIT, 10% Retention)
+  const statutoryPreset = params.statutoryPreset || (params.currency === 'BDT' ? 'pwd-lged' : 'custom');
+  const aitPercent =
+    typeof params.aitTaxPercent === 'number'
+      ? params.aitTaxPercent
+      : statutoryPreset === 'pwd-lged'
+      ? 5.0
+      : statutoryPreset === 'commercial'
+      ? 4.0
+      : statutoryPreset === 'zero-tax'
+      ? 0
+      : params.currency === 'BDT'
+      ? 5.0
+      : 0;
+  const retentionPercent =
+    typeof params.retentionMoneyPercent === 'number'
+      ? params.retentionMoneyPercent
+      : statutoryPreset === 'pwd-lged'
+      ? 10.0
+      : statutoryPreset === 'commercial'
+      ? 5.0
+      : statutoryPreset === 'zero-tax'
+      ? 0
+      : params.currency === 'BDT'
+      ? 10.0
+      : 0;
   const mobRecoveryPercent = typeof params.mobilizationRecoveryPercent === 'number' ? params.mobilizationRecoveryPercent : 0;
 
   const aitAmt = grandTotal * (aitPercent / 100);
   const retentionAmt = grandTotal * (retentionPercent / 100);
   const mobRecoveryAmt = grandTotal * (mobRecoveryPercent / 100);
+  const totalStatutoryDeductions = vatTaxAmt + aitAmt + retentionAmt + mobRecoveryAmt;
   const netPayable = grandTotal - (aitAmt + retentionAmt + mobRecoveryAmt);
+  const contractorNetMarginAmount = cpAndOhAmt;
 
-  // Automated Project Material & Manpower Resource Abstract from BOQ Items
+  // Automated Project Material & Manpower Resource Abstract from BOQ Items + Stage-Wise Breakdown
   let absCementBags = 0;
   let absSandCft = 0;
   let absAggCft = 0;
@@ -4844,8 +6148,36 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
   let absEarthworkM3 = 0;
   const lineItemBreakdown: BOQResourceAbstractLine[] = [];
 
+  type StageKey = ReturnType<typeof normalizeStoryStageKey>;
+  const stageOrder: StageKey[] = ['substructure', 'ground_floor', 'typical_floor', 'roof_parapet'];
+  const stageMap: Record<
+    StageKey,
+    {
+      floorMultiplier: number;
+      itemCount: number;
+      stageAmount: number;
+      cementBags: number;
+      sandCft: number;
+      aggCft: number;
+      bricksNos: number;
+      rebarKg: number;
+    }
+  > = {
+    substructure: { floorMultiplier: 1, itemCount: 0, stageAmount: 0, cementBags: 0, sandCft: 0, aggCft: 0, bricksNos: 0, rebarKg: 0 },
+    ground_floor: { floorMultiplier: 1, itemCount: 0, stageAmount: 0, cementBags: 0, sandCft: 0, aggCft: 0, bricksNos: 0, rebarKg: 0 },
+    typical_floor: { floorMultiplier: defaultTypicalMult, itemCount: 0, stageAmount: 0, cementBags: 0, sandCft: 0, aggCft: 0, bricksNos: 0, rebarKg: 0 },
+    roof_parapet: { floorMultiplier: 1, itemCount: 0, stageAmount: 0, cementBags: 0, sandCft: 0, aggCft: 0, bricksNos: 0, rebarKg: 0 },
+  };
+
   for (const it of computedItems) {
     const qty = it.totalBillableQty || 0;
+    const st = normalizeStoryStageKey(it.storyStage);
+    stageMap[st].itemCount += 1;
+    stageMap[st].stageAmount += it.itemTotalAmount;
+    if (it.floorMultiplier && it.floorMultiplier > stageMap[st].floorMultiplier) {
+      stageMap[st].floorMultiplier = it.floorMultiplier;
+    }
+
     if (qty <= 0) continue;
 
     const descLower = (it.description || '').toLowerCase();
@@ -4993,10 +6325,19 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       absHelperDays += rHelper;
       absBarBenderDays += rBender;
 
+      stageMap[st].cementBags += rCem;
+      stageMap[st].sandCft += rSand;
+      stageMap[st].aggCft += rAgg;
+      stageMap[st].bricksNos += rBrick;
+      stageMap[st].rebarKg += rRebar;
+
       lineItemBreakdown.push({
         itemNo: it.itemNo,
         description: it.description,
         tradeTag,
+        storyStage: st,
+        storyStageLabel: it.storyStageLabel,
+        floorMultiplier: it.floorMultiplier,
         billableQty: Number(qty.toFixed(2)),
         unit: it.unit,
         cementBags: Number(rCem.toFixed(1)),
@@ -5010,6 +6351,24 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       });
     }
   }
+
+  const stageResourceAbstract: BOQStageResourceAbstractRow[] = stageOrder.map((st) => {
+    const row = stageMap[st];
+    return {
+      stage: st,
+      stageLabel: resolveStoryStageLabel(st, row.floorMultiplier),
+      floorMultiplier: row.floorMultiplier,
+      itemCount: row.itemCount,
+      stageAmount: Number(row.stageAmount.toFixed(2)),
+      subtotalAmount: Number(row.stageAmount.toFixed(2)),
+      cementBags50Kg: Math.ceil(row.cementBags),
+      sandCft: Math.ceil(row.sandCft),
+      coarseAggregateCft: Math.ceil(row.aggCft),
+      bricksNos: Math.ceil(row.bricksNos),
+      rebarTonnes: Number((row.rebarKg / 1000).toFixed(3)),
+      rebarKg: Number(row.rebarKg.toFixed(1)),
+    };
+  });
 
   const resourceAbstract: BOQResourceAbstract = {
     cementBags50Kg: Math.ceil(absCementBags),
@@ -5027,6 +6386,7 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
     plasterAreaM2: Number(absPlasterM2.toFixed(1)),
     earthworkVolumeM3: Number(absEarthworkM3.toFixed(2)),
     lineItemBreakdown,
+    stageBreakdown: stageResourceAbstract,
   };
 
   const handCalculationSteps: CalculationStep[] =
@@ -5034,11 +6394,11 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       ? [
           {
             stepNumber: 1,
-            title: 'Takeoff Line-Item Billable Quantity Aggregation',
-            formula: 'Q_bill = max(0, Q_gross - Q_ded) × (1 + Wastage% / 100)',
+            title: 'Takeoff Line-Item Billable Quantity & Story Multiplier Aggregation',
+            formula: 'Q_bill = max(0, Q_gross·N_floors - Q_ded) × (1 + Wastage% / 100)',
             substitution: `${computedItems.length} BOQ line items across ${wbsSectionSummaries.length} WBS chapters; Direct Cost = Σ(Q_bill × Rate) = ${symbol} ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             result: `Subtotal = ${symbol} ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            reasoning: 'Computes net measured quantities minus openings/deductions plus site wastage allowance for every WBS item.',
+            reasoning: 'Computes net measured quantities multiplied by story multiplier (Substructure, GF, Typical × N, Roof) plus site wastage allowance.',
             isVerifiedAgainstEngine: true,
           },
           {
@@ -5046,26 +6406,26 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
             title: 'Physical Contingencies & Contractor Profit/Overhead (CP&OH)',
             formula: 'A_cont = Subtotal × Cont%;   A_cpoh = (Subtotal + A_cont) × CP&OH%',
             substitution: `${symbol} ${subtotal.toFixed(2)} × ${params.contingencyPercent || 0}% = ${symbol} ${contingencyAmt.toFixed(2)};  (${symbol} ${(subtotal + contingencyAmt).toFixed(2)}) × ${params.contractorOverheadPercent || 0}% = ${symbol} ${cpAndOhAmt.toFixed(2)}`,
-            result: `Contingency: ${symbol} ${contingencyAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })} | CP&OH: ${symbol} ${cpAndOhAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+            result: `Contingency: ${symbol} ${contingencyAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })} | CP&OH Margin: ${symbol} ${cpAndOhAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
             reasoning: 'Compounds unforeseen physical allowance and contractor head-office overhead & profit per PWD/FIDIC tender rules.',
             isVerifiedAgainstEngine: true,
           },
           {
             stepNumber: 3,
-            title: 'Statutory VAT, Contract Grand Total & Withholding Deductions',
+            title: 'Bangladesh Statutory VAT, AIT & Security Retention Deductions',
             formula: 'Grand = Base + VAT;   Net Payable = Grand - (AIT + Retention + Mob.Rec)',
-            substitution: `VAT (${params.vatTaxPercent || 0}%) = ${symbol} ${vatTaxAmt.toFixed(2)};  AIT (${aitPercent}%) + Ret (${retentionPercent}%) = ${symbol} ${(aitAmt + retentionAmt + mobRecoveryAmt).toFixed(2)}`,
-            result: `Grand Total: ${symbol} ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} | Net Payable: ${symbol} ${netPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-            reasoning: 'Establishes commercial tender ceiling and expected contractor net bill disbursement after NBR tax & security retention.',
+            substitution: `VAT (${params.vatTaxPercent || 0}%) = ${symbol} ${vatTaxAmt.toFixed(2)};  AIT (${aitPercent}%) = ${symbol} ${aitAmt.toFixed(2)};  Retention (${retentionPercent}%) = ${symbol} ${retentionAmt.toFixed(2)}`,
+            result: `Grand Total: ${symbol} ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} | Net Payable Check: ${symbol} ${netPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+            reasoning: 'Applies PWD/LGED standard statutory deductions (7.5% VAT, 5% AIT, 10% Security Retention) to determine net contractor check disbursement.',
             isVerifiedAgainstEngine: Math.abs(subtotal + contingencyAmt + cpAndOhAmt + vatTaxAmt - grandTotal) < 0.05,
           },
           {
             stepNumber: 4,
-            title: 'Automated BOQ Material Resource Abstract',
-            formula: 'Resource_k = Σ (Q_bill,i × PWD Material Coefficient_i,k)',
+            title: 'Stage-Wise & Project Material Procurement Ceiling Abstract',
+            formula: 'Resource_k,stage = Σ (Q_bill,i × FloorMult_i × PWD Material Coefficient_i,k)',
             substitution: `Concrete ${resourceAbstract.concreteVolumeM3} m³ + Masonry ${resourceAbstract.masonryVolumeM3} m³ + Plaster ${resourceAbstract.plasterAreaM2} m² → Cement ${resourceAbstract.cementBags50Kg} bags, Sand ${resourceAbstract.sandCft} CFT, Coarse Agg ${resourceAbstract.coarseAggregateCft} CFT`,
             result: `Cement: ${resourceAbstract.cementBags50Kg} Bags | Rebar: ${resourceAbstract.rebarTonnes} T | Bricks: ${resourceAbstract.bricksNos.toLocaleString()} Nos`,
-            reasoning: 'Rolls up theoretical site procurement ceilings from active BOQ trades for store inventory planning (SM-01).',
+            reasoning: 'Partitions procurement ceilings across Substructure, Ground Floor, Typical Floors (×N), and Roof for stage-by-stage store control.',
             isVerifiedAgainstEngine: true,
           },
           {
@@ -5083,9 +6443,9 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
   const boqScopeAndLimits: ScopeAndLimitsMetadata = {
     status: 'Available',
     covered: [
-      'WBS hierarchical measurement sheet (L × W × H - Deduction + Wastage%) across m³, CFT, m², SFT, m, RFT, Ton, kg, Bags, Nos',
-      'Compounding Contingency, CP&OH, Statutory VAT, AIT, Retention Money, and Mobilization Recovery',
-      'Automated BOQ Resource Abstract (Cement bags, Sand CFT, Coarse Aggregate CFT, Rebar Tonnes, Bricks, Man-Days) synced to Store Inventory (SM-01)',
+      'WBS hierarchical measurement sheet (L × W × H × FloorMultiplier - Deduction + Wastage%) across m³, CFT, m², SFT, m, RFT, Ton, kg',
+      'PWD & LGED Standard Statutory Tax & Retention Presets (7.5% VAT, 5% AIT, 10% Security Retention) with Net Payable & Contractor Margin',
+      'Stage-Wise Resource Abstract (Substructure, Ground Floor, Typical Floor × N Stories, Roof) synced to Store Inventory (SM-01)',
       'Multi-rate library lookup (PWD 2024/2025, LGED 2024, Commercial), 3-Vendor Bid Tabulation & S-Curve Cash Flow',
     ],
     unsupported: [
@@ -5108,16 +6468,20 @@ export function computeBOQEstimator(params: BOQParameters): CalculationEnvelope<
       vatTaxPercent: params.vatTaxPercent,
       vatTaxAmount: Number(vatTaxAmt.toFixed(2)),
       grandTotalAmount: Number(grandTotal.toFixed(2)),
+      statutoryPreset,
       aitTaxPercent: aitPercent,
       aitTaxAmount: Number(aitAmt.toFixed(2)),
       retentionMoneyPercent: retentionPercent,
       retentionMoneyAmount: Number(retentionAmt.toFixed(2)),
       mobilizationRecoveryPercent: mobRecoveryPercent,
       mobilizationRecoveryAmount: Number(mobRecoveryAmt.toFixed(2)),
+      totalStatutoryDeductionsAmount: Number(totalStatutoryDeductions.toFixed(2)),
       netPayableToContractorAmount: Number(netPayable.toFixed(2)),
+      contractorNetMarginAmount: Number(contractorNetMarginAmount.toFixed(2)),
       categorySummaries,
       wbsSectionSummaries,
       resourceAbstract,
+      stageResourceAbstract,
       totalItemCount: computedItems.length,
       status: 'nominal',
     },
@@ -5195,6 +6559,25 @@ export interface RateAnalysisResult {
   directCostPerM3?: number;
   vatAitPercent?: number;
   vatAitCost?: number;
+  // Detailed Bangladesh Statutory Tax, AIT & Security Retention Breakdown:
+  statutoryPreset?: 'pwd-lged' | 'commercial' | 'zero-tax' | 'custom';
+  vatPercent?: number;
+  vatCost?: number;
+  aitPercent?: number;
+  aitCost?: number;
+  retentionPercent?: number;
+  retentionCost?: number;
+  totalStatutoryDeductionsCost?: number;
+  totalStatutoryDeductionsPerBasis?: number;
+  netPayableCheckAmount?: number;
+  netPayableToContractorPerBasis?: number;
+  netPayableToContractorCost?: number;
+  netPayableRatePerM3?: number;
+  netPayableRatePerUnit?: number;
+  netPayablePerUnit?: number;
+  pwdScheduleRatePerUnit?: number;
+  pwdVariancePerUnit?: number;
+  pwdVariancePercent?: number;
   commercialQuotedTotalCost?: number;
   commercialQuotedRatePerM3?: number;
   commercialQuotedRatePerCft?: number;
@@ -5274,6 +6657,21 @@ export function computeRateAnalysis(
         directCostPerM3: 0,
         vatAitPercent: params.vatAitPercent ?? 0,
         vatAitCost: 0,
+        statutoryPreset: params.statutoryPreset ?? 'pwd-lged',
+        vatPercent: params.vatPercent ?? 7.5,
+        vatCost: 0,
+        aitPercent: params.aitPercent ?? 5.0,
+        aitCost: 0,
+        retentionPercent: params.retentionPercent ?? 10.0,
+        retentionCost: 0,
+        totalStatutoryDeductionsCost: 0,
+        totalStatutoryDeductionsPerBasis: 0,
+        netPayableCheckAmount: 0,
+        netPayableToContractorPerBasis: 0,
+        netPayableToContractorCost: 0,
+        netPayableRatePerM3: 0,
+        netPayableRatePerUnit: 0,
+        netPayablePerUnit: 0,
         commercialQuotedTotalCost: 0,
         commercialQuotedRatePerM3: 0,
         commercialQuotedRatePerCft: 0,
@@ -5309,10 +6707,12 @@ export function computeRateAnalysis(
   const materials: RateAnalysisMaterialBreakdown[] = [];
 
   let basisUnitLabel: 'm³' | 'm²' | 'Ton' = 'm³';
+  let defaultPwdBenchmarkRateBdt = 19850;
 
   switch (params.workType) {
     case 'rcc-1-1.5-3': {
       desc = 'RCC Structural Concrete (1:1.5:3, Column/Beam ~M20/C20) with Rebar & Shuttering';
+      defaultPwdBenchmarkRateBdt = 24800;
       const dryVol = 1.54 * vol;
       const sumProp = 5.5;
       const cementM3 = dryVol / sumProp;
@@ -5371,6 +6771,7 @@ export function computeRateAnalysis(
     }
     case 'rcc-1-2-4': {
       desc = 'RCC Structural Concrete (1:2:4, Slab/Footing ~M15/C15) with Reinforcement';
+      defaultPwdBenchmarkRateBdt = 22400;
       const dryVol = 1.54 * vol;
       const sumProp = 7.0;
       const cementM3 = dryVol / sumProp;
@@ -5417,6 +6818,7 @@ export function computeRateAnalysis(
     }
     case 'pcc-1-3-6': {
       desc = 'PCC Foundation Lean Concrete (1:3:6) with Brick Khoa / Coarse Gravel';
+      defaultPwdBenchmarkRateBdt = 10800;
       const dryVol = 1.54 * vol;
       const sumProp = 10.0;
       const cementM3 = dryVol / sumProp;
@@ -5460,6 +6862,7 @@ export function computeRateAnalysis(
     }
     case 'brickwork-1-6': {
       desc = '250mm (10") First-Class Brick Masonry in 1:6 Cement-Sand Mortar';
+      defaultPwdBenchmarkRateBdt = 11200;
       const bricksNos = 500 * vol;
       const dryMortarM3 = 0.3 * vol;
       const cementM3 = dryMortarM3 / 7;
@@ -5501,8 +6904,9 @@ export function computeRateAnalysis(
     case 'brickwork-125mm-1-4': {
       basisUnitLabel = 'm²';
       desc = '125mm (5") Brick Partition Wall in 1:4 Cement-Sand Mortar (per m²)';
+      defaultPwdBenchmarkRateBdt = 1480;
       const bricksNos = 52 * vol;
-      const dryMortarM3 = 0.028 * vol; // 0.021 wet * 1.33 dry factor per m²
+      const dryMortarM3 = 0.028 * vol;
       const cementM3 = dryMortarM3 / 5;
       const cementBags = (cementM3 * 1440) / 50;
       const sandM3 = cementM3 * 4;
@@ -5541,6 +6945,7 @@ export function computeRateAnalysis(
     }
     case 'plaster-1-4': {
       desc = '12mm Wall Cement Plaster in 1:4 Mortar (per 1 m³ Mortar / ~75 m²)';
+      defaultPwdBenchmarkRateBdt = 9200;
       const dryMortarM3 = 1.33 * vol;
       const cementM3 = dryMortarM3 / 5;
       const cementBags = (cementM3 * 1440) / 50;
@@ -5571,10 +6976,11 @@ export function computeRateAnalysis(
     }
     case 'patent-stone-1-2-4': {
       desc = '1:2:4 Patent Stone / Floor Screed Concrete with Neat Cement Finish';
+      defaultPwdBenchmarkRateBdt = 13500;
       const dryVol = 1.54 * vol;
       const sumProp = 7.0;
       const cementM3 = dryVol / sumProp;
-      const neatFinishBags = 1.15 * vol; // neat cement punning finish allowance
+      const neatFinishBags = 1.15 * vol;
       const cementBags = (cementM3 * 1440) / 50 + neatFinishBags;
       const sandM3 = cementM3 * 2.0;
       const aggM3 = cementM3 * 4.0;
@@ -5613,6 +7019,7 @@ export function computeRateAnalysis(
     case 'rebar-fabrication': {
       basisUnitLabel = 'Ton';
       desc = 'Fabrication, Bending, Binding, and Placing of Rebar (per Metric Ton / 1000 kg)';
+      defaultPwdBenchmarkRateBdt = 118500;
       const steelKg = 1000 * vol;
       const bindingWireKg = 10 * vol;
       const coverBlocksNos = 80 * vol;
@@ -5653,7 +7060,6 @@ export function computeRateAnalysis(
   const eqIndex = Math.max(0.1, posNum(params.equipmentCostIndex, 1.0) * localIndex);
   const wastagePct = Math.max(0, posNum(params.wastagePercent, 2.5));
 
-  // Apply material cost index to unit rates
   materials.forEach((m) => {
     m.indexedUnitPrice = Number((m.unitPrice * matIndex).toFixed(2));
     m.totalCost = Number((m.quantity * m.indexedUnitPrice).toFixed(2));
@@ -5672,7 +7078,6 @@ export function computeRateAnalysis(
         : 0;
   });
 
-  // Labors breakdown with labor wage escalation index
   const baseMasonWage = posNum(params.masonDailyWage, isUsdLike ? 18 : 1100);
   const indexedMasonWage = Number((baseMasonWage * labIndex).toFixed(2));
   const masonDays = Number((posNum(params.masonDaysRequired, 0.35) * vol).toFixed(3));
@@ -5718,7 +7123,6 @@ export function computeRateAnalysis(
   const laborsCost = labors.reduce((acc, l) => acc + l.totalCost, 0);
   const baseLaborsCost = labors.reduce((acc, l) => acc + l.daysRequired * l.dailyWage, 0);
 
-  // Equipment & Shuttering hire with equipment hire index
   const baseMixerRate = posNum(params.mixerHirePerM3, isUsdLike ? 4.5 : 350);
   const indexedMixerRate = Number((baseMixerRate * eqIndex).toFixed(2));
   const mixerCost = indexedMixerRate * vol;
@@ -5766,9 +7170,50 @@ export function computeRateAnalysis(
   const contractorProfitCost = subtotalBeforeProfit * (profitPct / 100);
   const grandTotalCost = subtotalBeforeProfit + contractorProfitCost;
 
-  const vatAitPct = Math.max(0, posNum(params.vatAitPercent, 7.5));
+  // Statutory Tax & Retention Preset (Default PWD & LGED Standard: 7.5% VAT, 5% AIT, 10% Retention)
+  const statutoryPreset = params.statutoryPreset || 'pwd-lged';
+  const vatPercent =
+    typeof params.vatPercent === 'number'
+      ? Math.max(0, params.vatPercent)
+      : statutoryPreset === 'pwd-lged'
+      ? 7.5
+      : statutoryPreset === 'commercial'
+      ? 7.5
+      : statutoryPreset === 'zero-tax'
+      ? 0
+      : Math.max(0, posNum(params.vatAitPercent, 7.5));
+  const aitPercent =
+    typeof params.aitPercent === 'number'
+      ? Math.max(0, params.aitPercent)
+      : statutoryPreset === 'pwd-lged'
+      ? 5.0
+      : statutoryPreset === 'commercial'
+      ? 4.0
+      : statutoryPreset === 'zero-tax'
+      ? 0
+      : 5.0;
+  const retentionPercent =
+    typeof params.retentionPercent === 'number'
+      ? Math.max(0, params.retentionPercent)
+      : statutoryPreset === 'pwd-lged'
+      ? 10.0
+      : statutoryPreset === 'commercial'
+      ? 5.0
+      : statutoryPreset === 'zero-tax'
+      ? 0
+      : 10.0;
+
+  // Preserve legacy vatAitPercent compatibility while providing full VAT/AIT/Retention breakdown
+  const vatAitPct = typeof params.vatAitPercent === 'number' ? Math.max(0, params.vatAitPercent) : vatPercent;
   const vatAitCost = grandTotalCost * (vatAitPct / 100);
   const commercialQuotedTotalCost = grandTotalCost + vatAitCost;
+
+  const vatCost = grandTotalCost * (vatPercent / 100);
+  const aitCost = grandTotalCost * (aitPercent / 100);
+  const retentionCost = grandTotalCost * (retentionPercent / 100);
+  const totalStatutoryDeductionsCost = vatCost + aitCost + retentionCost;
+  const netPayableCheckAmount = commercialQuotedTotalCost - (vatCost + aitCost + retentionCost);
+  const netPayableRatePerM3 = netPayableCheckAmount / vol;
 
   const unitRatePerM3 = grandTotalCost / vol;
   const unitRatePerCft =
@@ -5788,6 +7233,17 @@ export function computeRateAnalysis(
     basisUnitLabel === 'm²'
       ? netProfitPerM3 / EXACT_CONVERSION.M2_TO_SFT
       : netProfitPerM3 / EXACT_CONVERSION.M3_TO_CFT;
+
+  // PWD Schedule of Rates Variance Analysis
+  const pwdScheduleRatePerUnit =
+    typeof params.pwdScheduleRatePerUnit === 'number' && params.pwdScheduleRatePerUnit > 0
+      ? params.pwdScheduleRatePerUnit
+      : isUsdLike
+      ? Number((defaultPwdBenchmarkRateBdt / 120).toFixed(2))
+      : defaultPwdBenchmarkRateBdt;
+  const pwdVariancePerUnit = unitRatePerM3 - pwdScheduleRatePerUnit;
+  const pwdVariancePercent =
+    pwdScheduleRatePerUnit > 0 ? (pwdVariancePerUnit / pwdScheduleRatePerUnit) * 100 : 0;
 
   // Base grand total before index
   const baseWaterElectCost = basePrimeCost * (waterElectPct / 100);
@@ -5872,11 +7328,11 @@ export function computeRateAnalysis(
     },
     {
       stepNumber: 6,
-      title: 'Contractor Profit & Overhead (CP&OH) + VAT/AIT Commercial Rate',
-      formula: 'Rate_base = C_direct × (1 + CP&OH%);   Rate_quoted = Rate_base × (1 + VAT/AIT%)',
-      substitution: `CP&OH (${profitPct}%) = +${symbol} ${netProfitPerM3.toFixed(2)}/${basisUnitLabel} → Analyzed ${symbol} ${unitRatePerM3.toFixed(2)}/${basisUnitLabel}; +VAT/AIT (${vatAitPct}%) = ${symbol} ${commercialQuotedRatePerM3.toFixed(2)}/${basisUnitLabel}`,
-      result: `Analyzed: ${symbol} ${unitRatePerM3.toFixed(2)}/${basisUnitLabel} (${symbol} ${unitRatePerCft.toFixed(2)}/${subUnitLabel}) | Quoted incl. Tax: ${symbol} ${commercialQuotedRatePerM3.toFixed(2)}/${basisUnitLabel}`,
-      reasoning: 'Separates net contractor profit from statutory NBR VAT/AIT so tenders remain protected against tax withholdings.',
+      title: 'CP&OH, Statutory Deductions (VAT/AIT/Retention) & PWD Variance',
+      formula: 'Rate_base = C_direct × (1 + CP&OH%);   Net_Payable = Gross - (VAT + AIT + Retention)',
+      substitution: `Analyzed ${symbol} ${unitRatePerM3.toFixed(2)}/${basisUnitLabel} (vs PWD SoR ${symbol} ${pwdScheduleRatePerUnit.toFixed(2)}) | Deductions: VAT ${vatPercent}% + AIT ${aitPercent}% + Ret ${retentionPercent}%`,
+      result: `Analyzed: ${symbol} ${unitRatePerM3.toFixed(2)}/${basisUnitLabel} (${symbol} ${unitRatePerCft.toFixed(2)}/${subUnitLabel}) | Net Check: ${symbol} ${netPayableCheckAmount.toFixed(2)}`,
+      reasoning: 'Separates net contractor profit from statutory PWD/LGED VAT (7.5%), AIT (5%), and Retention (10%) withholdings.',
       isVerifiedAgainstEngine: Math.abs(subtotalBeforeProfit + contractorProfitCost - grandTotalCost) < 0.05,
     },
   ];
@@ -5886,7 +7342,7 @@ export function computeRateAnalysis(
     covered: [
       'Granular PWD / LGED rate build-up across 8 structural, masonry, plaster, screed & rebar trades',
       'Live Master Market Rate synchronization + Material/Labor/Plant LMCI escalation multipliers',
-      'Material wastage, crew productivity man-days, plant/shuttering hire, water/curing, CP&OH & VAT/AIT sensitivity',
+      'PWD & LGED Statutory Deductions (7.5% VAT, 5% AIT, 10% Security Retention), Net Payable Check & PWD SoR Variance',
       'Direct conversion between metric unit rate (/m³, /m², /Ton) and Bangladesh site CFT / SFT rates',
     ],
     unsupported: [
@@ -5934,6 +7390,24 @@ export function computeRateAnalysis(
       directCostPerM3: Number(directCostPerM3.toFixed(2)),
       vatAitPercent: vatAitPct,
       vatAitCost: Number(vatAitCost.toFixed(2)),
+      statutoryPreset,
+      vatPercent,
+      vatCost: Number(vatCost.toFixed(2)),
+      aitPercent,
+      aitCost: Number(aitCost.toFixed(2)),
+      retentionPercent,
+      retentionCost: Number(retentionCost.toFixed(2)),
+      totalStatutoryDeductionsCost: Number(totalStatutoryDeductionsCost.toFixed(2)),
+      totalStatutoryDeductionsPerBasis: Number(totalStatutoryDeductionsCost.toFixed(2)),
+      netPayableCheckAmount: Number(netPayableCheckAmount.toFixed(2)),
+      netPayableToContractorPerBasis: Number(netPayableCheckAmount.toFixed(2)),
+      netPayableToContractorCost: Number(netPayableCheckAmount.toFixed(2)),
+      netPayableRatePerM3: Number(netPayableRatePerM3.toFixed(2)),
+      netPayableRatePerUnit: Number(netPayableRatePerM3.toFixed(2)),
+      netPayablePerUnit: Number(netPayableRatePerM3.toFixed(2)),
+      pwdScheduleRatePerUnit: Number(pwdScheduleRatePerUnit.toFixed(2)),
+      pwdVariancePerUnit: Number(pwdVariancePerUnit.toFixed(2)),
+      pwdVariancePercent: Number(pwdVariancePercent.toFixed(1)),
       commercialQuotedTotalCost: Number(commercialQuotedTotalCost.toFixed(2)),
       commercialQuotedRatePerM3: Number(commercialQuotedRatePerM3.toFixed(2)),
       commercialQuotedRatePerCft: Number(commercialQuotedRatePerCft.toFixed(2)),

@@ -405,6 +405,60 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               standardRef="ACI 318 Sec 9.7.6"
             />
           </div>
+
+          {/* BNBC-2020 Seismic Two-Zone Beam Stirrup Detailing */}
+          <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)]">
+                BNBC-2020 Seismic Two-Zone Stirrup Spacing (L₀ End Zones @ s₁ &amp; Central @ s₂)
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  updateBBS({
+                    beamEndZoneStirrupSpacingMm: 100,
+                    beamMidZoneStirrupSpacingMm: 175,
+                    beamEndZoneLengthM: Number((2 * ((bbs.beamDepthMm || 450) / 1000)).toFixed(2)),
+                    hookAngle: '135',
+                  })
+                }
+                className="px-2 py-0.5 text-[10px] font-mono rounded border border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 cursor-pointer"
+              >
+                Apply BNBC IMRF/SMRF (4&quot; End / 7&quot; Mid, 135°)
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+              <div>
+                <span className="block text-[9px] text-[var(--md-sys-color-on-surface-variant)]">End Zone L₀ (m, default 2h)</span>
+                <NumericDraftInput
+                  min={0}
+                  value={bbs.beamEndZoneLengthM ?? 0}
+                  onChangeValue={(val) => updateBBS({ beamEndZoneLengthM: Math.max(0, val) })}
+                  className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+              <div>
+                <span className="block text-[9px] text-[var(--md-sys-color-on-surface-variant)]">End Spacing s₁ (mm)</span>
+                <NumericDraftInput
+                  min={0}
+                  allowDecimal={false}
+                  value={bbs.beamEndZoneStirrupSpacingMm ?? 0}
+                  onChangeValue={(val) => updateBBS({ beamEndZoneStirrupSpacingMm: Math.max(0, Math.round(val)) })}
+                  className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+              <div>
+                <span className="block text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Central Spacing s₂ (mm)</span>
+                <NumericDraftInput
+                  min={0}
+                  allowDecimal={false}
+                  value={bbs.beamMidZoneStirrupSpacingMm ?? 0}
+                  onChangeValue={(val) => updateBBS({ beamMidZoneStirrupSpacingMm: Math.max(0, Math.round(val)) })}
+                  className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -541,6 +595,28 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               ]}
               standardRef="ACI 318 Sec 7.7.2.3"
             />
+          </div>
+
+          {/* Slab Cranked (0.42d) Bent-Up Allowance & Chair Bars */}
+          <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={bbs.includeSlabCrankedBars !== false}
+                onChange={(e) => updateBBS({ includeSlabCrankedBars: e.target.checked })}
+              />
+              <span className="font-semibold">Include 45° Cranked / Bent-up Bar Allowance (+2 × 0.42d)</span>
+            </label>
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bbs.includeSlabChairs !== false}
+                  onChange={(e) => updateBBS({ includeSlabChairs: e.target.checked })}
+                />
+                <span>Ø12mm Slab Chairs @ 3&apos;-3&quot; (1.0m) c/c</span>
+              </label>
+            </div>
           </div>
         </div>
       )}
@@ -679,6 +755,62 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
               ]}
               standardRef="ACI 318 Sec 25.7.2.1 / BNBC 2020"
             />
+          </div>
+
+          {/* BNBC-2020 Seismic Two-Zone Column Tie Detailing */}
+          <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)]">
+                BNBC-2020 Seismic Confinement Zones (End/Lap L₀ @ s₁ &amp; Central @ s₂)
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  updateBBS({
+                    colEndZoneTieSpacingMm: 100,
+                    colMidZoneTieSpacingMm: 150,
+                    colEndZoneLengthM: Number(
+                      Math.max((bbs.colLengthMm || 450) / 1000, (bbs.colHeightM || 3.0) / 6, 0.45).toFixed(2)
+                    ),
+                    hookAngle: '135',
+                  })
+                }
+                className="px-2 py-0.5 text-[10px] font-mono rounded border border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10 cursor-pointer"
+              >
+                Apply BNBC Sec 8.3 (4&quot; End / 6&quot; Mid, 135°)
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+              <div>
+                <span className="block text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Confined L₀ (m, max(h, H/6, 0.45))</span>
+                <NumericDraftInput
+                  min={0}
+                  value={bbs.colEndZoneLengthM ?? 0}
+                  onChangeValue={(val) => updateBBS({ colEndZoneLengthM: Math.max(0, val) })}
+                  className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+              <div>
+                <span className="block text-[9px] text-[var(--md-sys-color-on-surface-variant)]">End Tie Spacing s₁ (mm)</span>
+                <NumericDraftInput
+                  min={0}
+                  allowDecimal={false}
+                  value={bbs.colEndZoneTieSpacingMm ?? 0}
+                  onChangeValue={(val) => updateBBS({ colEndZoneTieSpacingMm: Math.max(0, Math.round(val)) })}
+                  className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+              <div>
+                <span className="block text-[9px] text-[var(--md-sys-color-on-surface-variant)]">Mid Tie Spacing s₂ (mm)</span>
+                <NumericDraftInput
+                  min={0}
+                  allowDecimal={false}
+                  value={bbs.colMidZoneTieSpacingMm ?? 0}
+                  onChangeValue={(val) => updateBBS({ colMidZoneTieSpacingMm: Math.max(0, Math.round(val)) })}
+                  className="w-full px-2 py-1 rounded border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1243,6 +1375,56 @@ export const RebarBbsInputs: React.FC<RebarBbsInputsProps> = ({
         </div>
       )}
 
+      {/* 12m Stock Bar Scrap (Chhat) Optimizer, GI Binding Wire & Cover Blocks Config */}
+      <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+              12m Stock Bar Offcut (Chhat) Optimizer, GI Binding Wire &amp; Cover Blocks
+            </div>
+            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+              Classify offcuts ≥ {(bbs.reusableOffcutThresholdM ?? 0.6).toFixed(2)} m (2 ft) as reusable for chairs/spacers vs unrecoverable Chhat scrap
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+          <div>
+            <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+              Reusable Offcut Threshold (m)
+            </label>
+            <NumericDraftInput
+              min={0.3}
+              max={2.5}
+              value={bbs.reusableOffcutThresholdM ?? 0.6}
+              onChangeValue={(val) => updateBBS({ reusableOffcutThresholdM: Math.max(0.2, val) })}
+              className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+              18/20 SWG GI Binding Wire (kg / MT)
+            </label>
+            <NumericDraftInput
+              min={5}
+              max={25}
+              value={bbs.bindingWireKgPerTon ?? (currentType === 'slab' ? 12 : 10)}
+              onChangeValue={(val) => updateBBS({ bindingWireKgPerTon: Math.max(0, val) })}
+              className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+            />
+          </div>
+          <div className="flex flex-col justify-center gap-1 pt-2">
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={bbs.includeCoverBlocks !== false}
+                onChange={(e) => updateBBS({ includeCoverBlocks: e.target.checked })}
+              />
+              <span>Auto-Estimate Concrete Cover Blocks (20/40/75mm)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       {/* Additional Multi-Element / Custom Bar Schedule Entries */}
       <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1430,6 +1612,8 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
           purchasedLengthM: 0,
           purchasedWeightKg: 0,
           purchasedTonnes: 0,
+          reusableOffcutLengthM: 0,
+          reusableOffcutWeightKg: 0,
           offcutScrapLengthM: 0,
           offcutScrapWeightKg: 0,
           scrapPercent: 0,
@@ -1520,16 +1704,74 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
         />
       </div>
 
+      {/* GI Binding Wire, Concrete Cover Blocks, Slab Chairs & BNBC Seismic Summary */}
+      {!isZeroBaseline && result.siteAccessories && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono tabular-nums">
+          <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
+            <div className="text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)] font-semibold">
+              18/20 SWG GI Binding Wire
+            </div>
+            <div className="text-base font-bold text-[var(--md-sys-color-primary)] mt-0.5">
+              {result.siteAccessories.bindingWireKg.toFixed(2)} kg
+            </div>
+            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              Rate: {result.siteAccessories.bindingWireRateKgPerMT} kg/MT · ~{result.siteAccessories.bindingWireBundles5Kg} coil(s) (5kg)
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
+            <div className="text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)] font-semibold">
+              Concrete / PVC Cover Blocks ({result.siteAccessories.coverBlockSizeMm}mm)
+            </div>
+            <div className="text-base font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+              {result.siteAccessories.coverBlocksCount.toLocaleString()} Nos
+            </div>
+            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+              {result.siteAccessories.chairBarsCount > 0
+                ? `+ ${result.siteAccessories.chairBarsCount} Nos Ø12mm Slab Chairs (${result.siteAccessories.chairBarsTotalWeightKg.toFixed(1)} kg)`
+                : 'Spaced @ 1.0m c/c along reinforcement'}
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]">
+            <div className="text-[10px] uppercase text-[var(--md-sys-color-on-surface-variant)] font-semibold">
+              BNBC-2020 Seismic &amp; Detailing
+            </div>
+            {result.seismicZoneSummary?.twoZoneActive ? (
+              <>
+                <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  2×L₀ ({result.seismicZoneSummary.endZoneLengthM.toFixed(2)}m) @ {result.seismicZoneSummary.endZoneSpacingMm}mm ({result.seismicZoneSummary.endZoneStirrupsCount} Nos)
+                </div>
+                <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                  Central {result.seismicZoneSummary.midZoneLengthM.toFixed(2)}m @ {result.seismicZoneSummary.midZoneSpacingMm}mm ({result.seismicZoneSummary.midZoneStirrupsCount} Nos)
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+                  {result.seismicZoneSummary?.seismicHook135Used ? '135° Seismic Hooks Active' : '90° Standard Hooks'}
+                </div>
+                <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                  {result.seismicZoneSummary && result.seismicZoneSummary.slabCrankedAllowanceM > 0
+                    ? `Slab Cranked Allowance: +${(result.seismicZoneSummary.slabCrankedAllowanceM * 1000).toFixed(0)} mm/bar`
+                    : 'Uniform stirrup/tie spacing active'}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Commercial 12m Full Bar Stock & Offcut Scrap Optimizer Table */}
       {result.commercialBarStock && result.commercialBarStock.itemsByDiameter.length > 0 && (
         <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <span className="text-xs font-bold text-[var(--md-sys-color-primary)] block">
-                Diameter-Wise Procurement &amp; 12m (39.37 ft) Stock Bar Summary
+                Diameter-Wise Procurement &amp; 12m (39&apos;-4.5&quot;) Stock Bar Cutting &amp; Chhat Optimizer
               </span>
               <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                Lapping: {result.commercialBarStock.lappingStandardUsed} · Total Laps: {result.commercialBarStock.totalLappingAllowanceM.toFixed(2)} m
+                Lapping: {result.commercialBarStock.lappingStandardUsed} · Reusable Offcut Threshold: ≥ {(result.commercialBarStock.reusableOffcutThresholdM ?? 0.6).toFixed(2)}m (2 ft)
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -1541,7 +1783,7 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
                 {showAllStandardDiameters ? 'Show Active Ø Only' : 'Show Full Ø8–Ø25 Matrix'}
               </button>
               <div className="text-[11px] font-mono tabular-nums text-[var(--md-sys-color-on-surface-variant)]">
-                <strong className="text-[var(--md-sys-color-on-surface)]">{result.commercialBarStock.total12mBarsCount} Bars</strong> · Scrap{' '}
+                <strong className="text-[var(--md-sys-color-on-surface)]">{result.commercialBarStock.total12mBarsCount} Bars</strong> · Net Chhat{' '}
                 <strong className={result.commercialBarStock.overallScrapPercent > 8 ? 'text-amber-600' : 'text-emerald-600'}>
                   {result.commercialBarStock.overallScrapPercent.toFixed(1)}%
                 </strong>
@@ -1558,9 +1800,9 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
                   <th className="py-2 px-2.5 text-right">Net Mass (kg / MT)</th>
                   <th className="py-2 px-2.5 text-right bg-primary/5 font-bold">12m Stock Bars</th>
                   <th className="py-2 px-2.5 text-right">Purchased Wt</th>
-                  <th className="py-2 px-2.5 text-right">Offcut Scrap</th>
-                  <th className="py-2 px-2.5 text-right">Wastage %</th>
-                  <th className="py-2 px-2.5 text-right">Bundles</th>
+                  <th className="py-2 px-2.5 text-right">Reusable (≥{(result.commercialBarStock.reusableOffcutThresholdM ?? 0.6).toFixed(1)}m)</th>
+                  <th className="py-2 px-2.5 text-right">Net Chhat Scrap</th>
+                  <th className="py-2 px-2.5 text-right">Chhat %</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
@@ -1584,6 +1826,9 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
                       <td className="py-2 px-2.5 text-right font-semibold">
                         {row.purchasedWeightKg.toFixed(1)} kg <span className="text-[10px] text-muted-foreground">({row.purchasedTonnes.toFixed(3)} MT)</span>
                       </td>
+                      <td className="py-2 px-2.5 text-right text-emerald-700 dark:text-emerald-400">
+                        {(row.reusableOffcutWeightKg ?? 0).toFixed(1)} kg ({(row.reusableOffcutLengthM ?? 0).toFixed(1)} m)
+                      </td>
                       <td className="py-2 px-2.5 text-right text-amber-700 dark:text-amber-400">
                         {row.offcutScrapWeightKg.toFixed(1)} kg ({row.offcutScrapLengthM.toFixed(1)} m)
                       </td>
@@ -1599,9 +1844,6 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
                         }`}>
                           {row.scrapPercent.toFixed(1)}%
                         </span>
-                      </td>
-                      <td className="py-2 px-2.5 text-right text-[var(--md-sys-color-on-surface-variant)]">
-                        ~{row.commercialBundlesEstimate} Bdl
                       </td>
                     </tr>
                   );
@@ -1620,6 +1862,9 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
                   <td className="py-2 px-2.5 text-right">
                     {result.commercialBarStock.totalPurchasedWeightKg.toFixed(1)} kg ({result.commercialBarStock.totalPurchasedTonnes.toFixed(3)} MT)
                   </td>
+                  <td className="py-2 px-2.5 text-right text-emerald-700 dark:text-emerald-400">
+                    {(result.commercialBarStock.totalReusableOffcutWeightKg ?? 0).toFixed(1)} kg
+                  </td>
                   <td className="py-2 px-2.5 text-right text-amber-700 dark:text-amber-400">
                     {result.commercialBarStock.totalScrapWeightKg.toFixed(1)} kg
                   </td>
@@ -1627,9 +1872,6 @@ export const RebarBbsMetrics: React.FC<RebarBbsMetricsProps> = ({
                     <span className="text-amber-600 dark:text-amber-300 font-bold">
                       {result.commercialBarStock.overallScrapPercent.toFixed(1)}%
                     </span>
-                  </td>
-                  <td className="py-2 px-2.5 text-right">
-                    ~{Math.ceil(result.commercialBarStock.totalPurchasedTonnes / 2.2)} Bdl
                   </td>
                 </tr>
               </tfoot>

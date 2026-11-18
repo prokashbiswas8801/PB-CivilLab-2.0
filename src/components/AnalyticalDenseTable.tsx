@@ -427,6 +427,35 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   </td>
                   <td className={`${cellPadding} text-center`}>w/c ratio</td>
                 </tr>
+                {matRes.admixtureSchedule && matRes.admixtureSchedule.totalLiters > 0 && (
+                  <tr>
+                    <td className={`${cellPadding} font-semibold`}>Superplasticizer / Water-Proofing Admixture</td>
+                    <td className={`${cellPadding} text-right`}>{(matRes.admixtureSchedule.totalLiters / 1000).toFixed(4)}</td>
+                    <td className={`${cellPadding} text-right`}>—</td>
+                    <td className={`${cellPadding} text-right`}>{matRes.admixtureSchedule.totalLiters.toFixed(2)}</td>
+                    <td className={`${cellPadding} text-center font-bold text-purple-600 dark:text-purple-400`}>
+                      {matRes.admixtureSchedule.totalLiters.toFixed(2)} L ({matRes.admixtureSchedule.jerrycans20LCount} × 20L cans)
+                    </td>
+                    <td className={`${cellPadding} text-center`}>{matRes.admixtureSchedule.dosagePerBagMl.toFixed(0)} mL/bag</td>
+                  </tr>
+                )}
+                {matRes.farrahBatching && (
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-semibold`}>Site Farrah Box (কাঠের ফারা) &amp; Tagari Batching</td>
+                    <td className={`${cellPadding} text-right`} colSpan={2}>
+                      Box: {matRes.farrahBatching.boxLengthInches}&quot;×{matRes.farrahBatching.boxWidthInches}&quot;×{matRes.farrahBatching.boxDepthInches}&quot; ({matRes.farrahBatching.boxVolumeCft} CFT/bag)
+                    </td>
+                    <td className={`${cellPadding} text-right`}>
+                      Bulking: +{matRes.farrahBatching.sandBulkingPercent}%
+                    </td>
+                    <td className={`${cellPadding} text-center font-bold text-[var(--md-sys-color-tertiary)]`}>
+                      Sand: {matRes.farrahBatching.sandTagarisPerBag} Tagaris/bag · Agg: {matRes.farrahBatching.aggregateTagarisPerBag} Tagaris/bag
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      Total: {matRes.farrahBatching.totalSandTagaris} / {matRes.farrahBatching.totalAggregateTagaris} Tagaris
+                    </td>
+                  </tr>
+                )}
                 <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold">
                   <td className={cellPadding}>
                     Batch Total (Wet: {matRes.wetVolumeM3.toFixed(2)} m³ · Dry: {matRes.dryVolumeFactor}
@@ -501,6 +530,23 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                   <td className={`${cellPadding} text-center`}>{((mixRes.batchFineAggKg / 1600) * 35.314667).toFixed(1)} cft</td>
                   <td className={`${cellPadding} text-center`}>Sp. Gr = {fineSg.toFixed(2)}</td>
                 </tr>
+                {mixRes.fieldMoistureAdjustment && (
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-semibold`}>Field Moisture Adjusted Wet Batch &amp; Vol. Ratio</td>
+                    <td className={`${cellPadding} text-right font-bold text-cyan-600 dark:text-cyan-400`}>
+                      Net Water: {mixRes.fieldMoistureAdjustment.batchNetMixingWaterLiters.toFixed(1)} L
+                    </td>
+                    <td className={`${cellPadding} text-right`}>
+                      Wet Sand: {mixRes.fieldMoistureAdjustment.batchFieldWetFineKg.toFixed(1)} kg
+                    </td>
+                    <td className={`${cellPadding} text-center font-bold text-[var(--md-sys-color-primary)]`}>
+                      Vol. Ratio {mixRes.fieldMoistureAdjustment.equivalentSiteVolumeRatio}
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      Wet Agg: {mixRes.fieldMoistureAdjustment.batchFieldWetCoarseKg.toFixed(1)} kg
+                    </td>
+                  </tr>
+                )}
                 <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold">
                   <td className={cellPadding}>Batch Total (Target f&apos;c = {activeWorkspace.concrete.targetStrengthMpa} MPa)</td>
                   <td className={`${cellPadding} text-right font-black`}>
@@ -559,6 +605,19 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <td className={`${cellPadding} text-right font-bold`}>{it.totalWeightKg.toFixed(1)}</td>
                   </tr>
                 ))}
+                {bbsRes.siteAccessories && (
+                  <tr className="bg-[var(--md-sys-color-surface-container-low)]">
+                    <td className={`${cellPadding} font-semibold`} colSpan={3}>
+                      18/20 SWG GI Binding Wire &amp; Cover Blocks ({bbsRes.siteAccessories.coverBlockSizeMm}mm)
+                    </td>
+                    <td className={`${cellPadding} text-right font-bold text-amber-600 dark:text-amber-400`} colSpan={2}>
+                      GI Wire: {bbsRes.siteAccessories.bindingWireKg.toFixed(2)} kg ({bbsRes.siteAccessories.bindingWireRateKgPerTon} kg/MT)
+                    </td>
+                    <td className={`${cellPadding} text-right font-bold text-emerald-600 dark:text-emerald-400`} colSpan={2}>
+                      Cover Blocks: {bbsRes.siteAccessories.coverBlocksCount} pcs · Reusable Offcuts: {(bbsRes.commercialBarStock?.totalReusableOffcutLengthM ?? 0).toFixed(1)}m
+                    </td>
+                  </tr>
+                )}
                 <tr className="bg-[var(--md-sys-color-surface-container-low)] font-bold">
                   <td className={cellPadding} colSpan={4}>
                     BBS Cumulative Tonnage ({bbsRes.items.length} Mark Entries{bbsRes.elementQuantity && bbsRes.elementQuantity > 1 ? ` · ×${bbsRes.elementQuantity} units` : ''})
@@ -650,6 +709,40 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <td className={`${cellPadding} text-center`}>320 bricks/m³</td>
                   </tr>
                 )}
+                {masRes.lintelRevealSchedule && (masRes.lintelRevealSchedule.autoDeductedLintelVolumeM3 > 0 || masRes.lintelRevealSchedule.jambSillRevealPlasterAreaM2 > 0) && (
+                  <tr>
+                    <td className={`${cellPadding} font-semibold`}>Auto RCC Lintel Deduction &amp; Jamb/Sill Reveal Plaster</td>
+                    <td className={`${cellPadding} text-right font-bold text-emerald-600 dark:text-emerald-400`}>
+                      +{masRes.lintelRevealSchedule.jambSillRevealPlasterAreaM2.toFixed(2)} m² reveal
+                    </td>
+                    <td className={`${cellPadding} text-right font-bold text-amber-600 dark:text-amber-400`}>
+                      -{masRes.lintelRevealSchedule.autoDeductedLintelVolumeM3.toFixed(3)} m³ lintel
+                    </td>
+                    <td className={`${cellPadding} text-right`}>
+                      -{masRes.lintelRevealSchedule.lintelBricksDeductedNos} bricks
+                    </td>
+                    <td className={`${cellPadding} text-center`}>150mm bearing</td>
+                    <td className={`${cellPadding} text-center`}>Auto-Adjusted</td>
+                  </tr>
+                )}
+                {masRes.wallTileAdhesiveSchedule && (masRes.wallTileAdhesiveSchedule.adhesiveBags20Kg > 0 || masRes.wallTileAdhesiveSchedule.jointGroutKg > 0) && (
+                  <tr>
+                    <td className={`${cellPadding} font-semibold`}>Wall Tiles, Skirting, Tile Adhesive &amp; Grout</td>
+                    <td className={`${cellPadding} text-right font-bold`}>
+                      {(masRes.wallTileAdhesiveSchedule.wallTileAreaM2 + masRes.wallTileAdhesiveSchedule.skirtingAreaM2).toFixed(2)} m²
+                    </td>
+                    <td className={`${cellPadding} text-right`}>—</td>
+                    <td className={`${cellPadding} text-right font-bold text-[var(--md-sys-color-primary)]`}>
+                      {masRes.wallTileAdhesiveSchedule.adhesiveBags20Kg} bags (20kg)
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      Grout: {masRes.wallTileAdhesiveSchedule.jointGroutKg.toFixed(1)} kg
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      Mesh: {masRes.wallTileAdhesiveSchedule.chickenWireMeshRolls} rolls
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -696,6 +789,40 @@ export const AnalyticalDenseTable: React.FC<AnalyticalDenseTableProps> = ({
                     <td className={`${cellPadding} text-center`}>Shrinkage: {(earthRes.shrinkageFactor * 100).toFixed(0)}%</td>
                     <td className={`${cellPadding} text-center`}>Roller Compactor</td>
                   </tr>
+                  {earthRes.substructureBackfillSchedule && earthRes.substructureBackfillSchedule.totalSubstructureDeductedM3 > 0 && (
+                    <tr className="bg-[var(--md-sys-color-surface-container-low)]">
+                      <td className={`${cellPadding} font-sans font-semibold`}>Net Pit Backfill &amp; Surplus Earth Disposal</td>
+                      <td className={`${cellPadding} text-right font-bold text-cyan-600 dark:text-cyan-400`}>
+                        Backfill: {earthRes.substructureBackfillSchedule.netBackfillCompactedM3.toFixed(2)} m³
+                      </td>
+                      <td className={`${cellPadding} text-right`}>
+                        {earthRes.substructureBackfillSchedule.netBackfillCft.toFixed(1)} cft
+                      </td>
+                      <td className={`${cellPadding} text-center`}>
+                        RCC Deducted: -{earthRes.substructureBackfillSchedule.totalSubstructureDeductedM3.toFixed(2)} m³
+                      </td>
+                      <td className={`${cellPadding} text-center font-bold text-rose-600 dark:text-rose-400`}>
+                        Surplus: {earthRes.substructureBackfillSchedule.netSurplusDisposalLooseM3.toFixed(1)} m³ ({earthRes.substructureBackfillSchedule.surplusDisposalTruckTrips} trips)
+                      </td>
+                    </tr>
+                  )}
+                  {earthRes.plinthSandSchedule && earthRes.plinthSandSchedule.compactedPlinthVolumeM3 > 0 && (
+                    <tr className="bg-[var(--md-sys-color-surface-container-low)]">
+                      <td className={`${cellPadding} font-sans font-semibold`}>Plinth Sand Filling (ভিটাবালি ভরাট)</td>
+                      <td className={`${cellPadding} text-right font-bold text-amber-600 dark:text-amber-400`}>
+                        Loose: {earthRes.plinthSandSchedule.looseBorrowSandM3.toFixed(2)} m³
+                      </td>
+                      <td className={`${cellPadding} text-right font-bold`}>
+                        {earthRes.plinthSandSchedule.looseBorrowSandCft.toFixed(1)} cft
+                      </td>
+                      <td className={`${cellPadding} text-center`}>
+                        Shrinkage: +{earthRes.plinthSandSchedule.compactionShrinkagePercent}%
+                      </td>
+                      <td className={`${cellPadding} text-center`}>
+                        {earthRes.plinthSandSchedule.sandTruckTrips} trucks · Shoring: {earthRes.plinthSandSchedule.shoringAreaM2.toFixed(1)} m²
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -362,6 +362,113 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
         />
       </div>
 
+      {/* Field Moisture & Aggregate Absorption Adjustment (Always-Visible Quick Controls) */}
+      <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs font-bold font-mono text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
+            <Droplets className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+            <span>Field Moisture &amp; Aggregate Absorption Adjustment (ASTM C70 / C128)</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] font-mono">
+            {[
+              { label: 'SSD Neutral (0% Free)', fm: 1.2, fa: 1.2, cm: 1.0, ca: 1.0 },
+              { label: 'Moist Site (Sand 4% / Stone 2%)', fm: 4.0, fa: 1.2, cm: 2.0, ca: 1.0 },
+              { label: 'Monsoon Wet (Sand 6% / Stone 3%)', fm: 6.0, fa: 1.2, cm: 3.0, ca: 1.0 },
+            ].map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    concrete: {
+                      ...ws.concrete,
+                      fineAggMoisturePercent: p.fm,
+                      fineAggAbsorptionPercent: p.fa,
+                      coarseAggMoisturePercent: p.cm,
+                      coarseAggAbsorptionPercent: p.ca,
+                    },
+                  }))
+                }
+                className="px-2 py-0.5 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-high)] cursor-pointer"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+          <div>
+            <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+              Sand Moisture (%)
+            </label>
+            <NumericDraftInput
+              min={0}
+              max={15}
+              value={faMoisture}
+              onChangeValue={(val) =>
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  concrete: { ...ws.concrete, fineAggMoisturePercent: Math.max(0, val) },
+                }))
+              }
+              className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+              Sand Absorption (%)
+            </label>
+            <NumericDraftInput
+              min={0}
+              max={10}
+              value={faAbsorption}
+              onChangeValue={(val) =>
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  concrete: { ...ws.concrete, fineAggAbsorptionPercent: Math.max(0, val) },
+                }))
+              }
+              className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+              Coarse Moisture (%)
+            </label>
+            <NumericDraftInput
+              min={0}
+              max={15}
+              value={caMoisture}
+              onChangeValue={(val) =>
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  concrete: { ...ws.concrete, coarseAggMoisturePercent: Math.max(0, val) },
+                }))
+              }
+              className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+              Coarse Absorption (%)
+            </label>
+            <NumericDraftInput
+              min={0}
+              max={18}
+              value={caAbsorption}
+              onChangeValue={(val) =>
+                updateActiveWorkspace((ws) => ({
+                  ...ws,
+                  concrete: { ...ws.concrete, coarseAggAbsorptionPercent: Math.max(0, val) },
+                }))
+              }
+              className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Advanced ACI 211.1 Aggregates & Moisture Corrections Toggle */}
       <div className="pt-1">
         <button
@@ -372,8 +479,8 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
           <Sliders className="w-3.5 h-3.5" />
           <span>
             {showAdvancedParams
-              ? 'Hide ACI 211.1 Moisture & Specific Gravity Parameters'
-              : 'Configure Aggregate Absorption, Moisture Content & Chemical Admixture (ACI 211.1)'}
+              ? 'Hide ACI 211.1 Specific Gravity & Admixture Parameters'
+              : 'Configure Specific Gravity, DRUW & Chemical Admixture (ACI 211.1)'}
           </span>
         </button>
       </div>
@@ -382,7 +489,7 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
         <div className="p-4 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] space-y-4">
           <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)] flex items-center gap-1.5">
             <Scale className="w-4 h-4" />
-            <span>Aggregate Specific Gravities & Gradation Indices</span>
+            <span>Aggregate Specific Gravities &amp; Gradation Indices</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
@@ -460,91 +567,6 @@ export const ConcreteMixInputs: React.FC<ConcreteMixInputsProps> = ({
                 className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
               />
               <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Typical: 2.65</span>
-            </div>
-          </div>
-
-          {/* Moisture Content & Absorption Correction */}
-          <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-            <div className="text-xs font-bold uppercase tracking-wider text-[var(--md-sys-color-primary)] mb-2 flex items-center gap-1.5">
-              <Droplets className="w-3.5 h-3.5" />
-              <span>Field Moisture &amp; Water Absorption Corrections (ASTM C70 / C128 / C127)</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
-                  Sand Total Moisture (%)
-                </label>
-                <NumericDraftInput
-                  min={0}
-                  max={15}
-                  value={faMoisture}
-                  onChangeValue={(val) =>
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      concrete: { ...ws.concrete, fineAggMoisturePercent: Math.max(0, val) },
-                    }))
-                  }
-                  className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                />
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Field wet MC: ~4.0%</span>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
-                  Sand Absorption (%)
-                </label>
-                <NumericDraftInput
-                  min={0}
-                  max={10}
-                  value={faAbsorption}
-                  onChangeValue={(val) =>
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      concrete: { ...ws.concrete, fineAggAbsorptionPercent: Math.max(0, val) },
-                    }))
-                  }
-                  className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                />
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">SSD Absorption: ~1.2%</span>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
-                  Stone Total Moisture (%)
-                </label>
-                <NumericDraftInput
-                  min={0}
-                  max={15}
-                  value={caMoisture}
-                  onChangeValue={(val) =>
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      concrete: { ...ws.concrete, coarseAggMoisturePercent: Math.max(0, val) },
-                    }))
-                  }
-                  className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                />
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">Field wet MC: ~2.0%</span>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--md-sys-color-on-surface)] mb-1">
-                  Stone Absorption (%)
-                </label>
-                <NumericDraftInput
-                  min={0}
-                  max={15}
-                  value={caAbsorption}
-                  onChangeValue={(val) =>
-                    updateActiveWorkspace((ws) => ({
-                      ...ws,
-                      concrete: { ...ws.concrete, coarseAggAbsorptionPercent: Math.max(0, val) },
-                    }))
-                  }
-                  className="w-full touch-target-48 px-2.5 rounded-lg border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] text-xs font-mono"
-                />
-                <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">SSD Absorption: ~0.8%</span>
-              </div>
             </div>
           </div>
 
@@ -702,6 +724,51 @@ export const ConcreteMixMetrics: React.FC<ConcreteMixMetricsProps> = ({
           subText={`Dry: ${(result.batchFineAggKg).toFixed(0)} kg`}
         />
       </div>
+
+      {/* Equivalent Site Volume Batch Ratio & Per-50kg Bag Dry vs Wet Schedule */}
+      {!isZeroBaseline && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5 text-xs font-mono tabular-nums">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="font-bold text-[var(--md-sys-color-primary)] uppercase">
+                Lab Dry vs. Adjusted Field Wet Batch Weights &amp; Site Volume Ratio
+              </span>
+              <span className="block text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                Weight Ratio: <strong>{result.weightBatchRatio || '1 : — : —'}</strong> · Equivalent Site Volume Ratio (1 : Sand : Coarse): <strong className="text-[var(--md-sys-color-primary)]">{result.siteVolumeBatchRatio || '1 : — : —'}</strong>
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase">Per 50kg Bag — Fine Sand</div>
+              <div className="text-sm font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+                Wet: {(result.perBagSandWetKg ?? 0).toFixed(1)} kg <span className="text-[11px] font-normal text-[var(--md-sys-color-on-surface-variant)]">(Dry: {(result.perBagSandDryKg ?? 0).toFixed(1)} kg)</span>
+              </div>
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                Batch Total: {(result.batchBatchedFineAggKg ?? result.batchFineAggKg).toFixed(0)} kg Wet
+              </div>
+            </div>
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase">Per 50kg Bag — Coarse Agg</div>
+              <div className="text-sm font-bold text-[var(--md-sys-color-on-surface)] mt-0.5">
+                Wet: {(result.perBagCoarseWetKg ?? 0).toFixed(1)} kg <span className="text-[11px] font-normal text-[var(--md-sys-color-on-surface-variant)]">(Dry: {(result.perBagCoarseDryKg ?? 0).toFixed(1)} kg)</span>
+              </div>
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                Batch Total: {(result.batchBatchedCoarseAggKg ?? result.batchCoarseAggKg).toFixed(0)} kg Wet
+              </div>
+            </div>
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] uppercase">Per 50kg Bag — Mixing Water</div>
+              <div className="text-sm font-bold text-sky-600 dark:text-sky-400 mt-0.5">
+                Net Added: {(result.perBagWaterNetLiters ?? 0).toFixed(1)} L <span className="text-[11px] font-normal text-[var(--md-sys-color-on-surface-variant)]">(Design: {(result.perBagWaterDesignLiters ?? 0).toFixed(1)} L)</span>
+              </div>
+              <div className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] mt-0.5">
+                Batch Added Water: {(result.batchAdjustedWaterKg ?? result.batchWaterKg).toFixed(1)} Liters
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Yield & Fresh Concrete Quality Snapshot */}
       <div className="p-3.5 rounded-xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">

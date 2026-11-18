@@ -574,6 +574,163 @@ export const EarthworkAlignmentInputs: React.FC<EarthworkAlignmentInputsProps> =
           </div>
         </div>
       )}
+
+      {/* Substructure Concrete Deduction & Net Backfilling + Plinth Sand Filling (ভিটাবালি ভরাট) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+          <div>
+            <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+              Substructure Concrete Deduction &amp; Net Backfill
+            </div>
+            <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+              Deduct Footing, Pedestal &amp; PCC volumes from excavation to compute Net Backfill &amp; Surplus Spoil
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+            <div>
+              <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                Footing RCC (m³)
+              </label>
+              <NumericDraftInput
+                min={0}
+                value={ew.footingConcreteVolumeM3 ?? 0}
+                onChangeValue={(val) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, footingConcreteVolumeM3: Math.max(0, val) },
+                  }))
+                }
+                className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                Pedestal Col (m³)
+              </label>
+              <NumericDraftInput
+                min={0}
+                value={ew.pedestalColumnVolumeM3 ?? 0}
+                onChangeValue={(val) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, pedestalColumnVolumeM3: Math.max(0, val) },
+                  }))
+                }
+                className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                PCC / Soling (m³)
+              </label>
+              <NumericDraftInput
+                min={0}
+                value={ew.pccBeddingVolumeM3 ?? 0}
+                onChangeValue={(val) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, pccBeddingVolumeM3: Math.max(0, val) },
+                  }))
+                }
+                className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-1">
+            <div>
+              <div className="text-[10px] font-mono uppercase font-bold text-[var(--md-sys-color-primary)] tracking-wider">
+                Plinth Sand Filling (ভিটাবালি ভরাট) &amp; Shoring
+              </div>
+              <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+                Compacted plinth sand + loose borrow river sand (15%–20% shrinkage)
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+            <div>
+              <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                Plinth Area (m²)
+              </label>
+              <NumericDraftInput
+                min={0}
+                value={ew.plinthAreaM2 ?? 0}
+                onChangeValue={(val) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, plinthAreaM2: Math.max(0, val) },
+                  }))
+                }
+                className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                Sand Depth (m)
+              </label>
+              <NumericDraftInput
+                min={0}
+                max={3.5}
+                value={ew.plinthSandThicknessM ?? 0}
+                onChangeValue={(val) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, plinthSandThicknessM: Math.max(0, val) },
+                  }))
+                }
+                className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[var(--md-sys-color-on-surface-variant)] mb-0.5">
+                Shrinkage (%)
+              </label>
+              <NumericDraftInput
+                min={10}
+                max={30}
+                value={ew.plinthSandShrinkagePct ?? 18}
+                onChangeValue={(val) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, plinthSandShrinkagePct: Math.max(0, Math.min(35, val)) },
+                  }))
+                }
+                className="w-full min-h-[40px] px-2 rounded-lg border border-[var(--md-sys-color-outline)] tabular-nums bg-[var(--md-sys-color-surface)]"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono pt-0.5">
+            <label className="inline-flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(ew.includeShoring)}
+                onChange={(e) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, includeShoring: e.target.checked },
+                  }))
+                }
+              />
+              <span>Timber/Sheet Shoring Area</span>
+            </label>
+            <label className="inline-flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(ew.includeDewatering)}
+                onChange={(e) =>
+                  updateActiveWorkspace((ws) => ({
+                    ...ws,
+                    earthwork: { ...ws.earthwork, includeDewatering: e.target.checked },
+                  }))
+                }
+              />
+              <span>Dewatering Pump-Hrs</span>
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -593,6 +750,8 @@ export const EarthworkAlignmentMetrics: React.FC<EarthworkAlignmentMetricsProps>
 }) => {
   const netBalance = result.netMassHaulBalanceM3 ?? 0;
   const isSurplus = netBalance >= 0;
+  const sub = result.substructureBackfillSchedule;
+  const plinth = result.plinthSandSchedule;
 
   return (
     <div className="space-y-3 mt-4 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
@@ -632,6 +791,94 @@ export const EarthworkAlignmentMetrics: React.FC<EarthworkAlignmentMetricsProps>
           </div>
         </div>
       </div>
+
+      {/* Substructure Deduction, Net Backfill & Surplus Earth Disposal Schedule */}
+      {sub && (sub.totalSubstructureDeductionM3 > 0 || result.bankVolumeM3 > 0) && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2 text-xs font-mono tabular-nums">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold text-[var(--md-sys-color-primary)] uppercase">
+              Substructure Deduction, Net Backfill &amp; Surplus Earth Disposal
+            </span>
+            <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+              Deducted RCC + PCC: <strong className="text-[var(--md-sys-color-on-surface)]">{sub.totalSubstructureDeductionM3.toFixed(2)} m³</strong> ({sub.totalSubstructureDeductionCft.toFixed(1)} CFT)
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Net Backfill Volume Required</span>
+              <strong className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                {sub.netBackfillVolumeM3.toFixed(2)} m³ ({sub.netBackfillVolumeCft.toFixed(1)} CFT)
+              </strong>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                Loose backfill earth: {sub.looseBackfillEarthRequiredM3.toFixed(2)} m³
+              </span>
+            </div>
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Net Surplus Earth (Displaced)</span>
+              <strong className="text-sm text-amber-600 dark:text-amber-400 mt-0.5 block">
+                {sub.netSurplusEarthBankM3.toFixed(2)} m³ Bank ({sub.netSurplusEarthLooseCft.toFixed(1)} CFT Loose)
+              </strong>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                Swelled loose spoil: {sub.netSurplusEarthLooseM3.toFixed(2)} m³
+              </span>
+            </div>
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Spoil Disposal Truck Trips</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">
+                {sub.surplusDisposalTruckTrips} Tipper Trips
+              </strong>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                Footing {sub.footingConcreteVolumeM3.toFixed(1)} + Col {sub.pedestalColumnVolumeM3.toFixed(1)} + PCC {sub.pccBeddingVolumeM3.toFixed(1)} m³
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plinth Sand Filling (ভিটাবালি ভরাট) & Shoring / Dewatering Schedule */}
+      {plinth && (plinth.compactedSandVolumeM3 > 0 || plinth.shoringAreaM2 > 0 || plinth.dewateringPumpHoursEstimate > 0) && (
+        <div className="p-3.5 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] space-y-2 text-xs font-mono tabular-nums">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold text-[var(--md-sys-color-primary)] uppercase">
+              Plinth Sand Filling (ভিটাবালি ভরাট) &amp; Site Shoring / Dewatering
+            </span>
+            <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+              Shrinkage Factor: +{plinth.shrinkagePercent}% (×{plinth.shrinkageFactor.toFixed(2)} Loose Borrow Sand)
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Compacted Plinth Sand</span>
+              <strong className="text-sm text-[var(--md-sys-color-on-surface)] mt-0.5 block">
+                {plinth.compactedSandVolumeM3.toFixed(2)} m³ ({plinth.compactedSandVolumeCft.toFixed(1)} CFT)
+              </strong>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                Area: {plinth.plinthAreaM2.toFixed(1)} m² × {plinth.plinthSandThicknessM.toFixed(2)} m
+              </span>
+            </div>
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Loose Borrow River/Local Sand</span>
+              <strong className="text-sm text-[var(--md-sys-color-primary)] mt-0.5 block">
+                {plinth.looseBorrowSandVolumeCft.toFixed(1)} CFT ({plinth.looseBorrowSandVolumeM3.toFixed(2)} m³)
+              </strong>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                Procurement: ~{plinth.sandTruckTrips} truckload(s)
+              </span>
+            </div>
+            <div className="p-2.5 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]">
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)] block">Shoring &amp; Dewatering</span>
+              <strong className="text-sm text-sky-600 dark:text-sky-400 mt-0.5 block">
+                {plinth.shoringAreaM2 > 0 ? `${plinth.shoringAreaSft.toFixed(0)} SFT (${plinth.shoringAreaM2.toFixed(1)} m²)` : 'No Shoring'}
+              </strong>
+              <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">
+                {plinth.dewateringPumpHoursEstimate > 0
+                  ? `Dewatering: ~${plinth.dewateringPumpHoursEstimate} Pump-Hrs (3" Diesel)`
+                  : 'Standard dry excavation'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {result.multiStationActive && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

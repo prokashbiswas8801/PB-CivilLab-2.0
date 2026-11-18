@@ -2180,13 +2180,18 @@ export const ConcreteMaterialsDiagramSvg: React.FC<{ params: ConcreteMaterialPar
           </g>
         </g>
 
-        {/* Bottom Mix & Water / Khoa Strip */}
-        <text x={50} y={222} fontSize="10" fill="var(--md-sys-color-on-surface-variant)">
+        {/* Bottom Mix, Farrah Box & Water / Khoa Strip */}
+        <text x={50} y={214} fontSize="9.5" fill="var(--md-sys-color-on-surface-variant)">
           Mix {params.ratioCement}:{params.ratioSand}:{params.ratioAggregate} · Water: {result.waterDemandLiters.toFixed(0)} L (w/c {(typeof params.waterCementRatio === 'number' && Number.isFinite(params.waterCementRatio) ? params.waterCementRatio : 0).toFixed(2)})
           {result.jhamaBricksForKhoa && result.jhamaBricksForKhoa > 0
-            ? ` · Jhama Bricks for Khoa: ~${result.jhamaBricksForKhoa.toLocaleString()} nos (320/m³)`
+            ? ` · Jhama Khoa: ~${result.jhamaBricksForKhoa.toLocaleString()} bricks`
             : ''}
         </text>
+        {result.farrahBatching && (
+          <text x={50} y={230} fontSize="9.5" fontWeight="700" fill="var(--md-sys-color-primary)">
+            Farrah Box: {result.farrahBatching.boxLengthInches}&quot;×{result.farrahBatching.boxWidthInches}&quot;×{result.farrahBatching.boxDepthInches}&quot; ({result.farrahBatching.boxVolumeCft} CFT/bag) · Sand: {result.farrahBatching.sandTagarisPerBag} Tagaris/bag · Agg: {result.farrahBatching.aggregateTagarisPerBag} Tagaris/bag
+          </text>
+        )}
       </svg>
       <FormulaTooltipOverlay tooltip={tooltip} />
       <DiagramFormulaHint />
@@ -2488,19 +2493,22 @@ export const RebarBBSDiagramSvg: React.FC<{ params: RebarBBSParameters; result: 
           <text x={16} y={74} fontSize="11.5" fontWeight="600" fill="var(--md-sys-color-on-surface)">= {result.totalSteelTonnes.toFixed(3)} Tonnes</text>
           <line x1={16} y1={85} x2={214} y2={85} stroke="var(--md-sys-color-outline-variant)" strokeWidth="1" />
           <text x={16} y={101} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">Total Cut Length: {fmtD(result.totalBarsLengthM)}</text>
-          <text x={16} y={116} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">
-            {fmtD(params.commercialBarStockLengthM ?? 12)} Stock Bars: {result.commercialBarStock?.total12mBarsCount ?? 0} nos
+          <text x={16} y={115} fontSize="9" fill="var(--md-sys-color-on-surface-variant)">
+            {fmtD(params.commercialBarStockLengthM ?? 12)} Stock Bars: {result.commercialBarStock?.total12mBarsCount ?? 0} nos ({result.commercialBarStock?.unrecoverableChhatPercent ?? 0}% Chhat)
+          </text>
+          <text x={16} y={129} fontSize="8.5" fontWeight="600" fill="var(--md-sys-color-tertiary)">
+            GI Wire: {result.siteAccessories?.bindingWireKg.toFixed(1) ?? 0} kg · Cover Blocks: {result.siteAccessories?.coverBlocksCount ?? 0} pcs
           </text>
           <text
             x={16}
-            y={131}
+            y={144}
             fontSize="8.5"
             fontWeight="700"
             fill={result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0 ? 'var(--md-sys-color-error)' : 'var(--md-sys-color-primary)'}
           >
             {result.lapSpliceAlerts && result.lapSpliceAlerts.length > 0
               ? `⚠ ${result.lapSpliceAlerts.length} mark(s) >${fmtD(params.commercialBarStockLengthM ?? 12)} (${params.lappingFactorD ?? 50}d lap)`
-              : `Formula: W = D² / 162.2 kg/m`}
+              : `Reusable Offcuts: ${(result.commercialBarStock?.totalReusableOffcutLengthM ?? 0).toFixed(1)}m`}
           </text>
         </g>
 
@@ -2754,6 +2762,12 @@ export const MasonryDiagramSvg: React.FC<{ params: MasonryParameters; result: Ma
 
         <text x={50} y={208} fontSize="9.5" fill="var(--md-sys-color-on-surface-variant)">
           Standard: {result.brickStandardUsed || 'BD PWD Metric'} · Joint: {params.mortarJointMm}mm · Deducted Openings: {result.totalOpeningAreaM2.toFixed(2)} m²
+          {result.lintelRevealSchedule && result.lintelRevealSchedule.autoDeductedLintelVolumeM3 > 0
+            ? ` · Lintel Deduct: -${result.lintelRevealSchedule.autoDeductedLintelVolumeM3.toFixed(2)}m³`
+            : ''}
+          {result.wallTileAdhesiveSchedule && result.wallTileAdhesiveSchedule.adhesiveBags20Kg > 0
+            ? ` · Adhesive: ${result.wallTileAdhesiveSchedule.adhesiveBags20Kg} bags`
+            : ''}
         </text>
       </svg>
       <FormulaTooltipOverlay tooltip={tooltip} />

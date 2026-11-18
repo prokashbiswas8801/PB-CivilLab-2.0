@@ -194,12 +194,23 @@ export interface BidTabulationData {
   items: BidTabulationItem[];
 }
 
+export type BOQStoryStage =
+  | 'substructure'
+  | 'ground_floor'
+  | 'ground-floor'
+  | 'typical_floor'
+  | 'typical-floor'
+  | 'roof_parapet'
+  | 'roof-parapet';
+
 export interface TakeoffLineItem {
   id: string;
   itemNo: string;
   description: string;
   category: TakeoffCategory;
   wbsSectionId?: string; // e.g. 'sec-100', 'sec-200'
+  storyStage?: BOQStoryStage; // Building stage grouping for stage-wise procurement abstract
+  floorMultiplier?: number; // Story multiplier (e.g. 1 for Substructure/GF, N for Typical Floor × N Stories)
   numberOfMembers: number; // Multiplier / Nos (>= 1)
   lengthM: number;
   widthM: number;
@@ -222,6 +233,8 @@ export interface BOQParameters {
   vatTaxPercent: number; // e.g. 7.5% or 15% (Bangladeshi statutory VAT)
   aitTaxPercent?: number; // Advance Income Tax (AIT e.g. 5.0% or 7.0% per NBR/PWD rules)
   retentionMoneyPercent?: number; // Retention money withheld e.g. 5% to 10% (Security deposit)
+  statutoryPreset?: 'pwd-lged' | 'commercial' | 'zero-tax' | 'custom';
+  typicalFloorCount?: number; // Default multiplier for Typical Floor × N Stories
   items: TakeoffLineItem[];
   // Advanced QS & Tender Management:
   rateLibraryId?: 'pwd-2024' | 'pwd-2025' | 'lged-2024' | 'commercial' | 'custom';
@@ -292,6 +305,11 @@ export interface RateAnalysisParameters {
   waterElectricityPercent: number;
   contractorProfitPercent: number;
   vatAitPercent?: number; // Statutory VAT + AIT % for commercial tender quoting (default 7.5%)
+  statutoryPreset?: 'pwd-lged' | 'commercial' | 'zero-tax' | 'custom';
+  vatPercent?: number; // Separate Statutory VAT % (e.g. 7.5% PWD/LGED)
+  aitPercent?: number; // Separate Statutory AIT / Withholding Tax % (e.g. 5.0% PWD/LGED)
+  retentionPercent?: number; // Security Deposit / Retention Money % (e.g. 10.0% PWD/LGED)
+  pwdScheduleRatePerUnit?: number; // Optional PWD SoR 2024/2026 benchmark rate for variance analysis
   // Local Material Cost Index & Regional Multipliers:
   localCostIndex?: number; // Base 1.00, adjustable local market price escalation index
   materialCostIndex?: number; // Material component escalation factor (default 1.00)
@@ -553,10 +571,20 @@ export interface PipeHydraulicsParameters {
   fixtureUrinals?: number;
 }
 
+export type ConcreteMemberShape =
+  | 'rectangular'
+  | 'circular-column'
+  | 'trapezoidal-footing'
+  | 'retaining-wall-stem'
+  | 't-beam'
+  | 'l-beam'
+  | 'staircase-waist'
+  | 'bored-pile';
+
 export interface ConcreteMemberItem {
   id: string;
   name: string;
-  shape: 'rectangular' | 'circular-column' | 'trapezoidal-footing' | 'retaining-wall-stem';
+  shape: ConcreteMemberShape;
   count: number;
   lengthM: number;
   widthM: number;
@@ -564,6 +592,18 @@ export interface ConcreteMemberItem {
   topWidthM?: number;
   topLengthM?: number;
   diameterM?: number;
+  // Advanced Structural Geometry Fields:
+  baseRectHeightM?: number; // Rectangular base box height for trapezoidal footing
+  slopedHeightM?: number; // Truncated pyramid frustum height for trapezoidal footing
+  flangeWidthM?: number; // T/L-Beam effective flange width
+  flangeThicknessM?: number; // T/L-Beam slab flange thickness
+  stairStepsCount?: number; // Number of steps in flight
+  stairRiserM?: number; // Step riser height (m, e.g. 0.15m = 6")
+  stairTreadM?: number; // Step tread going (m, e.g. 0.25m = 10")
+  stepCount?: number; // Alias for stairStepsCount
+  riserHeightM?: number; // Alias for stairRiserM
+  treadGoingM?: number; // Alias for stairTreadM
+  waistThicknessM?: number; // Stair waist slab thickness (m, e.g. 0.15m = 6")
   computedVolumeM3: number;
 }
 
@@ -583,6 +623,18 @@ export interface ConcreteMaterialParameters {
   wastagePercent: number;
   members?: ConcreteMemberItem[];
   coarseAggregateType?: 'crushed-stone' | 'brick-shingles' | 'gravel';
+  // Field Batching (Farrah & Tagari), Sand Bulking & Chemical Admixture:
+  sandBulkingPercent?: number; // 0% - 35% Fine sand moisture bulking correction
+  farrahBaseWidthIn?: number; // Customizable Farrah box width in inches (default 12")
+  farrahBaseLengthIn?: number; // Customizable Farrah box length in inches (default 12")
+  farrahBoxWidthIn?: number; // Alias for farrahBaseWidthIn
+  farrahBoxLengthIn?: number; // Alias for farrahBaseLengthIn
+  tagariCapacityCft?: number; // Standard head-pan (Tagari) capacity in CFT (default 0.625 CFT)
+  admixtureType?: 'none' | 'superplasticizer' | 'waterproofing' | 'retarder';
+  admixtureDosageMode?: 'ml-per-bag' | 'percent-by-weight';
+  admixtureDosageValue?: number; // mL per 50kg bag (e.g. 150-250 mL) or % by cement weight
+  admixtureDosageMlPerBag?: number; // mL per 50kg bag
+  admixtureDosagePercentByWeight?: number; // % by cement weight
 }
 
 /* Module 6: Bar Bending Schedule (BBS) */
@@ -630,9 +682,27 @@ export interface RebarBBSParameters {
   distBarSpacingMm: number;
   // Lapping & 12m Commercial Bar Stock Optimizer
   lappingFactorD?: number; // e.g. 50 (50d) or 60 (60d) for bars exceeding 12m
-  commercialBarStockLengthM?: number; // default 12.0m (39.37 ft)
+  commercialBarStockLengthM?: number; // default 12.0m (39.37 ft / 39'-4.5")
+  reusableOffcutThresholdM?: number; // default 0.60m (2 ft) reusable for chairs/spacers vs Chhat scrap
   steelGradeType?: '500W-grade-72.5' | '400W-grade-60' | '300-grade-40' | 'custom';
   seismicDuctileStirrups?: boolean; // BNBC-2020 135° hook with 10db >= 75mm extension & closer spacing at ends
+  // BNBC-2020 Two-Zone Seismic Stirrup/Tie Detailing & Site Accessories:
+  twoZoneSeismicStirrups?: boolean; // Enable Confined End/Lap Zone (L0 @ s1) + Central Zone (@ s2)
+  confinedZoneLengthMm?: number; // L0 confined zone length at each end (mm, default 600mm)
+  confinedZoneSpacingMm?: number; // s1 stirrup/tie spacing in confined zone (mm, default 100mm / 4" c/c)
+  centralZoneSpacingMm?: number; // s2 stirrup/tie spacing in central zone (mm, default 175mm / 7" c/c)
+  beamEndZoneLengthM?: number; // Beam confined end zone length L0 (m)
+  beamEndZoneStirrupSpacingMm?: number; // Beam confined end zone stirrup spacing s1 (mm)
+  beamMidZoneStirrupSpacingMm?: number; // Beam central zone stirrup spacing s2 (mm)
+  colEndZoneLengthM?: number; // Column confined end zone length L0 (m)
+  colEndZoneTieSpacingMm?: number; // Column confined end zone tie spacing s1 (mm)
+  colMidZoneTieSpacingMm?: number; // Column central zone tie spacing s2 (mm)
+  slabCrankedBarsEnabled?: boolean; // Include 0.42d cranked/bent-up bar allowance for slabs
+  includeSlabCrankedBars?: boolean; // Alias for slabCrankedBarsEnabled
+  giBindingWireKgPerTon?: number; // 18/20 SWG GI Binding Wire kg per Metric Tonne (default 11 kg/MT)
+  bindingWireKgPerTon?: number; // Alias for giBindingWireKgPerTon
+  includeCoverBlocks?: boolean; // Itemized 20mm/40mm/75mm concrete/PVC cover blocks
+  includeSlabChairs?: boolean; // Include 12mm Ø slab chair bars @ 3'-3" (1.0m) c/c
   // Beam BBS fields
   beamLengthM?: number;
   beamWidthMm?: number;
@@ -759,6 +829,22 @@ export interface MasonryParameters {
   bfsSandCushionThicknessMm?: number; // e.g. 25mm to 50mm local sand cushion bed
   /** Optional brick aggregate concrete volume (m³) for Picked Jhama Brick Khoa estimate (~320 bricks/m³) */
   khoaConcreteVolumeM3?: number;
+  // Automated Lintel Deduction, Jamb/Sill Plaster Reveals & Wall Tile/Skirting/Adhesive Schedule:
+  autoDeductLintel?: boolean; // Auto-deduct RCC lintel bearing volume above door/window openings
+  autoDeductLintels?: boolean; // Alias for autoDeductLintel
+  lintelThicknessMm?: number; // Default 150mm (6")
+  autoLintelThicknessMm?: number; // Alias for lintelThicknessMm
+  lintelBearingMm?: number; // Default 150mm (6" end bearing on each side)
+  autoLintelBearingMm?: number; // Alias for lintelBearingMm
+  autoAddJambRevealPlaster?: boolean; // Auto-add window/door jamb & sill reveal areas to plastering
+  autoAddJambSillPlaster?: boolean; // Alias for autoAddJambRevealPlaster
+  wallTileHeightM?: number; // Wall tile dado/cladding height in m (e.g. 2.1m bathroom/kitchen)
+  wallTileRunningLengthM?: number; // Wall tile perimeter length in m (defaults to wallLengthM or floor perimeter)
+  wallTileLengthM?: number; // Alias for wallTileRunningLengthM
+  skirtingLengthM?: number; // Floor skirting running length in m
+  tileFixingMethod?: 'cement-mortar' | 'tile-adhesive'; // 20kg bags of cementitious tile adhesive
+  tileAdhesiveKgPerM2?: number; // Default 4.5 kg/m²
+  includeChickenWireMesh?: boolean; // 20-gauge GI chicken wire mesh rolls for RCC-masonry junctions
 }
 
 /* Module 8: Earthwork & Road Alignment */
@@ -792,6 +878,18 @@ export interface EarthworkParameters {
   customShrinkagePercent?: number;
   haulTruckCapacityM3?: number;
   looseSoilDensityKgPerM3?: number;
+  // Substructure Concrete Deduction & Plinth Sand Filling (ভিটাবালি ভরাট):
+  footingConcreteVolumeM3?: number; // Footing concrete volume deducted from pit excavation
+  pedestalConcreteVolumeM3?: number; // Column pedestal volume deducted from pit excavation
+  pedestalColumnVolumeM3?: number; // Alias for pedestalConcreteVolumeM3
+  pccBeddingVolumeM3?: number; // PCC / BFS lean bedding volume deducted from pit excavation
+  plinthAreaM2?: number; // Plinth floor area for Vitabali (plinth sand filling)
+  plinthSandThicknessM?: number; // Compacted plinth sand thickness in m (e.g. 0.45m - 0.90m)
+  plinthSandShrinkagePercent?: number; // Compaction shrinkage % for borrow river/local sand (default 18%)
+  plinthSandShrinkagePct?: number; // Alias for plinthSandShrinkagePercent
+  includeDewateringShoring?: boolean; // Estimate timber/sheet-pile shoring area & dewatering pump hours
+  includeShoring?: boolean; // Alias for shoring toggle
+  includeDewatering?: boolean; // Alias for dewatering toggle
 }
 
 /* Module 9: Field Surveying, Leveling & Road Chainage */
