@@ -604,6 +604,9 @@ export interface ConcreteMemberItem {
   riserHeightM?: number; // Alias for stairRiserM
   treadGoingM?: number; // Alias for stairTreadM
   waistThicknessM?: number; // Stair waist slab thickness (m, e.g. 0.15m = 6")
+  mixRatioPreset?: 'global' | '1:1.5:3' | '1:1:2' | '1:2:4' | '1:3:6';
+  floorTag?: 'Substructure' | 'GF' | 'Typical' | 'Roof';
+  notes?: string;
   computedVolumeM3: number;
 }
 
@@ -611,6 +614,7 @@ export interface ConcreteMemberItem {
 export interface ConcreteMaterialParameters {
   code: BuildingCode;
   wetVolumeM3: number;
+  useManualVolumeOverride?: boolean;
   ratioCement: number;
   ratioSand: number;
   ratioAggregate: number;
@@ -781,10 +785,36 @@ export interface MasonryOpening {
   includeThaiAluminum?: boolean;
 }
 
+export interface MasonryWallSegment {
+  id: string;
+  name: string;
+  roomTag?: string;
+  count: number;
+  lengthM: number;
+  storyHeightM: number;
+  beamDepthDeductionM?: number;
+  effectiveHeightM: number;
+  thicknessM: number; // e.g. 0.125 (5" partition) or 0.250 (10" load-bearing)
+  mortarRatioSand?: number; // e.g. 4, 5, 6
+}
+
 export interface MasonryParameters {
   wallLengthM: number;
   wallHeightM: number;
   wallThicknessM: number;
+  wallEntryMode?: 'single' | 'schedule' | 'direct-override';
+  wallSegments?: MasonryWallSegment[];
+  directGrossAreaOverrideM2?: number;
+  directNetVolumeOverrideM3?: number;
+  // Structural RCC Beam & Column Deductions:
+  structuralDeductionMode?: 'none' | 'auto-beam-col' | 'manual';
+  storyFloorToFloorHeightM?: number; // e.g. 3.05m (10'-0")
+  beamSlabDeductionDepthM?: number; // e.g. 0.45m (18" beam + slab drop)
+  deductColumnCount?: number; // Number of intersecting RCC columns in wall run
+  deductColumnWidthM?: number; // Column width along wall length (e.g. 0.30m / 12")
+  deductColumnHeightM?: number; // Clear height of column within masonry
+  manualStructuralDeductionAreaM2?: number; // Manual custom RCC deduction area (m²)
+  manualStructuralDeductionM3?: number; // Manual custom RCC deduction volume (m³)
   brickLengthMm: number;
   brickWidthMm: number;
   brickHeightMm: number;
@@ -824,7 +854,7 @@ export interface MasonryParameters {
   // Bangladeshi Standard Brick, BFS & HBB Sub-base:
   brickStandardType?: 'bd-pwd-metric' | 'modular-metric' | 'traditional-field' | 'custom';
   wallType?: '125mm-5inch-partition' | '250mm-10inch-loadbearing' | '375mm-15inch' | 'custom';
-  subbaseType?: 'none' | 'bfs-flat-soling' | 'hbb-herringbone-bond';
+  subbaseType?: 'none' | 'bfs' | 'hbb' | 'bfs-flat-soling' | 'hbb-herringbone-bond';
   bfsLayerAreaM2?: number; // Floor / road sub-base Brick Flat Soling area
   bfsSandCushionThicknessMm?: number; // e.g. 25mm to 50mm local sand cushion bed
   /** Optional brick aggregate concrete volume (m³) for Picked Jhama Brick Khoa estimate (~320 bricks/m³) */

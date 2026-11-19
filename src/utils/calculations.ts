@@ -2459,8 +2459,11 @@ export function computeConcreteMaterials(
     return sum + singleVol * count;
   }, 0);
 
-  const effectiveWetVolumeM3 =
-    members.length > 0 && batchedWetVolumeM3 > 0 ? batchedWetVolumeM3 : params.wetVolumeM3;
+  const effectiveWetVolumeM3 = params.useManualVolumeOverride
+    ? params.wetVolumeM3
+    : members.length > 0 && batchedWetVolumeM3 > 0
+    ? batchedWetVolumeM3
+    : params.wetVolumeM3;
 
   const isZeroBaseline = effectiveWetVolumeM3 === 0;
 
@@ -2620,9 +2623,50 @@ export function computeConcreteMaterials(
     return createEnvelope<ConcreteMaterialResult>(null, issues, { scopeAndLimits });
   }
 
-  const cementVol = (rCement / sumRatio) * totalDryVolume;
-  const sandVol = (rSand / sumRatio) * totalDryVolume;
-  const aggVol = (rAgg / sumRatio) * totalDryVolume;
+  let cementVol = (rCement / sumRatio) * totalDryVolume;
+  let sandVol = (rSand / sumRatio) * totalDryVolume;
+  let aggVol = (rAgg / sumRatio) * totalDryVolume;
+
+  // If member schedule is active (not overridden) and any row specifies a per-row mixRatioPreset override:
+  const hasPerMemberMixOverride =
+    !params.useManualVolumeOverride &&
+    members.length > 0 &&
+    batchedWetVolumeM3 > 0 &&
+    members.some((m) => m.mixRatioPreset && m.mixRatioPreset !== 'global');
+
+  if (hasPerMemberMixOverride) {
+    let accCementVol = 0;
+    let accSandVol = 0;
+    let accAggVol = 0;
+    for (const m of members) {
+      const count = Math.max(0, m.count || 0);
+      if (count <= 0) continue;
+      let singleVol = computeConcreteMemberSingleVolumeM3(m);
+      if (singleVol <= 0 && m.computedVolumeM3 > 0) singleVol = m.computedVolumeM3;
+      const memberDryVol = singleVol * count * dryFactor * wastageMultiplier;
+      let mc = rCement;
+      let ms = rSand;
+      let ma = rAgg;
+      if (m.mixRatioPreset === '1:1.5:3') {
+        mc = 1; ms = 1.5; ma = 3;
+      } else if (m.mixRatioPreset === '1:1:2') {
+        mc = 1; ms = 1; ma = 2;
+      } else if (m.mixRatioPreset === '1:2:4') {
+        mc = 1; ms = 2; ma = 4;
+      } else if (m.mixRatioPreset === '1:3:6') {
+        mc = 1; ms = 3; ma = 6;
+      }
+      const mSum = mc + ms + ma;
+      if (mSum > 0) {
+        accCementVol += (mc / mSum) * memberDryVol;
+        accSandVol += (ms / mSum) * memberDryVol;
+        accAggVol += (ma / mSum) * memberDryVol;
+      }
+    }
+    cementVol = accCementVol;
+    sandVol = accSandVol;
+    aggVol = accAggVol;
+  }
 
   const cementDensity = posNum(params.cementBulkDensityKgPerM3, 1440);
   const sandDensity = posNum(params.sandBulkDensityKgPerM3, 1600);
@@ -4384,6 +4428,21 @@ export interface MasonryResult {
   brickStandardUsed?: string;
   bricksPerM3Effective?: number;
 
+  structuralDeductionSchedule?: {
+    mode: 'none' | 'auto-beam-col' | 'manual';
+    beamDeductionAreaM2: number;
+    beamDeductionVolM3: number;
+    columnDeductionAreaM2: number;
+    columnDeductionVolM3: number;
+    manualDeductionAreaM2: number;
+    manualDeductionVolM3: number;
+    totalStructuralDeductionAreaM2: number;
+    totalStructuralDeductionVolM3: number;
+    totalStructuralDeductionVolCft: number;
+    equivalentBricksDeductedNos: number;
+  };
+  wallSegmentsCount?: number;
+
   status: 'nominal' | 'warning' | 'critical';
 }
 
@@ -4392,7 +4451,52 @@ export function computeMasonryFinishes(
 ): CalculationEnvelope<MasonryResult> {
   const issues: ValidationIssue[] = [];
 
-  const isZeroBaseline = params.wallLengthM === 0 || params.wallHeightM === 0 || params.wallThicknessM === 0;
+  const segments = Array.isArray(params.wallSegments) ? params.wallSegments : [];
+  const useScheduleWalls =
+    params.wallEntryMode === 'schedule' ||
+    (params.wallEntryMode !== 'single' && params.wallEntryMode !== 'direct-override' && segments.length > 0);
+  const useDirectOverride = params.wallEntryMode === 'direct-override';
+
+  let computedSegAreaM2 = 0;
+  let computedSegVolM3 = 0;
+  let computedSegLengthM = 0;
+  if (useScheduleWalls && segments.length > 0) {
+    for (const seg of segments) {
+      const cnt = Math.max(0, seg.count || 0);
+      const len = Math.max(0, seg.lengthM || 0);
+      const beamDed = Math.max(0, seg.beamDepthDeductionM || 0);
+      const effH =
+        seg.effectiveHeightM !== undefined && seg.effectiveHeightM > 0
+          ? seg.effectiveHeightM
+          : Math.max(0, (seg.storyHeightM || 0) - beamDed);
+      const thk = Math.max(0, seg.thicknessM || params.wallThicknessM || 0.125);
+      const area = cnt * len * effH;
+      computedSegLengthM += cnt * len;
+      computedSegAreaM2 += area;
+      computedSegVolM3 += area * thk;
+    }
+  }
+
+  const effectiveThicknessM =
+    useScheduleWalls && computedSegAreaM2 > 0
+      ? computedSegVolM3 / computedSegAreaM2
+      : params.wallThicknessM;
+
+  const grossWallAreaM2 = useDirectOverride
+    ? Math.max(
+        0,
+        (params.directGrossAreaOverrideM2 || 0) > 0
+          ? params.directGrossAreaOverrideM2 || 0
+          : (params.directNetVolumeOverrideM3 || 0) > 0 && params.wallThicknessM > 0
+          ? (params.directNetVolumeOverrideM3 || 0) / params.wallThicknessM
+          : params.wallLengthM * params.wallHeightM
+      )
+    : useScheduleWalls && computedSegAreaM2 > 0
+    ? computedSegAreaM2
+    : params.wallLengthM * params.wallHeightM;
+
+  const isZeroBaseline =
+    grossWallAreaM2 === 0 || effectiveThicknessM === 0;
 
   if (params.wallLengthM < 0 || params.wallHeightM < 0 || params.wallThicknessM < 0) {
     issues.push({ field: 'wallDimensions', message: 'Wall dimensions cannot be negative.', severity: 'error' });
@@ -4408,7 +4512,8 @@ export function computeMasonryFinishes(
   const scopeAndLimits: ScopeAndLimitsMetadata = {
     status: 'Available',
     covered: [
-      'Gross-to-net masonry wall volume with itemized Door, Window, Ventilator & automated RCC Lintel bearing deductions',
+      'Gross-to-net masonry wall volume with itemized Door, Window, Ventilator, RCC Beam/Column & Lintel bearing deductions',
+      'Multi-Wall & Room Schedule takeoff alongside Single-Wall and Direct Area/Volume Override modes',
       'BD Standard Brick (240×115×70 mm, 12mm joint), Modular Metric (190×90×90 mm, 10mm joint, 500/m³) & Traditional Field Brick',
       'Dry mortar expansion (×1.33 masonry, ×1.35 plaster with Jamb/Sill reveal addition), 50kg cement bags, sand CFT & Picked Jhama Khoa',
       'Floor/Wall tiles, 4"/6" Skirting, 20kg Tile Adhesive & Grout, 20-gauge Chicken Wire Mesh, Putty/Primer/Paint & BFS/HBB sub-base',
@@ -4447,6 +4552,7 @@ export function computeMasonryFinishes(
         tilesRequiredCount: 0,
         tilesWithWastageCount: 0,
         tileBoxesCount: 0,
+        wallSegmentsCount: segments.length,
         status: 'nominal',
       },
       issues,
@@ -4454,7 +4560,6 @@ export function computeMasonryFinishes(
     );
   }
 
-  const grossWallAreaM2 = params.wallLengthM * params.wallHeightM;
   let totalOpeningAreaM2 = 0;
   const openingBreakdownParts: string[] = [];
 
@@ -4483,7 +4588,7 @@ export function computeMasonryFinishes(
           const lintelLenTotal = singleLintelLen * op.count;
           autoDeductedLintelCount += op.count;
           totalLintelLengthM += lintelLenTotal;
-          totalLintelVolumeM3 += lintelLenTotal * params.wallThicknessM * lintelThickM;
+          totalLintelVolumeM3 += lintelLenTotal * effectiveThicknessM * lintelThickM;
 
           // Jamb, soffit & sill reveal perimeter for plastering:
           // Doors have 2 vertical jambs + 1 top soffit = (2*H + W)
@@ -4491,8 +4596,8 @@ export function computeMasonryFinishes(
           const singleRevealPerim = opType === 'door' ? (2 * op.heightM + op.widthM) : 2 * (op.heightM + op.widthM);
           const totalRevealPerim = singleRevealPerim * op.count;
           jambSillRevealLengthM += totalRevealPerim;
-          // Reveal width across both faces ~ wallThicknessM (typically 0.125m or 0.25m total reveal band)
-          jambSillRevealAreaM2 += totalRevealPerim * params.wallThicknessM;
+          // Reveal width across both faces ~ effectiveThicknessM (typically 0.125m or 0.25m total reveal band)
+          jambSillRevealAreaM2 += totalRevealPerim * effectiveThicknessM;
         }
       }
     }
@@ -4506,10 +4611,70 @@ export function computeMasonryFinishes(
   const autoDeductLintelEnabled = Boolean(params.autoDeductLintels ?? params.autoDeductLintel);
   const autoAddRevealPlasterEnabled = Boolean(params.autoAddJambSillPlaster ?? params.autoAddJambRevealPlaster);
 
-  const netWallAreaBeforeLintelM2 = grossWallAreaM2 - totalOpeningAreaM2;
+  // Structural RCC Beam & Column Deductions:
+  const structMode: 'none' | 'auto-beam-col' | 'manual' = params.structuralDeductionMode || 'none';
+  const effRunLengthM = useScheduleWalls && computedSegLengthM > 0 ? computedSegLengthM : params.wallLengthM;
+  const effWallHeightM =
+    useScheduleWalls && computedSegLengthM > 0
+      ? grossWallAreaM2 / computedSegLengthM
+      : params.wallHeightM;
+
+  let beamDedAreaM2 = 0;
+  let beamDedVolM3 = 0;
+  let colDedAreaM2 = 0;
+  let colDedVolM3 = 0;
+  let manualDedAreaM2 = 0;
+  let manualDedVolM3 = 0;
+
+  if (structMode === 'auto-beam-col') {
+    const beamDepthM = Math.max(0, finiteNum(params.beamSlabDeductionDepthM, 0));
+    // If single wall mode is active (or schedule segments don't already subtract beamDepthDeductionM), deduct top beam band
+    const segsAlreadyDeductedBeam =
+      useScheduleWalls && segments.some((s) => (s.beamDepthDeductionM || 0) > 0);
+    if (!segsAlreadyDeductedBeam && beamDepthM > 0) {
+      beamDedAreaM2 = effRunLengthM * beamDepthM;
+      beamDedVolM3 = beamDedAreaM2 * effectiveThicknessM;
+    }
+    const colCount = Math.max(0, Math.round(finiteNum(params.deductColumnCount, 0)));
+    const colWidthM = Math.max(0, finiteNum(params.deductColumnWidthM, 0));
+    const colHeightM =
+      params.deductColumnHeightM && params.deductColumnHeightM > 0
+        ? params.deductColumnHeightM
+        : Math.max(0, effWallHeightM - (segsAlreadyDeductedBeam ? 0 : beamDepthM));
+    if (colCount > 0 && colWidthM > 0 && colHeightM > 0) {
+      colDedAreaM2 = colCount * colWidthM * colHeightM;
+      colDedVolM3 = colDedAreaM2 * effectiveThicknessM;
+    }
+  } else if (structMode === 'manual') {
+    manualDedAreaM2 = Math.max(0, finiteNum(params.manualStructuralDeductionAreaM2, 0));
+    manualDedVolM3 =
+      params.manualStructuralDeductionM3 && params.manualStructuralDeductionM3 > 0
+        ? Math.max(0, params.manualStructuralDeductionM3)
+        : manualDedAreaM2 * effectiveThicknessM;
+    if (manualDedAreaM2 === 0 && manualDedVolM3 > 0 && effectiveThicknessM > 0) {
+      manualDedAreaM2 = manualDedVolM3 / effectiveThicknessM;
+    }
+  }
+
+  const totalStructuralDeductionAreaM2 = beamDedAreaM2 + colDedAreaM2 + manualDedAreaM2;
+  const totalStructuralDeductionVolM3 = beamDedVolM3 + colDedVolM3 + manualDedVolM3;
+
+  const netWallAreaBeforeLintelM2 = Math.max(
+    0.01,
+    grossWallAreaM2 - totalOpeningAreaM2 - totalStructuralDeductionAreaM2
+  );
   const lintelFaceAreaM2 = autoDeductLintelEnabled ? totalLintelLengthM * lintelThickM : 0;
   const netWallAreaM2 = Math.max(0.01, netWallAreaBeforeLintelM2 - lintelFaceAreaM2);
-  const rawWallVolM3 = netWallAreaBeforeLintelM2 * params.wallThicknessM;
+  const baseGrossVolM3 =
+    useDirectOverride && (params.directNetVolumeOverrideM3 || 0) > 0
+      ? params.directNetVolumeOverrideM3 || 0
+      : useScheduleWalls && computedSegVolM3 > 0
+      ? computedSegVolM3
+      : grossWallAreaM2 * effectiveThicknessM;
+  const rawWallVolM3 = Math.max(
+    0.001,
+    baseGrossVolM3 - totalOpeningAreaM2 * effectiveThicknessM - totalStructuralDeductionVolM3
+  );
   const netWallVolumeM3 = Math.max(
     0.001,
     autoDeductLintelEnabled ? rawWallVolM3 - totalLintelVolumeM3 : rawWallVolM3
@@ -4559,6 +4724,21 @@ export function computeMasonryFinishes(
   const effectiveLintelDeductedM3 = autoDeductLintelEnabled ? totalLintelVolumeM3 : 0;
   const effectiveRevealPlasterM2 = autoAddRevealPlasterEnabled ? jambSillRevealAreaM2 : 0;
   const equivalentBricksSavedCount = nominalBrickVol > 0 ? Math.round(effectiveLintelDeductedM3 / nominalBrickVol) : 0;
+  const structBricksSavedCount = nominalBrickVol > 0 ? Math.round(totalStructuralDeductionVolM3 / nominalBrickVol) : 0;
+
+  const structuralDeductionSchedule = {
+    mode: structMode,
+    beamDeductionAreaM2: Number(beamDedAreaM2.toFixed(2)),
+    beamDeductionVolM3: Number(beamDedVolM3.toFixed(3)),
+    columnDeductionAreaM2: Number(colDedAreaM2.toFixed(2)),
+    columnDeductionVolM3: Number(colDedVolM3.toFixed(3)),
+    manualDeductionAreaM2: Number(manualDedAreaM2.toFixed(2)),
+    manualDeductionVolM3: Number(manualDedVolM3.toFixed(3)),
+    totalStructuralDeductionAreaM2: Number(totalStructuralDeductionAreaM2.toFixed(2)),
+    totalStructuralDeductionVolM3: Number(totalStructuralDeductionVolM3.toFixed(3)),
+    totalStructuralDeductionVolCft: Number((totalStructuralDeductionVolM3 * EXACT_CONVERSION.M3_TO_CFT).toFixed(2)),
+    equivalentBricksDeductedNos: structBricksSavedCount,
+  };
 
   const lintelRevealSchedule: LintelRevealSchedule = {
     autoDeductLintelEnabled,
@@ -4966,6 +5146,8 @@ export function computeMasonryFinishes(
       jhamaKhoaSchedule,
       brickStandardUsed,
       bricksPerM3Effective: Number(bricksPerM3Effective.toFixed(1)),
+      structuralDeductionSchedule,
+      wallSegmentsCount: segments.length,
       status: 'nominal',
     },
     issues,

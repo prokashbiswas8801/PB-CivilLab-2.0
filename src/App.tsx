@@ -486,6 +486,27 @@ export default function App() {
   const [boqCategoryFilter, setBoqCategoryFilter] = useState<'all' | TakeoffCategory>('all');
   const [editingTakeoffItemId, setEditingTakeoffItemId] = useState<string | null>(null);
 
+  // Mobile Data-Entry Header Collapse State (auto-collapses on input focus or scroll on <768px with manual toggle)
+  const [isMobileInputFocused, setIsMobileInputFocused] = useState(false);
+  const [isMobileScrolledDown, setIsMobileScrolledDown] = useState(false);
+  const [manualMobileHeaderMode, setManualMobileHeaderMode] = useState<'auto' | 'expanded' | 'collapsed'>('auto');
+  const mobileBlurTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setManualMobileHeaderMode('auto');
+    setIsMobileInputFocused(false);
+    setIsMobileScrolledDown(false);
+  }, [activeTabId, isDashboardView, civilLab.activePage]);
+
+  const isCalculationModuleView =
+    !isDashboardView &&
+    !['home', 'all', 'search', 'converter', 'history', 'profile'].includes(civilLab.activePage);
+
+  const isMobileHeaderCollapsed =
+    isCalculationModuleView &&
+    (manualMobileHeaderMode === 'collapsed' ||
+      (manualMobileHeaderMode === 'auto' && (isMobileInputFocused || isMobileScrolledDown)));
+
   // Unit System Transition Animation State
   const [isUnitSystemTransitioning, setIsUnitSystemTransitioning] = useState(false);
   const [unitTransitionKey, setUnitTransitionKey] = useState(0);
@@ -4616,11 +4637,8 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
             activeTabId={activeTabId}
             onSelectTab={handleSelectWorkspaceTab}
             onCloseTab={handleCloseWorkspaceTab}
-            projectName={activeWorkspace.name}
-            projectCode={activeWorkspace.projectCode}
-            onSaveSnapshot={handleLogCalculationSnapshot}
-            onOpenProjectMetadata={() => handleOpenEditWorkspace(activeWorkspace)}
             onOpenToolPicker={() => setCommandPaletteOpen(true)}
+            collapsedOnMobile={isMobileHeaderCollapsed}
           />
 
         {/* Desktop Split-Screen Layout */}
@@ -4656,7 +4674,47 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
           />
 
           {/* Main Content Area — Independently Scrollable */}
-          <main id="top" className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto custom-scrollbar relative focus:outline-none pb-24 sm:pb-28" tabIndex={-1}>
+          <main
+            id="top"
+            className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto custom-scrollbar relative focus:outline-none pb-24 sm:pb-28"
+            tabIndex={-1}
+            onScroll={(e) => {
+              if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+              const top = e.currentTarget.scrollTop;
+              if (top > 48 && !isMobileScrolledDown) {
+                setIsMobileScrolledDown(true);
+              } else if (top < 16 && isMobileScrolledDown) {
+                setIsMobileScrolledDown(false);
+              }
+            }}
+            onFocusCapture={(e) => {
+              if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+              const target = e.target as HTMLElement | null;
+              if (!target) return;
+              const tag = target.tagName;
+              if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') {
+                if (mobileBlurTimerRef.current) {
+                  window.clearTimeout(mobileBlurTimerRef.current);
+                  mobileBlurTimerRef.current = null;
+                }
+                setIsMobileInputFocused(true);
+                setManualMobileHeaderMode('auto');
+              }
+            }}
+            onBlurCapture={() => {
+              if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+              if (mobileBlurTimerRef.current) {
+                window.clearTimeout(mobileBlurTimerRef.current);
+              }
+              mobileBlurTimerRef.current = window.setTimeout(() => {
+                const activeEl = document.activeElement as HTMLElement | null;
+                const tag = activeEl?.tagName;
+                if (tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') {
+                  setIsMobileInputFocused(false);
+                }
+              }, 180);
+            }}
+          >
             {/* PRINT-ONLY OFFICIAL CALCULATION & REPORT HEADER */}
             <div className="print-only p-6 border-b-2 border-black mb-6">
               <div className="flex justify-between items-start">
@@ -4783,47 +4841,7 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
               </div>
             ) : (
               <>
-                {/* Context Sub-Bar (Sticky at top of Main Page) */}
-                <div className="sticky top-0 z-20 shrink-0 px-4 md:px-6 py-3 bg-[var(--md-sys-color-surface-container-low)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                  <button
-                    type="button"
-                    onClick={() => setWorkspaceManagerOpen(true)}
-                    className="font-bold underline text-[var(--md-sys-color-primary)] hover:opacity-80 cursor-pointer"
-                    title="Open Project Workspace Switcher &amp; Manager"
-                  >
-                    {activeWorkspace.name}
-                  </button>
-                  <span className="text-[var(--md-sys-color-outline)]">/</span>
-                  <span className="font-semibold text-[var(--md-sys-color-on-surface)]">
-                    {activeWorkspace.projectCode}
-                  </span>
-                  <span className="text-[var(--md-sys-color-outline)]">·</span>
-                  <span className="text-slate-600 dark:text-slate-400">
-                    Loc: {activeWorkspace.siteLocation || 'Not Set'}
-                  </span>
-                  <span className="text-[var(--md-sys-color-outline)]">·</span>
-                  <span className="text-slate-600 dark:text-slate-400">
-                    Eng: {userProfile.fullName || activeWorkspace.engineerOfRecord || 'Not Set'}
-                  </span>
-                </div>
-                <h1 className="text-lg md:text-xl font-bold font-sans tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2 mt-0.5">
-                  <span>{MODULE_META[activeModule].label}</span>
-                  <span className="hidden sm:inline-block text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]">
-                    {MODULE_META[activeModule].codeStandard}
-                  </span>
-                  <AboutThisToolButton
-                    toolId={activeModule}
-                    onClick={() => setAboutToolDrawerOpen(true)}
-                  />
-                </h1>
-              </div>
-
-              {/* Status, Worked Examples, Unit Quick-Toggle & Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2">
-                {renderStatusBadge()}
-
+                {/* Context Sub-Bar (Sticky at top of Main Page — Auto-collapses tools on mobile during data entry) */}
                 {(() => {
                   const workedExamplesMap: Partial<Record<EngineeringModuleId, WorkedExampleEntry[]>> = {
                     'beam-analysis': BEAM_WORKED_EXAMPLES,
@@ -4844,252 +4862,252 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                     'rc-column-design': RC_COLUMN_WORKED_EXAMPLES,
                     'strut-and-tie': STRUT_AND_TIE_WORKED_EXAMPLES,
                   };
-                  const currentExList = workedExamplesMap[activeModule];
-                  if (!currentExList || currentExList.length === 0) return null;
+                  const currentExList = workedExamplesMap[activeModule] || [];
+
+                  const handleApplyWorkedExample = (ex: WorkedExampleEntry) => {
+                    if (ex.module === 'beam-analysis') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        beam: { ...ws.beam, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('beam-analysis', ex.id, ex.params));
+                    } else if (ex.module === 'continuous-beam') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        continuousBeam: ex.params,
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('continuous-beam', ex.id));
+                    } else if (ex.module === 'rate-analysis') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        rateAnalysis: { ...ws.rateAnalysis, ...ex.params },
+                        ...(ex.marketRates
+                          ? {
+                              marketRates: {
+                                ...(ws.marketRates || createDefaultMasterMarketRates()),
+                                ...ex.marketRates,
+                              },
+                            }
+                          : {}),
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('rate-analysis', ex.id));
+                    } else if (ex.module === 'boq-estimator') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        boq: { ...ws.boq, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('boq-estimator', ex.id));
+                    } else if (ex.module === 'concrete-materials') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        concreteMaterials: { ...ws.concreteMaterials, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('concrete-materials', ex.id));
+                    } else if (ex.module === 'rebar-bbs') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        rebarBbs: { ...ws.rebarBbs, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('rebar-bbs', ex.id));
+                    } else if (ex.module === 'masonry-finishes') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        masonry: { ...ws.masonry, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('masonry-finishes', ex.id));
+                    } else if (ex.module === 'earthwork-alignment') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        earthwork: { ...ws.earthwork, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('earthwork-alignment', ex.id));
+                    } else if (ex.module === 'bearing-capacity') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        bearing: { ...ws.bearing, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('bearing-capacity', ex.id));
+                    } else if (ex.module === 'pile-capacity') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        pile: { ...(ws.pile || createDefaultPileCapacity()), ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('pile-capacity', ex.id));
+                    } else if (ex.module === 'concrete-mix') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        concrete: { ...ws.concrete, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('concrete-mix', ex.id));
+                    } else if (ex.module === 'open-channel') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        channel: { ...ws.channel, ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('open-channel', ex.id));
+                    } else if (ex.module === 'pipe-hydraulics') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        pipe: { ...(ws.pipe || createDefaultPipeHydraulics()), ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('pipe-hydraulics', ex.id));
+                    } else if (ex.module === 'frame-truss-2d') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        frameTruss2d: ex.params,
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('frame-truss-2d', ex.id));
+                    } else if (ex.module === 'section-analyzer') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        sectionAnalyzer: { ...(ws.sectionAnalyzer || createDefaultSectionAnalyzer()), ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('section-analyzer', ex.id));
+                    } else if (ex.module === 'rc-column-design') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        rcColumn: { ...(ws.rcColumn || createDefaultRcColumnDesign()), ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('rc-column-design', ex.id));
+                    } else if (ex.module === 'strut-and-tie') {
+                      updateActiveWorkspace((ws) => ({
+                        ...ws,
+                        strutAndTie: { ...(ws.strutAndTie || createDefaultStrutAndTie()), ...ex.params },
+                      }));
+                      window.history.replaceState({}, '', buildWorkedExampleUrl('strut-and-tie', ex.id));
+                    }
+                    triggerCelebration(
+                      `Loaded Example: ${ex.title}`,
+                      'Press Undo anytime to restore previous workspace parameters',
+                      'celebrate'
+                    );
+                  };
+
+                  const handleCopyWorkedExampleUrl = () => {
+                    if (currentExList.length === 0) return;
+                    const shareUrl = buildWorkedExampleUrl(
+                      activeModule as DeepLinkModuleId,
+                      currentExList[0].id,
+                      activeModule === 'beam-analysis' ? activeWorkspace.beam : undefined
+                    );
+                    navigator.clipboard?.writeText(shareUrl);
+                    triggerCelebration('Shareable Link Copied', 'URL copied with active engineering example', 'info');
+                  };
 
                   return (
-                    <div className="relative" ref={workedExamplesRef}>
-                      <button
-                        type="button"
-                        onClick={() => setWorkedExamplesMenuOpen((prev) => !prev)}
-                        className="min-h-[34px] px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-colors cursor-pointer"
-                        aria-expanded={workedExamplesMenuOpen}
-                        aria-haspopup="true"
-                        title="Load verified textbook, PWD & project worked examples"
+                    <>
+                      <div
+                        className={`sticky top-0 z-20 shrink-0 px-3 md:px-6 bg-[var(--md-sys-color-surface-container-low)]/95 backdrop-blur-md border-b border-[var(--md-sys-color-outline-variant)] transition-all duration-200 ${
+                          isMobileHeaderCollapsed ? 'py-1.5 md:py-2.5' : 'py-2.5'
+                        }`}
                       >
-                        <BookOpenCheck className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                        <span>Worked Examples</span>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${workedExamplesMenuOpen ? 'rotate-180' : ''}`} />
-                      </button>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          {/* Module Title + Code Standard + Mobile Tools Toggle */}
+                          <div className="flex items-center justify-between w-full md:w-auto gap-2 min-w-0">
+                            <h1 className="text-base md:text-lg font-bold font-sans tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2 min-w-0">
+                              <span className="truncate">{MODULE_META[activeModule].label}</span>
+                              <span className="hidden sm:inline-block text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] shrink-0">
+                                {MODULE_META[activeModule].codeStandard}
+                              </span>
+                              <AboutThisToolButton
+                                toolId={activeModule}
+                                onClick={() => setAboutToolDrawerOpen(true)}
+                              />
+                            </h1>
 
-                      {workedExamplesMenuOpen && (
-                        <div
-                          role="menu"
-                          className="absolute right-0 mt-1.5 w-80 max-w-[90vw] rounded-xl border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] shadow-2xl p-1.5 z-30 space-y-1 text-xs font-sans"
-                        >
-                          <div className="px-2.5 py-1.5 border-b border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
-                            <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-[var(--md-sys-color-primary)]">
-                              Verified Benchmarks &amp; Examples
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const shareUrl = buildWorkedExampleUrl(
-                                  activeModule as DeepLinkModuleId,
-                                  currentExList[0].id,
-                                  activeModule === 'beam-analysis' ? activeWorkspace.beam : undefined
-                                );
-                                navigator.clipboard?.writeText(shareUrl);
-                                setWorkedExamplesMenuOpen(false);
-                                triggerCelebration('Shareable Link Copied', 'URL copied with active engineering example', 'info');
-                              }}
-                              className="text-[10px] font-mono font-semibold text-[var(--md-sys-color-primary)] hover:underline flex items-center gap-1 cursor-pointer"
-                              title="Copy shareable URL for current state"
-                            >
-                              <Share2 className="w-3 h-3" />
-                              <span>Copy URL</span>
-                            </button>
+                            {/* Mobile Compact Status + Collapse/Expand Toggle */}
+                            <div className="flex md:hidden items-center gap-1.5 shrink-0">
+                              {renderStatusBadge()}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setManualMobileHeaderMode(
+                                    isMobileHeaderCollapsed ? 'expanded' : 'collapsed'
+                                  )
+                                }
+                                className="px-2 py-1 rounded-lg text-[11px] font-mono font-semibold bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1 cursor-pointer"
+                                title={
+                                  isMobileHeaderCollapsed
+                                    ? 'Expand module header tools & presets'
+                                    : 'Collapse module header tools for data entry'
+                                }
+                                aria-expanded={!isMobileHeaderCollapsed}
+                              >
+                                <span>{isMobileHeaderCollapsed ? 'Tools' : 'Hide'}</span>
+                                {isMobileHeaderCollapsed ? (
+                                  <ChevronDown className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
+                                ) : (
+                                  <ChevronUp className="w-3 h-3 text-[var(--md-sys-color-primary)]" />
+                                )}
+                              </button>
+                            </div>
                           </div>
 
-                          {currentExList.map((ex: WorkedExampleEntry) => (
+                          {/* Header Action Buttons (Collapsible on Mobile during data entry) */}
+                          <div
+                            className={`items-center gap-2 ${
+                              isMobileHeaderCollapsed
+                                ? 'hidden md:flex'
+                                : 'flex flex-wrap w-full md:w-auto justify-end pt-1 md:pt-0'
+                            }`}
+                          >
+                            <div className="hidden md:flex items-center">
+                              {renderStatusBadge()}
+                            </div>
+
+                            {/* Instant Quick Print A4 Execution */}
                             <button
-                              key={ex.id}
                               type="button"
-                              role="menuitem"
-                              onClick={() => {
-                                setWorkedExamplesMenuOpen(false);
-                                if (ex.module === 'beam-analysis') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    beam: { ...ws.beam, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('beam-analysis', ex.id, ex.params));
-                                } else if (ex.module === 'continuous-beam') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    continuousBeam: ex.params,
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('continuous-beam', ex.id));
-                                } else if (ex.module === 'rate-analysis') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    rateAnalysis: { ...ws.rateAnalysis, ...ex.params },
-                                    ...(ex.marketRates
-                                      ? {
-                                          marketRates: {
-                                            ...(ws.marketRates || createDefaultMasterMarketRates()),
-                                            ...ex.marketRates,
-                                          },
-                                        }
-                                      : {}),
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('rate-analysis', ex.id));
-                                } else if (ex.module === 'boq-estimator') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    boq: { ...ws.boq, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('boq-estimator', ex.id));
-                                } else if (ex.module === 'concrete-materials') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    concreteMaterials: { ...ws.concreteMaterials, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('concrete-materials', ex.id));
-                                } else if (ex.module === 'rebar-bbs') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    rebarBbs: { ...ws.rebarBbs, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('rebar-bbs', ex.id));
-                                } else if (ex.module === 'masonry-finishes') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    masonry: { ...ws.masonry, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('masonry-finishes', ex.id));
-                                } else if (ex.module === 'earthwork-alignment') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    earthwork: { ...ws.earthwork, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('earthwork-alignment', ex.id));
-                                } else if (ex.module === 'bearing-capacity') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    bearing: { ...ws.bearing, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('bearing-capacity', ex.id));
-                                } else if (ex.module === 'pile-capacity') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    pile: { ...(ws.pile || createDefaultPileCapacity()), ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('pile-capacity', ex.id));
-                                } else if (ex.module === 'concrete-mix') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    concrete: { ...ws.concrete, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('concrete-mix', ex.id));
-                                } else if (ex.module === 'open-channel') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    channel: { ...ws.channel, ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('open-channel', ex.id));
-                                } else if (ex.module === 'pipe-hydraulics') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    pipe: { ...(ws.pipe || createDefaultPipeHydraulics()), ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('pipe-hydraulics', ex.id));
-                                } else if (ex.module === 'frame-truss-2d') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    frameTruss2d: ex.params,
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('frame-truss-2d', ex.id));
-                                } else if (ex.module === 'section-analyzer') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    sectionAnalyzer: { ...(ws.sectionAnalyzer || createDefaultSectionAnalyzer()), ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('section-analyzer', ex.id));
-                                } else if (ex.module === 'rc-column-design') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    rcColumn: { ...(ws.rcColumn || createDefaultRcColumnDesign()), ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('rc-column-design', ex.id));
-                                } else if (ex.module === 'strut-and-tie') {
-                                  updateActiveWorkspace((ws) => ({
-                                    ...ws,
-                                    strutAndTie: { ...(ws.strutAndTie || createDefaultStrutAndTie()), ...ex.params },
-                                  }));
-                                  window.history.replaceState({}, '', buildWorkedExampleUrl('strut-and-tie', ex.id));
-                                }
-                                triggerCelebration(
-                                  `Loaded Example: ${ex.title}`,
-                                  'Press Undo anytime to restore previous workspace parameters',
-                                  'celebrate'
-                                );
-                              }}
-                              className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] transition-colors cursor-pointer space-y-0.5"
+                              onClick={handleQuickPrintA4Report}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                              title="Print instant 1-page A4 certified report with embedded verification QR code"
                             >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-semibold text-[var(--md-sys-color-on-surface)]">{ex.title}</span>
-                                <span className="text-[10px] font-mono text-[var(--md-sys-color-primary)] shrink-0">
-                                  {ex.category}
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] leading-snug">
-                                {ex.subtitle}
-                              </div>
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>Print A4</span>
                             </button>
-                          ))}
+
+                            {/* Open Verified Print Preview & Vector PDF Engine Modal */}
+                            <button
+                              type="button"
+                              onClick={handleOpenPrintPreview}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                              title="Open certified vector print preview & PDF submittal engine"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+                              <span>PDF Preview</span>
+                            </button>
+
+                            {/* Save Calculation Snapshot Button */}
+                            <button
+                              type="button"
+                              onClick={handleLogCalculationSnapshot}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                              title="Save verified analytical snapshot to History Ledger"
+                            >
+                              <BookmarkCheck className="w-3.5 h-3.5" />
+                              <span>Save Snapshot</span>
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+
+                      {/* Unified Worked Examples & Presets Ribbon */}
+                      <PresetQuickBar
+                        activeModule={activeModule}
+                        presets={presets}
+                        onApplyPreset={handleApplyPreset}
+                        onOpenPresetsManager={() => handleOpenProfileModal('presets')}
+                        onSaveCurrentAsPreset={() => handleOpenProfileModal('presets')}
+                        workedExamples={currentExList}
+                        onSelectWorkedExample={handleApplyWorkedExample}
+                        onCopyWorkedExampleUrl={handleCopyWorkedExampleUrl}
+                        onLoadStandardPreset={() => handleLoadStandardPresetForModule(activeModule)}
+                        onResetToZero={() => handleResetModuleToZero(activeModule)}
+                        collapsedOnMobile={isMobileHeaderCollapsed}
+                      />
+                    </>
                   );
                 })()}
-
-                <div className="h-4 w-px bg-[var(--md-sys-color-outline-variant)] mx-1 hidden sm:block" />
-
-                {/* Dedicated 1-Click Unit System Quick-Toggle & 3-Preset Selector */}
-                <UnitPresetSelector
-                  currentPreset={activeWorkspace.unitPreferences?.systemPreset || 'metric'}
-                  onSelectPreset={handleSelectUnitPreset}
-                  onQuickToggle={handleQuickToggleUnitSystem}
-                  showQuickToggle={true}
-                  isTransitioning={isUnitSystemTransitioning}
-                />
-
-                <div className="h-4 w-px bg-[var(--md-sys-color-outline-variant)] mx-1 hidden sm:block" />
-
-                {/* Instant Quick Print A4 Execution */}
-                <button
-                  type="button"
-                  onClick={handleQuickPrintA4Report}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
-                  title="Print instant 1-page A4 certified report with embedded verification QR code"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Quick Print</span>
-                </button>
-
-                {/* Open Verified Print Preview & Vector PDF Engine Modal */}
-                <button
-                  type="button"
-                  onClick={handleOpenPrintPreview}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-surface-container-high)] hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
-                  title="Open certified vector print preview & PDF submittal engine"
-                >
-                  <Printer className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-                  <span className="hidden md:inline">Preview PDF</span>
-                </button>
-
-                {/* Save Calculation Snapshot Button */}
-                <button
-                  type="button"
-                  onClick={handleLogCalculationSnapshot}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--md-sys-color-primary)] hover:opacity-90 text-[var(--md-sys-color-on-primary)] flex items-center gap-1.5 transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
-                  title="Save verified analytical snapshot to History Ledger"
-                >
-                  <BookmarkCheck className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Log Snapshot</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Presets Ribbon */}
-            <PresetQuickBar
-              activeModule={activeModule}
-              presets={presets}
-              onApplyPreset={handleApplyPreset}
-              onOpenPresetsManager={() => handleOpenProfileModal('presets')}
-              onSaveCurrentAsPreset={() => handleOpenProfileModal('presets')}
-            />
 
             {/* Workflow Cross-Link Banner */}
             <div className="mx-4 md:mx-6 mt-4 no-print">
@@ -5341,38 +5359,14 @@ Key Parameters: ${JSON.stringify(currentEnvelope.result || {}, null, 2)}`;
                 transition={{ duration: 0.25 }}
                 className="lg:col-span-5 space-y-4"
               >
-                {/* Dedicated Input Pane Card Header */}
-                <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3.5 shadow-xs space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
-                        Input Parameters • ইনপুট প্যারামিটার
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                      Zero Baseline Allowed
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleResetModuleToZero(activeModule)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-[var(--md-sys-color-surface)] hover:bg-rose-500/10 text-[var(--md-sys-color-on-surface)] hover:text-rose-600 dark:hover:text-rose-400 border border-[var(--md-sys-color-outline-variant)] hover:border-rose-500/40 flex items-center gap-1.5 transition-colors cursor-pointer"
-                      title="Clear all numeric fields for this module back to strict 0 baseline"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Reset to Zero</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleLoadStandardPresetForModule(activeModule)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-[var(--md-sys-color-primary-container)]/50 hover:bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border border-[var(--md-sys-color-primary)]/30 flex items-center gap-1.5 transition-colors cursor-pointer"
-                      title="Populate verified standard engineering preset for this module"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Load Standard Preset</span>
-                    </button>
-                  </div>
+                {/* Dedicated Input Pane Card Header (Clean single-line header — Presets & Reset unified in PresetQuickBar) */}
+                <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-3.5 py-2.5 shadow-xs flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface)]">
+                    Input Parameters • ইনপুট প্যারামিটার
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    Zero Baseline Allowed
+                  </span>
                 </div>
 
                 {/* MODULE: BOQ & QUANTITY TAKEOFF ESTIMATOR (Form State completely encapsulated) */}

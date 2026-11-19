@@ -70,7 +70,9 @@ export const DisciplineMatrix: React.FC<DisciplineMatrixProps> = ({
       if (activeTab === 'Structural') {
         matchesCategory = tool.category === 'Structural';
       } else if (activeTab === 'Geotech') {
-        matchesCategory = tool.category === 'Geotechnical';
+        matchesCategory =
+          tool.category === 'Geotechnical' ||
+          tool.category === 'Earthwork & Surveying';
       } else if (activeTab === 'Architecture') {
         matchesCategory = tool.category === 'Architecture & By-Laws';
       } else if (activeTab === 'BOQ & BBS') {
@@ -83,7 +85,6 @@ export const DisciplineMatrix: React.FC<DisciplineMatrixProps> = ({
       } else if (activeTab === 'CAD & Excel') {
         matchesCategory =
           tool.category === 'CAD & Utilities' ||
-          tool.category === 'Earthwork & Surveying' ||
           tool.category === 'Site QC & Field';
       }
 

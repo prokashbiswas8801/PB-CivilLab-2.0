@@ -3,13 +3,10 @@ import {
   Home,
   X,
   Plus,
-  Camera,
-  FolderKanban,
-  ChevronRight,
-  BookmarkCheck,
 } from 'lucide-react';
 import { EngineeringModuleId } from '../../types/civil';
 import { TOOL_REGISTRY_MAP } from '../../data/toolRegistry';
+import { MODULE_META } from '../../data/moduleMeta';
 
 export interface WorkspaceTabItem {
   id: string; // e.g. 'dashboard' or 'tab-beam-analysis'
@@ -24,11 +21,12 @@ export interface WorkspaceTabsProps {
   activeTabId: string;
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  projectName: string;
-  projectCode: string;
-  onSaveSnapshot: () => void;
+  projectName?: string;
+  projectCode?: string;
+  onSaveSnapshot?: () => void;
   onOpenProjectMetadata?: () => void;
   onOpenToolPicker?: () => void;
+  collapsedOnMobile?: boolean;
 }
 
 export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
@@ -36,21 +34,26 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
   activeTabId,
   onSelectTab,
   onCloseTab,
-  projectName,
-  projectCode,
-  onSaveSnapshot,
-  onOpenProjectMetadata,
   onOpenToolPicker,
+  collapsedOnMobile = false,
 }) => {
   return (
-    <div className="h-10 shrink-0 border-b border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-lowest)] flex items-center justify-between px-2 gap-2 select-none overflow-x-auto no-scrollbar print:hidden">
-      {/* LEFT: Browser / IDE-Style Multi-Tabs */}
+    <div
+      className={`h-10 shrink-0 border-b border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-lowest)] items-center justify-between px-2 gap-2 select-none overflow-x-auto no-scrollbar print:hidden transition-all duration-200 ${
+        collapsedOnMobile ? 'hidden md:flex' : 'flex'
+      }`}
+    >
+      {/* Browser / IDE-Style Multi-Tabs */}
       <div className="flex items-center gap-1 min-w-0 h-full pt-1 overflow-x-auto no-scrollbar">
         {openTabs.map((tab) => {
           const isActive = tab.id === activeTabId;
           const toolMeta = tab.moduleId ? TOOL_REGISTRY_MAP[tab.moduleId] : null;
+          const modMeta = tab.moduleId ? MODULE_META[tab.moduleId] : null;
           const shortCode = tab.shortCode || toolMeta?.shortCode;
-          const displayTitle = tab.type === 'dashboard' ? 'Home' : tab.title;
+          const displayTitle =
+            tab.type === 'dashboard'
+              ? 'Home'
+              : modMeta?.label || toolMeta?.shortLabel || tab.title;
 
           return (
             <div
@@ -115,32 +118,6 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
             <span className="hidden sm:inline">Open Tool</span>
           </button>
         )}
-      </div>
-
-      {/* RIGHT: Compact Breadcrumbs, Project Badge & Save Snapshot Action */}
-      <div className="flex items-center gap-2 shrink-0">
-        {/* Project Badge */}
-        <button
-          type="button"
-          onClick={onOpenProjectMetadata}
-          className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)] text-xs font-mono text-[var(--md-sys-color-on-surface)] transition-colors cursor-pointer"
-          title="Click to edit project details"
-        >
-          <FolderKanban className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
-          <span className="text-[10px] text-[var(--md-sys-color-primary)] font-bold">{projectCode}</span>
-          <span className="truncate max-w-[120px] text-[11px] font-medium">{projectName}</span>
-        </button>
-
-        {/* Save Snapshot to Project Button */}
-        <button
-          type="button"
-          onClick={onSaveSnapshot}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-primary)] hover:text-[var(--md-sys-color-on-primary)] hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-surface)] text-xs font-mono font-semibold transition-all cursor-pointer shadow-2xs"
-          title="Save immutable calculation snapshot to project audit trail"
-        >
-          <Camera className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden md:inline">Save Snapshot</span>
-        </button>
       </div>
     </div>
   );
